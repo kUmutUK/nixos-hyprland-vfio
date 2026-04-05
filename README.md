@@ -1,9 +1,9 @@
-NixOS Hyprland Gaming Config (AMD Optimized)
+NixOS Hyprland Gaming Config (Flake)
 
 🎯 Purpose
 
 This is a high-performance, low-latency NixOS configuration designed for gaming and daily use.
-The goal is to provide a smooth, fast, and stable system with minimal input lag and no extra tweaking needed.
+It provides a smooth, fast, and stable experience with minimal input lag and no extra tweaking required.
 
 ---
 
@@ -13,14 +13,8 @@ Best suited for:
 
 - 🟢 AMD CPUs (Ryzen recommended)
 - 🟢 AMD GPUs (RADV / Mesa drivers)
-- 🟢 Wayland + Hyprland setups
+- 🟢 Wayland + Hyprland environments
 - 🟢 Desktop systems (SSD / NVMe)
-
-Tested on:
-
-- Ryzen 5 5600
-- RX 6000 series GPU
-- 32GB RAM
 
 ---
 
@@ -32,33 +26,39 @@ Tested on:
 - GameMode enabled
 - MangoHud + Gamescope support
 - Steam + Proton ready
-- Waydroid (Android support)
-- KDE Connect (device integration)
-- USB autosuspend disabled (no mouse/keyboard sleep)
+- Waydroid support
+- KDE Connect
+- USB autosuspend disabled
 - Optimized kernel parameters
+
+---
+
+⚡ Installation (Flake)
+
+git clone https://github.com/YOUR-USERNAME/nixos-config
+cd nixos-config
+sudo nixos-rebuild switch --flake .#nixos
 
 ---
 
 📂 Repository Structure
 
 nixos-config/
+├── flake.nix
+├── flake.lock
 ├── configuration.nix
 ├── hardware-configuration.nix
+├── home.nix
 ├── hypr/
 │   ├── hyprland.conf
 │   └── hyprlock.conf
 ├── waybar/
 │   ├── config
 │   └── style.css
+├── nix/
+│   ├── nix.conf
+│   └── registry.json
 ├── README.md
-
----
-
-⚙️ Installation
-
-sudo cp configuration.nix /etc/nixos/
-sudo cp hardware-configuration.nix /etc/nixos/
-sudo nixos-rebuild switch
 
 ---
 
@@ -76,14 +76,30 @@ cp -r waybar/* ~/.config/waybar/
 
 ---
 
+⚙️ Nix Configuration (Advanced / Optional)
+
+⚠️ WARNING:
+These files are system-level configurations.
+They may break your system if used incorrectly.
+
+- Do NOT use unless you understand Nix configuration
+- Not required for normal usage
+- May override your system defaults
+
+Apply manually:
+
+sudo cp -r nix/* /etc/nix/
+
+---
+
 📌 Notes
 
 - Focused on performance over battery life
-- Ideal for desktop usage
-- Minimal setup required after installation
+- Designed for desktop systems
+- Minimal setup required after install
 
 ---
 
 🔥 Goal
 
-A clean, fast, and responsive NixOS setup that performs great in both gaming and everyday tasks.
+A clean, fast, minimal and powerful NixOS setup for gaming and everyday use.
