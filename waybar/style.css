@@ -1,0 +1,105 @@
+* {
+  font-family: "JetBrainsMono Nerd Font", monospace;
+  font-size: 12px;
+  font-weight: 500;
+  min-height: 0;
+}
+
+window#waybar {
+  background: #11111b;
+  color: #cdd6f4;
+  border-bottom: 1px solid #313244;
+}
+
+/* TOOLTIP */
+tooltip {
+  background: #1e1e2e;
+  border: 1px solid #313244;
+  border-radius: 8px;
+}
+
+tooltip label {
+  color: #cdd6f4;
+  padding: 2px 6px;
+  font-size: 11px;
+}
+
+/* WORKSPACES */
+#workspaces {
+  background: #1e1e2e;
+  border-radius: 10px;
+  margin: 4px 6px;
+  padding: 0 4px;
+}
+
+#workspaces button {
+  color: #6c7086;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  padding: 4px 10px;
+  margin: 3px 2px;
+  font-weight: 600;
+}
+
+#workspaces button.active {
+  color: #11111b;
+  background: #89b4fa;
+}
+
+#workspaces button:hover {
+  color: #cdd6f4;
+  background: #313244;
+}
+
+/* WINDOW TITLE */
+#window {
+  color: #a6adc8;
+  padding: 4px 12px;
+  font-style: italic;
+  font-size: 11px;
+}
+
+/* CLOCK */
+#clock {
+  font-size: 13px;
+  font-weight: 600;
+  color: #cdd6f4;
+  background: #1e1e2e;
+  padding: 4px 14px;
+  border-radius: 10px;
+  margin: 4px;
+}
+
+/* MODULES */
+#cpu,
+#memory,
+#temperature,
+#pulseaudio,
+#network,
+#gamemode,
+#battery,
+#tray {
+  padding: 4px 10px;
+  margin: 4px 3px;
+  border-radius: 10px;
+  background: #1e1e2e;
+}
+
+/* COLORS */
+#cpu { color: #89b4fa; }
+#memory { color: #a6e3a1; }
+#temperature { color: #fab387; }
+#pulseaudio { color: #f9e2af; }
+#network { color: #94e2d5; }
+#gamemode { color: #cba6f7; font-weight: bold; }
+#battery { color: #a6e3a1; }
+
+/* POWER BUTTON */
+#custom-power {
+  color: #f38ba8;
+  font-size: 15px;
+  padding: 4px 12px;
+  margin: 4px;
+  background: #1e1e2e;
+}
