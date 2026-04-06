@@ -1,7 +1,7 @@
 # 🚀 NixOS Hyprland Gaming Config (AMD Optimized • Flake)
 
 ## 🎯 Overview
-
+![Screenshot](images/screenshot.png)
 A **high-performance, low-latency NixOS configuration** designed for gaming and daily use.
 Provides a **smooth, responsive and stable system** with minimal setup.
 
