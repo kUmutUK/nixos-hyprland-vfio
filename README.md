@@ -255,12 +255,6 @@ sudo cp -r nix/* /etc/nix/
 
 ---
 
-## 📸 Screenshots
-
-*Add your desktop screenshots here*
-
----
-
 ## 🏷️ Topics
 
 ```
