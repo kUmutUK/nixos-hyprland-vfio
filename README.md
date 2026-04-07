@@ -92,7 +92,7 @@ NixOS-Hyprland-Gaming-Config-AMD-Optimized/
 ## ⚡ Installation (Flake)
 
 ```bash
-git clone https://github.com/YOUR-USERNAME/NixOS-Hyprland-Gaming-Config-AMD-Optimized
+git clone https://github.com/kUmutUK/NixOS-Hyprland-Gaming-Config-AMD-Optimized-.git
 cd NixOS-Hyprland-Gaming-Config-AMD-Optimized
 sudo nixos-rebuild switch --flake .#nixos
 ```
