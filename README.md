@@ -11,8 +11,6 @@ Provides a **smooth, responsive, and stable system** with minimal setup.
 
 ## 💻 System Specifications (Tested On)
 
-This configuration has been tested on:
-
 * CPU: AMD Ryzen 5 5600
 * GPU: AMD Radeon RX 6000 Series
 * RAM: 32GB DDR4
@@ -35,7 +33,7 @@ This configuration has been tested on:
 
 ### 🖥️ Desktop
 
-* Hyprland (tiling Wayland compositor)
+* Hyprland (Wayland compositor)
 * Waybar (custom status bar)
 * Dunst (notifications)
 * Rofi (launcher)
@@ -71,7 +69,7 @@ This configuration has been tested on:
 ## 📂 Repository Structure
 
 ```bash
-NixOS-Hyprland-Gaming-Config-AMD-Optimized/
+NixOS-Hyprland-Gaming-Config-AMD-Optimized-/
 ├── flake.nix
 ├── flake.lock
 ├── configuration.nix
@@ -94,8 +92,13 @@ NixOS-Hyprland-Gaming-Config-AMD-Optimized/
 ## ⚡ Installation (Flake)
 
 ```bash
-git clone https://github.com/kUmutUK/NixOS-Hyprland-Gaming-Config-AMD-Optimized.git
-cd NixOS-Hyprland-Gaming-Config-AMD-Optimized
+git clone https://github.com/kUmutUK/NixOS-Hyprland-Gaming-Config-AMD-Optimized-.git
+cd NixOS-Hyprland-Gaming-Config-AMD-Optimized-
+
+# Check available configurations
+nix flake show
+
+# Build system (replace "nixos" if different)
 sudo nixos-rebuild switch --flake .#nixos
 ```
 
@@ -155,8 +158,6 @@ mangohud gamemoderun %command%
 ```
 
 ### 📊 MangoHud Metrics
-
-Includes:
 
 * FPS & frametime
 * GPU usage, temperature & **power (Watt)**
