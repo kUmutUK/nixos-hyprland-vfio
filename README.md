@@ -1,9 +1,11 @@
 # 🚀 NixOS Hyprland Gaming Config (AMD Optimized • Flake)
 
 ## 🎯 Overview
+
 ![Screenshot](images/screenshot.png)
+
 A **high-performance, low-latency NixOS configuration** designed for gaming and daily use.
-Provides a **smooth, responsive and stable system** with minimal setup.
+Provides a **smooth, responsive, and stable system** with minimal setup.
 
 ---
 
@@ -92,7 +94,7 @@ NixOS-Hyprland-Gaming-Config-AMD-Optimized/
 ## ⚡ Installation (Flake)
 
 ```bash
-git clone https://github.com/kUmutUK/NixOS-Hyprland-Gaming-Config-AMD-Optimized-.git
+git clone https://github.com/kUmutUK/NixOS-Hyprland-Gaming-Config-AMD-Optimized.git
 cd NixOS-Hyprland-Gaming-Config-AMD-Optimized
 sudo nixos-rebuild switch --flake .#nixos
 ```
@@ -152,6 +154,16 @@ Recommended launch options:
 mangohud gamemoderun %command%
 ```
 
+### 📊 MangoHud Metrics
+
+Includes:
+
+* FPS & frametime
+* GPU usage, temperature & **power (Watt)**
+* CPU usage & temperature
+* RAM usage
+* GameMode status
+
 ---
 
 ## 📱 Waydroid
@@ -193,7 +205,7 @@ cp file.zip ~/.local/share/waydroid/data/media/0/Download/
 * MangoHud
 * Gamescope
 
-### 🌐 Apps
+### 🌐 Applications
 
 * Brave
 * Firefox
@@ -217,7 +229,7 @@ cp file.zip ~/.local/share/waydroid/data/media/0/Download/
 * Rofi
 * Kitty
 
-### 📸 Screenshot
+### 📸 Screenshot Tools
 
 * grim
 * slurp
@@ -249,7 +261,7 @@ sudo cp -r nix/* /etc/nix/
 
 ## 📌 Notes
 
-* Optimized for performance (not battery)
+* Optimized for performance (not battery life)
 * Designed for desktop usage
 * Minimal post-install setup required
 
