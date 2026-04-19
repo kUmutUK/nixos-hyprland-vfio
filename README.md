@@ -203,8 +203,8 @@ sudo nixos-rebuild switch --flake /etc/nixos#nixos
 > Always review `nixos/configuration.nix` and update GPU addresses before rebuilding.
 
 ```bash
-git clone https://github.com/kUmutUK/NixOS-Hyprland-Gaming-Config-AMD-Optimized-
-cd NixOS-Hyprland-Gaming-Config-AMD-Optimized-
+git clone https://github.com/kUmutUK/Declarative-NixOS-Gaming-VFIO-Setup-Hyprland-AMD-GPU-Passthrough-.git
+cd Declarative-NixOS-Gaming-VFIO-Setup-Hyprland-AMD-GPU-Passthrough-
 chmod +x install.sh
 ./install.sh
 ```
