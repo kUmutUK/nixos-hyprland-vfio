@@ -100,6 +100,23 @@ You may:
 
   * `/var/log/libvirt/vfio-v3.log`
 
+  ## ⚠️ Warning
+
+This project may include VM XML (libvirt / QEMU / KVM) configurations and/or GPU passthrough settings.
+
+Incorrect configuration may result in:
+- VM failing to start
+- GPU passthrough not working
+- IOMMU / VFIO related errors
+- In rare cases, issues with host graphics stability
+
+Before installation, make sure to:
+- Enable IOMMU in your BIOS/UEFI settings
+- Verify kernel parameters are correctly configured
+- Ensure correct PCI/GPU device selection
+
+These configurations are intended for advanced users. Use at your own risk.
+
 ---
 
 ## 📁 Project Structure
