@@ -176,7 +176,7 @@ ssh-copy-id -i ~/.ssh/id_ed25519.pub localhost@nixos
 
 ```bash
 git clone https://github.com/kUmutUK/Declarative-NixOS-Gaming-VFIO-Setup-Hyprland-AMD-GPU-Passthrough-.git 
-cd NixOS-Hyprland-Gaming-Config-AMD-Optimized-
+cd Declarative-NixOS-Gaming-VFIO-Setup-Hyprland-AMD-GPU-Passthrough-
 
 # Copy NixOS config files — do NOT copy hardware-configuration.nix!
 sudo cp nixos/configuration.nix /etc/nixos/
