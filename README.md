@@ -100,7 +100,10 @@ You may:
 
   * `/var/log/libvirt/vfio-v3.log`
 
-  ## ⚠️ Warning
+
+---
+
+## ⚠️ Warning
 
 This project may include VM XML (libvirt / QEMU / KVM) configurations and/or GPU passthrough settings.
 
