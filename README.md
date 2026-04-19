@@ -158,14 +158,17 @@ ssh-copy-id -i ~/.ssh/id_ed25519.pub localhost@nixos
 │   └── home.nix                # Fish, Kitty, Starship, hypridle...
 ├── vm-xml/                     # Libvirt VM definition files
 │   └── win10.xml
-└── waybar/
-    ├── config                  # Includes GameMode indicator
-    └── style.css               # Catppuccin Mocha
+├── waybar/
+│   ├── config                  # Includes GameMode indicator
+│   └── style.css               # Catppuccin Mocha
+└── install.sh                  # ⚠️ Experimental installer (see below)
 ```
 
 ---
 
 ## 🚀 Installation
+
+### ✅ Recommended — Manual Copy
 
 > ⚠️ NixOS with Flakes enabled is required  
 > ⚠️ Review all config files before applying — especially update the GPU PCI addresses
@@ -187,6 +190,31 @@ cp -r gtk-4.0 ~/.config/gtk-4.0
 # Build and apply
 sudo nixos-rebuild switch --flake /etc/nixos#nixos
 ```
+
+### ⚠️ Experimental — Installer Script
+
+> ❗ **Manual copying is strongly recommended over this method.**  
+> The installer script does NOT automatically apply GPU PCI addresses.  
+> It will back up your existing configs and copy files — nothing more.  
+> Always review `nixos/configuration.nix` and update GPU addresses before rebuilding.
+
+```bash
+git clone https://github.com/kUmutUK/NixOS-Hyprland-Gaming-Config-AMD-Optimized-
+cd NixOS-Hyprland-Gaming-Config-AMD-Optimized-
+chmod +x install.sh
+./install.sh
+```
+
+**What the script does:**
+- Detects GPU PCI addresses and **shows** them (does NOT apply automatically)
+- Backs up existing `~/.config/hypr`, `waybar`, `gtk-*` and `/etc/nixos/*.nix`
+- Copies config files to the correct locations
+- Reminds you of all required manual steps before rebuilding
+
+**What the script does NOT do:**
+- Does NOT run `nixos-rebuild`
+- Does NOT modify GPU PCI addresses
+- Does NOT touch `hardware-configuration.nix` validation
 
 ---
 
@@ -248,7 +276,7 @@ nix-collect-garbage -d && sudo nix-collect-garbage -d
 
 - [ ] Modular structure (gaming / daily / server profiles)
 - [ ] VFIO toggle — automatic switch when VM starts/stops
-- [ ] Installer script
+- [ ] Improved installer script
 - [ ] Extended Waybar widgets (GPU temp, VFIO status)
 - [ ] NVIDIA support (experimental)
 
