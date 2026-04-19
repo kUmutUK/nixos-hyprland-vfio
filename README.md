@@ -211,8 +211,7 @@ sudo nixos-rebuild switch --flake .
 </p>
 
 <p align="center">
-  <img src="./assets/lockscreen.png" width="49%" />
-  <img src="./assets/floating.png" width="49%" />
+  <img src="./assets/app.png" width="49%" />
 </p>
 
 ---
