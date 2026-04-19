@@ -1,256 +1,259 @@
 # 🧊 NixOS Hyprland Gaming + VFIO Config (AMD Optimized)
 
-> ⚠️ **This is NOT a beginner-friendly setup**
+> ⚠️ **Bu bir başlangıç seviyesi kurulum değildir.** Flake, Wayland ve sistem seviyesi yapılandırma konusunda deneyim gerektirir.
 
-A high-performance NixOS setup built for:
+Günlük Linux kullanımı ile Windows VM'i aynı makinede, neredeyse native performansla çalıştırmak için tasarlanmış tam deklaratif NixOS yapılandırması.
 
-* 🎮 Gaming (AMD optimized)
-* 🧠 GPU passthrough (VFIO)
-* 🖥️ Hyprland (Wayland-first workflow)
-
-Designed as a hybrid system:
-→ Daily Linux usage
-→ Windows VM with near-native performance
+<p align="center">
+  <img src="./images/screenshot.png" width="100%" />
+</p>
 
 ---
 
-## 💡 Why This Setup?
+## 🎯 Bu Setup Ne Yapıyor?
 
-Most Hyprland configs focus only on visuals.
+Birçok Hyprland config yalnızca görselliğe odaklanır. Bu yapılandırma üçünü bir arada sunar:
 
-This setup combines:
+- 🖥️ Temiz Wayland masaüstü (Hyprland + Catppuccin Mocha)
+- 🎮 AMD optimize oyun performansı (RADV, GameMode, MangoHud, Gamescope)
+- 🧠 GPU passthrough — Linux'ta çalışırken Windows VM'e fiziksel GPU ver
 
-* A clean Wayland desktop (Hyprland)
-* Gaming performance (AMD optimized)
-* GPU passthrough (VFIO)
-
-→ all in a single declarative NixOS system
+→ Hepsini tek bir deklaratif NixOS sisteminde
 
 ---
 
-## 🚨 Important Warnings
+## 💻 Test Edilen Donanım
 
-### ⚠️ Advanced Setup
-
-This configuration is intended for:
-
-* Intermediate / advanced NixOS users
-* People familiar with:
-
-  * Flakes
-  * Wayland
-  * System-level configuration
+| Bileşen    | Model                   |
+|------------|-------------------------|
+| CPU        | AMD Ryzen 5 5600        |
+| GPU        | AMD Radeon RX 6700 XT   |
+| RAM        | 32GB DDR4               |
+| Depolama   | NVMe SSD                |
+| Mimari     | x86_64-linux            |
 
 ---
 
-### ⚠️ VFIO / GPU Passthrough Risks
+## ⚡ Temel Özellikler
 
-This repo includes **VFIO-related configuration**.
+### 🐧 Çekirdek
+- **CachyOS BORE Kernel** — gaming ve düşük latency için optimize edilmiş scheduler
+- `amd_pstate=guided` — AMD P-state frekans yönetimi
+- `iommu=pt + amd_iommu=on` — VFIO için IOMMU passthrough modu
+- `hugepagesz=1G hugepages=8` — VM için 8GB büyük sayfa ayrımı
+- `vendor-reset` modülü — GPU reset bug'larını düzeltir
 
-Before using:
+### 🎮 Gaming Stack
+- **Steam** (Proton entegre)
+- **GameMode** — otomatik performans modu
+- **MangoHud** — FPS + sistem metrikleri overlay
+- **Gamescope** — kompozitör bypass, VRR desteği
+- **ProtonUp-Qt** — Proton sürüm yöneticisi
+- **Lutris / Heroic** — GOG & Epic Games desteği
+- RADV Vulkan + `gpl,nggc` perftest optimizasyonları
+- Hyprland `allow_tearing = true` + `vrr = 2`
 
-* ✔ IOMMU **must be enabled** (BIOS + kernel)
-* ✔ Proper GPU isolation required
-* ✔ Recommended: **dual GPU setup**
+### 🧠 VFIO / GPU Passthrough
+- `system.activationScripts` ile gerçek hook dosyası yazımı (environment.etc değil)
+- `prepare` → GPU'yu `amdgpu`'dan ayır, `vfio-pci`'ye bağla
+- `release` → `vendor-reset`, `amdgpu` yeniden yükle, framebuffer sıfırla, `greetd` yeniden başlat
+- Retry logic ile sağlam driver bind/unbind
+- `vfio-pci` ID tablosu temizleme (`remove_id`)
+- VM çalışırken headless monitor ile host masaüstü korunur
+- Tüm adımlar `/var/log/libvirt/vfio.log`'a yazılır
 
-#### ❗ If you have only ONE GPU:
+### 🔊 Ses
+- **PipeWire** — 48kHz, 128 quantum (low-latency mod)
+- ALSA + PulseAudio + JACK uyumluluğu
+- WirePlumber session manager
 
-You may:
+### 🖥️ Masaüstü
+- **Hyprland** — tiling Wayland compositor
+- **Waybar** — özelleştirilmiş status bar (GameMode göstergesi dahil)
+- **Dunst** — bildirimler
+- **Rofi** — uygulama başlatıcı
+- **Hypridle / Hyprlock** — otomatik kilit ekranı
+- **greetd + tuigreet** — minimal giriş ekranı (SDDM yok, Xserver yok)
 
-* Lose display output
-* Lock yourself out of the system
-* Need recovery from TTY or live USB
+### 🐚 Kabuk & Araçlar
+- **Fish** kabuğu + **Starship** prompt
+- **Zoxide** (akıllı cd), **fzf**, **eza** (ls yerine), **bat** (cat yerine)
+- **ripgrep**, **fd**, **btop**, **nvtop (AMD)**
 
----
+### 🎨 Tema
+- **Catppuccin Mocha** — Hyprland, Waybar, Kitty, GTK 3/4, btop, fzf tutarlı tema
+- **JetBrainsMono Nerd Font**
+- **plus-cursor** imleç teması
 
-### ⚠️ System Stability
-
-* This is a **personal daily-driver config**
-* Not tested on all hardware
-* May require manual fixes
-
-👉 Always review configs before applying
-
----
-
-## 🎯 What This Repo Is
-
-✔ Full **system configuration** (NOT just dotfiles)
-✔ Declarative setup using **Nix Flakes**
-✔ Hybrid workflow:
-
-* Linux (Hyprland)
-* Windows VM (GPU passthrough)
-
----
-
-## ⚡ Key Features
-
-### 🎮 Gaming Ready
-
-* Mesa / RADV optimized
-* Wayland-native workflow
-* Low latency experience
-
-### 🧠 VFIO Integration
-
-* Libvirt hook system (auto-managed via Nix)
-* QEMU hook support
-* Logging:
-
-  * `/var/log/libvirt/vfio-v3.log`
-
-
----
-
-## ⚠️ Warning
-
-This project may include VM XML (libvirt / QEMU / KVM) configurations and/or GPU passthrough settings.
-
-Incorrect configuration may result in:
-- VM failing to start
-- GPU passthrough not working
-- IOMMU / VFIO related errors
-- In rare cases, issues with host graphics stability
-
-Before installation, make sure to:
-- Enable IOMMU in your BIOS/UEFI settings
-- Verify kernel parameters are correctly configured
-- Ensure correct PCI/GPU device selection
-
-These configurations are intended for advanced users. Use at your own risk.
+### 📱 Entegrasyon
+- **Waydroid** — Android container
+- **KDE Connect** — telefon/cihaz entegrasyonu (firewall portları yapılandırılmış)
+- **Flatpak** desteği
+- **Looking Glass** — VM ekranını Linux'ta görmek için
 
 ---
 
-## 📁 Project Structure
+## 🚨 Önemli Uyarılar
 
-> All configuration files are located under the `system/` directory.
+### VFIO — Tek GPU Riski
+
+Bu yapılandırma GPU passthrough içerir. Kullanmadan önce:
+
+- ✔ BIOS'ta **IOMMU etkinleştirilmiş** olmalı (AMD: SVM + IOMMU)
+- ✔ Kernel parametrelerinde `amd_iommu=on iommu=pt` bulunmalı
+- ✔ GPU PCI adresleri senin sistemine göre güncellenmiş olmalı
+
+> **Tek GPU'nuz varsa:** VM başlatıldığında ekran çıkışı kaybolur. Recovery için TTY veya live USB gerekebilir. Çift GPU kurulumu **şiddetle** önerilir.
+
+### GPU PCI Adreslerini Güncelle
+
+`configuration.nix` içindeki hook script'te:
+
+```bash
+GPU_PCI="0000:0b:00.0"    # Bunu kendi GPU adresine göre değiştir
+GPU_AUDIO="0000:0b:00.1"  # GPU'nun audio fonksiyonu
+```
+
+Kendi adresini bul:
+```bash
+lspci | grep -i vga
+lspci | grep -i audio
+```
+
+### SSH Güvenliği
+
+`configuration.nix`'te `PasswordAuthentication = false` aktif. Sisteme SSH ile bağlanmadan önce SSH key'ini ekle:
+
+```bash
+ssh-copy-id -i ~/.ssh/id_ed25519.pub localhost@nixos
+```
+
+---
+
+## 📁 Repo Yapısı
 
 ```
 system/
-├── nixos/        # Core system config
-├── hypr/         # Hyprland configs
-├── waybar/       # Waybar setup
-├── gtk-3.0/      # GTK3 theme
-├── gtk-4.0/      # GTK4 theme
-└── nix/          # Nix config
+├── nixos/
+│   ├── flake.nix               # CachyOS kernel + home-manager girişi
+│   ├── flake.lock
+│   ├── configuration.nix       # Ana sistem config + VFIO hook
+│   ├── hardware-configuration.nix
+│   └── home.nix                # Fish, Kitty, Starship, hypridle...
+├── hypr/
+│   ├── hyprland.conf           # AMD/gaming odaklı Hyprland config
+│   ├── hyprlock.conf           # Kilit ekranı
+│   └── hypridle.conf           # Otomatik kilit/uyku
+├── waybar/
+│   ├── config                  # GameMode göstergesi dahil
+│   └── style.css               # Catppuccin Mocha
+├── gtk-3.0/
+│   ├── colors.css
+│   └── gtk.css
+├── gtk-4.0/
+│   ├── colors.css
+│   └── gtk.css
+└── nix/
+    ├── nix.conf
+    └── registry.json
 ```
 
 ---
 
-## 🖥️ Core Configuration
+## 🚀 Kurulum
 
-* `configuration.nix` → services + VFIO hooks
-* `hardware-configuration.nix`
-* `flake.nix`
-* `home.nix`
-
----
-
-## 🪟 Hyprland
-
-```
-system/hypr/
-```
-
-* `hyprland.conf`
-* `hyprlock.conf`
-* `hypridle.conf`
-
----
-
-## 📊 Waybar
-
-```
-system/waybar/
-```
-
-* `config`
-* `style.css`
-
----
-
-## 🎨 GTK Theming
-
-```
-system/gtk-3.0/
-system/gtk-4.0/
-```
-
----
-
-## ⚙️ Nix Configuration
-
-```
-system/nix/
-```
-
-* `nix.conf`
-* `registry.json`
-
----
-
-## 🚀 Installation
-
-> ⚠️ Requires NixOS with flakes enabled
-> ⚠️ Review configuration files before applying!
+> ⚠️ NixOS + Flakes aktif olmalı  
+> ⚠️ Dosyaları uygulamadan önce mutlaka incele — özellikle GPU PCI adreslerini güncelle
 
 ```bash
 git clone https://github.com/kUmutUK/NixOS-Hyprland-Gaming-Config-AMD-Optimized-
 cd NixOS-Hyprland-Gaming-Config-AMD-Optimized-
+
+# Dosyaları /etc/nixos/ altına kopyala
 sudo cp -r system/nixos/* /etc/nixos/
-sudo nixos-rebuild switch --flake .
+
+# Hyprland, Waybar ve diğer config'leri Home Manager için yerleştir
+mkdir -p ~/.config
+cp -r system/hypr ~/.config/hypr
+cp -r system/waybar ~/.config/waybar
+cp -r system/gtk-3.0 ~/.config/gtk-3.0
+cp -r system/gtk-4.0 ~/.config/gtk-4.0
+
+# Sistemi derle ve uygula
+sudo nixos-rebuild switch --flake /etc/nixos#nixos
 ```
 
 ---
 
-## 🔧 Customization
+## 🔧 Özelleştirme
 
-| Component    | Path             |
-| ------------ | ---------------- |
-| Hyprland     | `system/hypr/`   |
-| Waybar       | `system/waybar/` |
-| GTK Theme    | `system/gtk-*`   |
-| NixOS Config | `system/nixos/`  |
-
----
-
-## 🧪 Tested On
-
-* CPU: Ryzen 5 5600
-* GPU: RX 6700 XT
-* RAM: 32GB
+| Bileşen        | Dosya                              |
+|----------------|------------------------------------|
+| Hyprland       | `system/hypr/hyprland.conf`        |
+| Kilit ekranı   | `system/hypr/hyprlock.conf`        |
+| Idle/Uyku      | `system/hypr/hypridle.conf`        |
+| Waybar görünüm | `system/waybar/config` + `style.css` |
+| GTK Tema       | `system/gtk-3.0/` + `gtk-4.0/`    |
+| Sistem servis  | `system/nixos/configuration.nix`   |
+| Kullanıcı env  | `system/nixos/home.nix`            |
 
 ---
 
-## 📸 Preview
+## 🧪 Gaming Kullanımı
 
-<p align="center">
-  <img src="./assets/desktop.png" width="49%" />
-  <img src="./assets/terminal.png" width="49%" />
-</p>
+Önerilen Steam launch seçeneği:
 
-<p align="center">
-  <img src="./assets/app.png" width="49%" />
-</p>
+```bash
+mangohud gamemoderun gamescope -f -- %command%
+```
 
----
-
-## 🧩 Future Plans
-
-* [ ] NVIDIA support
-* [ ] Safer VFIO toggle system
-* [ ] Installer script
-* [ ] Profiles (modular configs)
+CS2 için Hyprland'da özel window rule'lar tanımlı (tearing, noblur, noanim, immediate).
 
 ---
 
-## ❤️ Credits
+## 📱 Waydroid
 
-https://github.com/kUmutUK
+```bash
+# Android container başlat
+waydroid session start
+
+# Dosya aktar
+cp dosya.zip ~/.local/share/waydroid/data/media/0/Download/
+```
 
 ---
 
-## 🪪 License
+## 🔄 Sistem Güncelleme
+
+```bash
+# Flake girdilerini güncelle
+nix flake update
+
+# Sistemi yeniden derle
+sudo nixos-rebuild switch --flake /etc/nixos#nixos
+
+# Eski nesilleri temizle
+nix-collect-garbage -d && sudo nix-collect-garbage -d
+```
+
+---
+
+## 🧩 Gelecek Planları
+
+- [ ] Modüler yapı (gaming / daily / server profilleri)
+- [ ] VFIO toggle — VM açık/kapalıyken otomatik switch
+- [ ] Installer script
+- [ ] Daha kapsamlı Waybar widget'ları (GPU sıcaklığı, VFIO durumu)
+- [ ] NVIDIA desteği (experimental)
+
+---
+
+## ❤️ Kredi
+
+[github.com/kUmutUK](https://github.com/kUmutUK)
+
+---
+
+## 🪪 Lisans
 
 MIT License
