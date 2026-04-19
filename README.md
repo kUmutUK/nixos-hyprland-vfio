@@ -177,8 +177,11 @@ ssh-copy-id -i ~/.ssh/id_ed25519.pub localhost@nixos
 git clone https://github.com/kUmutUK/NixOS-Hyprland-Gaming-Config-AMD-Optimized-
 cd NixOS-Hyprland-Gaming-Config-AMD-Optimized-
 
-# Copy NixOS config files
-sudo cp -r nixos/* /etc/nixos/
+# Copy NixOS config files — do NOT copy hardware-configuration.nix!
+sudo cp nixos/configuration.nix /etc/nixos/
+sudo cp nixos/home.nix /etc/nixos/
+sudo cp nixos/flake.nix /etc/nixos/
+sudo cp nixos/flake.lock /etc/nixos/
 
 # Place Hyprland, Waybar and other configs
 mkdir -p ~/.config
@@ -214,7 +217,7 @@ chmod +x install.sh
 **What the script does NOT do:**
 - Does NOT run `nixos-rebuild`
 - Does NOT modify GPU PCI addresses
-- Does NOT touch `hardware-configuration.nix` validation
+- Does NOT copy `hardware-configuration.nix`
 
 ---
 
