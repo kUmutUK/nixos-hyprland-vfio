@@ -5,7 +5,12 @@
 Günlük Linux kullanımı ile Windows VM'i aynı makinede, neredeyse native performansla çalıştırmak için tasarlanmış tam deklaratif NixOS yapılandırması.
 
 <p align="center">
-  <img src="./images/screenshot.png" width="100%" />
+  <img src="./assets/desktop.png" width="49%" />
+  <img src="./assets/terminal.png" width="49%" />
+</p>
+
+<p align="center">
+  <img src="./assets/app.png" width="49%" />
 </p>
 
 ---
@@ -115,6 +120,7 @@ GPU_AUDIO="0000:0b:00.1"  # GPU'nun audio fonksiyonu
 ```
 
 Kendi adresini bul:
+
 ```bash
 lspci | grep -i vga
 lspci | grep -i audio
@@ -169,10 +175,10 @@ system/
 git clone https://github.com/kUmutUK/NixOS-Hyprland-Gaming-Config-AMD-Optimized-
 cd NixOS-Hyprland-Gaming-Config-AMD-Optimized-
 
-# Dosyaları /etc/nixos/ altına kopyala
+# NixOS config dosyalarını kopyala
 sudo cp -r system/nixos/* /etc/nixos/
 
-# Hyprland, Waybar ve diğer config'leri Home Manager için yerleştir
+# Hyprland, Waybar ve diğer config'leri yerleştir
 mkdir -p ~/.config
 cp -r system/hypr ~/.config/hypr
 cp -r system/waybar ~/.config/waybar
@@ -187,15 +193,15 @@ sudo nixos-rebuild switch --flake /etc/nixos#nixos
 
 ## 🔧 Özelleştirme
 
-| Bileşen        | Dosya                              |
-|----------------|------------------------------------|
-| Hyprland       | `system/hypr/hyprland.conf`        |
-| Kilit ekranı   | `system/hypr/hyprlock.conf`        |
-| Idle/Uyku      | `system/hypr/hypridle.conf`        |
-| Waybar görünüm | `system/waybar/config` + `style.css` |
-| GTK Tema       | `system/gtk-3.0/` + `gtk-4.0/`    |
-| Sistem servis  | `system/nixos/configuration.nix`   |
-| Kullanıcı env  | `system/nixos/home.nix`            |
+| Bileşen        | Dosya                                  |
+|----------------|----------------------------------------|
+| Hyprland       | `system/hypr/hyprland.conf`            |
+| Kilit ekranı   | `system/hypr/hyprlock.conf`            |
+| Idle/Uyku      | `system/hypr/hypridle.conf`            |
+| Waybar görünüm | `system/waybar/config` + `style.css`   |
+| GTK Tema       | `system/gtk-3.0/` + `gtk-4.0/`        |
+| Sistem servis  | `system/nixos/configuration.nix`       |
+| Kullanıcı env  | `system/nixos/home.nix`                |
 
 ---
 
