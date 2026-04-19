@@ -11,6 +11,7 @@ A fully declarative NixOS configuration designed to run daily Linux usage and a 
 
 <p align="center">
   <img src="./assets/app.png" width="49%" />
+  <img src="./assets/vm.png" width="49%" />
 </p>
 
 ---
