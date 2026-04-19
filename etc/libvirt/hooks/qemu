@@ -1,1 +1,254 @@
+#!/usr/bin/env bash
 
+LOGFILE="/var/log/libvirt/vfio.log"
+GPU_VFIO_PATH="/sys/bus/pci/drivers/vfio-pci"
+GPU_AMDGPU_PATH="/sys/bus/pci/drivers/amdgpu"
+
+# PCI adresleri — .0 ve .1 suffix'li tam form
+GPU_PCI="0000:0b:00.0"
+GPU_AUDIO="0000:0b:00.1"
+
+# vendor-reset için gerekli (boot.kernelModules'de "vendor-reset" zaten var)
+VENDOR_RESET_PATH="/sys/bus/pci/devices"
+
+log() {
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOGFILE"
+}
+
+# Sürücüyü bağla — başarısızsa tekrar dene
+bind_driver() {
+local pci=$1
+local driver=$2
+local retries=3
+local i=0
+while [ $i -lt $retries ]; do
+echo "$pci" > "$driver/bind" 2>/dev/null && return 0
+sleep 1
+i=$((i + 1))
+done
+return 1
+}
+
+# Mevcut sürücüyü bağını çöz — sürücü yoksa sessizce geç
+unbind_driver() {
+local pci=$1
+local current_driver
+current_driver=$(readlink "$VENDOR_RESET_PATH/$pci/driver" 2>/dev/null | xargs basename 2>/dev/null)
+if [ -n "$current_driver" ]; then
+log "   Unbinding $pci from $current_driver"
+echo "$pci" > "/sys/bus/pci/drivers/$current_driver/unbind" 2>/dev/null
+sleep 0.5
+else
+log "   $pci zaten bağsız, atlanıyor"
+fi
+}
+
+# AMD GPU sıfırlama — vendor-reset modülü üzerinden
+# Bu, AMD reset bug'ını (blank screen after VM) çözer
+vendor_reset_gpu() {
+log "   GPU vendor-reset tetikleniyor: $GPU_PCI"
+if [ -f "$VENDOR_RESET_PATH/$GPU_PCI/reset" ]; then
+echo 1 > "$VENDOR_RESET_PATH/$GPU_PCI/reset" 2>/dev/null \
+&& log "   vendor-reset: OK" \
+|| log "   vendor-reset: FAILED (devam ediliyor)"
+sleep 0.5
+else
+log "   vendor-reset sysfs yolu bulunamadı, atlanıyor"
+fi
+}
+
+# Framebuffer konsollarını sıfırla — ekran siyah kalmayı önler
+# ÖNEMLI: Bu fonksiyon mutlaka modprobe amdgpu ve bind_driver'dan SONRA çağrılmalı
+reset_framebuffer() {
+log "   Framebuffer konsolları sıfırlanıyor..."
+
+# Tüm vtconsole'ları kapat
+for dev in /sys/class/vtconsole/vtcon*; do
+[ -d "$dev" ] || continue
+echo 0 > "$dev/bind" 2>/dev/null
+done
+sleep 0.5
+
+# vtcon0 = dummy text console → aç
+echo 1 > /sys/class/vtconsole/vtcon0/bind 2>/dev/null
+sleep 0.3
+
+# vtcon1 = gerçek framebuffer (fbcon) → aç
+# vtcon1 yoksa sessizce geç (bazı sistemlerde farklı numara olabilir)
+if [ -d /sys/class/vtconsole/vtcon1 ]; then
+echo 1 > /sys/class/vtconsole/vtcon1/bind 2>/dev/null \
+&& log "   vtcon1 (fbcon) bağlandı: OK" \
+|| log "   vtcon1 bind başarısız"
+else
+log "   vtcon1 bulunamadı, atlanıyor"
+fi
+
+sleep 0.5
+
+# TTY geçişi — DRM driver'ı aktifleştirir
+# chvt 2 → chvt 1 geçişi ekranı zorla yeniler
+chvt 2 2>/dev/null
+sleep 0.3
+chvt 1 2>/dev/null
+sleep 0.5
+
+log "   Framebuffer reset tamamlandı"
+}
+
+# Hyprland'ı yeniden başlat (GPU hotplug crash fix)
+restart_hyprland() {
+log "   Hyprland yeniden başlatılıyor..."
+
+# Hyprland'ı kill etmeden önce session'ı kontrol et
+if pgrep -x "Hyprland" > /dev/null; then
+# SESSION DEĞİLSE systemctl restart dene
+systemctl restart hyprland 2>/dev/null \
+&& log "   Hyprland restart (systemctl): OK" \
+|| log "   Hyprland restart: FAILED"
+else
+log "   Hyprland zaten çalışmıyor, atlanıyor"
+fi
+}
+
+GUEST="$1"
+OPERATION="$2"
+SUBOP="$3"
+EXTRA="$4"
+
+log "=========================================="
+log "Hook: guest=$GUEST op=$OPERATION subop=$SUBOP extra=$EXTRA"
+
+if [[ "$GUEST" == "win10" ]] || [[ "$GUEST" == "win11" ]]; then
+case "$OPERATION" in
+
+prepare)
+log "=== [PREPARE] GPU VM'e veriliyor ==="
+
+# 1. Mevcut sürücüleri çöz
+for pci in $GPU_PCI $GPU_AUDIO; do
+unbind_driver "$pci"
+done
+
+# 2. vfio-pci yükle ve GPU'ya ata
+modprobe vfio-pci 2>/dev/null
+echo "1002 73df" > "$GPU_VFIO_PATH/new_id" 2>/dev/null   # RX 6700 XT GPU
+echo "1002 ab28" > "$GPU_VFIO_PATH/new_id" 2>/dev/null   # RX 6700 XT Audio
+
+for pci in $GPU_PCI $GPU_AUDIO; do
+bind_driver "$pci" "$GPU_VFIO_PATH" \
+&& log "   $pci -> vfio-pci: OK" \
+|| log "   $pci -> vfio-pci: FAILED"
+done
+
+log "[PREPARE] GPU VM'e verildi"
+;;
+
+start)
+log "=== [START] VM başlatılıyor ==="
+;;
+
+started)
+log "=== [STARTED] VM çalışıyor ==="
+;;
+
+stopped)
+log "=== [STOPPED] VM durdu, sürücüler çözülüyor ==="
+
+# QEMU'nun tamamen ölmesini bekle
+# "exited with irqs disabled" kernel oops'unu önler
+timeout=15
+i=0
+while pgrep -x "qemu-system-x86_64" > /dev/null && [ "$i" -lt "$timeout" ]; do
+log "   QEMU hala calisiyor, bekleniyor... ($i/$timeout)"
+sleep 1
+i=$((i + 1))
+done
+
+if pgrep -x "qemu-system-x86_64" > /dev/null; then
+log "   QEMU zorla olduruluyor..."
+pkill -9 -x "qemu-system-x86_64" 2>/dev/null
+sleep 2
+else
+log "   QEMU tamamen durdu"
+fi
+
+# vfio-dev serbest kalana kadar bekle
+i=0
+while [ -d "/sys/bus/pci/devices/$GPU_PCI/vfio-dev" ] && [ "$i" -lt 10 ]; do
+log "   vfio-dev hala aktif, bekleniyor... ($i)"
+sleep 1
+i=$((i + 1))
+done
+
+for pci in $GPU_PCI $GPU_AUDIO; do
+unbind_driver "$pci"
+done
+;;
+
+release)
+log "=== [RELEASE] GPU host'a geri dönüyor (sebep: $EXTRA) ==="
+
+# 1. amdgpu stack'i doğru sırayla kaldır
+log "   amdgpu stack kaldırılıyor..."
+modprobe -r amdgpu        2>/dev/null && log "   amdgpu kaldırıldı" || log "   amdgpu zaten yüklü değil"
+modprobe -r drm_kms_helper 2>/dev/null
+modprobe -r ttm           2>/dev/null
+sleep 1
+
+# 2. vfio-pci'dan GPU ID'lerini temizle
+#    new_id ile eklenen ID'ler kalıcı — remove_id ile silinmezse
+#    amdgpu GPU'ya bind etmeye çalışırken vfio-pci önüne geçer
+log "   vfio-pci ID tablosu temizleniyor..."
+echo "1002 73df" > "$GPU_VFIO_PATH/remove_id" 2>/dev/null && log "   GPU ID temizlendi"
+echo "1002 ab28" > "$GPU_VFIO_PATH/remove_id" 2>/dev/null && log "   Audio ID temizlendi"
+
+# 3. AMD GPU'yu vendor-reset ile sıfırla (blank screen fix)
+vendor_reset_gpu
+
+# 4. amdgpu'yu yeniden yükle
+log "   amdgpu yükleniyor..."
+modprobe amdgpu 2>/dev/null \
+&& log "   amdgpu yüklendi: OK" \
+|| log "   amdgpu yüklenemedi: FAILED"
+sleep 2
+
+# 5. GPU'yu amdgpu sürücüsüne bağla
+#    driver_override: normal bind'dan daha güvenilir
+#    vfio-pci ID çakışması olsa bile override kazanır
+for pci in $GPU_PCI $GPU_AUDIO; do
+echo "amdgpu" > "/sys/bus/pci/devices/$pci/driver_override" 2>/dev/null
+echo "$pci" > /sys/bus/pci/drivers_probe 2>/dev/null \
+&& log "   $pci -> amdgpu (override): OK" \
+|| bind_driver "$pci" "$GPU_AMDGPU_PATH" \
+&& log "   $pci -> amdgpu (bind): OK" \
+|| log "   $pci -> amdgpu: FAILED"
+# Override'ı temizle — kalıcı kalmasın
+echo "" > "/sys/bus/pci/devices/$pci/driver_override" 2>/dev/null
+done
+sleep 1
+
+# 6. Framebuffer'ı sıfırla — GPU bağlandıktan SONRA yapılmalı
+reset_framebuffer
+
+# 7. Giriş ekranını yeniden başlat
+log "   greetd yeniden başlatılıyor..."
+systemctl restart greetd 2>/dev/null \
+&& log "   greetd restart: OK" \
+|| log "   greetd restart: FAILED (kullanıcı oturumu açık olabilir)"
+
+log "[RELEASE] GPU host'a döndü"
+;;
+
+reconnect)
+log "=== [RECONNECT] Libvirt yeniden bağlandı ==="
+;;
+
+*)
+log "=== [UNKNOWN] Bilinmeyen operasyon: $OPERATION ==="
+;;
+esac
+else
+log "Farklı guest ($GUEST) için hook, atlanıyor"
+fi
+
+log "=========================================="
