@@ -175,7 +175,7 @@ ssh-copy-id -i ~/.ssh/id_ed25519.pub localhost@nixos
 > ⚠️ Review all config files before applying — especially update the GPU PCI addresses
 
 ```bash
-git clone https://github.com/kUmutUK/NixOS-Hyprland-Gaming-Config-AMD-Optimized-
+git clone https://github.com/kUmutUK/Declarative-NixOS-Gaming-VFIO-Setup-Hyprland-AMD-GPU-Passthrough-.git 
 cd NixOS-Hyprland-Gaming-Config-AMD-Optimized-
 
 # Copy NixOS config files — do NOT copy hardware-configuration.nix!
