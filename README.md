@@ -112,7 +112,7 @@ Bu yapılandırma GPU passthrough içerir. Kullanmadan önce:
 
 ### GPU PCI Adreslerini Güncelle
 
-`configuration.nix` içindeki hook script'te:
+`nixos/configuration.nix` içindeki hook script'te:
 
 ```bash
 GPU_PCI="0000:0b:00.0"    # Bunu kendi GPU adresine göre değiştir
@@ -128,7 +128,7 @@ lspci | grep -i audio
 
 ### SSH Güvenliği
 
-`configuration.nix`'te `PasswordAuthentication = false` aktif. Sisteme SSH ile bağlanmadan önce SSH key'ini ekle:
+`nixos/configuration.nix`'te `PasswordAuthentication = false` aktif. Sisteme SSH ile bağlanmadan önce SSH key'ini ekle:
 
 ```bash
 ssh-copy-id -i ~/.ssh/id_ed25519.pub localhost@nixos
@@ -139,29 +139,28 @@ ssh-copy-id -i ~/.ssh/id_ed25519.pub localhost@nixos
 ## 📁 Repo Yapısı
 
 ```
-system/
+├── assets/                     # Ekran görüntüleri
+├── etc/libvirt/hooks/          # QEMU hook script
+├── gtk-3.0/                    # GTK3 Catppuccin Mocha teması
+├── gtk-4.0/                    # GTK4 Catppuccin Mocha teması
+├── hypr/
+│   ├── hyprland.conf           # AMD/gaming odaklı Hyprland config
+│   ├── hyprlock.conf           # Kilit ekranı
+│   └── hypridle.conf           # Otomatik kilit/uyku
+├── nix/
+│   ├── nix.conf
+│   └── registry.json
 ├── nixos/
 │   ├── flake.nix               # CachyOS kernel + home-manager girişi
 │   ├── flake.lock
 │   ├── configuration.nix       # Ana sistem config + VFIO hook
 │   ├── hardware-configuration.nix
 │   └── home.nix                # Fish, Kitty, Starship, hypridle...
-├── hypr/
-│   ├── hyprland.conf           # AMD/gaming odaklı Hyprland config
-│   ├── hyprlock.conf           # Kilit ekranı
-│   └── hypridle.conf           # Otomatik kilit/uyku
-├── waybar/
-│   ├── config                  # GameMode göstergesi dahil
-│   └── style.css               # Catppuccin Mocha
-├── gtk-3.0/
-│   ├── colors.css
-│   └── gtk.css
-├── gtk-4.0/
-│   ├── colors.css
-│   └── gtk.css
-└── nix/
-    ├── nix.conf
-    └── registry.json
+├── vm-xml/                     # Libvirt VM tanım dosyaları
+│   └── win10.xml
+└── waybar/
+    ├── config                  # GameMode göstergesi dahil
+    └── style.css               # Catppuccin Mocha
 ```
 
 ---
@@ -176,14 +175,14 @@ git clone https://github.com/kUmutUK/NixOS-Hyprland-Gaming-Config-AMD-Optimized-
 cd NixOS-Hyprland-Gaming-Config-AMD-Optimized-
 
 # NixOS config dosyalarını kopyala
-sudo cp -r system/nixos/* /etc/nixos/
+sudo cp -r nixos/* /etc/nixos/
 
 # Hyprland, Waybar ve diğer config'leri yerleştir
 mkdir -p ~/.config
-cp -r system/hypr ~/.config/hypr
-cp -r system/waybar ~/.config/waybar
-cp -r system/gtk-3.0 ~/.config/gtk-3.0
-cp -r system/gtk-4.0 ~/.config/gtk-4.0
+cp -r hypr ~/.config/hypr
+cp -r waybar ~/.config/waybar
+cp -r gtk-3.0 ~/.config/gtk-3.0
+cp -r gtk-4.0 ~/.config/gtk-4.0
 
 # Sistemi derle ve uygula
 sudo nixos-rebuild switch --flake /etc/nixos#nixos
@@ -193,15 +192,16 @@ sudo nixos-rebuild switch --flake /etc/nixos#nixos
 
 ## 🔧 Özelleştirme
 
-| Bileşen        | Dosya                                  |
-|----------------|----------------------------------------|
-| Hyprland       | `system/hypr/hyprland.conf`            |
-| Kilit ekranı   | `system/hypr/hyprlock.conf`            |
-| Idle/Uyku      | `system/hypr/hypridle.conf`            |
-| Waybar görünüm | `system/waybar/config` + `style.css`   |
-| GTK Tema       | `system/gtk-3.0/` + `gtk-4.0/`        |
-| Sistem servis  | `system/nixos/configuration.nix`       |
-| Kullanıcı env  | `system/nixos/home.nix`                |
+| Bileşen        | Dosya                          |
+|----------------|--------------------------------|
+| Hyprland       | `hypr/hyprland.conf`           |
+| Kilit ekranı   | `hypr/hyprlock.conf`           |
+| Idle/Uyku      | `hypr/hypridle.conf`           |
+| Waybar görünüm | `waybar/config` + `style.css`  |
+| GTK Tema       | `gtk-3.0/` + `gtk-4.0/`       |
+| Sistem servis  | `nixos/configuration.nix`      |
+| Kullanıcı env  | `nixos/home.nix`               |
+| VM tanımı      | `vm-xml/win10.xml`             |
 
 ---
 
