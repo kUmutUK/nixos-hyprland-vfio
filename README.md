@@ -1,291 +1,237 @@
-# 🚀 NixOS Hyprland Gaming Config (AMD Optimized • Flake)
+# 🧊 NixOS Hyprland Gaming + VFIO Config (AMD Optimized)
 
-## 🎯 Overview
+> ⚠️ **This is NOT a beginner-friendly setup**
 
-![Screenshot](images/screenshot.png)
+A high-performance NixOS setup built for:
 
-A **high-performance, low-latency NixOS configuration** designed for gaming and daily use.
-Provides a **smooth, responsive, and stable system** with minimal setup.
+* 🎮 Gaming (AMD optimized)
+* 🧠 GPU passthrough (VFIO)
+* 🖥️ Hyprland (Wayland-first workflow)
 
----
-
-## 💻 System Specifications (Tested On)
-
-* CPU: AMD Ryzen 5 5600
-* GPU: AMD Radeon RX 6000 Series
-* RAM: 32GB DDR4
-* Storage: NVMe SSD
-* Architecture: x86_64-linux
+Designed as a hybrid system:
+→ Daily Linux usage
+→ Windows VM with near-native performance
 
 ---
 
-## 🖥️ Environment
+## 💡 Why This Setup?
 
-* OS: NixOS (Flake-based)
-* Desktop: Hyprland (Wayland)
-* Display Server: Wayland
-* Shell: Bash
-* Terminal: Kitty
+Most Hyprland configs focus only on visuals.
 
----
+This setup combines:
 
-## ⚡ Core Features
+* A clean Wayland desktop (Hyprland)
+* Gaming performance (AMD optimized)
+* GPU passthrough (VFIO)
 
-### 🖥️ Desktop
-
-* Hyprland (Wayland compositor)
-* Waybar (custom status bar)
-* Dunst (notifications)
-* Rofi (launcher)
-
-### 🎮 Gaming Stack
-
-* Steam (Proton enabled)
-* GameMode (auto performance boost)
-* MangoHud (FPS + metrics overlay)
-* Gamescope support
-* ProtonUp-Qt
-
-### 🔊 Audio
-
-* PipeWire (low latency tuned)
-* ALSA + Pulse compatibility
-
-### 📱 Integration
-
-* Waydroid (Android container)
-* KDE Connect (device integration)
-
-### ⚙️ System Tweaks
-
-* AMD Vulkan (RADV) optimizations
-* CPU governor tuning
-* USB autosuspend disabled (no mouse/keyboard sleep)
-* Optimized kernel parameters
-* Low-latency audio config
+→ all in a single declarative NixOS system
 
 ---
 
-## 📂 Repository Structure
+## 🚨 Important Warnings
 
-```bash
-NixOS-Hyprland-Gaming-Config-AMD-Optimized-/
-├── flake.nix
-├── flake.lock
-├── configuration.nix
-├── hardware-configuration.nix
-├── home.nix
-├── hypr/
-│   ├── hyprland.conf
-│   └── hyprlock.conf
-├── waybar/
-│   ├── config
-│   └── style.css
-├── nix/
-│   ├── nix.conf
-│   └── registry.json
-├── README.md
+### ⚠️ Advanced Setup
+
+This configuration is intended for:
+
+* Intermediate / advanced NixOS users
+* People familiar with:
+
+  * Flakes
+  * Wayland
+  * System-level configuration
+
+---
+
+### ⚠️ VFIO / GPU Passthrough Risks
+
+This repo includes **VFIO-related configuration**.
+
+Before using:
+
+* ✔ IOMMU **must be enabled** (BIOS + kernel)
+* ✔ Proper GPU isolation required
+* ✔ Recommended: **dual GPU setup**
+
+#### ❗ If you have only ONE GPU:
+
+You may:
+
+* Lose display output
+* Lock yourself out of the system
+* Need recovery from TTY or live USB
+
+---
+
+### ⚠️ System Stability
+
+* This is a **personal daily-driver config**
+* Not tested on all hardware
+* May require manual fixes
+
+👉 Always review configs before applying
+
+---
+
+## 🎯 What This Repo Is
+
+✔ Full **system configuration** (NOT just dotfiles)
+✔ Declarative setup using **Nix Flakes**
+✔ Hybrid workflow:
+
+* Linux (Hyprland)
+* Windows VM (GPU passthrough)
+
+---
+
+## ⚡ Key Features
+
+### 🎮 Gaming Ready
+
+* Mesa / RADV optimized
+* Wayland-native workflow
+* Low latency experience
+
+### 🧠 VFIO Integration
+
+* Libvirt hook system (auto-managed via Nix)
+* QEMU hook support
+* Logging:
+
+  * `/var/log/libvirt/vfio-v3.log`
+
+---
+
+## 📁 Project Structure
+
+> All configuration files are located under the `system/` directory.
+
+```
+system/
+├── nixos/        # Core system config
+├── hypr/         # Hyprland configs
+├── waybar/       # Waybar setup
+├── gtk-3.0/      # GTK3 theme
+├── gtk-4.0/      # GTK4 theme
+└── nix/          # Nix config
 ```
 
 ---
 
-## ⚡ Installation (Flake)
+## 🖥️ Core Configuration
 
-```bash
-git clone https://github.com/kUmutUK/NixOS-Hyprland-Gaming-Config-AMD-Optimized-.git
-cd NixOS-Hyprland-Gaming-Config-AMD-Optimized-
-
-# Check available configurations
-nix flake show
-
-# Build system (replace "nixos" if different)
-sudo nixos-rebuild switch --flake .#nixos
-```
+* `configuration.nix` → services + VFIO hooks
+* `hardware-configuration.nix`
+* `flake.nix`
+* `home.nix`
 
 ---
 
-## 🏠 Home Manager Integration
+## 🪟 Hyprland
 
-Automatically applies:
-
-* Hyprland configuration
-* Waybar configuration
-
----
-
-## 🖥️ Hyprland Features
-
-Includes:
-
-* Custom keybindings
-* Window rules
-* Performance tweaks
-* Screenshot support
-
-### 📸 Screenshot
-
-```bash
-grim -g "$(slurp)" ~/Pictures/screenshot.png
+```
+system/hypr/
 ```
 
-Optional keybinds:
-
-```bash
-bind = , Print, exec, grim ~/Pictures/screenshot.png
-bind = SHIFT, Print, exec, grim -g "$(slurp)" ~/Pictures/screenshot.png
-```
+* `hyprland.conf`
+* `hyprlock.conf`
+* `hypridle.conf`
 
 ---
 
 ## 📊 Waybar
 
-Displays:
+```
+system/waybar/
+```
 
-* CPU / GPU usage
-* Memory
-* Network
-* Clock
-* Workspaces
+* `config`
+* `style.css`
 
 ---
 
-## 🎮 Gaming Usage
+## 🎨 GTK Theming
 
-Recommended launch options:
+```
+system/gtk-3.0/
+system/gtk-4.0/
+```
+
+---
+
+## ⚙️ Nix Configuration
+
+```
+system/nix/
+```
+
+* `nix.conf`
+* `registry.json`
+
+---
+
+## 🚀 Installation
+
+> ⚠️ Requires NixOS with flakes enabled
+> ⚠️ Review configuration files before applying!
 
 ```bash
-mangohud gamemoderun %command%
-```
-
-### 📊 MangoHud Metrics
-
-* FPS & frametime
-* GPU usage, temperature & **power (Watt)**
-* CPU usage & temperature
-* RAM usage
-* GameMode status
-
----
-
-## 📱 Waydroid
-
-Start:
-
-```bash
-waydroid session start
-```
-
-File transfer:
-
-```bash
-cp file.zip ~/.local/share/waydroid/data/media/0/Download/
+git clone https://github.com/kUmutUK/NixOS-Hyprland-Gaming-Config-AMD-Optimized-
+cd NixOS-Hyprland-Gaming-Config-AMD-Optimized-
+sudo cp -r system/nixos/* /etc/nixos/
+sudo nixos-rebuild switch --flake .
 ```
 
 ---
 
-## 🔗 KDE Connect
+## 🔧 Customization
 
-* Enabled by default
-* Firewall ports configured
-* Works out-of-the-box
-
----
-
-## 🧪 Tested Tools & Components
-
-### 🖥️ System
-
-* NixOS (Flake)
-* Home Manager
-* Hyprland
-
-### 🎮 Gaming
-
-* Steam
-* GameMode
-* MangoHud
-* Gamescope
-
-### 🌐 Applications
-
-* Brave
-* Firefox
-* Discord
-* Telegram
-
-### 📊 Monitoring
-
-* btop
-* nvtop
-
-### 📱 Integration
-
-* Waydroid
-* KDE Connect
-
-### 🖼️ Desktop Tools
-
-* Waybar
-* Dunst
-* Rofi
-* Kitty
-
-### 📸 Screenshot Tools
-
-* grim
-* slurp
-* wl-clipboard
+| Component    | Path             |
+| ------------ | ---------------- |
+| Hyprland     | `system/hypr/`   |
+| Waybar       | `system/waybar/` |
+| GTK Theme    | `system/gtk-*`   |
+| NixOS Config | `system/nixos/`  |
 
 ---
 
-## ⚙️ Nix Configuration (Advanced / Optional)
+## 🧪 Tested On
 
-⚠️ WARNING:
-
-The `nix/` directory contains system-level configs:
-
-* nix.conf
-* registry.json
-
-These may:
-
-* Override system behavior
-* Break setups if misused
-
-Apply manually:
-
-```bash
-sudo cp -r nix/* /etc/nix/
-```
+* CPU: Ryzen 5 5600
+* GPU: RX 6700 XT
+* RAM: 32GB
 
 ---
 
-## 📌 Notes
+## 📸 Preview
 
-* Optimized for performance (not battery life)
-* Designed for desktop usage
-* Minimal post-install setup required
+<p align="center">
+  <img src="./assets/desktop.png" width="49%" />
+  <img src="./assets/terminal.png" width="49%" />
+</p>
 
----
-
-## 🏷️ Topics
-
-```
-nixos hyprland wayland linux gaming dotfiles amd flakes
-```
+<p align="center">
+  <img src="./assets/lockscreen.png" width="49%" />
+  <img src="./assets/floating.png" width="49%" />
+</p>
 
 ---
 
-## 🔥 Goal
+## 🧩 Future Plans
 
-A **clean, minimal, fast, and powerful NixOS system**
-ready for gaming and daily use out-of-the-box.
+* [ ] NVIDIA support
+* [ ] Safer VFIO toggle system
+* [ ] Installer script
+* [ ] Profiles (modular configs)
 
 ---
 
-## 💬 Final
+## ❤️ Credits
 
-This is not just a config —
-it is a **complete system setup**.
+https://github.com/kUmutUK
 
-Clone → Build → Use.
+---
+
+## 🪪 License
+
+MIT License
