@@ -23,6 +23,7 @@ Most Hyprland configs focus only on visuals. This configuration combines three t
 - 🖥️ Clean Wayland desktop (Hyprland + Catppuccin Mocha)
 - 🎮 AMD-optimized gaming performance (RADV, GameMode, MangoHud, Gamescope)
 - 🧠 GPU passthrough — hand your physical GPU to a Windows VM while Linux keeps running
+- 🤖 Local AI inference via Ollama with ROCm GPU acceleration
 
 → All in a single declarative NixOS system
 
@@ -44,58 +45,81 @@ Most Hyprland configs focus only on visuals. This configuration combines three t
 
 ### 🐧 Kernel
 - **CachyOS BORE Kernel** — scheduler optimized for gaming and low latency
-- `amd_pstate=guided` — AMD P-state frequency management
+- `amd_pstate=active` — AMD P-state frequency management (active EPP mode)
 - `iommu=pt + amd_iommu=on` — IOMMU passthrough mode for VFIO
-- `hugepagesz=1G hugepages=8` — 8GB huge page reservation for the VM
-- `vendor-reset` module — fixes GPU reset bugs
+- Dynamic hugepage management via VFIO hook script (2MB pages, 4GB reserved on VM start, freed on release)
+- `vendor-reset` module — fixes GPU reset bugs on AMD cards
+- `rcupdate.rcu_expedited=1` — reduced scheduling latency (pairs with BORE)
 
 ### 🎮 Gaming Stack
-- **Steam** (Proton integrated)
-- **GameMode** — automatic performance boost
+- **Steam** (Proton integrated, Proton-GE via `proton-ge-bin`)
+- **GameMode** — full configuration: renice=-10, ioprio=0, GPU performance level forced to `high`
 - **MangoHud** — FPS + system metrics overlay
-- **Gamescope** — compositor bypass, VRR support
+- **Gamescope** — compositor bypass, VRR support; Steam Big Picture session enabled
 - **ProtonUp-Qt** — Proton version manager
 - **Lutris / Heroic** — GOG & Epic Games support
-- RADV Vulkan + `gpl,nggc` perftest optimizations
-- Hyprland `allow_tearing = true` + `vrr = 2`
+- RADV Vulkan (`AMD_VULKAN_ICD=RADV`) + `gpl,nggc` perftest optimizations
+- Hyprland `allow_tearing = true` + `vrr = 2` + `vfr = true`
+- Custom CS2 window rule: tearing, no blur, no shadow, no animation, immediate rendering
 
 ### 🧠 VFIO / GPU Passthrough
-- Real hook file written via `system.activationScripts` (not environment.etc)
-- `prepare` → unbind GPU from `amdgpu`, bind to `vfio-pci`
-- `release` → `vendor-reset`, reload `amdgpu`, reset framebuffer, restart `greetd`
-- Robust driver bind/unbind with retry logic
-- `vfio-pci` ID table cleanup (`remove_id`)
-- Headless monitor keeps host desktop alive while VM is running
-- All steps logged to `/var/log/libvirt/vfio.log`
+- Hook file deployed via `environment.etc` (NixOS-idiomatic, no activation scripts)
+- `prepare` → stop Ollama, unbind GPU from `amdgpu`, bind to `vfio-pci`
+- `release` → `vendor-reset`, reload `amdgpu`, reset framebuffer, restart `greetd`, restart Ollama
+- `stopped` fallback — attempts `amdgpu` rebind on unexpected VM crash/force-off
+- Robust driver bind/unbind with 5-retry logic
+- `vfio-pci` ID table cleanup (`remove_id`) on release
+- Headless monitor (`HEADLESS-1`) keeps host desktop alive while VM is running
+- All steps logged to `/var/log/libvirt/vfio.log` (log rotated on boot via tmpfiles)
+- Ollama service stopped before GPU handoff and restarted after GPU returns
 
 ### 🔊 Audio
-- **PipeWire** — 48kHz, 128 quantum (low-latency mode)
+- **PipeWire** — 48kHz, 128 quantum fixed (min=max for consistent low latency)
 - ALSA + PulseAudio + JACK compatibility
 - WirePlumber session manager
+- rtkit enabled for real-time priority
+
+### 💾 Storage — LUKS2 + Btrfs
+- Full disk encryption with LUKS2 (`aes-xts-plain64`, 512-bit key, argon2id KDF)
+- `allowDiscards` + `bypassWorkqueues` for NVMe performance through LUKS
+- Btrfs subvolume layout: `@` `/`, `@home`, `@nix`, `@log`, `@snapshots`
+- `compress=zstd:1`, `noatime`, `discard=async`, `space_cache=v2` on all subvolumes
+- `/nix` subvolume uses `nodatacow` — avoids CoW write amplification on Nix store hardlinks
+- VM disk images directory (`/var/lib/libvirt/images`) also has `nodatacow` via systemd tmpfiles + `chattr +C`
+- **Snapper** automatic snapshots: hourly (10 kept), daily (7), weekly (4), monthly (6) for both `/` and `/home`
+- **Btrfs scrub** — monthly on `/`
+- **zramSwap** with zstd compression (~8GB on 16GB RAM); physical swap partition used only for hibernation
 
 ### 🖥️ Desktop
 - **Hyprland** — tiling Wayland compositor
-- **Waybar** — custom status bar (includes GameMode indicator)
+- **Waybar** — custom status bar (GameMode indicator, Japanese workspace icons, CPU/RAM/temp)
 - **Dunst** — notifications
 - **Rofi** — application launcher
-- **Hypridle / Hyprlock** — automatic lock screen
+- **Hypridle / Hyprlock** — automatic lock and sleep (managed as Home Manager systemd user service)
 - **greetd + tuigreet** — minimal login manager (no SDDM, no Xserver)
+- **swww** — wallpaper daemon managed as systemd user service (Restart=on-failure)
+- Wallpaper randomized every 5 minutes via systemd user timer
 
 ### 🐚 Shell & Tools
 - **Fish** shell + **Starship** prompt
-- **Zoxide** (smart cd), **fzf**, **eza** (ls replacement), **bat** (cat replacement)
+- **Zoxide** (smart cd), **fzf** with Catppuccin Mocha colors, **eza** (ls replacement), **bat** (cat replacement)
 - **ripgrep**, **fd**, **btop**, **nvtop (AMD)**
+- Useful aliases: `nrs` (nixos-rebuild switch), `nup` (flake update), `nclean` (garbage collect), `snap-root`, `snap-home`, `btrfs-df`
 
 ### 🎨 Theme
 - **Catppuccin Mocha** — consistent across Hyprland, Waybar, Kitty, GTK 3/4, btop, fzf
-- **JetBrainsMono Nerd Font**
-- **plus-cursor** cursor theme
+- **JetBrainsMono Nerd Font** (size 11, in Kitty)
+- **plus-cursor** cursor theme (size 16)
+
+### 🤖 AI Integration
+- **Ollama** with ROCm acceleration — RX 6700 XT (gfx1031) natively supported via `ollama-rocm`
+- Automatically stopped before GPU passthrough and restarted after GPU returns to host
 
 ### 📱 Integration
 - **Waydroid** — Android container
-- **KDE Connect** — phone/device integration (firewall ports configured)
+- **KDE Connect** — phone/device integration (TCP/UDP 1714–1764 firewall ports configured)
 - **Flatpak** support
-- **Looking Glass** — view VM display from Linux
+- **Looking Glass** — view VM display from Linux without a second monitor
 
 ---
 
@@ -109,7 +133,7 @@ This configuration includes GPU passthrough. Before using:
 - ✔ Kernel parameters must include `amd_iommu=on iommu=pt`
 - ✔ GPU PCI addresses must be updated for your system
 
-> **If you only have ONE GPU:** Display output will be lost when the VM starts. Recovery via TTY or live USB may be required. A dual GPU setup is **strongly** recommended.
+> **If you only have ONE GPU:** Display output will be lost when the VM starts. A headless virtual output keeps the Hyprland session alive, but you will need Looking Glass or SPICE to interact with the VM. A dual GPU setup is **strongly** recommended.
 
 ### Update GPU PCI Addresses
 
@@ -120,11 +144,18 @@ GPU_PCI="0000:0b:00.0"    # Replace with your GPU PCI address
 GPU_AUDIO="0000:0b:00.1"  # GPU audio function
 ```
 
-Find your addresses:
+Also update the vfio-pci device IDs:
 
 ```bash
-lspci | grep -i vga
-lspci | grep -i audio
+echo "1002 73df" > ...    # GPU device ID (currently RX 6700 XT)
+echo "1002 ab28" > ...    # GPU audio device ID
+```
+
+Find your addresses and IDs:
+
+```bash
+lspci -nn | grep -i vga
+lspci -nn | grep -i audio
 ```
 
 ### SSH Security
@@ -135,105 +166,93 @@ lspci | grep -i audio
 ssh-copy-id -i ~/.ssh/id_ed25519.pub localhost@nixos
 ```
 
+### Initial Password
+
+The config uses `initialPassword = "nixos"` for first boot only. Generate and set a proper hashed password during installation:
+
+```bash
+nix-shell -p mkpasswd --run "mkpasswd -m sha-512" > /mnt/etc/nixos/passwd-umpug
+chmod 600 /mnt/etc/nixos/passwd-umpug
+```
+
+Then set `hashedPasswordFile = "/etc/nixos/passwd-umpug"` in `configuration.nix` and remove `initialPassword`.
+
 ---
 
 ## 📁 Repository Structure
 
 ```
-├── assets/                     # Screenshots
-├── etc/libvirt/hooks/          # QEMU hook script
-├── gtk-3.0/                    # GTK3 Catppuccin Mocha theme
-├── gtk-4.0/                    # GTK4 Catppuccin Mocha theme
-├── hypr/
-│   ├── hyprland.conf           # AMD/gaming-focused Hyprland config
-│   ├── hyprlock.conf           # Lock screen
-│   └── hypridle.conf           # Auto lock/sleep
-├── nix/
-│   ├── nix.conf
-│   └── registry.json
-├── nixos/
-│   ├── flake.nix               # CachyOS kernel + home-manager entry
-│   ├── flake.lock
-│   ├── configuration.nix       # Core system config + VFIO hook
-│   ├── hardware-configuration.nix
-│   └── home.nix                # Fish, Kitty, Starship, hypridle...
-├── vm-xml/                     # Libvirt VM definition files
-│   └── win10.xml
-├── waybar/
-│   ├── config                  # Includes GameMode indicator
-│   └── style.css               # Catppuccin Mocha
-└── install.sh                  # ⚠️ Experimental installer (see below)
+├── assets/                         # Screenshots
+├── system/
+│   ├── gtk-3.0/                    # GTK3 Catppuccin Mocha theme
+│   │   ├── colors.css
+│   │   └── gtk.css
+│   ├── gtk-4.0/                    # GTK4 Catppuccin Mocha theme
+│   │   ├── colors.css
+│   │   └── gtk.css
+│   ├── hypr/
+│   │   ├── hyprland.conf           # AMD/gaming-focused Hyprland config
+│   │   └── hyprlock.conf           # Lock screen
+│   ├── nixos/
+│   │   ├── flake.nix               # CachyOS kernel + home-manager entry
+│   │   ├── configuration.nix       # Core system config + VFIO hook script
+│   │   ├── hardware-configuration.nix  # LUKS2 + Btrfs mount points
+│   │   └── home.nix                # Fish, Kitty, Starship, hypridle, swww...
+│   └── waybar/
+│       ├── config                  # Includes GameMode indicator
+│       └── style.css               # Catppuccin Mocha
+└── KURULUM.md                      # Turkish step-by-step installation guide
 ```
+
+> **Note:** `hypridle` is configured as a Home Manager systemd user service inside `home.nix`, not as a standalone file.
 
 ---
 
 ## 🚀 Installation
 
-### ✅ Recommended — Manual Copy
-
 > ⚠️ NixOS with Flakes enabled is required  
-> ⚠️ Review all config files before applying — especially update the GPU PCI addresses
+> ⚠️ Review all config files before applying — especially update GPU PCI addresses and device IDs
 
-```bash
-git clone https://github.com/kUmutUK/Declarative-NixOS-Gaming-VFIO-Setup-Hyprland-AMD-GPU-Passthrough-.git 
-cd Declarative-NixOS-Gaming-VFIO-Setup-Hyprland-AMD-GPU-Passthrough-
+See **KURULUM.md** for the full step-by-step installation guide including disk partitioning, LUKS2 setup, Btrfs subvolumes, UUID placement and password hashing.
 
-# Copy NixOS config files — do NOT copy hardware-configuration.nix!
-sudo cp nixos/configuration.nix /etc/nixos/
-sudo cp nixos/home.nix /etc/nixos/
-sudo cp nixos/flake.nix /etc/nixos/
-sudo cp nixos/flake.lock /etc/nixos/
-
-# Place Hyprland, Waybar and other configs
-mkdir -p ~/.config
-cp -r hypr ~/.config/hypr
-cp -r waybar ~/.config/waybar
-cp -r gtk-3.0 ~/.config/gtk-3.0
-cp -r gtk-4.0 ~/.config/gtk-4.0
-
-# Build and apply
-sudo nixos-rebuild switch --flake /etc/nixos#nixos
-```
-
-### ⚠️ Experimental — Installer Script
-
-> ❗ **Manual copying is strongly recommended over this method.**  
-> The installer script does NOT automatically apply GPU PCI addresses.  
-> It will back up your existing configs and copy files — nothing more.  
-> Always review `nixos/configuration.nix` and update GPU addresses before rebuilding.
+**Quick path (existing NixOS install):**
 
 ```bash
 git clone https://github.com/kUmutUK/Declarative-NixOS-Gaming-VFIO-Setup-Hyprland-AMD-GPU-Passthrough-.git
 cd Declarative-NixOS-Gaming-VFIO-Setup-Hyprland-AMD-GPU-Passthrough-
-chmod +x install.sh
-./install.sh
+
+# Copy NixOS config files — do NOT copy hardware-configuration.nix!
+sudo cp system/nixos/configuration.nix /etc/nixos/
+sudo cp system/nixos/home.nix          /etc/nixos/
+sudo cp system/nixos/flake.nix         /etc/nixos/
+
+# Update GPU PCI addresses and device IDs in configuration.nix before rebuilding!
+nano /etc/nixos/configuration.nix
+
+# Build and apply
+sudo nixos-rebuild switch --flake /etc/nixos#nixos
+
+# After first boot — place user configs
+cp -r system/hypr    ~/.config/hypr
+cp -r system/waybar  ~/.config/waybar
+cp -r system/gtk-3.0 ~/.config/gtk-3.0
+cp -r system/gtk-4.0 ~/.config/gtk-4.0
 ```
-
-**What the script does:**
-- Detects GPU PCI addresses and **shows** them (does NOT apply automatically)
-- Backs up existing `~/.config/hypr`, `waybar`, `gtk-*` and `/etc/nixos/*.nix`
-- Copies config files to the correct locations
-- Reminds you of all required manual steps before rebuilding
-
-**What the script does NOT do:**
-- Does NOT run `nixos-rebuild`
-- Does NOT modify GPU PCI addresses
-- Does NOT copy `hardware-configuration.nix`
 
 ---
 
 ## 🔧 Customization
 
-| Component      | File                           |
-|----------------|--------------------------------|
-| Hyprland       | `hypr/hyprland.conf`           |
-| Lock screen    | `hypr/hyprlock.conf`           |
-| Idle/Sleep     | `hypr/hypridle.conf`           |
-| Waybar layout  | `waybar/config` + `style.css`  |
-| GTK Theme      | `gtk-3.0/` + `gtk-4.0/`       |
-| System config  | `nixos/configuration.nix`      |
-| User env       | `nixos/home.nix`               |
-| VM definition  | `vm-xml/win10.xml`             |
+| Component         | File                                |
+|-------------------|-------------------------------------|
+| Hyprland          | `system/hypr/hyprland.conf`         |
+| Lock screen       | `system/hypr/hyprlock.conf`         |
+| Idle/Sleep        | `system/nixos/home.nix` (hypridle)  |
+| Waybar layout     | `system/waybar/config`              |
+| Waybar style      | `system/waybar/style.css`           |
+| GTK Theme         | `system/gtk-3.0/` + `gtk-4.0/`     |
+| System config     | `system/nixos/configuration.nix`    |
+| User environment  | `system/nixos/home.nix`             |
 
 ---
 
@@ -245,7 +264,42 @@ Recommended Steam launch option:
 mangohud gamemoderun gamescope -f -- %command%
 ```
 
-Custom Hyprland window rules are defined for CS2 (tearing, noblur, noanim, immediate).
+Custom Hyprland window rules are defined for CS2 (`tearing`, `no_blur`, `no_shadow`, `no_anim`, `immediate`, `fullscreen`).
+
+Check GameMode status from the terminal:
+
+```bash
+gm-status   # alias for: gamemoded -s
+```
+
+---
+
+## 🤖 Ollama / Local AI
+
+Ollama runs with ROCm GPU acceleration automatically. The VFIO hook gracefully stops Ollama before handing the GPU to the VM and restarts it after the VM shuts down.
+
+```bash
+# Check Ollama status
+systemctl status ollama
+
+# Pull and run a model
+ollama pull llama3
+ollama run llama3
+```
+
+---
+
+## 💾 Snapshots
+
+Snapper manages automatic Btrfs snapshots for `/` and `/home`.
+
+```bash
+snap-root          # alias: sudo snapper -c root list
+snap-home          # alias: sudo snapper -c home list
+snap-diff          # alias: sudo snapper -c root diff
+btrfs-df           # alias: sudo btrfs filesystem df /
+btrfs-cmp          # alias: sudo compsize -x /
+```
 
 ---
 
@@ -264,14 +318,10 @@ cp file.zip ~/.local/share/waydroid/data/media/0/Download/
 ## 🔄 System Update
 
 ```bash
-# Update flake inputs
-nix flake update
-
-# Rebuild system
-sudo nixos-rebuild switch --flake /etc/nixos#nixos
-
-# Clean old generations
-nix-collect-garbage -d && sudo nix-collect-garbage -d
+nup      # alias: nix flake update
+nrs      # alias: sudo nixos-rebuild switch --flake /etc/nixos#nixos
+ntest    # alias: sudo nixos-rebuild dry-activate --flake /etc/nixos#nixos
+nclean   # alias: nix-collect-garbage -d && sudo nix-collect-garbage -d
 ```
 
 ---
@@ -279,9 +329,9 @@ nix-collect-garbage -d && sudo nix-collect-garbage -d
 ## 🧩 Future Plans
 
 - [ ] Modular structure (gaming / daily / server profiles)
-- [ ] VFIO toggle — automatic switch when VM starts/stops
-- [ ] Improved installer script
-- [ ] Extended Waybar widgets (GPU temp, VFIO status)
+- [ ] CPU pinning / isolation for VFIO VM (isolcpus + taskset)
+- [ ] Secure Boot support via lanzaboote + TPM2
+- [ ] Extended Waybar widgets (GPU temp, VFIO status indicator)
 - [ ] NVIDIA support (experimental)
 
 ---
