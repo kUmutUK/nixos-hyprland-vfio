@@ -177,12 +177,17 @@ chmod 600 /mnt/etc/nixos/passwd-umpug
 
 Then set `hashedPasswordFile = "/etc/nixos/passwd-umpug"` in `configuration.nix` and remove `initialPassword`.
 
+### Username
+
+The default username in this config is `localhost`. This is intentional but unconventional — it avoids exposing a real name in configs shared publicly. If you want a different username, change all occurrences of `localhost` in `configuration.nix` and `home.nix` before rebuilding.
+
 ---
 
 ## 📁 Repository Structure
 
 ```
 ├── assets/                         # Screenshots
+├── install.sh                      # Experimental installer (see below)
 ├── system/
 │   ├── gtk-3.0/                    # GTK3 Catppuccin Mocha theme
 │   │   ├── colors.css
@@ -215,7 +220,29 @@ Then set `hashedPasswordFile = "/etc/nixos/passwd-umpug"` in `configuration.nix`
 
 See **KURULUM.md** for the full step-by-step installation guide including disk partitioning, LUKS2 setup, Btrfs subvolumes, UUID placement and password hashing.
 
-**Quick path (existing NixOS install):**
+### Option A — Experimental Installer (recommended for new machines)
+
+> ⚠️ Still requires manual UUID updates in `hardware-configuration.nix` after running.
+
+```bash
+git clone https://github.com/kUmutUK/Declarative-NixOS-Gaming-VFIO-Setup-Hyprland-AMD-GPU-Passthrough-.git
+cd Declarative-NixOS-Gaming-VFIO-Setup-Hyprland-AMD-GPU-Passthrough-
+chmod +x install.sh
+./install.sh
+```
+
+The installer will:
+- Detect your CPU vendor (AMD/Intel) and GPU vendor (AMD/NVIDIA/Intel)
+- Auto-patch `configuration.nix` for your hardware if needed (kernel params, drivers, Ollama package)
+- Interactively prompt for your GPU PCI addresses and auto-detect `vendor:device` IDs for `vfio-pci`
+- Prompt for monitor resolution (attempts auto-detect via `wlr-randr`)
+- Prompt for your git username and email and patch `home.nix`
+- Back up all existing configs before making any changes
+- Print a summary of what was and was not changed
+
+> **`hardware-configuration.nix` is never touched by the installer** — it contains machine-specific disk UUIDs that must be set manually (see step 1 in the installer's final checklist).
+
+### Option B — Manual (existing NixOS install)
 
 ```bash
 git clone https://github.com/kUmutUK/Declarative-NixOS-Gaming-VFIO-Setup-Hyprland-AMD-GPU-Passthrough-.git
@@ -253,6 +280,23 @@ cp -r system/gtk-4.0 ~/.config/gtk-4.0
 | GTK Theme         | `system/gtk-3.0/` + `gtk-4.0/`     |
 | System config     | `system/nixos/configuration.nix`    |
 | User environment  | `system/nixos/home.nix`             |
+
+### Porting to a Different Machine
+
+If your hardware differs from the tested configuration, the following must be reviewed before rebuilding:
+
+| What to change | Where |
+|---|---|
+| Disk UUIDs (LUKS, Btrfs, EFI, Swap) | `hardware-configuration.nix` |
+| GPU driver (`amdgpu` / `nvidia` / `modesetting`) | `configuration.nix` — `services.xserver.videoDrivers` |
+| CPU microcode + KVM module | `configuration.nix` — `hardware.cpu.*` + `boot.kernelModules` |
+| GPU PCI address + vendor:device ID | `configuration.nix` — hook script variables |
+| AMD-specific kernel params | `configuration.nix` — `amd_pstate`, `amd_iommu`, `amdgpu.*` |
+| Ollama package | `configuration.nix` — `ollama-rocm` → `ollama-cuda` or `ollama` |
+| Monitor resolution + refresh rate | `system/hypr/hyprland.conf` — `monitor =` line |
+| Git identity | `system/nixos/home.nix` — `userName` / `userEmail` |
+
+The **experimental installer handles all of the above interactively** except disk UUIDs, which are always machine-specific and require manual entry.
 
 ---
 
@@ -332,7 +376,9 @@ nclean   # alias: nix-collect-garbage -d && sudo nix-collect-garbage -d
 - [ ] CPU pinning / isolation for VFIO VM (isolcpus + taskset)
 - [ ] Secure Boot support via lanzaboote + TPM2
 - [ ] Extended Waybar widgets (GPU temp, VFIO status indicator)
-- [ ] NVIDIA support (experimental)
+- [ ] NVIDIA support (experimental — installer already patches for NVIDIA GPU detection)
+- [ ] Replace `initialPassword` with `hashedPasswordFile` as default in config
+- [ ] `username` as a top-level installer variable (currently hardcoded as `localhost`)
 
 ---
 
