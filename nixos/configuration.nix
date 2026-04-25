@@ -3,6 +3,7 @@
 {
   imports = [
     ./hardware-configuration.nix
+    ./cachix.nix
   ];
 
   # ============================================================
@@ -405,9 +406,17 @@ log "=========================================="
     MOZ_ENABLE_WAYLAND = "1";
     QT_QPA_PLATFORM    = "wayland;xcb";
 
-    XCURSOR_THEME = "plus-cursor";
+    XCURSOR_THEME = "capitaine-cursors";
     XCURSOR_SIZE  = "16";
   };
+
+  # ============================================================
+  # Fish Shell
+  # ============================================================
+  # programs.fish.enable: Sistemin /etc/shells listesine fish ekler ve
+  # vendor completions yükler. Kullanıcı shell'i fish olarak atanırsa
+  # bu satır ZORUNLUDUR; olmadan login sırasında "invalid shell" hatası alınır.
+  programs.fish.enable = true;
 
   # ============================================================
   # Hyprland
@@ -433,7 +442,7 @@ log "=========================================="
   services.greetd = {
     enable = true;
     settings.default_session = {
-      command = "${pkgs.tuigreet}/bin/tuigreet --remember --time --cmd Hyprland";
+      command = "${pkgs.tuigreet}/bin/tuigreet --remember --time --cmd start-hyprland";
       user    = "greeter";
     };
   };
@@ -568,6 +577,7 @@ log "=========================================="
     isNormalUser = true;
     description = "Local User";
     initialPassword = "nixos";
+    shell        = pkgs.fish;
     extraGroups  = [
       "wheel"
       "networkmanager"
@@ -605,7 +615,7 @@ log "=========================================="
     steam gamemode gamescope mangohud
     heroic protonup-qt wine
 
-    virt-manager looking-glass-client
+    virt-manager looking-glass-client capitaine-cursors
 
     btop nvtopPackages.amd fastfetch bibata-cursors
 

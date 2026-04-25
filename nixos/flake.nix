@@ -2,13 +2,13 @@
   description = "NixOS CachyOS BORE Kernel – Gaming";
 
   inputs = {
-    # nixos-unstable: 26.05 henüz çıkmadı, cachyos-kernel overlay
-    # da unstable hedefler. 26.05 resmi çıkınca nixos-26.05 yapılabilir.
+    # nixos-unstable: 26.05 Mayıs 2026'da çıkacak; cachyos-kernel overlay
+    # da unstable hedefler. 26.05 çıkınca nixos-26.05 yapılabilir.
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
     cachyos-kernel.url = "github:xddxdd/nix-cachyos-kernel";
 
-    # nixpkgs unstable ile uyumlu home-manager.
+    # nixpkgs unstable ile uyumlu home-manager (release-26.05 henüz yok).
     home-manager.url = "github:nix-community/home-manager";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
   };
