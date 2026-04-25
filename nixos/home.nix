@@ -240,14 +240,6 @@
     };
 
   }; # end programs
-    
-    home.pointerCursor = {
-  gtk.enable   = true;
-  hyprcursor.enable = true;   # Hyprland native cursor protokolü
-  package      = pkgs.bibata-cursors;   # plus-cursor bu pakette değilse aşağıya bak
-  name         = "plus-cursor";
-  size         = 16;
-};
 
   # =========================================================================
   # SERVİSLER

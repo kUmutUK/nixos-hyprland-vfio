@@ -38,7 +38,7 @@
 { config, lib, pkgs, modulesPath, ... }:
 
 let
-  rootDev    = "/dev/disk/by-uuid/fa90e642-20c6-483d-a092-0204ae441884";
+  rootDev    = "/dev/disk/by-uuid/2b423ef5-f0e7-4113-a094-8fbb3fd929b4";
   commonOpts = [ "noatime" "compress=zstd:1" "ssd" "space_cache=v2" "discard=async" ];
 in
 
@@ -61,7 +61,7 @@ in
   # bypassWorkqueues: NVMe/SSD I/O gecikmesini azaltır
   # ============================================================
   boot.initrd.luks.devices."cryptroot" = {
-    device           = "/dev/disk/by-uuid/522cb1bc-f5db-47cd-b9fc-5d5d4eb1cbde";
+    device           = "/dev/disk/by-uuid/b81da1b3-56a6-427a-ad1e-ccb2e2fb8fb2";
     allowDiscards    = true;
     bypassWorkqueues = true;
   };
@@ -102,13 +102,13 @@ in
   };
 
   fileSystems."/boot" = {
-    device  = "/dev/disk/by-uuid/C674-DF0E";
+    device  = "/dev/disk/by-uuid/83A7-EE0C";
     fsType  = "vfat";
     options = [ "fmask=0077" "dmask=0077" ];
   };
 
   swapDevices =
-    [ { device = "/dev/disk/by-uuid/225dc8ec-89ea-4df5-b9c9-1177f728e053";
+    [ { device = "/dev/disk/by-uuid/5e349735-5d50-4d95-a8ba-7b833ea0ad9b";
         # priority=10: zramSwap (priority=100) her zaman önce kullanılır.
         # Bu partition yalnızca zram dolduğunda veya hibernasyon için devreye girer.
         priority = 10;

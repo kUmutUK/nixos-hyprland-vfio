@@ -603,9 +603,9 @@ log "=========================================="
     polkit_gnome ntfs3g exfat gparted
 
     steam gamemode gamescope mangohud
-    lutris heroic protonup-qt wine
+    heroic protonup-qt wine
 
-    virt-manager looking-glass-client capitaine-cursors
+    virt-manager looking-glass-client
 
     btop nvtopPackages.amd fastfetch bibata-cursors
 
