@@ -3,7 +3,8 @@
 {
   imports = [
     ./hardware-configuration.nix
-    ./cachix.nix
+    # cachix.nix KALDIRILDI: nix.settings.substituters/trusted-public-keys
+    # bu dosyanın yaptığı işi zaten yapıyor; ayrı bir dosya gerekmez.
   ];
 
   # ============================================================
@@ -755,8 +756,8 @@ log "=========================================="
   system.stateVersion = "26.05";
 
   # AMD RX 6700 XT (Navi 22, gfx1031) ROCm hızlandırması.
-  # NOT: nixos-unstable'da acceleration/rocmOverrideGfx kaldırıldı.
-  # pkgs.ollama-rocm RX 6700 XT'yi (gfx1031) zaten tanıyor.
+  # NOT: Bu nixpkgs sürümünde services.ollama.acceleration kaldırıldı.
+  # Doğru kullanım: package = pkgs.ollama-rocm  (veya ollama-cuda, ollama-vulkan)
   # VFIO hook script GPU geçişi sırasında bu servisi durdurur/başlatır.
   services.ollama = {
     enable  = true;
