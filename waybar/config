@@ -178,7 +178,8 @@
       "spotifyd",
       "com.spotify.Client",
       "firefox",
-      "chromium"
+      "chromium",
+      "brave-browser"
     ],
     "format": "{player_icon} {artist} - {title}",
     "format-paused": "⏸ {artist} - {title}",
