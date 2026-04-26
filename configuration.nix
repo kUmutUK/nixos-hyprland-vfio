@@ -601,7 +601,8 @@ log "=========================================="
   # ============================================================
   # Paketler
   # ============================================================
-  environment.systemPackages = with pkgs; [
+
+   environment.systemPackages = with pkgs; [
     kitty waybar rofi dunst swww waypaper grim slurp wl-clipboard
     hyprlock hypridle wlogout hyprpicker
 
@@ -611,17 +612,28 @@ log "=========================================="
     pavucontrol cliphist
 
     kdePackages.dolphin
+    stdenv.cc.cc.lib  # Eskiden vardı, kalabilir
+
     polkit_gnome ntfs3g exfat gparted
 
     steam gamemode gamescope mangohud
-    heroic protonup-qt wine
+    heroic protonup-qt wine nodejs python314 uv
 
     virt-manager looking-glass-client capitaine-cursors
 
     btop nvtopPackages.amd fastfetch bibata-cursors
 
     git zip unzip usbutils p7zip android-tools
-    python3 vscode
+    python3
+    # ⬇️ VSCode buraya, override ile birlikte
+    (
+      vscode-with-extensions.override {
+        vscode = vscode.fhs;
+        vscodeExtensions = with vscode-extensions; [
+          continue.continue
+        ];
+      }
+    )
 
     brave telegram-desktop discord protonvpn-gui
 
@@ -763,5 +775,7 @@ log "=========================================="
     enable  = true;
     package = pkgs.ollama-rocm;
   };
+
+     programs.nix-ld.enable = true;
 
 }
