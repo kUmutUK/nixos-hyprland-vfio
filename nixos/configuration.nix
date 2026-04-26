@@ -617,7 +617,7 @@ log "=========================================="
     polkit_gnome ntfs3g exfat gparted
 
     steam gamemode gamescope mangohud
-    heroic protonup-qt wine nodejs
+    heroic protonup-qt wine nodejs python314 uv
 
     virt-manager looking-glass-client capitaine-cursors
 
@@ -776,5 +776,6 @@ log "=========================================="
     package = pkgs.ollama-rocm;
   };
 
+     programs.nix-ld.enable = true;
 
 }
