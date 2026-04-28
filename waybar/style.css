@@ -5,7 +5,7 @@
   min-height: 0;
 }
 
-window#waybar {
+#waybar {
   background: #11111b;
   color: #cdd6f4;
   border-bottom: 1px solid #313244;
@@ -86,6 +86,12 @@ tooltip label {
   background: #1e1e2e;
 }
 
+/* STATE COLORS (YENİ) */
+#cpu.warning { color: #f9e2af; }
+#cpu.critical { color: #f38ba8; }
+#memory.warning { color: #f9e2af; }
+#memory.critical { color: #f38ba8; }
+
 /* MPRIS */
 #mpris {
   background: #313244;
@@ -95,17 +101,9 @@ tooltip label {
   margin: 4px 3px;
 }
 
-#mpris.playing {
-  color: #a6e3a1;
-}
-
-#mpris.paused {
-  color: #f9e2af;
-}
-
-#mpris.stopped {
-  color: #6c7086;
-}
+#mpris.playing { color: #a6e3a1; }
+#mpris.paused  { color: #f9e2af; }
+#mpris.stopped { color: #6c7086; }
 
 /* COLORS */
 #cpu { color: #89b4fa; }
@@ -120,7 +118,13 @@ tooltip label {
 #custom-power {
   color: #f38ba8;
   font-size: 15px;
+  font-weight: bold;
   padding: 4px 12px;
   margin: 4px;
   background: #1e1e2e;
+  border-radius: 10px;
+}
+
+#custom-power:hover {
+  background: #313244;
 }

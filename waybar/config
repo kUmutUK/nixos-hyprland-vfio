@@ -5,13 +5,8 @@
   "spacing": 4,
   "margin-top": 0,
   "margin-bottom": 0,
-  "modules-left": [
-    "hyprland/workspaces",
-    "hyprland/window"
-  ],
-  "modules-center": [
-    "clock"
-  ],
+  "modules-left": ["hyprland/workspaces", "hyprland/window"],
+  "modules-center": ["clock"],
   "modules-right": [
     "mpris",
     "gamemode",
@@ -23,8 +18,9 @@
     "tray",
     "custom/power"
   ],
+
   "hyprland/workspaces": {
-    "format": "{name}",
+    "format": "{icon}",                       // DÜZELTİLDİ: {name} → {icon}
     "format-icons": {
       "1": "一",
       "2": "二",
@@ -47,6 +43,7 @@
       "3": []
     }
   },
+
   "hyprland/window": {
     "format": "{}",
     "max-length": 50,
@@ -56,22 +53,19 @@
       "kitty": "🐱 kitty"
     }
   },
+
   "gamemode": {
-    "format": "{glyph}",
-    "format-alt": "{glyph} {count}",
-    "glyph": "🎮",
+    "format": "🎮 {glyph}",                  // Glyph + yazı daha bilgilendirici
+    "format-alt": "🎮 {count}",
     "hide-not-running": true,
-    "use-icon": true,
-    "icon-name": "input-gaming-symbolic",
-    "icon-spacing": 4,
-    "icon-size": 16,
+    "glyph": "GAME",
     "tooltip": true,
     "tooltip-format": "GameMode aktif: {count} oyun"
   },
+
   "cpu": {
     "interval": 5,
     "format": " {usage}%",
-    "format-alt": "⚡ {usage}%",
     "tooltip": true,
     "tooltip-format": "CPU kullanımı: {usage}%\nFrequency: {frequency} GHz",
     "on-click": "kitty -e btop",
@@ -80,10 +74,10 @@
       "critical": 90
     }
   },
+
   "memory": {
     "interval": 10,
     "format": " {}%",
-    "format-alt": "🧠 {used:0.1f}G / {total:0.1f}G",
     "tooltip": true,
     "tooltip-format": "Kullanılan: {used:0.1f} GiB\nToplam: {total:0.1f} GiB\nBoş: {avail:0.1f} GiB",
     "on-click": "kitty -e btop",
@@ -92,9 +86,10 @@
       "critical": 90
     }
   },
+
   "temperature": {
     "interval": 5,
-    "hwmon-path": "/run/hwmon-k10temp",
+    "hwmon-path": "/sys/class/hwmon/hwmon2",  // DÜZELTİLDİ: gerçek hwmon dizini
     "critical-threshold": 85,
     "format": "{icon} {temperatureC}°C",
     "format-critical": "🔥 {temperatureC}°C",
@@ -104,9 +99,10 @@
       "🔥"
     ],
     "tooltip": true,
-    "tooltip-format": "CPU: {temperatureC}°C (k10temp Tctl)\nHWMon: /run/hwmon-k10temp (kararlı symlink)\nSymlink: systemd hwmon-k10temp-link.service",
+    "tooltip-format": "CPU: {temperatureC}°C (k10temp Tctl)\nHWMon: {hwmon-path}",
     "on-click": "kitty -e btop"
   },
+
   "pulseaudio": {
     "format": "{icon} {volume}%",
     "format-muted": "🔇",
@@ -119,11 +115,7 @@
       "phone": "",
       "portable": "",
       "car": "",
-      "default": [
-        "🔈",
-        "🔉",
-        "🔊"
-      ]
+      "default": ["🔈", "🔉", "🔊"]
     },
     "on-click": "pavucontrol",
     "on-click-right": "pactl set-sink-mute @DEFAULT_SINK@ toggle",
@@ -135,6 +127,7 @@
       "muted": 0
     }
   },
+
   "network": {
     "interval": 10,
     "format-wifi": "📶 {signalStrength}%",
@@ -146,6 +139,7 @@
     "tooltip-format-disconnected": "Bağlantı yok",
     "on-click": "nm-connection-editor"
   },
+
   "clock": {
     "interval": 60,
     "format": " {:%H:%M}",
@@ -167,11 +161,13 @@
     },
     "timezone": "Europe/Istanbul"
   },
+
   "tray": {
     "icon-size": 16,
     "spacing": 8,
     "show-passive-icons": true
   },
+
   "mpris": {
     "player": [
       "spotify",
@@ -200,6 +196,7 @@
     "on-click-right": "playerctl stop",
     "tooltip-format": "{player}\n{status}\n{artist} — {album}\n{title}"
   },
+
   "custom/power": {
     "format": "⏻",
     "tooltip": true,
