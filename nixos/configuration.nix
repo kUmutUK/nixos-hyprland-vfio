@@ -3,8 +3,6 @@
 {
   imports = [
     ./hardware-configuration.nix
-    # cachix.nix KALDIRILDI: nix.settings.substituters/trusted-public-keys
-    # bu dosyanın yaptığı işi zaten yapıyor; ayrı bir dosya gerekmez.
   ];
 
   # ============================================================
@@ -12,25 +10,11 @@
   # ============================================================
   systemd.tmpfiles.rules = [
     "d /var/log/libvirt 0755 root root -"
-    # Hook script LOGFILE="/var/log/libvirt/vfio.log" ile eşleşmeli.
-    # "r!" → boot'ta dosyayı sil (log birikimini engeller).
     "r! /var/log/libvirt/vfio.log - - - -"
-    # "d /etc/libvirt/hooks" KALDIRILDI: environment.etc dizini kendisi oluşturur.
   ];
 
   # ============================================================
   # Libvirt Hook Script
-  # NixOS 26.05 uyumu: system.activationScripts → environment.etc
-  #
-  # Neden değiştirildi:
-  #   NixOS 26.05'te activation script'lerden systemd unit yönetimi
-  #   deprecated edildi; uzun vadeli sürdürülebilirlik için environment.etc
-  #   idiomatic NixOS yaklaşımıdır. Activation script'e gerek kalmaz.
-  #
-  # Nasıl çalışır:
-  #   NixOS, /etc/libvirt/hooks/qemu'yu Nix store'daki read-only dosyaya
-  #   sembolik bağ olarak oluşturur. mode="0755" çalıştırma iznini sağlar.
-  #   Libvirt sembolik bağları takip ederek hook'u çalıştırır.
   # ============================================================
   environment.etc."libvirt/hooks/qemu" = {
     mode = "0755";
@@ -122,10 +106,6 @@ if [[ "$GUEST" == "win10" ]] || [[ "$GUEST" == "win11" ]]; then
 
     prepare)
       log "=== [PREPARE] GPU VM'e veriliyor ==="
-
-      # FIX [YENİ]: Ollama ROCm GPU'ya bağımlıdır. GPU vfio-pci'ye geçince
-      # Ollama çöpebilir veya tutarsız duruma girer. Önceden durdurulur;
-      # release aşamasında GPU host'a döndükten sonra yeniden başlatılır.
       log "   Ollama durduruluyor (GPU geçişi öncesi)..."
       systemctl stop ollama 2>/dev/null \
         && log "   ollama durduruldu: OK" \
@@ -143,12 +123,6 @@ if [[ "$GUEST" == "win10" ]] || [[ "$GUEST" == "win11" ]]; then
           || log "   $pci -> vfio-pci: FAILED"
       done
       log "[PREPARE] GPU VM'e verildi"
-      # hugepages: VM'e ayrılacak 2MB büyük sayfa sayısı.
-      # Hesaplama: VM RAM (GB) × 512 = hugepage sayısı.
-      # Örnek: 4GB VM → 2048, 8GB VM → 4096.
-      # Not: libvirt XML'de <memoryBacking><hugepages/></memoryBacking>
-      # tanımlı olmalı; yoksa guest hugepage'leri kullanmaz.
-      # Şu an 4GB VM için 2048 (= 4GB) ayrılıyor.
       echo 2048 > /proc/sys/vm/nr_hugepages 2>/dev/null && log "   hugepages=2048 (4GB) aktif" || log "   hugepages ayarlanamadı"
       ;;
 
@@ -185,10 +159,6 @@ if [[ "$GUEST" == "win10" ]] || [[ "$GUEST" == "win11" ]]; then
       for pci in $GPU_PCI $GPU_AUDIO; do
         unbind_driver "$pci"
       done
-      # GÜVENLİK AĞI: Libvirt normalde stopped → release sırasıyla çağırır.
-      # Olağandışı kapanış durumunda (crash, force-off) release tetiklenmeyebilir.
-      # GPU hala vfio-pci'de bağsız kalırsa host ekran çıkışı olmaz.
-      # Kısa bekleme sonrası amdgpu yüklenmediyse buradan rebind denenebilir:
       sleep 2
       if ! lsmod | grep -q "^amdgpu"; then
         log "   [STOPPED-FALLBACK] amdgpu yüklü değil, yükleniyor..."
@@ -203,10 +173,6 @@ if [[ "$GUEST" == "win10" ]] || [[ "$GUEST" == "win11" ]]; then
       log "   amdgpu stack kaldırılıyor..."
       modprobe -r amdgpu 2>/dev/null && log "   amdgpu kaldırıldı" || log "   amdgpu zaten yüklü değil"
       modprobe -r ttm    2>/dev/null || true
-      # NOT: modprobe -r drm_kms_helper KALDIRILDI.
-      # Linux 6.2+'den itibaren drm_kms_helper ayrı modül değil, drm içine
-      # merge edildi. CachyOS BORE 6.x bu modülü tanımaz → dead code.
-      # ttm hala ayrı modül olarak var (6.x'te de), bu satır korunuyor.
       sleep 1
       log "   vfio-pci ID tablosu temizleniyor..."
       echo "1002 73df" > "$GPU_VFIO_PATH/remove_id" 2>/dev/null && log "   GPU ID temizlendi"
@@ -224,9 +190,6 @@ if [[ "$GUEST" == "win10" ]] || [[ "$GUEST" == "win11" ]]; then
       fi
       for pci in $GPU_PCI $GPU_AUDIO; do
         echo "amdgpu" > "/sys/bus/pci/devices/$pci/driver_override" 2>/dev/null
-        # if/else: drivers_probe başarısız olduğunda bind_driver fallback'e
-        # geçiliyor. &&/|| zinciri shell önceliği nedeniyle her iki log'u da
-        # çalıştırabilir; if/else bu belirsizliği ortadan kaldırır.
         if echo "$pci" > /sys/bus/pci/drivers_probe 2>/dev/null; then
           log "   $pci -> amdgpu (override): OK"
         elif bind_driver "$pci" "$GPU_AMDGPU_PATH"; then
@@ -243,16 +206,11 @@ if [[ "$GUEST" == "win10" ]] || [[ "$GUEST" == "win11" ]]; then
         && log "   greetd restart: OK" \
         || log "   greetd restart: FAILED"
       echo 0 > /proc/sys/vm/nr_hugepages 2>/dev/null && log "   hugepages=0 serbest bırakıldı"
-
-      # FIX [YENİ]: GPU host'a döndü, Ollama ROCm ile yeniden başlatılabilir.
-      # amdgpu verify'dan sonra kısa bekleme — modül tam yüklenmeden
-      # Ollama başlarsa ROCm device'ı bulamaz.
       sleep 1
       log "   Ollama yeniden başlatılıyor (GPU host'a döndü)..."
       systemctl start ollama 2>/dev/null \
         && log "   ollama başlatıldı: OK" \
         || log "   ollama başlatılamadı (servis yok veya hata)"
-
       log "[RELEASE] GPU host'a döndü"
       ;;
 
@@ -290,22 +248,9 @@ log "=========================================="
     "amdgpu.ppfeaturemask=0xffffffff"
     "kvm.ignore_msrs=1"
     "pcie_aspm=off"
-    # FIX [YENİ]: RCU grace period kısaltılır → scheduling latency azalır.
-    # BORE kernel ile birlikte çalışır, çakışma yok.
-    # NOT: rcu_nocb_poll burada kasıtlı olarak YOK — rcu_nocbs=<cpulist>
-    # olmadan noop'tur. Belirli CPU'ları offload etmek istenirse
-    # "rcu_nocbs=2-5" gibi bir parametre eklenip ardından rcu_nocb_poll eklenebilir.
     "rcupdate.rcu_expedited=1"
   ];
 
-  # ============================================================
-  # Initrd
-  # ============================================================
-  # amdgpu: initrd'de early KMS (greetd öncesi framebuffer) için gerekli.
-  # vfio_pci: initrd'ye ALINMADI — bu kurulumda host amdgpu kullanır,
-  #   passthrough dinamiktir (hook ile). initrd'de vfio_pci yüklenirse
-  #   GPU'yu boot anında vfio'ya bağlar ve amdgpu hiç çalışamaz.
-  # dm_mod: hardware-configuration.nix'teki dm-crypt modülü zaten kapsar.
   boot.initrd.availableKernelModules = [
     "amdgpu"
   ];
@@ -317,55 +262,27 @@ log "=========================================="
   # Sysctl
   # ============================================================
   boot.kernel.sysctl = {
-    # --- VM ---
-    "vm.max_map_count" = 1048576;    # CS2 / Steam zorunlusu
-    "vm.nr_hugepages"  = 0;          # VFIO hook script yönetir
-    "vm.swappiness"    = 10;         # FIX [YENİ]: zramSwap aktifken RAM baskısı
-                                     # olmadan swap'a gitmemesi için düşük değer.
-                                     # 10 → fiziksel RAM dolmadan swap kullanılmaz.
-
-    # --- Kernel Scheduler ---
-    # FIX [YENİ]: CS2 gibi çok iş parçacıklı oyunlarda autogroup, render/game
-    # thread'lerini aynı cgroup'a koyar ve CPU zamanını diğer process'lerle
-    # eşit böler. Devre dışı bırakmak oyun thread'lerine doğrudan öncelik verir.
+    "vm.max_map_count" = 1048576;
+    "vm.nr_hugepages"  = 0;
+    "vm.swappiness"    = 10;
     "kernel.sched_autogroup_enabled" = 0;
-
-    # FIX [YENİ]: AMD Zen3'te split-lock (yanlış hizalanmış atomik işlem)
-    # tespiti etkinleştirildiğinde SIGBUS veya performans cezasına yol açar.
-    # Wine/Proton bazı Windows binary'leri split-lock üretir; 0 → sadece log.
     "kernel.split_lock_mitigate" = 0;
-
-    # FIX [YENİ]: MangoHud ve GameMode'un donanım performans sayaçlarına
-    # (perf_event) root olmadan erişmesi için gerekli.
-    # -1 → tüm kullanıcılar perf_event_open() yapabilir.
     "kernel.perf_event_paranoid" = -1;
-
-    # --- Dosya Sistemi ---
-    # FIX [YENİ]: VSCode, Brave ve diğer modern uygulamalar çok sayıda dosyayı
-    # inotify ile izler. Varsayılan 8192 yetersizdir → "ENOSPC on inotify" hataları.
-    "fs.inotify.max_user_watches"   = 524288;
+    "fs.inotify.max_user_watches" = 524288;
     "fs.inotify.max_user_instances" = 512;
-
-    # --- Ağ ---
-    "net.core.rmem_max"        = 16777216;
-    "net.core.wmem_max"        = 16777216;
-    # FIX [YENİ]: Yüksek paket hızında (CS2 server tickrate) NIC kuyruğu
-    # taşmasını önler. Varsayılan 1000 yetersiz.
+    "net.core.rmem_max" = 16777216;
+    "net.core.wmem_max" = 16777216;
     "net.core.netdev_max_backlog" = 16384;
-    "net.ipv4.tcp_fastopen"    = 3;
+    "net.ipv4.tcp_fastopen" = 3;
   };
 
   # ============================================================
-  # PAM Limitleri
-  # FIX [YENİ]: Steam, Wine/Proton ve gamemode çok sayıda dosya tanımlayıcısı
-  # açar. Varsayılan 1024 limiti "too many open files" hatasına neden olur.
-  # gamemode grubu için nice limiti → gamemode daemon kendi renice'ini uygular
-  # ama PAM sınırı bu değere izin vermiyorsa EPERM alır.
+  # PAM
   # ============================================================
   security.pam.loginLimits = [
-    { domain = "localhost"; item = "nofile";  type = "hard"; value = "1048576"; }
-    { domain = "localhost"; item = "nofile";  type = "soft"; value = "1048576"; }
-    { domain = "@gamemode"; item = "nice";    type = "-";    value = "-10"; }
+    { domain = "localhost"; item = "nofile"; type = "hard"; value = "1048576"; }
+    { domain = "localhost"; item = "nofile"; type = "soft"; value = "1048576"; }
+    { domain = "@gamemode"; item = "nice"; type = "-"; value = "-10"; }
   ];
 
   # ============================================================
@@ -380,33 +297,27 @@ log "=========================================="
   networking.networkmanager.enable = true;
 
   time.timeZone = "Europe/Istanbul";
-  i18n.defaultLocale  = "en_US.UTF-8";
+  i18n.defaultLocale = "en_US.UTF-8";
   i18n.extraLocaleSettings.LC_ALL = "tr_TR.UTF-8";
   console.keyMap = "trq";
 
   # ============================================================
   # Firewall
   # ============================================================
-  networking.firewall = {
-    enable = true;
-    allowedTCPPortRanges = [ { from = 1714; to = 1764; } ];
-    allowedUDPPortRanges = [ { from = 1714; to = 1764; } ];
-  };
+  networking.firewall.enable = true;
 
   # ============================================================
   # Graphics
   # ============================================================
-  hardware.graphics.enable      = true;
+  hardware.graphics.enable = true;
   hardware.graphics.enable32Bit = true;
 
   environment.variables = {
     AMD_VULKAN_ICD = "RADV";
     RADV_PERFTEST  = "gpl,nggc";
-
-    NIXOS_OZONE_WL     = "1";
+    NIXOS_OZONE_WL = "1";
     MOZ_ENABLE_WAYLAND = "1";
-    QT_QPA_PLATFORM    = "wayland;xcb";
-
+    QT_QPA_PLATFORM = "wayland;xcb";
     XCURSOR_THEME = "capitaine-cursors";
     XCURSOR_SIZE  = "16";
   };
@@ -414,9 +325,6 @@ log "=========================================="
   # ============================================================
   # Fish Shell
   # ============================================================
-  # programs.fish.enable: Sistemin /etc/shells listesine fish ekler ve
-  # vendor completions yükler. Kullanıcı shell'i fish olarak atanırsa
-  # bu satır ZORUNLUDUR; olmadan login sırasında "invalid shell" hatası alınır.
   programs.fish.enable = true;
 
   # ============================================================
@@ -444,7 +352,7 @@ log "=========================================="
     enable = true;
     settings.default_session = {
       command = "${pkgs.tuigreet}/bin/tuigreet --remember --time --cmd start-hyprland";
-      user    = "greeter";
+      user = "greeter";
     };
   };
 
@@ -454,17 +362,16 @@ log "=========================================="
   security.rtkit.enable = true;
 
   services.pipewire = {
-    enable            = true;
-    alsa.enable       = true;
+    enable = true;
+    alsa.enable = true;
     alsa.support32Bit = true;
-    pulse.enable      = true;
-    jack.enable       = true;
+    pulse.enable = true;
+    jack.enable = true;
     wireplumber.enable = true;
-
     extraConfig.pipewire."99-lowlatency" = {
       context.properties = {
-        "default.clock.rate"        = 48000;
-        "default.clock.quantum"     = 128;
+        "default.clock.rate" = 48000;
+        "default.clock.quantum" = 128;
         "default.clock.min-quantum" = 128;
         "default.clock.max-quantum" = 256;
       };
@@ -478,9 +385,11 @@ log "=========================================="
     ACTION=="add", SUBSYSTEM=="usb", TEST=="power/control", ATTR{power/control}="on"
   '';
 
-  # k10temp için kararlı symlink — Waybar'ın hwmon-path sabit yazılmasını önler.
+  # ============================================================
+  # k10temp için kararlı symlink – DİZİN OLARAK
+  # ============================================================
   systemd.services.hwmon-k10temp-link = {
-    description = "Stable /run/hwmon-k10temp symlink for k10temp sensor";
+    description = "Stable /run/hwmon-k10temp symlink (directory) for k10temp sensor";
     wantedBy    = [ "multi-user.target" ];
     serviceConfig = {
       Type            = "oneshot";
@@ -489,7 +398,7 @@ log "=========================================="
         hwmon_dir=$(grep -rl k10temp /sys/class/hwmon/*/name 2>/dev/null \
                     | head -1 | xargs dirname)
         if [ -n "$hwmon_dir" ]; then
-          ln -sfT "$hwmon_dir/temp1_input" /run/hwmon-k10temp
+          ln -sfT "$hwmon_dir" /run/hwmon-k10temp
         else
           echo "hwmon-k10temp-link: k10temp bulunamadı!" >&2
           exit 1
@@ -507,68 +416,61 @@ log "=========================================="
   # ============================================================
   # Polkit + Disk
   # ============================================================
-  security.polkit.enable  = true;
+  security.polkit.enable = true;
   services.udisks2.enable = true;
-  services.gvfs.enable    = true;
-  # fstrim.enable=false: discard=async mount seçeneği TRIM'i asenkron işler.
+  services.gvfs.enable = true;
   services.fstrim.enable = false;
-
-  security.sudo.wheelNeedsPassword = true;
 
   # ============================================================
   # Btrfs
   # ============================================================
   services.btrfs.autoScrub = {
-    enable   = true;
+    enable = true;
     interval = "monthly";
     fileSystems = [ "/" ];
   };
 
   services.snapper = {
     snapshotInterval = "hourly";
-    cleanupInterval  = "1d";
-
+    cleanupInterval = "1d";
     configs = {
       root = {
-        SUBVOLUME              = "/";
-        ALLOW_USERS            = [ "localhost" ];
-        TIMELINE_CREATE        = true;
-        TIMELINE_CLEANUP       = true;
-        TIMELINE_LIMIT_HOURLY  = "10";
-        TIMELINE_LIMIT_DAILY   = "7";
-        TIMELINE_LIMIT_WEEKLY  = "4";
+        SUBVOLUME = "/";
+        ALLOW_USERS = [ "localhost" ];
+        TIMELINE_CREATE = true;
+        TIMELINE_CLEANUP = true;
+        TIMELINE_LIMIT_HOURLY = "10";
+        TIMELINE_LIMIT_DAILY = "7";
+        TIMELINE_LIMIT_WEEKLY = "4";
         TIMELINE_LIMIT_MONTHLY = "6";
-        TIMELINE_LIMIT_YEARLY  = "0";
-        NUMBER_CLEANUP         = true;
-        NUMBER_LIMIT           = "50";
+        TIMELINE_LIMIT_YEARLY = "0";
+        NUMBER_CLEANUP = true;
+        NUMBER_LIMIT = "50";
         NUMBER_LIMIT_IMPORTANT = "10";
       };
-
       home = {
-        SUBVOLUME              = "/home";
-        ALLOW_USERS            = [ "localhost" ];
-        TIMELINE_CREATE        = true;
-        TIMELINE_CLEANUP       = true;
-        TIMELINE_LIMIT_HOURLY  = "5";
-        TIMELINE_LIMIT_DAILY   = "7";
-        TIMELINE_LIMIT_WEEKLY  = "4";
+        SUBVOLUME = "/home";
+        ALLOW_USERS = [ "localhost" ];
+        TIMELINE_CREATE = true;
+        TIMELINE_CLEANUP = true;
+        TIMELINE_LIMIT_HOURLY = "5";
+        TIMELINE_LIMIT_DAILY = "7";
+        TIMELINE_LIMIT_WEEKLY = "4";
         TIMELINE_LIMIT_MONTHLY = "6";
-        TIMELINE_LIMIT_YEARLY  = "0";
-        NUMBER_CLEANUP         = true;
-        NUMBER_LIMIT           = "30";
+        TIMELINE_LIMIT_YEARLY = "0";
+        NUMBER_CLEANUP = true;
+        NUMBER_LIMIT = "30";
         NUMBER_LIMIT_IMPORTANT = "10";
       };
     };
   };
 
   # ============================================================
+  # zramSwap
+  # ============================================================
   zramSwap = {
-    enable    = true;
+    enable = true;
     algorithm = "zstd";
-    # Varsayılan memoryPercent=50: 16GB RAM için ~8GB zram, yeterli.
-    # zramSwap varsayılan priority=100; swap partition priority=10 ile
-    # RAM dolana kadar zram önce kullanılır, partition yalnızca
-    # hibernasyon veya zram dolduğunda devreye girer.
   };
 
   # ============================================================
@@ -578,17 +480,10 @@ log "=========================================="
     isNormalUser = true;
     description = "Local User";
     initialPassword = "nixos";
-    shell        = pkgs.fish;
-    extraGroups  = [
-      "wheel"
-      "networkmanager"
-      "video"
-      "audio"
-      "storage"
-      "gamemode"
-      "libvirtd"
-      "kvm"
-      "input"
+    shell = pkgs.fish;
+    extraGroups = [
+      "wheel" "networkmanager" "video" "audio" "storage"
+      "gamemode" "libvirtd" "kvm" "input"
     ];
   };
 
@@ -601,8 +496,7 @@ log "=========================================="
   # ============================================================
   # Paketler
   # ============================================================
-
-   environment.systemPackages = with pkgs; [
+  environment.systemPackages = with pkgs; [
     kitty waybar rofi dunst swww waypaper grim slurp wl-clipboard
     hyprlock hypridle wlogout hyprpicker
 
@@ -612,11 +506,11 @@ log "=========================================="
     pavucontrol cliphist
 
     kdePackages.dolphin
-    stdenv.cc.cc.lib  # Eskiden vardı, kalabilir
+    stdenv.cc.cc.lib
 
     polkit_gnome ntfs3g exfat gparted
 
-    steam gamemode gamescope mangohud
+    steam gamemode gamescope mangohud jq
     heroic protonup-qt wine nodejs python314 uv
 
     virt-manager looking-glass-client capitaine-cursors
@@ -624,16 +518,11 @@ log "=========================================="
     btop nvtopPackages.amd fastfetch bibata-cursors
 
     git zip unzip usbutils p7zip android-tools
-    python3
-    # ⬇️ VSCode buraya, override ile birlikte
-    (
-      vscode-with-extensions.override {
+
+    ( vscode-with-extensions.override {
         vscode = vscode.fhs;
-        vscodeExtensions = with vscode-extensions; [
-          continue.continue
-        ];
-      }
-    )
+        vscodeExtensions = with vscode-extensions; [ continue.continue ];
+      } )
 
     brave telegram-desktop discord protonvpn-gui
 
@@ -641,51 +530,27 @@ log "=========================================="
 
     flatpak gnome-software
 
-    # Btrfs araçları
-    btrfs-progs
-    compsize
-    snapper
+    btrfs-progs compsize snapper
   ];
 
   # ============================================================
   # GameMode
-  # FIX [YENİ]: Sadece enable=true yerine tam tuning yapılandırması.
   # ============================================================
   programs.gamemode = {
     enable = true;
     settings = {
       general = {
-        # renice: oyun process'lerine uygulanacak nice değeri.
-        # -10 → yüksek CPU önceliği. gamemode daemon bunu root yetkisiyle uygular.
         renice = -10;
-
-        # ioprio: I/O öncelik sınıfı. 0 = RT (en yüksek).
-        # Disk I/O yoğun map/asset yüklemelerinde fark yaratır.
         ioprio = 0;
-
-        # Oyun çalışırken ekran koruyucuyu engelle (hypridle/swayidle).
         inhibit_screensaver = 1;
-        softrealtime = "off";   # CPU RT thread'lere dokunmaz, kernel işi
-        reaper_freq  = 5;       # Ölü process temizleme sıklığı (saniye)
+        softrealtime = "off";
+        reaper_freq = 5;
       };
-
       gpu = {
-        # AMD GPU'yu oyun süresince "high" performans seviyesine zorla.
-        # power-profiles-daemon "performance" profili GPU'yu etkilemez;
-        # bu ayar doğrudan amdgpu power state'ini değiştirir.
         apply_gpu_optimisations = "accept-responsibility";
-        # gpu_device: hangi /dev/dri/cardN kullanılacağı.
-        # Doğrulamak için: ls -la /sys/class/drm/card*/device/driver | grep amdgpu
-        # Tek GPU sistemde genellikle 0'dır.
-        gpu_device              = 0;
-        amd_performance_level   = "high";   # auto | low | high | manual
+        gpu_device = 0;
+        amd_performance_level = "high";
       };
-
-      # FIX: custom start/end notify-send KALDIRILDI.
-      # Gamemode daemon, system D-Bus bağlamında çalışır ve kullanıcının
-      # Wayland/D-Bus oturumuna erişimi yoktur → notify-send sessizce başarısız olur.
-      # Durum göstergesi olarak Waybar'daki "gamemode" modülü yeterlidir;
-      # zaten config'de modules-right içinde tanımlı.
     };
   };
 
@@ -707,7 +572,6 @@ log "=========================================="
     qemu.swtpm.enable = true;
     qemu.runAsRoot = false;
   };
-
   programs.virt-manager.enable = true;
 
   # ============================================================
@@ -717,9 +581,9 @@ log "=========================================="
     enable = true;
     settings = {
       PasswordAuthentication = false;
-      PermitRootLogin        = "no";
-      X11Forwarding          = false;
-      MaxAuthTries           = 3;
+      PermitRootLogin = "no";
+      X11Forwarding = false;
+      MaxAuthTries = 3;
     };
   };
 
@@ -728,22 +592,11 @@ log "=========================================="
   # ============================================================
   nix.settings = {
     experimental-features = [ "nix-command" "flakes" ];
-    auto-optimise-store   = true;
-    max-jobs              = "auto";
-
-    # Geliştirme ortamlarında build input'larını ve derivation'ları sakla.
-    # keep-outputs    : nix-collect-garbage build artifact'larını silmez.
-    # keep-derivations: .drv dosyaları saklanır → nix develop çalışır.
-    # NOT: system/nix/nix.conf'taki bu ayarlar buraya taşındı; NixOS
-    # nix.settings'ten /etc/nix/nix.conf üretir, standalone dosya çakışırdı.
-    keep-outputs      = true;
-    keep-derivations  = true;
-
-    # FIX [YENİ]: Dirty (commit edilmemiş değişiklik içeren) flake ile
-    # nixos-rebuild çalıştırıldığında uyarıyı bastırır.
-    # /etc/nixos git repo'su aktif olarak düzenlendiğinde gürültü yaratır.
+    auto-optimise-store = true;
+    max-jobs = "auto";
+    keep-outputs = true;
+    keep-derivations = true;
     warn-dirty = false;
-
     substituters = [
       "https://cache.nixos.org"
       "https://xddxdd.cachix.org"
@@ -758,24 +611,16 @@ log "=========================================="
 
   nix.gc = {
     automatic = true;
-    dates     = "weekly";
-    options   = "--delete-older-than 30d";
+    dates = "weekly";
+    options = "--delete-older-than 30d";
   };
 
-  # Taze 26.05 kurulumu için doğru değer.
-  # UYARI: Mevcut sistemi yükseltiyorsan bu satırı değiştirme —
-  # kurulumun ilk yapıldığı versiyonu gösterir, stateful servisleri etkiler.
   system.stateVersion = "26.05";
 
-  # AMD RX 6700 XT (Navi 22, gfx1031) ROCm hızlandırması.
-  # NOT: Bu nixpkgs sürümünde services.ollama.acceleration kaldırıldı.
-  # Doğru kullanım: package = pkgs.ollama-rocm  (veya ollama-cuda, ollama-vulkan)
-  # VFIO hook script GPU geçişi sırasında bu servisi durdurur/başlatır.
   services.ollama = {
-    enable  = true;
+    enable = true;
     package = pkgs.ollama-rocm;
   };
 
-     programs.nix-ld.enable = true;
-
+  programs.nix-ld.enable = true;
 }
