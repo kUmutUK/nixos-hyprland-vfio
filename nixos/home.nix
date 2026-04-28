@@ -218,6 +218,7 @@
     };
   };
 
+  # awww duvar kağıdı servisi (orijinal)
   systemd.user.services.awww-daemon = {
     Unit = {
       Description = "awww wallpaper daemon";

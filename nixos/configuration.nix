@@ -1,6 +1,6 @@
 # configuration.nix — stabilized & working
 
-{ config, pkgs, ... }:
+{ config, pkgs, lib, ... }:
 
 {
   imports = [
@@ -53,8 +53,13 @@
     "pcie_aspm=off" "rcupdate.rcu_expedited=1"
   ];
   boot.initrd.availableKernelModules = [ "amdgpu" ];
-  boot.extraModulePackages = with config.boot.kernelPackages; [ vendor-reset ];
-  boot.kernelModules = [ "vendor-reset" ];
+
+  # vendor-reset: yalnızca kernel paketinde mevcutsa yükle
+  boot.extraModulePackages = lib.optionals (config.boot.kernelPackages ? vendor-reset) [
+    config.boot.kernelPackages.vendor-reset
+  ];
+  boot.kernelModules = [ "kvm-amd" ]
+    ++ lib.optional (config.boot.kernelPackages ? vendor-reset) "vendor-reset";
 
   # Sysctl
   boot.kernel.sysctl = {
@@ -72,10 +77,10 @@
     "net.ipv4.tcp_fastopen" = 3;
   };
 
-  # PAM limits
+  # PAM limits (nofile 65536)
   security.pam.loginLimits = [
-    { domain = "localhost"; item = "nofile"; type = "hard"; value = "1048576"; }
-    { domain = "localhost"; item = "nofile"; type = "soft"; value = "1048576"; }
+    { domain = "localhost"; item = "nofile"; type = "hard"; value = "65536"; }
+    { domain = "localhost"; item = "nofile"; type = "soft"; value = "65536"; }
     { domain = "@gamemode"; item = "nice"; type = "-"; value = "-10"; }
   ];
 
@@ -84,7 +89,17 @@
   networking.networkmanager.enable = true;
   time.timeZone = "Europe/Istanbul";
   i18n.defaultLocale = "en_US.UTF-8";
-  i18n.extraLocaleSettings.LC_ALL = "tr_TR.UTF-8";
+  i18n.extraLocaleSettings = {
+    LC_TIME = "tr_TR.UTF-8";
+    LC_NUMERIC = "tr_TR.UTF-8";
+    LC_MONETARY = "tr_TR.UTF-8";
+    LC_PAPER = "tr_TR.UTF-8";
+    LC_NAME = "tr_TR.UTF-8";
+    LC_ADDRESS = "tr_TR.UTF-8";
+    LC_TELEPHONE = "tr_TR.UTF-8";
+    LC_MEASUREMENT = "tr_TR.UTF-8";
+    LC_IDENTIFICATION = "tr_TR.UTF-8";
+  };
   console.keyMap = "trq";
   networking.firewall.enable = true;
 
@@ -230,7 +245,7 @@
   home-manager.backupFileExtension = "backup";
 
   environment.systemPackages = with pkgs; [
-    kitty waybar rofi dunst awww waypaper grim slurp wl-clipboard
+    kitty waybar rofi dunst awww waypaper grim slurp wl-clipboard   # awww geri döndü
     hyprlock hypridle wlogout hyprpicker
     networkmanagerapplet brightnessctl playerctl
     pavucontrol cliphist
