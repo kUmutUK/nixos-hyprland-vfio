@@ -1,3 +1,5 @@
+# home.nix — cleaned up, unstable‑channel ready
+
 { config, pkgs, lib, ... }:
 
 {
@@ -30,13 +32,9 @@
         btrfs-cmp = "sudo compsize -x /";
         gm-status = "gamemoded -s";
       };
-
       interactiveShellInit = ''
-        # starship ve zoxide, programs.starship ve programs.zoxide tarafından
-        # otomatik olarak başlatıldığı için burada init yapmaya gerek yok.
         set -gx MANPAGER "sh -c 'col -bx | bat -l man -p --paging=always'"
       '';
-
       shellInit = ''
         set -gx fish_greeting ""
       '';
@@ -50,7 +48,7 @@
         add_newline = false;
         character = {
           success_symbol = "[❯](bold green)";
-          error_symbol = "[❯](bold red)";
+          error_symbol   = "[❯](bold red)";
         };
         directory = {
           style = "bold cyan";
@@ -59,18 +57,18 @@
         };
         git_branch = {
           symbol = " ";
-          style = "bold purple";
+          style  = "bold purple";
         };
         git_status.style = "bold yellow";
         cmd_duration = {
           min_time = 2000;
-          style = "bold yellow";
-          format = "[$duration]($style) ";
+          style    = "bold yellow";
+          format   = "[$duration]($style) ";
         };
         time = {
           disabled = false;
-          format = "[$time]($style) ";
-          style = "bold dimmed white";
+          format   = "[$time]($style) ";
+          style    = "bold dimmed white";
           time_format = "%H:%M";
         };
       };
@@ -110,9 +108,9 @@
 
     git = {
       enable = true;
-      userName = "Umpug";
-      userEmail = "141457520+kUmutUK@users.noreply.github.com";
-      extraConfig = {
+      settings = {
+        user.name = "Umpug";
+        user.email = "141457520+kUmutUK@users.noreply.github.com";
         core.editor = "nano";
         core.autocrlf = "input";
         pull.rebase = false;
@@ -220,15 +218,15 @@
     };
   };
 
-  systemd.user.services.swww-daemon = {
+  systemd.user.services.awww-daemon = {
     Unit = {
-      Description = "swww wallpaper daemon";
+      Description = "awww wallpaper daemon";
       Documentation = "https://github.com/LGFae/swww";
       After = [ "graphical-session.target" ];
       PartOf = [ "graphical-session.target" ];
     };
     Service = {
-      ExecStart = "${pkgs.swww}/bin/swww-daemon";
+      ExecStart = "${pkgs.awww}/bin/awww-daemon";
       Restart = "on-failure";
       RestartSec = "3s";
     };
@@ -238,8 +236,8 @@
   systemd.user.services.waypaper-random = {
     Unit = {
       Description = "Random wallpaper changer";
-      After = [ "graphical-session.target" "swww-daemon.service" ];
-      Requires = [ "swww-daemon.service" ];
+      After = [ "graphical-session.target" "awww-daemon.service" ];
+      Requires = [ "awww-daemon.service" ];
       PartOf = [ "graphical-session.target" ];
     };
     Service = {
