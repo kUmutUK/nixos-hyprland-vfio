@@ -1,13 +1,322 @@
-
 @import 'colors.css';
 
-window, .background {
+/* Genel pencere ve arka plan */
+window,
+.background {
   background-color: @window_bg_color;
   color: @window_fg_color;
 }
 
-.titlebar, headerbar {
+/* Başlık çubuğu */
+titlebar,
+headerbar {
   background-color: @headerbar_bg_color;
   color: @headerbar_fg_color;
   border-bottom: 1px solid @headerbar_border_color;
+  min-height: 38px;
+  padding: 0 8px;
+}
+
+titlebar button,
+headerbar button {
+  min-height: 24px;
+  min-width: 24px;
+  padding: 2px;
+  border-radius: 6px;
+  background: transparent;
+  color: @headerbar_fg_color;
+}
+
+titlebar button:hover,
+headerbar button:hover {
+  background: alpha(@accent_color, 0.2);
+}
+
+/* Butonlar */
+button {
+  background: @card_bg_color;
+  color: @card_fg_color;
+  border: 1px solid @headerbar_border_color;
+  border-radius: 8px;
+  padding: 6px 12px;
+  min-height: 28px;
+  transition: 0.15s;
+}
+
+button:hover {
+  background: shade(@card_bg_color, 1.15);
+}
+
+button:active {
+  background: shade(@card_bg_color, 0.9);
+}
+
+button.suggested-action {
+  background: @accent_bg_color;
+  color: @accent_fg_color;
+  border-color: @accent_color;
+}
+
+button.destructive-action {
+  background: @destructive_bg_color;
+  color: @destructive_fg_color;
+  border-color: @destructive_color;
+}
+
+button:disabled {
+  opacity: 0.5;
+}
+
+/* Giriş kutuları */
+entry {
+  background: @view_bg_color;
+  color: @view_fg_color;
+  border: 1px solid @headerbar_border_color;
+  border-radius: 8px;
+  padding: 6px 10px;
+  min-height: 28px;
+}
+
+entry:focus {
+  border-color: @accent_color;
+  box-shadow: 0 0 0 2px alpha(@accent_color, 0.3);
+}
+
+/* Metin görünümü, liste, ağaç */
+textview text,
+list,
+treeview,
+.view {
+  background: @view_bg_color;
+  color: @view_fg_color;
+}
+
+list row,
+treeview row {
+  padding: 4px 8px;
+  border-bottom: 1px solid alpha(@headerbar_border_color, 0.3);
+}
+
+list row:selected,
+treeview row:selected {
+  background: @accent_bg_color;
+  color: @accent_fg_color;
+}
+
+/* Yatay/dikey kaydırma çubukları */
+scrollbar {
+  background: transparent;
+  border: none;
+}
+
+scrollbar slider {
+  background: @popover_bg_color;
+  border-radius: 10px;
+  min-width: 6px;
+  min-height: 6px;
+}
+
+scrollbar slider:hover {
+  background: @card_bg_color;
+}
+
+/* Menüler ve açılır pencereler */
+menu,
+popover {
+  background: @popover_bg_color;
+  color: @popover_fg_color;
+  border: 1px solid @headerbar_border_color;
+  border-radius: 10px;
+  padding: 4px;
+}
+
+menuitem,
+modelbutton {
+  padding: 6px 12px;
+  border-radius: 6px;
+}
+
+menuitem:hover,
+modelbutton:hover {
+  background: alpha(@accent_color, 0.2);
+}
+
+/* Araç ipuçları */
+tooltip {
+  background: @card_bg_color;
+  color: @card_fg_color;
+  border: 1px solid @headerbar_border_color;
+  border-radius: 8px;
+  padding: 4px 8px;
+}
+
+tooltip label {
+  color: @card_fg_color;
+}
+
+/* Yatay ve dikey bölme çizgileri */
+paned separator {
+  background: @headerbar_border_color;
+  min-width: 1px;
+  min-height: 1px;
+}
+
+/* Bilgi / uyarı / hata çubukları */
+infobar {
+  background: @window_bg_color;
+  border: 1px solid @headerbar_border_color;
+  border-radius: 8px;
+  margin: 4px;
+  padding: 8px;
+}
+
+infobar.info {
+  background: alpha(@accent_color, 0.1);
+  border-color: @accent_color;
+}
+
+infobar.warning {
+  background: alpha(@warning_color, 0.1);
+  border-color: @warning_color;
+}
+
+infobar.error {
+  background: alpha(@error_color, 0.1);
+  border-color: @error_color;
+}
+
+/* Sekmeler (notebook) */
+notebook tab {
+  background: @sidebar_bg_color;
+  color: @sidebar_fg_color;
+  padding: 6px 12px;
+  border: 1px solid @sidebar_border_color;
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+}
+
+notebook tab:checked {
+  background: @window_bg_color;
+  border-color: @headerbar_border_color;
+}
+
+/* İlerleme çubuğu */
+progressbar trough {
+  background: @view_bg_color;
+  border-radius: 6px;
+  min-height: 6px;
+}
+
+progressbar progress {
+  background: @accent_bg_color;
+  border-radius: 6px;
+}
+
+/* Düğme seçenek çerçevesi */
+frame {
+  border: 1px solid @headerbar_border_color;
+  border-radius: 8px;
+  padding: 4px;
+}
+
+/* Switch (açma/kapama düğmesi) */
+switch {
+  background: @popover_bg_color;
+  border-radius: 12px;
+  min-width: 44px;
+  min-height: 24px;
+  padding: 2px;
+}
+
+switch slider {
+  background: @window_fg_color;
+  border-radius: 10px;
+  min-width: 20px;
+  min-height: 20px;
+}
+
+switch:checked {
+  background: @accent_bg_color;
+}
+
+switch:checked slider {
+  background: @accent_fg_color;
+}
+
+/* Checkbox ve radio butonlar */
+checkbutton check,
+radiobutton radio {
+  background: @view_bg_color;
+  border: 1px solid @headerbar_border_color;
+  color: @window_fg_color;
+  min-width: 18px;
+  min-height: 18px;
+  border-radius: 4px;
+  padding: 2px;
+}
+
+checkbutton check:checked,
+radiobutton radio:checked {
+  background: @accent_bg_color;
+  border-color: @accent_color;
+  color: @accent_fg_color;
+}
+
+/* Scale (kaydırma çubuğu) */
+scale trough {
+  background: @view_bg_color;
+  border-radius: 6px;
+  min-height: 6px;
+}
+
+scale highlight {
+  background: @accent_bg_color;
+  border-radius: 6px;
+}
+
+scale slider {
+  background: @window_fg_color;
+  border-radius: 10px;
+  min-width: 16px;
+  min-height: 16px;
+}
+
+/* Ayırıcı çizgiler */
+separator {
+  background: @headerbar_border_color;
+  min-height: 1px;
+  min-width: 1px;
+}
+
+/* Entry placeholder metni */
+entry placeholder {
+  color: alpha(@window_fg_color, 0.5);
+}
+
+/* Level bar (örn. ses seviyesi) */
+levelbar trough {
+  background: @view_bg_color;
+  border-radius: 4px;
+  min-height: 6px;
+}
+
+levelbar block {
+  background: @accent_bg_color;
+  border-radius: 4px;
+}
+
+/* Ağaç görünümü genişletme okları */
+treeview expander {
+  color: @window_fg_color;
+}
+
+/* Calendar (GTK4) */
+calendar {
+  background: @window_bg_color;
+  color: @window_fg_color;
+}
+
+calendar:selected {
+  background: @accent_bg_color;
+  color: @accent_fg_color;
 }
