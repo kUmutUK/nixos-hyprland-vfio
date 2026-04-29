@@ -1,4 +1,3 @@
-// ~/.config/waybar/config
 {
   "layer": "top",
   "position": "top",
@@ -79,13 +78,13 @@
 
   "temperature": {
     "interval": 5,
-    "hwmon-path-abs": "/run/hwmon-k10temp",
+    "hwmon-path-abs": "/dev/hwmon-k10temp/temp1_input",
     "critical-threshold": 85,
     "format": "{icon} {temperatureC}°C",
     "format-critical": "🔥 {temperatureC}°C",
     "format-icons": ["❄️", "🌡️", "🔥"],
     "tooltip": true,
-    "tooltip-format": "CPU: {temperatureC}°C (k10temp Tctl)\nKararlı symlink: /run/hwmon-k10temp",
+    "tooltip-format": "CPU: {temperatureC}°C (k10temp Tctl)\nKalıcı symlink: /dev/hwmon-k10temp",
     "on-click": "kitty -e btop"
   },
 
@@ -173,6 +172,3 @@
     "on-click-right": "systemctl poweroff"
   }
 }
-
-
-
