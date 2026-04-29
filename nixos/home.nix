@@ -477,7 +477,7 @@ in
     bat = {
       enable = true;
       config = {
-        theme = "base16";
+        theme = "Catppuccin Mocha";  # Catppuccin ile tam uyum
         style = "numbers,changes,header";
       };
     };
