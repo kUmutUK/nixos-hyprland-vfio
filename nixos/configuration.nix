@@ -308,7 +308,7 @@
     kitty waybar rofi dunst awww waypaper grim slurp wl-clipboard
     hyprlock hypridle wlogout hyprpicker
     networkmanagerapplet brightnessctl playerctl
-    pavucontrol cliphist
+    pavucontrol cliphist gcc pkg-config openssl webkitgtk_4_1 libappindicator-gtk3
     kdePackages.dolphin stdenv.cc.cc.lib
     polkit_gnome ntfs3g exfat gparted
     steam gamemode gamescope mangohud
