@@ -565,7 +565,7 @@ in
     };
   };
 
-  # ==================== SERVISLER ====================
+  # ==================== SERVİSLER ====================
   services = {
     hypridle = {
       enable = true;
@@ -625,8 +625,8 @@ in
   systemd.user.timers.waypaper-random = {
     Unit.Description = "Random wallpaper changer timer";
     Timer = {
-      OnActiveSec = "5min";
-      OnUnitActiveSec = "5min";
+      OnActiveSec = "5min";          # ilk değişim 5 dk sonra
+      OnUnitActiveSec = "30min";     # sonraki değişimler her 30 dk
     };
     Install.WantedBy = [ "timers.target" ];
   };
@@ -634,6 +634,6 @@ in
   home.packages = with pkgs; [
     fd ripgrep jq wget curl file tree
     playerctl pamixer hyprpicker wev
-    nano  # git editor'ü için eklendi
+    nano  # git editor'ü için eklendi, sistem paketlerinde yok artık
   ];
 }

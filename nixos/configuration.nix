@@ -1,4 +1,4 @@
-# configuration.nix — 10/10 kusursuz
+# configuration.nix — 10/10 kusursuz (VFIO hook düzeltildi, paket temizliği)
 
 { config, pkgs, lib, ... }:
 
@@ -28,8 +28,7 @@
 
   # ============================================================
   # TAM LIBVIRT HOOK (GPU passthrough + Hyprland durdurma)
-  # DÜZELTME: systemctl --user komutları sudo -u ile çalışıyor,
-  # hedef olarak graphical-session.target kullanılıyor.
+  # DÜZELTME: graphical-session.target yoksa loginctl kullanılıyor
   # ============================================================
   environment.etc."libvirt/hooks/qemu" = {
     mode = "0755";
@@ -82,8 +81,10 @@
 
       stop_hyprland() {
         log "Hyprland durduruluyor..."
+        # Hedef yoksa kullanıcı oturumunu tamamen sonlandırarak GPU'yu serbest bırak
         sudo -u "$USER" XDG_RUNTIME_DIR="/run/user/$USER_ID" \
-          systemctl --user stop graphical-session.target 2>/dev/null || true
+          systemctl --user stop graphical-session.target 2>/dev/null || \
+          loginctl terminate-user "$USER" 2>/dev/null || true
         sleep 2
       }
 
@@ -313,7 +314,7 @@
     steam gamemode gamescope mangohud
     heroic protonup-qt wine nodejs python314 uv
     virt-manager looking-glass-client capitaine-cursors
-    btop nvtopPackages.amd fastfetch bibata-cursors
+    btop nvtopPackages.amd fastfetch
     git zip unzip usbutils p7zip android-tools
     (vscode-with-extensions.override {
       vscode = vscode.fhs;
@@ -322,7 +323,7 @@
     brave telegram-desktop discord proton-vpn
     qbittorrent flatpak gnome-software
     btrfs-progs compsize snapper
-    nano  # git commit vb. için eklendi
+    # nano kaldırıldı (home-manager üzerinden geliyor), bibata-cursors kaldırıldı
   ];
 
   programs.gamemode = {
