@@ -195,9 +195,10 @@
     XCURSOR_SIZE = "16";
   };
 
-  programs.fish.enable = true;
-  programs.hyprland.xwayland.enable = true;
-  xdg.portal = {
+    programs.fish.enable = true;
+    programs.hyprland.enable = true;
+    programs.hyprland.xwayland.enable = true;
+    xdg.portal = {
     enable = true;
     extraPortals = with pkgs; [ xdg-desktop-portal-hyprland xdg-desktop-portal-gtk ];
     config.common.default = [ "hyprland" "gtk" ];
