@@ -6,34 +6,32 @@
 }
 
 #waybar {
-  background: #11111b;
-  color: #cdd6f4;
-  border-bottom: 1px solid #313244;
+  background: #000000;
+  color: #ffffff;
+  border-bottom: 1px solid #222222;
 }
 
-/* TOOLTIP */
 tooltip {
-  background: #1e1e2e;
-  border: 1px solid #313244;
+  background: #0a0a0a;
+  border: 1px solid #cba6f7;
   border-radius: 8px;
 }
 
 tooltip label {
-  color: #cdd6f4;
+  color: #ffffff;
   padding: 2px 6px;
   font-size: 11px;
 }
 
-/* WORKSPACES */
 #workspaces {
-  background: #1e1e2e;
+  background: #0a0a0a;
   border-radius: 10px;
   margin: 4px 6px;
   padding: 0 4px;
 }
 
 #workspaces button {
-  color: #6c7086;
+  color: #888888;
   background: transparent;
   border: none;
   border-radius: 8px;
@@ -43,35 +41,32 @@ tooltip label {
 }
 
 #workspaces button.active {
-  color: #11111b;
-  background: #89b4fa;
+  color: #000000;
+  background: #cba6f7;
 }
 
 #workspaces button:hover {
-  color: #cdd6f4;
-  background: #313244;
+  color: #ffffff;
+  background: #222222;
 }
 
-/* WINDOW TITLE */
 #window {
-  color: #a6adc8;
+  color: #aaaaaa;
   padding: 4px 12px;
   font-style: italic;
   font-size: 11px;
 }
 
-/* CLOCK */
 #clock {
   font-size: 13px;
   font-weight: 600;
-  color: #cdd6f4;
-  background: #1e1e2e;
+  color: #ffffff;
+  background: #0a0a0a;
   padding: 4px 14px;
   border-radius: 10px;
   margin: 4px;
 }
 
-/* MODULES */
 #cpu,
 #memory,
 #temperature,
@@ -79,22 +74,21 @@ tooltip label {
 #network,
 #gamemode,
 #battery,
-#tray {
+#tray,
+#custom-temperature {
   padding: 4px 10px;
   margin: 4px 3px;
   border-radius: 10px;
-  background: #1e1e2e;
+  background: #0a0a0a;
 }
 
-/* STATE COLORS (YENİ) */
 #cpu.warning { color: #f9e2af; }
 #cpu.critical { color: #f38ba8; }
 #memory.warning { color: #f9e2af; }
 #memory.critical { color: #f38ba8; }
 
-/* MPRIS */
 #mpris {
-  background: #313244;
+  background: #111111;
   color: #cba6f7;
   border-radius: 10px;
   padding: 4px 10px;
@@ -105,26 +99,24 @@ tooltip label {
 #mpris.paused  { color: #f9e2af; }
 #mpris.stopped { color: #6c7086; }
 
-/* COLORS */
 #cpu { color: #89b4fa; }
 #memory { color: #a6e3a1; }
-#temperature { color: #fab387; }
+#custom-temperature { color: #fab387; }
 #pulseaudio { color: #f9e2af; }
 #network { color: #94e2d5; }
 #gamemode { color: #cba6f7; font-weight: bold; }
 #battery { color: #a6e3a1; }
 
-/* POWER BUTTON */
 #custom-power {
   color: #f38ba8;
   font-size: 15px;
   font-weight: bold;
   padding: 4px 12px;
   margin: 4px;
-  background: #1e1e2e;
+  background: #0a0a0a;
   border-radius: 10px;
 }
 
 #custom-power:hover {
-  background: #313244;
+  background: #222222;
 }
