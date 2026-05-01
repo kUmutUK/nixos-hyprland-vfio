@@ -371,8 +371,8 @@ in
       package = pkgs.papirus-icon-theme;
     };
     cursorTheme = {
-      name = "capitaine-cursors";
-      package = pkgs.capitaine-cursors;
+      name = "Bibata-Modern-Classic";
+      package = pkgs.bibata-cursors;
       size = 16;
     };
     gtk3.extraCss = gtkCss;
