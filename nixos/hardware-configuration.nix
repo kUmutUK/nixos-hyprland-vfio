@@ -51,9 +51,8 @@ in
     "nvme" "xhci_pci" "ahci" "usb_storage" "usbhid" "sd_mod"
     "btrfs"
   ];
+  # dm-crypt initrd'de yüklenecek, kvm-amd ise configuration.nix'te tanımlı
   boot.initrd.kernelModules = [ "dm-crypt" ];
-  boot.kernelModules = [ "kvm-amd" ];
-  boot.extraModulePackages = [ ];
 
   # ============================================================
   # LUKS2 — şifreli container
