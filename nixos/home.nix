@@ -1,40 +1,39 @@
-# home.nix — 10/10 (GTK CSS gömüldü, harici dosya okuma kaldırıldı, koyu mod zorlandı)
+# home.nix — 10/10 (GTK CSS gömüldü, saf siyah tema)
 
 { config, pkgs, lib, ... }:
 
 let
-  # colors.css + gtk.css birleştirilmiş hali (Catppuccin Mocha GTK teması)
   gtkCss = ''
-    /* === colors.css === */
+    /* === colors.css (saf siyah tema) === */
     @define-color accent_color              #cba6f7;
-    @define-color accent_fg_color           #1e1e2e;
+    @define-color accent_fg_color           #000000;
     @define-color accent_bg_color           #cba6f7;
 
-    @define-color window_bg_color           #1e1e2e;
-    @define-color window_fg_color           #cdd6f4;
+    @define-color window_bg_color           #000000;
+    @define-color window_fg_color           #ffffff;
 
-    @define-color view_bg_color             #181825;
-    @define-color view_fg_color             #cdd6f4;
+    @define-color view_bg_color             #0a0a0a;
+    @define-color view_fg_color             #ffffff;
 
-    @define-color headerbar_bg_color        #181825;
-    @define-color headerbar_fg_color        #cdd6f4;
-    @define-color headerbar_border_color    #313244;
-    @define-color headerbar_backdrop_color  #1e1e2e;
-    @define-color headerbar_shade_color     #11111b;
+    @define-color headerbar_bg_color        #000000;
+    @define-color headerbar_fg_color        #ffffff;
+    @define-color headerbar_border_color    #222222;
+    @define-color headerbar_backdrop_color  #000000;
+    @define-color headerbar_shade_color     #000000;
 
-    @define-color card_bg_color             #313244;
-    @define-color card_fg_color             #cdd6f4;
-    @define-color card_shade_color          #1e1e2e;
+    @define-color card_bg_color             #111111;
+    @define-color card_fg_color             #ffffff;
+    @define-color card_shade_color          #000000;
 
-    @define-color popover_bg_color          #313244;
-    @define-color popover_fg_color          #cdd6f4;
+    @define-color popover_bg_color          #111111;
+    @define-color popover_fg_color          #ffffff;
 
-    @define-color dialog_bg_color           #1e1e2e;
-    @define-color dialog_fg_color           #cdd6f4;
+    @define-color dialog_bg_color           #000000;
+    @define-color dialog_fg_color           #ffffff;
 
-    @define-color sidebar_bg_color          #181825;
-    @define-color sidebar_fg_color          #cdd6f4;
-    @define-color sidebar_border_color      #313244;
+    @define-color sidebar_bg_color          #000000;
+    @define-color sidebar_fg_color          #ffffff;
+    @define-color sidebar_border_color      #222222;
 
     @define-color warning_color             #f9e2af;
     @define-color error_color               #f38ba8;
@@ -42,7 +41,7 @@ let
 
     @define-color destructive_color         #f38ba8;
     @define-color destructive_bg_color      #f38ba8;
-    @define-color destructive_fg_color      #1e1e2e;
+    @define-color destructive_fg_color      #000000;
 
     /* === gtk.css === */
     window,
@@ -351,14 +350,12 @@ in
   home.homeDirectory = "/home/localhost";
   home.stateVersion = "26.05";
 
-  # ========== KOYU MOD ZORLA (TÜM GTK UYGULAMALARI) ==========
   dconf.settings = {
     "org/gnome/desktop/interface" = {
       color-scheme = "prefer-dark";
     };
   };
 
-  # GTK tema entegrasyonu (CSS artık gömülü)
   gtk = {
     enable = true;
     theme = {
@@ -382,7 +379,6 @@ in
     gtk4.extraCss = gtkCss;
   };
 
-  # ==================== PROGRAMLAR ====================
   programs = {
     home-manager.enable = true;
 
@@ -528,17 +524,17 @@ in
         size = 11;
       };
       settings = {
-        foreground = "#cdd6f4";
-        background = "#1e1e2e";
-        selection_foreground = "#1e1e2e";
-        selection_background = "#f5e0dc";
-        cursor = "#f5e0dc";
-        cursor_text_color = "#1e1e2e";
-        url_color = "#f5e0dc";
-        active_tab_foreground = "#11111b";
+        foreground = "#ffffff";
+        background = "#000000";
+        selection_foreground = "#000000";
+        selection_background = "#cba6f7";
+        cursor = "#cba6f7";
+        cursor_text_color = "#000000";
+        url_color = "#cba6f7";
+        active_tab_foreground = "#000000";
         active_tab_background = "#cba6f7";
-        inactive_tab_foreground = "#cdd6f4";
-        inactive_tab_background = "#181825";
+        inactive_tab_foreground = "#ffffff";
+        inactive_tab_background = "#111111";
         color0  = "#45475a"; color1  = "#f38ba8";
         color2  = "#a6e3a1"; color3  = "#f9e2af";
         color4  = "#89b4fa"; color5  = "#f5c2e7";
@@ -553,7 +549,7 @@ in
         scrollback_lines = 10000;
         repaint_delay = 10;
         input_delay = 3;
-        background_opacity = "0.95";
+        background_opacity = "1.0";
         tab_bar_edge = "bottom";
         tab_bar_style = "fade";
         enable_audio_bell = false;
@@ -565,7 +561,6 @@ in
     };
   };
 
-  # ==================== SERVİSLER ====================
   services = {
     hypridle = {
       enable = true;
