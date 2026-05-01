@@ -9,7 +9,7 @@
   "modules-center": ["clock"],
   "modules-right": [
     "mpris", "gamemode", "cpu", "memory",
-    "temperature", "pulseaudio", "network", "tray", "custom/power"
+    "custom/temperature", "pulseaudio", "network", "tray", "custom/power"
   ],
 
   "hyprland/workspaces": {
@@ -76,16 +76,12 @@
     }
   },
 
-  "temperature": {
+  "custom/temperature": {
+    "exec": "/home/localhost/.local/bin/waybar-temperature.sh",
+    "return-type": "json",
     "interval": 5,
-    "hwmon-path-abs": "/dev/hwmon-k10temp/temp1_input",
-    "critical-threshold": 85,
-    "format": "{icon} {temperatureC}°C",
-    "format-critical": "🔥 {temperatureC}°C",
-    "format-icons": ["❄️", "🌡️", "🔥"],
-    "tooltip": true,
-    "tooltip-format": "CPU: {temperatureC}°C (k10temp Tctl)\nKalıcı symlink: /dev/hwmon-k10temp",
-    "on-click": "kitty -e btop"
+    "on-click": "kitty -e btop",
+    "tooltip": false
   },
 
   "pulseaudio": {
@@ -123,7 +119,7 @@
     "interval": 60,
     "format": " {:%H:%M}",
     "format-alt": "📅 {:%d/%m/%Y %H:%M}",
-    "tooltip-format": "<tt>{calendar}</tt>",
+    "tooltip-format": "<big>{:%Y %B}</big>\n{calendar}",
     "calendar": {
       "mode": "month",
       "mode-mon-col": 3,
@@ -135,7 +131,7 @@
         "days": "<span color='#cdd6f4'>{}</span>",
         "weeks": "<span color='#a6e3a1'><b>H{}</b></span>",
         "weekdays": "<span color='#f9e2af'><b>{}</b></span>",
-        "today": "<span color='#f38ba8'><b><U>{}</U></b></span>"
+        "today": "<span color='#f38ba8'><b><u>{}</u></b></span>"
       }
     },
     "timezone": "Europe/Istanbul"
