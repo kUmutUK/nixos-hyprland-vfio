@@ -1,0 +1,122 @@
+* {
+  font-family: "JetBrainsMono Nerd Font", monospace;
+  font-size: 12px;
+  font-weight: 500;
+  min-height: 0;
+}
+
+#waybar {
+  background: #000000;
+  color: #ffffff;
+  border-bottom: 1px solid #222222;
+}
+
+tooltip {
+  background: #0a0a0a;
+  border: 1px solid #cba6f7;
+  border-radius: 8px;
+}
+
+tooltip label {
+  color: #ffffff;
+  padding: 2px 6px;
+  font-size: 11px;
+}
+
+#workspaces {
+  background: #0a0a0a;
+  border-radius: 10px;
+  margin: 4px 6px;
+  padding: 0 4px;
+}
+
+#workspaces button {
+  color: #888888;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  padding: 4px 10px;
+  margin: 3px 2px;
+  font-weight: 600;
+}
+
+#workspaces button.active {
+  color: #000000;
+  background: #cba6f7;
+}
+
+#workspaces button:hover {
+  color: #ffffff;
+  background: #222222;
+}
+
+#window {
+  color: #aaaaaa;
+  padding: 4px 12px;
+  font-style: italic;
+  font-size: 11px;
+}
+
+#clock {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+  background: #0a0a0a;
+  padding: 4px 14px;
+  border-radius: 10px;
+  margin: 4px;
+}
+
+#cpu,
+#memory,
+#temperature,
+#pulseaudio,
+#network,
+#gamemode,
+#battery,
+#tray,
+#custom-temperature {
+  padding: 4px 10px;
+  margin: 4px 3px;
+  border-radius: 10px;
+  background: #0a0a0a;
+}
+
+#cpu.warning { color: #f9e2af; }
+#cpu.critical { color: #f38ba8; }
+#memory.warning { color: #f9e2af; }
+#memory.critical { color: #f38ba8; }
+
+#mpris {
+  background: #111111;
+  color: #cba6f7;
+  border-radius: 10px;
+  padding: 4px 10px;
+  margin: 4px 3px;
+}
+
+#mpris.playing { color: #a6e3a1; }
+#mpris.paused  { color: #f9e2af; }
+#mpris.stopped { color: #6c7086; }
+
+#cpu { color: #89b4fa; }
+#memory { color: #a6e3a1; }
+#custom-temperature { color: #fab387; }
+#pulseaudio { color: #f9e2af; }
+#network { color: #94e2d5; }
+#gamemode { color: #cba6f7; font-weight: bold; }
+#battery { color: #a6e3a1; }
+
+#custom-power {
+  color: #f38ba8;
+  font-size: 15px;
+  font-weight: bold;
+  padding: 4px 12px;
+  margin: 4px;
+  background: #0a0a0a;
+  border-radius: 10px;
+}
+
+#custom-power:hover {
+  background: #222222;
+}
