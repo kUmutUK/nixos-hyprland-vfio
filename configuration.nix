@@ -1,4 +1,4 @@
-# configuration.nix — 10/10 kusursuz (VFIO hook düzeltildi, paket temizliği)
+# configuration.nix — 10/10 kusursuz (VFIO hook, hyprpolkitagent, eklentiler)
 
 { config, pkgs, lib, ... }:
 
@@ -23,12 +23,10 @@
     ACTION=="add", SUBSYSTEM=="usb", TEST=="power/control", ATTR{power/control}="on"
   '';
 
-  # Eski servis tamamen devre dışı (geçersiz birim hatasını önler)
   systemd.services.hwmon-k10temp-link.enable = lib.mkForce false;
 
   # ============================================================
   # TAM LIBVIRT HOOK (GPU passthrough + Hyprland durdurma)
-  # DÜZELTME: graphical-session.target yoksa loginctl kullanılıyor
   # ============================================================
   environment.etc."libvirt/hooks/qemu" = {
     mode = "0755";
@@ -81,7 +79,6 @@
 
       stop_hyprland() {
         log "Hyprland durduruluyor..."
-        # Hedef yoksa kullanıcı oturumunu tamamen sonlandırarak GPU'yu serbest bırak
         sudo -u "$USER" XDG_RUNTIME_DIR="/run/user/$USER_ID" \
           systemctl --user stop graphical-session.target 2>/dev/null || \
           loginctl terminate-user "$USER" 2>/dev/null || true
@@ -133,7 +130,6 @@
   ];
   boot.initrd.availableKernelModules = [ "amdgpu" ];
 
-  # vendor-reset: CachyOS kernel overlay'inde bulunur; yoksa da sorun yaratmaz.
   boot.extraModulePackages = lib.optionals (config.boot.kernelPackages ? vendor-reset) [
     config.boot.kernelPackages.vendor-reset
   ];
@@ -179,7 +175,6 @@
   };
   console.keyMap = "trq";
 
-  # Güvenlik duvarı: SSH, KDE Connect ve ping'e izin verildi
   networking.firewall = {
     enable = true;
     allowedTCPPorts = [ 22 ];
@@ -200,10 +195,10 @@
     XCURSOR_SIZE = "16";
   };
 
-  programs.fish.enable = true;
-  programs.hyprland.enable = true;
-  programs.hyprland.xwayland.enable = true;
-  xdg.portal = {
+    programs.fish.enable = true;
+    programs.hyprland.enable = true;
+    programs.hyprland.xwayland.enable = true;
+    xdg.portal = {
     enable = true;
     extraPortals = with pkgs; [ xdg-desktop-portal-hyprland xdg-desktop-portal-gtk ];
     config.common.default = [ "hyprland" "gtk" ];
@@ -307,10 +302,11 @@
   environment.systemPackages = with pkgs; [
     kitty waybar rofi dunst awww waypaper grim slurp wl-clipboard
     hyprlock hypridle wlogout hyprpicker
+    hyprpolkitagent pyprland
     networkmanagerapplet brightnessctl playerctl
-    pavucontrol cliphist gcc pkg-config openssl webkitgtk_4_1 libappindicator-gtk3 gtk3 gtk4
+    pavucontrol cliphist
     kdePackages.dolphin stdenv.cc.cc.lib
-    polkit_gnome ntfs3g exfat gparted
+    ntfs3g exfat gparted
     steam gamemode gamescope mangohud
     heroic protonup-qt wine nodejs python314 uv
     virt-manager looking-glass-client capitaine-cursors
@@ -323,7 +319,7 @@
     brave telegram-desktop discord proton-vpn
     qbittorrent flatpak gnome-software
     btrfs-progs compsize snapper
-    # nano kaldırıldı (home-manager üzerinden geliyor), bibata-cursors kaldırıldı
+    mpvpaper
   ];
 
   programs.gamemode = {
@@ -340,6 +336,11 @@
         apply_gpu_optimisations = "accept-responsibility";
         gpu_device = 0;
         amd_performance_level = "high";
+      };
+      # GameMode başladığında live wallpaper'ı durdurur
+      custom = {
+        start = "${pkgs.systemd}/bin/systemctl --user stop mpvpaper.service";
+        end = "${pkgs.systemd}/bin/systemctl --user start mpvpaper.service";
       };
     };
   };
