@@ -1,4 +1,4 @@
-# configuration.nix — 10/10 kusursuz (VFIO hook, hyprpolkitagent, eklentiler)
+# configuration.nix — 10/10 (VFIO hook, hyprpolkitagent, AppArmor + fail2ban)
 
 { config, pkgs, lib, ... }:
 
@@ -16,7 +16,6 @@
 
   # ============================================================
   # KALICI K10TEMP SYMLINK – udev kuralı
-  # /dev/hwmon-k10temp/temp1_input oluşur
   # ============================================================
   services.udev.extraRules = ''
     ACTION=="add", SUBSYSTEM=="hwmon", ATTR{name}=="k10temp", SYMLINK+="hwmon-k10temp"
@@ -127,6 +126,7 @@
     "usbcore.autosuspend=-1" "video=efifb:off"
     "amdgpu.ppfeaturemask=0xffffffff" "kvm.ignore_msrs=1"
     "pcie_aspm=off" "rcupdate.rcu_expedited=1"
+    "apparmor=1"
   ];
   boot.initrd.availableKernelModules = [ "amdgpu" ];
 
@@ -156,6 +156,35 @@
     { domain = "localhost"; item = "nofile"; type = "soft"; value = "65536"; }
     { domain = "@gamemode"; item = "nice"; type = "-"; value = "-10"; }
   ];
+
+  # ============================================================
+  # Güvenlik Katmanları: AppArmor + fail2ban
+  # ============================================================
+  security.apparmor.enable = true;
+  services.fail2ban = {
+    enable = true;
+    maxretry = 5;
+    ignoreIP = [
+      "127.0.0.0/8"
+      "10.0.0.0/8"
+      "172.16.0.0/12"
+      "192.168.0.0/16"
+    ];
+    bantime = "24h";
+    bantime-increment = {
+      enable = true;
+      overalljails = true;
+    };
+    jails = {
+      sshd = {
+        settings = {
+          maxretry = 3;
+          bantime = "48h";
+          findtime = "10m";
+        };
+      };
+    };
+  };
 
   services.power-profiles-daemon.enable = true;
   networking.hostName = "nixos";
@@ -302,7 +331,7 @@
   environment.systemPackages = with pkgs; [
     kitty waybar rofi dunst grim slurp wl-clipboard
     hyprlock hypridle wlogout hyprpicker
-    hyprpolkitagent pyprland
+    hyprpolkitagent pyprland waypaper
     networkmanagerapplet brightnessctl playerctl
     pavucontrol cliphist
     kdePackages.dolphin stdenv.cc.cc.lib
@@ -320,6 +349,8 @@
     qbittorrent flatpak gnome-software
     btrfs-progs compsize snapper
     mpvpaper
+    apparmor-utils
+    awww          # ← statik duvar kağıdı için eklendi
   ];
 
   programs.gamemode = {
@@ -337,7 +368,6 @@
         gpu_device = 0;
         amd_performance_level = "high";
       };
-      # GameMode başladığında live wallpaper'ı durdurur
       custom = {
         start = "${pkgs.systemd}/bin/systemctl --user stop mpvpaper.service";
         end = "${pkgs.systemd}/bin/systemctl --user start mpvpaper.service";

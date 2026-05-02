@@ -561,35 +561,50 @@ in
     };
   };
 
-  services = {
-    hypridle = {
-      enable = true;
-      settings = {
-        general = {
-          before_sleep_cmd = "hyprlock";
-          after_sleep_cmd = "hyprctl dispatch dpms on";
-          lock_cmd = "pidof hyprlock || hyprlock";
-          ignore_dbus_inhibit = false;
-        };
-        listener = [
-          {
-            timeout = 300;
-            on-timeout = "hyprctl dispatch dpms off";
-            on-resume = "hyprctl dispatch dpms on";
-          }
-          {
-            timeout = 600;
-            on-timeout = "pidof hyprlock || hyprlock";
-          }
-          {
-            timeout = 900;
-            on-timeout = "pidof hyprlock || hyprlock; systemctl suspend";
-          }
-        ];
+  # Hypridle servisi
+  services.hypridle = {
+    enable = true;
+    settings = {
+      general = {
+        before_sleep_cmd = "hyprlock";
+        after_sleep_cmd = "hyprctl dispatch dpms on";
+        lock_cmd = "pidof hyprlock || hyprlock";
+        ignore_dbus_inhibit = false;
       };
+      listener = [
+        {
+          timeout = 300;
+          on-timeout = "hyprctl dispatch dpms off";
+          on-resume = "hyprctl dispatch dpms on";
+        }
+        {
+          timeout = 600;
+          on-timeout = "pidof hyprlock || hyprlock";
+        }
+        {
+          timeout = 900;
+          on-timeout = "pidof hyprlock || hyprlock; systemctl suspend";
+        }
+      ];
     };
   };
 
+  # awww-daemon servisi – statik duvar kağıtlarını yönetir (wall-engine için gerekli)
+  systemd.user.services.awww-daemon = {
+    Unit = {
+      Description = "awww wallpaper daemon";
+      After = [ "graphical-session.target" ];
+      PartOf = [ "graphical-session.target" ];
+    };
+    Service = {
+      ExecStart = "${pkgs.awww}/bin/awww-daemon";
+      Restart = "on-failure";
+      RestartSec = "3s";
+    };
+    Install.WantedBy = [ "graphical-session.target" ];
+  };
+
+  # mpvpaper servisi – canlı video duvar kağıdı
   systemd.user.services.mpvpaper = {
     Unit = {
       Description = "mpvpaper live wallpaper service (looped)";
