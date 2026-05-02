@@ -1,4 +1,4 @@
-# configuration.nix — 10/10 (VFIO hook, hyprpolkitagent, AppArmor + fail2ban)
+# configuration.nix — 10/10 (VFIO hook, hyprpolkitagent, AppArmor + fail2ban + GameMode Fix)
 
 { config, pkgs, lib, ... }:
 
@@ -337,7 +337,7 @@
     kdePackages.dolphin stdenv.cc.cc.lib
     ntfs3g exfat gparted
     steam gamemode gamescope mangohud
-    heroic protonup-qt wine nodejs python314 uv
+    heroic protonup-qt wine nodejs
     virt-manager looking-glass-client capitaine-cursors
     btop nvtopPackages.amd fastfetch
     git zip unzip usbutils p7zip android-tools
@@ -348,9 +348,9 @@
     brave telegram-desktop discord proton-vpn
     qbittorrent flatpak gnome-software
     btrfs-progs compsize snapper
-    mpvpaper
+    mpvpaper flatpak-builder
     apparmor-utils
-    awww          # ← statik duvar kağıdı için eklendi
+    awww
   ];
 
   programs.gamemode = {
@@ -369,8 +369,8 @@
         amd_performance_level = "high";
       };
       custom = {
-        start = "${pkgs.systemd}/bin/systemctl --user stop mpvpaper.service";
-        end = "${pkgs.systemd}/bin/systemctl --user start mpvpaper.service";
+        start = "${pkgs.util-linux}/bin/runuser -u localhost -- ${pkgs.systemd}/bin/systemctl --user stop mpvpaper.service";
+        end   = "${pkgs.util-linux}/bin/runuser -u localhost -- ${pkgs.systemd}/bin/systemctl --user start mpvpaper.service";
       };
     };
   };
