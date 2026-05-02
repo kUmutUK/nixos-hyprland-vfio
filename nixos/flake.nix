@@ -1,5 +1,5 @@
 {
-  description = "NixOS CachyOS BORE Kernel – Gaming";
+  description = "NixOS CachyOS BORE Kernel – Gaming + hyprexpo (nixpkgs) + pyprland";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -10,7 +10,6 @@
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
 
     hyprland.url = "github:hyprwm/Hyprland";
-    # hyprland-plugins artık kullanılmadığı için input kaldırıldı.
   };
 
   outputs = { self, nixpkgs, cachyos-kernel, home-manager, hyprland, ... }:
@@ -30,17 +29,18 @@
             cachyos-kernel.overlays.default
             (final: prev: {
               hyprland = hyprland.packages.${system}.hyprland;
-              # hyprland-plugins overlay gereksiz, kaldırıldı.
             })
           ];
 
           boot.kernelPackages =
             pkgs.cachyosKernels.linuxPackages-cachyos-bore;
 
-          # Hyprland'ı flake'ten al (overlay'den)
           programs.hyprland.package = pkgs.hyprland;
 
           services.xserver.videoDrivers = [ "amdgpu" ];
+
+          # pyprland sistem genelinde kullanılabilir
+          environment.systemPackages = [ pkgs.pyprland ];
         })
 
         ./configuration.nix

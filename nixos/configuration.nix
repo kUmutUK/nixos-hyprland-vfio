@@ -1,4 +1,4 @@
-# configuration.nix — 10/10 kusursuz (VFIO hook, hyprpolkitagent, hyprsunset, eklentiler)
+# configuration.nix — 10/10 kusursuz (VFIO hook, hyprpolkitagent, eklentiler)
 
 { config, pkgs, lib, ... }:
 
@@ -302,7 +302,7 @@
   environment.systemPackages = with pkgs; [
     kitty waybar rofi dunst awww waypaper grim slurp wl-clipboard
     hyprlock hypridle wlogout hyprpicker
-    hyprpolkitagent
+    hyprpolkitagent pyprland
     networkmanagerapplet brightnessctl playerctl
     pavucontrol cliphist
     kdePackages.dolphin stdenv.cc.cc.lib
@@ -319,6 +319,7 @@
     brave telegram-desktop discord proton-vpn
     qbittorrent flatpak gnome-software
     btrfs-progs compsize snapper
+    mpvpaper
   ];
 
   programs.gamemode = {
@@ -335,6 +336,11 @@
         apply_gpu_optimisations = "accept-responsibility";
         gpu_device = 0;
         amd_performance_level = "high";
+      };
+      # GameMode başladığında live wallpaper'ı durdurur
+      custom = {
+        start = "${pkgs.systemd}/bin/systemctl --user stop mpvpaper.service";
+        end = "${pkgs.systemd}/bin/systemctl --user start mpvpaper.service";
       };
     };
   };

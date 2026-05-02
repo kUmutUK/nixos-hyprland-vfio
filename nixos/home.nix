@@ -590,8 +590,9 @@ in
     };
   };
 
+  /* awww servisleri tamamen devre dışı
   systemd.user.services.awww-daemon = {
-    Unit = {
+   Unit = {
       Description = "awww wallpaper daemon";
       After = [ "graphical-session.target" ];
       PartOf = [ "graphical-session.target" ];
@@ -624,6 +625,23 @@ in
       OnUnitActiveSec = "30min";
     };
     Install.WantedBy = [ "timers.target" ];
+  };
+  */
+
+  systemd.user.services.mpvpaper = {
+    Unit = {
+      Description = "mpvpaper live wallpaper service (looped)";
+      After = [ "graphical-session.target" ];
+      PartOf = [ "graphical-session.target" ];
+    };
+    Service = {
+      Type = "simple";
+      Environment = "PATH=/run/current-system/sw/bin";
+      ExecStart = "${pkgs.mpvpaper}/bin/mpvpaper -p --mpv-options \"loop=inf\" DP-3 /home/localhost/wallpaper/mylivewallpapers-com-Ryou-Yamada-Bocchi-the-Rock-4K.mp4";
+      Restart = "on-failure";
+      RestartSec = "3s";
+    };
+    Install.WantedBy = [ "graphical-session.target" ];
   };
 
   home.packages = with pkgs; [
