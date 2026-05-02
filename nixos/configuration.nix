@@ -300,7 +300,7 @@
   home-manager.backupFileExtension = "backup";
 
   environment.systemPackages = with pkgs; [
-    kitty waybar rofi dunst awww waypaper grim slurp wl-clipboard
+    kitty waybar rofi dunst grim slurp wl-clipboard
     hyprlock hypridle wlogout hyprpicker
     hyprpolkitagent pyprland
     networkmanagerapplet brightnessctl playerctl

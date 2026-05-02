@@ -590,44 +590,6 @@ in
     };
   };
 
-  /* awww servisleri tamamen devre dışı
-  systemd.user.services.awww-daemon = {
-   Unit = {
-      Description = "awww wallpaper daemon";
-      After = [ "graphical-session.target" ];
-      PartOf = [ "graphical-session.target" ];
-    };
-    Service = {
-      ExecStart = "${pkgs.awww}/bin/awww-daemon";
-      Restart = "on-failure";
-      RestartSec = "3s";
-    };
-    Install.WantedBy = [ "graphical-session.target" ];
-  };
-
-  systemd.user.services.waypaper-random = {
-    Unit = {
-      Description = "Random wallpaper changer";
-      After = [ "graphical-session.target" "awww-daemon.service" ];
-      Requires = [ "awww-daemon.service" ];
-      PartOf = [ "graphical-session.target" ];
-    };
-    Service = {
-      Type = "oneshot";
-      ExecStart = "${pkgs.waypaper}/bin/waypaper --random";
-    };
-  };
-
-  systemd.user.timers.waypaper-random = {
-    Unit.Description = "Random wallpaper changer timer";
-    Timer = {
-      OnActiveSec = "5min";
-      OnUnitActiveSec = "30min";
-    };
-    Install.WantedBy = [ "timers.target" ];
-  };
-  */
-
   systemd.user.services.mpvpaper = {
     Unit = {
       Description = "mpvpaper live wallpaper service (looped)";
