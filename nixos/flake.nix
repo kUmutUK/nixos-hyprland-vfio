@@ -1,5 +1,5 @@
 {
-  description = "NixOS CachyOS BORE Kernel – Gaming + pyprland + Millennium";
+  description = "NixOS CachyOS BORE Kernel – Gaming + pyprland";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -7,14 +7,9 @@
     home-manager.url = "github:nix-community/home-manager";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
     hyprland.url = "github:hyprwm/Hyprland";
-    
-    # Millennium girdisi
-    millennium = {
-      url = "github:SteamClientHomebrew/Millennium?dir=packages/nix";
-    };
   };
 
-  outputs = { self, nixpkgs, cachyos-kernel, home-manager, hyprland, millennium, ... }:
+  outputs = { self, nixpkgs, cachyos-kernel, home-manager, hyprland, ... }:
   let
     system = "x86_64-linux";
   in
@@ -23,7 +18,6 @@
       inherit system;
       modules = [
         home-manager.nixosModules.home-manager
-
         ({ pkgs, ... }: {
           nixpkgs.config.allowUnfree = true;
           nixpkgs.overlays = [
@@ -31,20 +25,12 @@
             (final: prev: {
               hyprland = hyprland.packages.${system}.hyprland;
             })
-            # Millennium overlay'ı
-            millennium.overlays.default
           ];
-
           boot.kernelPackages = pkgs.cachyosKernels.linuxPackages-cachyos-bore;
           programs.hyprland.package = pkgs.hyprland;
           services.xserver.videoDrivers = [ "amdgpu" ];
-
-          environment.systemPackages = [ 
-            pkgs.pyprland
-            pkgs.millennium-steam  # ← Steam yerine Millennium'lu sürümü kullan
-          ];
+          environment.systemPackages = [ pkgs.pyprland ];
         })
-
         ./configuration.nix
       ];
     };
