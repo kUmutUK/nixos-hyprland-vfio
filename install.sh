@@ -277,29 +277,12 @@ warn "hardware-configuration.nix was NOT copied — it is machine-specific."
 warn "Your existing hardware-configuration.nix has been kept intact."
 
 # =============================================================================
-# STEP 8 — Copy user config files
+# STEP 8 (formerly user config copy) — REMOVED
+# Now Hyprland, Waybar, and GTK configs are fully managed by Home Manager via home.nix.
+# No manual copying is needed.
 # =============================================================================
-step "Step 8 — Copying user config files"
-
-mkdir -p "$HOME/.config"
-
-copy_config() {
-  local src="$REPO_DIR/$1"
-  local dst="$HOME/.config/$1"
-  if [ -d "$src" ]; then
-    if [ -e "$dst" ] || [ -L "$dst" ]; then
-      rm -rf "$dst" && log "Removed existing (was Home Manager symlink): $dst"
-    fi
-    cp -r "$src" "$HOME/.config/" && log "Copied: $1 → $dst"
-  else
-    warn "Directory not found, skipping: $src"
-  fi
-}
-
-copy_config "hypr"
-copy_config "waybar"
-copy_config "gtk-3.0"
-copy_config "gtk-4.0"
+info "User config files (hypr, waybar, gtk) are now handled declaratively by Home Manager."
+info "Skipping manual copy to avoid overwriting Nix-managed symlinks."
 
 # =============================================================================
 # STEP 9 — Apply all patches to copied config files
