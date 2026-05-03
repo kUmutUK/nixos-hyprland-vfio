@@ -1,4 +1,4 @@
-# configuration.nix — 10/10 (VFIO hook, hyprpolkitagent, AppArmor + fail2ban + GameMode Fix)
+# configuration.nix — 10/10 (initrd modülleri birleştirildi, gamemode sudo'suz)
 
 { config, pkgs, lib, ... }:
 
@@ -128,13 +128,9 @@
     "pcie_aspm=off" "rcupdate.rcu_expedited=1"
     "apparmor=1"
   ];
-  boot.initrd.availableKernelModules = [ "amdgpu" ];
-
-  boot.extraModulePackages = lib.optionals (config.boot.kernelPackages ? vendor-reset) [
-    config.boot.kernelPackages.vendor-reset
-  ];
-  boot.kernelModules = [ "kvm-amd" ]
-    ++ lib.optional (config.boot.kernelPackages ? vendor-reset) "vendor-reset";
+  # initrd’deki mevcut modüllere (nvme, btrfs, …) amdgpu’yu ekle, toptan ezme!
+  boot.initrd.availableKernelModules = lib.mkAfter [ "amdgpu" ];
+  boot.kernelModules = [ "kvm-amd" ];
 
   boot.kernel.sysctl = {
     "vm.max_map_count" = 1048576;
@@ -224,10 +220,10 @@
     XCURSOR_SIZE = "16";
   };
 
-    programs.fish.enable = true;
-    programs.hyprland.enable = true;
-    programs.hyprland.xwayland.enable = true;
-    xdg.portal = {
+  programs.fish.enable = true;
+  programs.hyprland.enable = true;
+  programs.hyprland.xwayland.enable = true;
+  xdg.portal = {
     enable = true;
     extraPortals = with pkgs; [ xdg-desktop-portal-hyprland xdg-desktop-portal-gtk ];
     config.common.default = [ "hyprland" "gtk" ];
@@ -251,14 +247,14 @@
     pulse.enable = true;
     jack.enable = true;
     wireplumber.enable = true;
-    extraConfig.pipewire."99-lowlatency" = {
+    extraConfig.pipewire."99-lowlatency.conf" = ''
       context.properties = {
-        "default.clock.rate" = 48000;
-        "default.clock.quantum" = 128;
-        "default.clock.min-quantum" = 128;
-        "default.clock.max-quantum" = 256;
-      };
-    };
+          default.clock.rate       = 48000
+          default.clock.quantum    = 128
+          default.clock.min-quantum = 128
+          default.clock.max-quantum = 256
+      }
+    '';
   };
 
   programs.kdeconnect.enable = true;
@@ -368,8 +364,8 @@
         amd_performance_level = "high";
       };
       custom = {
-        start = "${pkgs.util-linux}/bin/runuser -u localhost -- ${pkgs.systemd}/bin/systemctl --user stop mpvpaper.service";
-        end   = "${pkgs.util-linux}/bin/runuser -u localhost -- ${pkgs.systemd}/bin/systemctl --user start mpvpaper.service";
+        start = "${pkgs.systemd}/bin/systemctl --user stop mpvpaper.service";
+        end   = "${pkgs.systemd}/bin/systemctl --user start mpvpaper.service";
       };
     };
   };
