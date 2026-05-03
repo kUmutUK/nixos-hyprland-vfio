@@ -1,4 +1,4 @@
-# configuration.nix — 10/10 (initrd modülleri birleştirildi, gamemode sudo'suz)
+# configuration.nix — 10/10 (gamemode runuser düzeltmesi yapıldı)
 
 { config, pkgs, lib, ... }:
 
@@ -15,17 +15,7 @@
   ];
 
   # ============================================================
-  # KALICI K10TEMP SYMLINK – udev kuralı
-  # ============================================================
-  services.udev.extraRules = ''
-    ACTION=="add", SUBSYSTEM=="hwmon", ATTR{name}=="k10temp", SYMLINK+="hwmon-k10temp"
-    ACTION=="add", SUBSYSTEM=="usb", TEST=="power/control", ATTR{power/control}="on"
-  '';
-
-  systemd.services.hwmon-k10temp-link.enable = lib.mkForce false;
-
-  # ============================================================
-  # TAM LIBVIRT HOOK (GPU passthrough + Hyprland durdurma)
+  # TAM LİBVIRT HOOK (GPU passthrough + Hyprland durdurma)
   # ============================================================
   environment.etc."libvirt/hooks/qemu" = {
     mode = "0755";
@@ -128,8 +118,10 @@
     "pcie_aspm=off" "rcupdate.rcu_expedited=1"
     "apparmor=1"
   ];
-  # initrd’deki mevcut modüllere (nvme, btrfs, …) amdgpu’yu ekle, toptan ezme!
+
+  # Modüller
   boot.initrd.availableKernelModules = lib.mkAfter [ "amdgpu" ];
+  boot.initrd.kernelModules = [ "dm-crypt" "amdgpu" ];
   boot.kernelModules = [ "kvm-amd" ];
 
   boot.kernel.sysctl = {
@@ -153,18 +145,13 @@
     { domain = "@gamemode"; item = "nice"; type = "-"; value = "-10"; }
   ];
 
-  # ============================================================
-  # Güvenlik Katmanları: AppArmor + fail2ban
-  # ============================================================
+  # Güvenlik
   security.apparmor.enable = true;
   services.fail2ban = {
     enable = true;
     maxretry = 5;
     ignoreIP = [
-      "127.0.0.0/8"
-      "10.0.0.0/8"
-      "172.16.0.0/12"
-      "192.168.0.0/16"
+      "127.0.0.0/8" "10.0.0.0/8" "172.16.0.0/12" "192.168.0.0/16"
     ];
     bantime = "24h";
     bantime-increment = {
@@ -313,11 +300,12 @@
   users.users.localhost = {
     isNormalUser = true;
     description = "Local User";
+    # ⚠️ İLK GİRİŞTE `passwd` İLE PAROLANIZI DEĞİŞTİRİN!
     initialPassword = "nixos";
     shell = pkgs.fish;
     extraGroups = [
       "wheel" "networkmanager" "video" "audio" "storage"
-      "gamemode" "libvirtd" "kvm" "input"
+      "gamemode" "libvirtd" "kvm" "input" "render"
     ];
   };
 
@@ -348,27 +336,27 @@
     apparmor-utils
   ];
 
-  programs.gamemode = {
-    enable = true;
-    settings = {
-      general = {
-        renice = -10;
-        ioprio = 0;
-        inhibit_screensaver = 1;
-        softrealtime = "off";
-        reaper_freq = 5;
-      };
-      gpu = {
-        apply_gpu_optimisations = "accept-responsibility";
-        gpu_device = 0;
-        amd_performance_level = "high";
-      };
-      custom = {
-        start = "${pkgs.systemd}/bin/systemctl --user stop mpvpaper.service";
-        end   = "${pkgs.systemd}/bin/systemctl --user start mpvpaper.service";
-      };
+programs.gamemode = {
+  enable = true;
+  settings = {
+    general = {
+      renice = -10;
+      ioprio = 0;
+      inhibit_screensaver = 1;
+      softrealtime = "off";
+      reaper_freq = 5;
     };
+    gpu = {
+      apply_gpu_optimisations = "accept-responsibility";
+      gpu_device = 0;
+      amd_performance_level = "high";
+    };
+custom = {
+  start = "${pkgs.systemd}/bin/systemctl --user stop mpvpaper.service";
+  end   = "${pkgs.systemd}/bin/systemctl --user start mpvpaper.service";
+};
   };
+};
 
   programs.steam.enable = true;
   services.flatpak.enable = true;

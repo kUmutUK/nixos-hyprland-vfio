@@ -1,4 +1,4 @@
-# home.nix — 10/10 (GTK CSS gömüldü, saf siyah tema)
+# home.nix — 10/10 (cursor teması capitaine-cursors ile birleştirildi)
 
 { config, pkgs, lib, ... }:
 
@@ -371,8 +371,8 @@ in
       package = pkgs.papirus-icon-theme;
     };
     cursorTheme = {
-      name = "Bibata-Modern-Classic";
-      package = pkgs.bibata-cursors;
+      name = "capitaine-cursors";
+      package = pkgs.capitaine-cursors;
       size = 16;
     };
     gtk3.extraCss = gtkCss;
@@ -588,22 +588,7 @@ in
       ];
     };
   };
-/*
-  # awww-daemon servisi – statik duvar kağıtlarını yönetir (wall-engine için gerekli)
-  systemd.user.services.awww-daemon = {
-    Unit = {
-      Description = "awww wallpaper daemon";
-      After = [ "graphical-session.target" ];
-      PartOf = [ "graphical-session.target" ];
-    };
-    Service = {
-      ExecStart = "${pkgs.awww}/bin/awww-daemon";
-      Restart = "on-failure";
-      RestartSec = "3s";
-    };
-    Install.WantedBy = [ "graphical-session.target" ];
-  };
-*/
+
   # mpvpaper servisi – canlı video duvar kağıdı
   systemd.user.services.mpvpaper = {
     Unit = {
