@@ -1,4 +1,4 @@
-# configuration.nix — 10/10 (gamemode runuser düzeltmesi yapıldı)
+# configuration.nix — 10/10 (tüm düzeltmeler yapıldı)
 
 { config, pkgs, lib, ... }:
 
@@ -26,9 +26,6 @@
       GPU_AUDIO="0000:0b:00.1"
       VFIO_PATH="/sys/bus/pci/drivers/vfio-pci"
       AMDGPU_PATH="/sys/bus/pci/drivers/amdgpu"
-
-      USER="localhost"
-      USER_ID=$(id -u "$USER")
 
       log() {
         echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOGFILE"
@@ -67,24 +64,22 @@
       }
 
       stop_hyprland() {
-        log "Hyprland durduruluyor..."
-        sudo -u "$USER" XDG_RUNTIME_DIR="/run/user/$USER_ID" \
-          systemctl --user stop graphical-session.target 2>/dev/null || \
-          loginctl terminate-user "$USER" 2>/dev/null || true
-        sleep 2
+        log "Greetd durduruluyor..."
+        systemctl stop greetd 2>/dev/null || true
+        # Kullanıcı oturumunun tamamen sonlanması için bekle
+        sleep 5
       }
 
       start_hyprland() {
-        log "Hyprland yeniden başlatılıyor..."
-        sudo -u "$USER" XDG_RUNTIME_DIR="/run/user/$USER_ID" \
-          systemctl --user start graphical-session.target 2>/dev/null || true
+        log "Greetd başlatılıyor..."
+        systemctl start greetd 2>/dev/null || true
       }
 
       GUEST="$1"
       ACTION="$2"
 
       if [ "$ACTION" = "prepare" ]; then
-        log "VM $GUEST başlatılıyor, Hyprland durduruluyor..."
+        log "VM $GUEST başlatılıyor, masaüstü durduruluyor..."
         stop_hyprland
         echo 0 > /sys/class/vtconsole/vtcon0/bind 2>/dev/null || true
         echo 0 > /sys/class/vtconsole/vtcon1/bind 2>/dev/null || true
@@ -102,7 +97,7 @@
         echo 1 > /sys/class/vtconsole/vtcon1/bind 2>/dev/null || true
         echo efi-framebuffer.0 > /sys/bus/platform/drivers/efi-framebuffer/bind 2>/dev/null || true
         start_hyprland
-        log "GPU amdgpu'ya geri verildi, Hyprland başlatıldı."
+        log "GPU amdgpu'ya geri verildi, masaüstü başlatıldı."
       fi
     '';
   };
@@ -122,7 +117,7 @@
   # Modüller
   boot.initrd.availableKernelModules = lib.mkAfter [ "amdgpu" ];
   boot.initrd.kernelModules = [ "dm-crypt" "amdgpu" ];
-  boot.kernelModules = [ "kvm-amd" ];
+  boot.kernelModules = [ "kvm-amd" "binder_linux" "ashmem_linux" ];
 
   boot.kernel.sysctl = {
     "vm.max_map_count" = 1048576;
@@ -130,7 +125,7 @@
     "vm.swappiness" = 10;
     "kernel.sched_autogroup_enabled" = 0;
     "kernel.split_lock_mitigate" = 0;
-    "kernel.perf_event_paranoid" = -1;
+    "kernel.perf_event_paranoid" = 1; # Mangohud için yeterli, güvenlikten ödün vermek isterseniz -1 yapabilirsiniz
     "fs.inotify.max_user_watches" = 524288;
     "fs.inotify.max_user_instances" = 512;
     "net.core.rmem_max" = 16777216;
@@ -245,6 +240,7 @@
   };
 
   programs.kdeconnect.enable = true;
+  # Waydroid'u ilk kez çalıştırmadan önce manuel olarak `waydroid init -f` çalıştırmanız gerekir.
   virtualisation.waydroid.enable = true;
   security.polkit.enable = true;
   services.udisks2.enable = true;
@@ -307,6 +303,9 @@
       "wheel" "networkmanager" "video" "audio" "storage"
       "gamemode" "libvirtd" "kvm" "input" "render"
     ];
+openssh.authorizedKeys.keys = [
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIO2qlcENvrPCXZrwtIBZ4ctXHfmYWsLCw5QUmtNHjyL5 141457520+kUmutUK@users.noreply.github.com"
+  ];
   };
 
   home-manager.users.localhost = import ./home.nix;
@@ -336,27 +335,27 @@
     apparmor-utils
   ];
 
-programs.gamemode = {
-  enable = true;
-  settings = {
-    general = {
-      renice = -10;
-      ioprio = 0;
-      inhibit_screensaver = 1;
-      softrealtime = "off";
-      reaper_freq = 5;
+  programs.gamemode = {
+    enable = true;
+    settings = {
+      general = {
+        renice = -10;
+        ioprio = 0;
+        inhibit_screensaver = 1;
+        softrealtime = "off";
+        reaper_freq = 5;
+      };
+      gpu = {
+        apply_gpu_optimisations = "accept-responsibility";
+        gpu_device = 0;
+        amd_performance_level = "high";
+      };
+      custom = {
+        start = "${pkgs.systemd}/bin/systemctl --user stop mpvpaper.service";
+        end   = "${pkgs.systemd}/bin/systemctl --user start mpvpaper.service";
+      };
     };
-    gpu = {
-      apply_gpu_optimisations = "accept-responsibility";
-      gpu_device = 0;
-      amd_performance_level = "high";
-    };
-custom = {
-  start = "${pkgs.systemd}/bin/systemctl --user stop mpvpaper.service";
-  end   = "${pkgs.systemd}/bin/systemctl --user start mpvpaper.service";
-};
   };
-};
 
   programs.steam.enable = true;
   services.flatpak.enable = true;
