@@ -588,7 +588,7 @@ in
       ];
     };
   };
-
+/*
   # awww-daemon servisi – statik duvar kağıtlarını yönetir (wall-engine için gerekli)
   systemd.user.services.awww-daemon = {
     Unit = {
@@ -603,7 +603,7 @@ in
     };
     Install.WantedBy = [ "graphical-session.target" ];
   };
-
+*/
   # mpvpaper servisi – canlı video duvar kağıdı
   systemd.user.services.mpvpaper = {
     Unit = {

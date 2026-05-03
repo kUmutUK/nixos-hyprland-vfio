@@ -350,7 +350,6 @@
     btrfs-progs compsize snapper
     mpvpaper flatpak-builder
     apparmor-utils
-    awww
   ];
 
   programs.gamemode = {
