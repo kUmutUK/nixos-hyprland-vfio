@@ -1032,15 +1032,42 @@ in
     "waybar/config.json".text = waybarConfig;
   };
 
-  # Waybar sıcaklık betiği
   home.file.".local/bin/waybar-temperature.sh" = {
     executable = true;
     text = ''
       #!/usr/bin/env bash
-      # AMD GPU sıcaklığı veya CPU fallback
-      temp=$(cat /sys/class/hwmon/hwmon*/temp1_input 2>/dev/null | head -1)
+      temp=""
+      for hwmon in /sys/class/hwmon/hwmon*; do
+        if [ -e "$hwmon/name" ]; then
+          name=$(cat "$hwmon/name")
+          if [ "$name" = "amdgpu" ]; then
+            # junction sensörünü bul (temp1 veya temp2 olabilir)
+            for label_file in "$hwmon"/temp*_label; do
+              [ -e "$label_file" ] || continue
+              label=$(cat "$label_file")
+              if [ "$label" = "junction" ]; then
+                input_file="''${label_file%_label}_input"
+                raw=$(cat "$input_file" 2>/dev/null)
+                [ -n "$raw" ] && temp=$((raw / 1000))
+                break 2
+              fi
+            done
+            # junction bulunamazsa ilk temp değerini al
+            if [ -z "$temp" ]; then
+              for input in "$hwmon"/temp*_input; do
+                [ -e "$input" ] && { raw=$(cat "$input"); temp=$((raw / 1000)); break; }
+              done
+            fi
+            break
+          fi
+        fi
+      done
+      # hiçbir şey bulunamazsa genel fallback
+      if [ -z "$temp" ]; then
+        raw=$(cat /sys/class/hwmon/hwmon*/temp1_input 2>/dev/null | head -1)
+        [ -n "$raw" ] && temp=$((raw / 1000))
+      fi
       if [ -n "$temp" ]; then
-        temp=$((temp / 1000))
         echo "{\"text\": \"🌡️ $temp°C\", \"class\": \"normal\"}"
       else
         echo "{\"text\": \"🌡️ N/A\", \"class\": \"error\"}"

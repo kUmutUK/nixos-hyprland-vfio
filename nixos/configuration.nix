@@ -21,6 +21,7 @@
     mode = "0755";
     text = ''
       #!/usr/bin/env bash
+      mkdir -p /var/log/libvirt
       LOGFILE="/var/log/libvirt/vfio.log"
       GPU_PCI="0000:0b:00.0"
       GPU_AUDIO="0000:0b:00.1"
@@ -168,6 +169,7 @@
   networking.hostName = "nixos";
   networking.networkmanager.enable = true;
   time.timeZone = "Europe/Istanbul";
+  i18n.supportedLocales = [ "en_US.UTF-8/UTF-8" "tr_TR.UTF-8/UTF-8" ];
   i18n.defaultLocale = "en_US.UTF-8";
   i18n.extraLocaleSettings = {
     LC_TIME = "tr_TR.UTF-8";
@@ -316,7 +318,7 @@ openssh.authorizedKeys.keys = [
     hyprlock hypridle wlogout hyprpicker
     hyprpolkitagent pyprland waypaper
     networkmanagerapplet brightnessctl playerctl
-    pavucontrol cliphist
+    pavucontrol cliphist kdePackages.konsole
     kdePackages.dolphin stdenv.cc.cc.lib
     ntfs3g exfat gparted
     steam gamemode gamescope mangohud
