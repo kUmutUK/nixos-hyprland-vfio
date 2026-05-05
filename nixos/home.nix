@@ -1025,12 +1025,14 @@ in
 
   # ========== TÜM DOTFİLE'LAR NİX İLE YÖNETİLİYOR ==========
 
-  xdg.configFile = {
+# home.nix içinde, xdg.configFile altında:
+xdg.configFile = {
     "hypr/hyprland.conf".text = hyprlandConf;
     "hypr/hyprlock.conf".text = hyprlockConf;
     "waybar/style.css".text = waybarStyle;
-    "waybar/config.json".text = waybarConfig;
-  };
+    # Bu satırı değiştir:
+    "waybar/config.jsonc".text = waybarConfig;  # <-- .jsonc yaptık
+};
 
   home.file.".local/bin/waybar-temperature.sh" = {
     executable = true;
