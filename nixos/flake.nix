@@ -6,7 +6,7 @@
     cachyos-kernel.url = "github:xddxdd/nix-cachyos-kernel";
     home-manager.url = "github:nix-community/home-manager";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
-    hyprland.url = "github:hyprwm/Hyprland";
+    hyprland.url = "github:hyprwm/Hyprland/v0.54.0";
   };
 
   outputs = { self, nixpkgs, cachyos-kernel, home-manager, hyprland, ... }:

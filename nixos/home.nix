@@ -1,12 +1,12 @@
 { config, pkgs, lib, ... }:
 
-let
+  let
   # ---------------------- Kullanıcıya özel değişkenler ----------------------
   gitName      = "Umpug";
   gitEmail     = "141457520+kUmutUK@users.noreply.github.com";
   monitorOutput    = "DP-3";          # mpvpaper için monitör çıkışı
   hyprlandMonitorLine = "monitor = ,preferred,auto,1";
-
+  wallpaperVideo = "/home/localhost/wallpaper/mylivewallpapers-com-Ryou-Yamada-Bocchi-the-Rock-4K.mp4"; 
   # ------------------------------ GTK CSS ---------------------------------
   gtkCss = ''
     @define-color accent_color              #cba6f7;
@@ -872,7 +872,7 @@ in
     };
   };
 
-  systemd.user.services.mpvpaper = {
+systemd.user.services.mpvpaper = {
     Unit = {
       Description = "mpvpaper live wallpaper service (looped)";
       After = [ "graphical-session.target" ];
@@ -881,7 +881,7 @@ in
     Service = {
       Type = "simple";
       Environment = "PATH=${lib.makeBinPath [ pkgs.mpvpaper pkgs.mpv ]}";
-      ExecStart = "${pkgs.mpvpaper}/bin/mpvpaper -p --mpv-options \"loop=inf\" ${monitorOutput} /home/localhost/wallpaper/mylivewallpapers-com-Ryou-Yamada-Bocchi-the-Rock-4K.mp4";
+      ExecStart = "${pkgs.mpvpaper}/bin/mpvpaper -p --mpv-options \"loop=inf\" ${monitorOutput} ${wallpaperVideo}";
       Restart = "on-failure";
       RestartSec = 3;
     };
