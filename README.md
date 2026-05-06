@@ -1,4 +1,4 @@
- # 🚀 NixOS Hyprland + VFIO
+# 🚀 NixOS Hyprland + VFIO
 
 <p align="center">
   ⚡ Declarative • 🎮 Gaming • 🧪 VFIO • 🐧 NixOS  
