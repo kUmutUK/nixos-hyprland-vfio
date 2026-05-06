@@ -1,8 +1,8 @@
 { config, pkgs, lib, ... }:
 
 let
-  gpuPCI   = "0000:0b:00.0";
-  gpuAudio = "0000:0b:00.1";
+  gpuPCI   = "";
+  gpuAudio = "";
 in
 {
   imports = [ ./hardware-configuration.nix ];
@@ -422,4 +422,11 @@ in
   };
 
   programs.nix-ld.enable = true;
+
+  # Ananicy servisini ve CachyOS kurallarını etkinleştir
+services.ananicy = {
+  enable = true;
+  rulesProvider = pkgs.ananicy-rules-cachyos;
+};
+
 }
