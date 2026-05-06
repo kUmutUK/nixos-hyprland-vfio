@@ -16,18 +16,131 @@ A fully declarative NixOS setup combining a clean Hyprland desktop, AMD-focused 
 
 ---
 
-## ✨ Features
+## ✨ Key Features
 
-* Hyprland 0.54 (Wayland-only desktop)
-* CachyOS BORE kernel
-* AMD gaming optimizations
-* Steam + Proton-GE + MangoHud + Gamescope
-* PipeWire low-latency audio
-* LUKS2 + Btrfs + Snapper
-* Fully declarative VFIO hooks
-* Ollama ROCm support
-* Home Manager integration
-* Waydroid, Flatpak, KDE Connect, Looking Glass
+### ⚙️ Kernel & Boot
+
+* **CachyOS BORE kernel** via `xddxdd/nix-cachyos-kernel`
+* AMD optimizations:
+
+  * `amd_pstate=active`
+  * `amd_iommu=on`
+  * `iommu=pt`
+  * `amdgpu.ppfeaturemask=0xfffd7fff`
+* Low latency:
+
+  * `rcupdate.rcu_expedited=1`
+  * `nowatchdog`
+  * `nmi_watchdog=0`
+* AppArmor enabled
+
+---
+
+### 🎮 Gaming Stack
+
+* Steam + Proton-GE
+* GameMode (nice -10, I/O priority 0, GPU performance boost)
+* MangoHud, Gamescope, Heroic, ProtonUp-Qt
+* Vulkan (RADV):
+
+  * `AMD_VULKAN_ICD=RADV`
+  * `RADV_PERFTEST=gpl,nggc`
+* Hyprland tweaks:
+
+  * `allow_tearing=true`
+  * `vrr=2`
+  * per-game window rules
+
+---
+
+### 🔊 Audio
+
+* PipeWire low-latency:
+
+  * 48kHz
+  * quantum 128
+* ALSA, PulseAudio, JACK compatibility
+* WirePlumber + rtkit
+
+---
+
+### 💾 Storage – LUKS2 + Btrfs
+
+* Full disk encryption (LUKS2)
+* Subvolumes:
+
+  * `@`, `@home`, `@nix`, `@log`, `@snapshots`
+* Mount options:
+
+  * `compress=zstd:1`
+  * `noatime`
+  * `discard=async`
+  * `space_cache=v2`
+* Snapper (hourly snapshots + cleanup)
+* Monthly scrub
+* zram + disk swap
+
+---
+
+### 🖥️ Desktop
+
+* Hyprland 0.54 (Wayland only)
+* greetd + tuigreet (no X11)
+* Waybar (custom modules)
+* Dunst, Rofi
+* Hypridle + Hyprlock
+* mpvpaper (live wallpaper)
+
+---
+
+### 🧰 Shell & Tools
+
+* Fish + Starship
+* Zoxide, fzf
+* eza, bat, ripgrep, fd
+* btop, nvtop, fastfetch
+
+---
+
+### 🎨 Theme
+
+* Catppuccin Mocha
+* JetBrainsMono Nerd Font
+* Capitaine Cursors
+* Papirus Dark
+
+---
+
+### 🤖 AI Integration
+
+* Ollama (ROCm) running continuously
+
+---
+
+### 🧪 VFIO / GPU Passthrough
+
+* Fully declarative libvirt hooks
+* `prepare`: stop greetd, unbind GPU → vfio-pci
+* `release`: rebind GPU, restart greetd
+* Single-GPU → host screen goes black (use Looking Glass / SPICE)
+
+---
+
+### 🔐 Security
+
+* AppArmor
+* Fail2ban (3 SSH failures → 48h ban)
+* SSH password disabled, root login disabled
+* Firewall enabled
+
+---
+
+### 🔗 Integration
+
+* KDE Connect
+* Waydroid
+* Flatpak + GNOME Software
+* Virt-Manager + Looking Glass
 
 ---
 
@@ -60,15 +173,15 @@ sudo nixos-rebuild switch --flake /etc/nixos#nixos
 
 ---
 
-## 📦 Repository Structure
+## 📁 Repository Structure
 
 ```text
-├── .github/workflows/      # CI checks
-├── assets/                 # screenshots
-├── etc/libvirt/hooks/      # VFIO hooks
-├── nixos/                  # main NixOS configuration
-├── vm-xml/                 # optional Windows VM XML files
-├── wallpaper/              # wallpapers
+├── .github/workflows/
+├── assets/
+├── etc/libvirt/hooks/
+├── nixos/
+├── vm-xml/
+├── wallpaper/
 ├── .gitignore
 ├── CHANGELOG.md
 ├── CONTRIBUTING.md
@@ -87,82 +200,58 @@ sudo nixos-rebuild switch --flake /etc/nixos#nixos
 
 ### English
 
-* **README.md** — project overview, features and usage
-* **CONTRIBUTING.md** — contribution guidelines
-* **CHANGELOG.md** — version history
+* `README.md` — overview & usage
+* `CONTRIBUTING.md` — contribution guide
+* `CHANGELOG.md` — version history
 
 ### Türkçe
 
-* **KURULUM.md** — adım adım Türkçe kurulum rehberi
+* `KURULUM.md` — detaylı kurulum rehberi
 
 ---
 
 ## 🇹🇷 Turkish Installation Guide
 
-If you prefer a Turkish walkthrough, see:
+Detaylı kurulum için:
 
-```text
+```
 KURULUM.md
 ```
 
-It includes:
+İçerik:
 
-* LUKS + Btrfs installation
-* partition layout
-* hardware configuration
+* LUKS + Btrfs kurulum
+* disk bölümlendirme
+* hardware config
 * VFIO setup
 * troubleshooting
 
 ---
 
-## 🎮 Gaming
+## 🎮 Usage
 
-Launch games with:
+### Gaming
 
 ```bash
 mangohud gamemoderun gamescope -f -- %command%
 ```
 
----
+### VM
 
-## 🧪 VFIO
-
-Single-GPU passthrough is fully declarative.
-
-### Prepare hook
-
-* stops greetd
-* detaches GPU
-* binds to vfio-pci
-
-### Release hook
-
-* reattaches GPU
-* restarts greetd
-
-> During VM runtime, the host display will go black.
+* `virt-manager` ile başlat
+* GPU otomatik handle edilir
 
 ---
 
 ## 🛠 Development Shell
 
-A helper development shell is included:
-
 ```bash
 nix-shell
 ```
 
-Useful for:
-
-* formatting
-* testing
-* quick Nix development
-
 ---
 
 ## 🔍 Validation
-
-Before committing changes:
 
 ```bash
 nix flake check
@@ -173,11 +262,7 @@ sudo nixos-rebuild dry-activate --flake .#nixos
 
 ## 🤝 Contributing
 
-Pull requests are welcome.
-
-Please read:
-
-```text
+```
 CONTRIBUTING.md
 ```
 
@@ -185,9 +270,7 @@ CONTRIBUTING.md
 
 ## 📜 Changelog
 
-See:
-
-```text
+```
 CHANGELOG.md
 ```
 
@@ -195,9 +278,9 @@ CHANGELOG.md
 
 ## ⚠️ Notes
 
-* `hardware-configuration.nix` is **machine-specific** and not included
-* update GPU PCI IDs for passthrough
-* SSH password authentication is disabled by default
+* `hardware-configuration.nix` makineye özeldir
+* GPU PCI ID’lerini güncelle
+* SSH sadece key ile çalışır
 
 ---
 
