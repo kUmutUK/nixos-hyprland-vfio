@@ -1,6 +1,13 @@
 # 🚀 NixOS Hyprland + VFIO
 
 <p align="center">
+  ⚡ Declarative • 🎮 Gaming • 🧪 VFIO • 🐧 NixOS  
+  <br/>
+  AMD-optimized declarative gaming setup with single-GPU passthrough
+</p>
+
+
+<p align="center">
   ⚡ Declarative • 🎮 Gaming • 🧪 VFIO • 🐧 NixOS
 </p>
 
