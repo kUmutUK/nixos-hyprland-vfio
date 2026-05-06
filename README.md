@@ -1,3 +1,13 @@
+<p align="center">
+  <img src="./assets/banner.png" width="100%" />
+</p>
+
+<h1 align="center">🚀 NixOS Hyprland + VFIO</h1>
+
+<p align="center">
+  ⚡ Declarative • 🎮 Gaming • 🧪 VFIO • 🐧 NixOS
+</p>
+
 # 🚀 NixOS Hyprland + VFIO
 
 <p align="center">
