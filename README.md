@@ -8,13 +8,13 @@
 
 
 <p align="center">
-  <img src="./assets/desktop.png" width="49%" />
-  <img src="./assets/terminal.png" width="49%" />
+  <img src="./assets/desktop-.png" width="49%" />
+  <img src="./assets/terminal-.png" width="49%" />
 </p>
 
 <p align="center">
-  <img src="./assets/app.png" width="49%" />
-  <img src="./assets/vm.png" width="49%" />
+  <img src="./assets/app-.png" width="49%" />
+  <img src="./assets/dolphin-.png" width="49%" />
 </p>
 
 > ⚠️ **Advanced setup** — requires familiarity with Nix Flakes, Wayland and low-level Linux configuration.
