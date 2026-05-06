@@ -104,12 +104,21 @@ read -rp "Enter GPU VGA PCI address (e.g. 0000:0b:00.0): " gpu_pci
 read -rp "Enter GPU Audio PCI address (e.g. 0000:0b:00.1): " gpu_audio
 
 echo ""
+# Monitör tespiti (hem Hyprland hem de DRM üzerinden)
 monitor_output="DP-3"
 if command -v hyprctl &>/dev/null 2>&1 && hyprctl activeworkspace &>/dev/null 2>&1; then
   monitor_output=$(hyprctl monitors | grep -oP '^Monitor \K\S+' | head -1)
   log "Active Hyprland monitor: $monitor_output"
-elif command -v wlr-randr &>/dev/null 2>&1; then
-  monitor_output=$(wlr-randr 2>/dev/null | grep -oP '^\S+' | head -1)
+elif [ -d /sys/class/drm ]; then
+  # DRM üzerinden bağlı monitörleri listele
+  for card in /sys/class/drm/card*-*; do
+    status=$(cat "$card/status" 2>/dev/null)
+    if [ "$status" = "connected" ]; then
+      monitor_output=$(basename "$card" | sed 's/card[0-9]*-//')
+      log "DRM connected monitor: $monitor_output"
+      break
+    fi
+  done
 fi
 read -rp "Monitor output name (for mpvpaper) [${monitor_output}]: " input_mon
 [[ -n "$input_mon" ]] && monitor_output="$input_mon"
@@ -117,6 +126,12 @@ read -rp "Monitor output name (for mpvpaper) [${monitor_output}]: " input_mon
 echo ""
 read -rp "Hyprland monitor line (e.g. monitor = ,2560x1440@170,auto,1) [monitor = ,preferred,auto,1]: " hypr_mon_line
 hypr_mon_line="${hypr_mon_line:-monitor = ,preferred,auto,1}"
+
+echo ""
+# Duvar kağıdı video yolu
+wallpaper_video="/home/localhost/wallpaper/mylivewallpapers-com-Ryou-Yamada-Bocchi-the-Rock-4K.mp4"
+read -rp "Wallpaper video path [${wallpaper_video}]: " input_video
+[[ -n "$input_video" ]] && wallpaper_video="$input_video"
 
 echo ""
 read -rp "Git user name [Umpug]: " git_name
@@ -150,7 +165,7 @@ for f in configuration.nix home.nix flake.nix flake.lock; do
     fi
 done
 warn "hardware-configuration.nix was NOT copied (machine-specific)."
-warn "If you're using a fresh install, run 'nixos-generate-config' and copy the resulting hardware-configuration.nix manually."
+warn "If you're using a fresh install, generate it with 'nixos-generate-config' and copy the resulting hardware-configuration.nix manually."
 
 # ─── Variable substitution ──────────────────────────────
 step "Applying safe variable substitutions"
@@ -165,6 +180,7 @@ sudo sed -i \
     -e "s|gitEmail     = .*;|gitEmail     = \"${git_email}\";|" \
     -e "s|monitorOutput    = .*;|monitorOutput    = \"${monitor_output}\";|" \
     -e "s|hyprlandMonitorLine = .*;|hyprlandMonitorLine = \"${hypr_mon_line}\";|" \
+    -e "s|wallpaperVideo = .*;|wallpaperVideo = \"${wallpaper_video}\";|" \
     "$NIXOS_DIR/home.nix" && log "Home-manager variables updated."
 
 # ─── Final checklist ────────────────────────────────────
@@ -175,6 +191,7 @@ echo -e "  GPU:          ${CYAN}$GPU_VENDOR${NC}"
 echo -e "  GPU PCI:      ${CYAN}${gpu_pci}${NC}  /  Audio: ${CYAN}${gpu_audio}${NC}"
 echo -e "  Monitor out:  ${CYAN}${monitor_output}${NC}"
 echo -e "  Hyprland:     ${CYAN}${hypr_mon_line}${NC}"
+echo -e "  Wallpaper:    ${CYAN}${wallpaper_video}${NC}"
 echo -e "  Git:          ${CYAN}${git_name} <${git_email}>${NC}"
 echo ""
 
