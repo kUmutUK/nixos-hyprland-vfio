@@ -10,9 +10,24 @@
   <img src="./assets/vm.png" width="49%" />
 </p>
 
-> ⚠️ **Advanced setup** – requires familiarity with Nix Flakes, Wayland and low-level system configuration.
+> ⚠️ **Advanced setup** — requires familiarity with Nix Flakes, Wayland and low-level Linux configuration.
 
-A fully declarative NixOS configuration that merges a clean Wayland desktop, AMD-tuned gaming performance and **single-GPU passthrough** for a Windows VM into one reproducible system.
+A fully declarative NixOS setup combining a clean Hyprland desktop, AMD-focused gaming optimizations and **single-GPU VFIO passthrough** for Windows VMs.
+
+---
+
+## ✨ Features
+
+* Hyprland 0.54 (Wayland-only desktop)
+* CachyOS BORE kernel
+* AMD gaming optimizations
+* Steam + Proton-GE + MangoHud + Gamescope
+* PipeWire low-latency audio
+* LUKS2 + Btrfs + Snapper
+* Fully declarative VFIO hooks
+* Ollama ROCm support
+* Home Manager integration
+* Waydroid, Flatpak, KDE Connect, Looking Glass
 
 ---
 
@@ -28,207 +43,16 @@ A fully declarative NixOS configuration that merges a clean Wayland desktop, AMD
 
 ---
 
-## ✨ Key Features
-
-### ⚙️ Kernel & Boot
-
-* **CachyOS BORE kernel** via `xddxdd/nix-cachyos-kernel`
-* AMD optimizations:
-
-  * `amd_pstate=active`
-  * `amd_iommu=on`
-  * `iommu=pt`
-  * `amdgpu.ppfeaturemask=0xfffd7fff`
-* Low latency:
-
-  * `rcupdate.rcu_expedited=1`
-  * `nowatchdog`
-  * `nmi_watchdog=0`
-* AppArmor enabled
-
----
-
-### 🎮 Gaming Stack
-
-* Steam + Proton-GE
-* GameMode (nice -10, I/O priority 0, GPU performance boost)
-* MangoHud, Gamescope, Heroic, ProtonUp-Qt
-* Vulkan (RADV):
-
-  * `AMD_VULKAN_ICD=RADV`
-  * `RADV_PERFTEST=gpl,nggc`
-* Hyprland tweaks:
-
-  * `allow_tearing=true`
-  * `vrr=2`
-  * per-game window rules
-
----
-
-### 🔊 Audio
-
-* PipeWire low-latency:
-
-  * 48kHz
-  * quantum 128
-* Full compatibility:
-
-  * ALSA
-  * PulseAudio
-  * JACK
-* WirePlumber + rtkit
-
----
-
-### 💾 Storage – LUKS2 + Btrfs
-
-* Full disk encryption (LUKS2)
-* Subvolumes:
-
-  * `@`, `@home`, `@nix`, `@log`, `@snapshots`
-* Mount options:
-
-  * `compress=zstd:1`
-  * `noatime`
-  * `discard=async`
-  * `space_cache=v2`
-* Snapper:
-
-  * hourly snapshots
-  * auto cleanup
-* Monthly scrub
-* zram + disk swap
-
----
-
-### 🖥️ Desktop
-
-* Hyprland 0.54 (Wayland only)
-* greetd + tuigreet (no X11)
-* Waybar (custom modules)
-* Dunst, Rofi
-* Hypridle + Hyprlock
-* mpvpaper (live wallpaper)
-
----
-
-### 🧰 Shell & Tools
-
-* Fish + Starship
-* Zoxide, fzf
-* eza, bat, ripgrep, fd
-* btop, nvtop, fastfetch
-
----
-
-### 🎨 Theme
-
-* Catppuccin Mocha
-* JetBrainsMono Nerd Font
-* Capitaine Cursors
-* Papirus Dark
-
----
-
-### 🤖 AI Integration
-
-* Ollama (ROCm) running continuously
-
----
-
-### 🧪 VFIO / GPU Passthrough
-
-* Fully declarative libvirt hooks
-* `prepare`:
-
-  * stops greetd
-  * unbinds GPU → vfio-pci
-* `release`:
-
-  * rebinds GPU
-  * restarts greetd
-* Single-GPU:
-
-  * host screen goes black
-  * use Looking Glass / SPICE
-
----
-
-### 🔐 Security
-
-* AppArmor
-* Fail2ban (3 SSH fails → 48h ban)
-* SSH:
-
-  * password disabled
-  * root login disabled
-* Firewall enabled
-
----
-
-### 🔗 Integration
-
-* KDE Connect
-* Waydroid
-* Flatpak + GNOME Software
-* Virt-Manager + Looking Glass
-
----
-
-## 📁 Repository Structure
-
-```
-├── assets/
-├── install.sh
-├── nixos/
-│   ├── flake.nix
-│   ├── flake.lock
-│   ├── configuration.nix
-│   └── home.nix
-├── vm-xml/
-├── wallpaper/
-├── cs2.cfg / csgo.cfg
-├── KURULUM.md
-└── README.md
-```
-
-> ⚠️ `hardware-configuration.nix` is NOT included.
-
----
-
-## ⚡ Installation
-
-### 1. Clone repo
+## ⚡ Quick Start
 
 ```bash
 git clone https://github.com/kUmutUK/Declarative-NixOS-Gaming-VFIO-Setup-Hyprland-AMD-GPU-Passthrough-.git
 cd Declarative-NixOS-Gaming-VFIO-Setup-Hyprland-AMD-GPU-Passthrough-
-```
-
-### 2. Generate hardware config
-
-```bash
-sudo nixos-generate-config
-```
-
-### 3. Run installer
-
-```bash
 chmod +x install.sh
 ./install.sh
 ```
 
----
-
-### 4. Create password
-
-```bash
-mkpasswd -m sha-512 | sudo tee /etc/nixos/hashedPassword
-```
-
----
-
-### 5. Rebuild system
+After installation:
 
 ```bash
 sudo nixos-rebuild switch --flake /etc/nixos#nixos
@@ -236,66 +60,150 @@ sudo nixos-rebuild switch --flake /etc/nixos#nixos
 
 ---
 
-## 🧩 Post Install
+## 📦 Repository Structure
 
-```bash
-waydroid init -f
-ollama pull llama3
-cat /var/log/libvirt/vfio.log
+```text
+├── .github/workflows/      # CI checks
+├── assets/                 # screenshots
+├── etc/libvirt/hooks/      # VFIO hooks
+├── nixos/                  # main NixOS configuration
+├── vm-xml/                 # optional Windows VM XML files
+├── wallpaper/              # wallpapers
+├── .gitignore
+├── CHANGELOG.md
+├── CONTRIBUTING.md
+├── KURULUM.md
+├── LICENSE
+├── README.md
+├── cs2.cfg
+├── csgo.cfg
+├── install.sh
+└── shell.nix
 ```
 
 ---
 
-## 🎮 Usage
+## 📚 Documentation
 
-### Gaming
+### English
+
+* **README.md** — project overview, features and usage
+* **CONTRIBUTING.md** — contribution guidelines
+* **CHANGELOG.md** — version history
+
+### Türkçe
+
+* **KURULUM.md** — adım adım Türkçe kurulum rehberi
+
+---
+
+## 🇹🇷 Turkish Installation Guide
+
+If you prefer a Turkish walkthrough, see:
+
+```text
+KURULUM.md
+```
+
+It includes:
+
+* LUKS + Btrfs installation
+* partition layout
+* hardware configuration
+* VFIO setup
+* troubleshooting
+
+---
+
+## 🎮 Gaming
+
+Launch games with:
 
 ```bash
 mangohud gamemoderun gamescope -f -- %command%
 ```
 
-### VM
+---
 
-* Start via `virt-manager`
-* Hooks handle GPU automatically
+## 🧪 VFIO
+
+Single-GPU passthrough is fully declarative.
+
+### Prepare hook
+
+* stops greetd
+* detaches GPU
+* binds to vfio-pci
+
+### Release hook
+
+* reattaches GPU
+* restarts greetd
+
+> During VM runtime, the host display will go black.
 
 ---
 
-## 🛠️ Maintenance
+## 🛠 Development Shell
+
+A helper development shell is included:
 
 ```bash
-snap-root
-snap-home
-btrfs-df
+nix-shell
+```
 
-nrs
-nup
-nclean
+Useful for:
+
+* formatting
+* testing
+* quick Nix development
+
+---
+
+## 🔍 Validation
+
+Before committing changes:
+
+```bash
+nix flake check
+sudo nixos-rebuild dry-activate --flake .#nixos
 ```
 
 ---
 
-## 🔄 Non-AMD Hardware
+## 🤝 Contributing
 
-| Component  | Changes                                               |
-| ---------- | ----------------------------------------------------- |
-| Intel CPU  | `kvm-intel`, `intel_iommu`, remove `amd_pstate`       |
-| NVIDIA GPU | enable `hardware.nvidia.modesetting`, remove AMD vars |
-| Intel iGPU | use modesetting driver                                |
+Pull requests are welcome.
 
----
+Please read:
 
-## ⚠️ Important Notes
-
-* Single-GPU VFIO → screen goes black
-* Update GPU PCI IDs in config
-* SSH requires key login
+```text
+CONTRIBUTING.md
+```
 
 ---
 
-## 📜 License
+## 📜 Changelog
 
-MIT
+See:
+
+```text
+CHANGELOG.md
+```
+
+---
+
+## ⚠️ Notes
+
+* `hardware-configuration.nix` is **machine-specific** and not included
+* update GPU PCI IDs for passthrough
+* SSH password authentication is disabled by default
+
+---
+
+## 📄 License
+
+MIT — see `LICENSE`
 
 ---
 
