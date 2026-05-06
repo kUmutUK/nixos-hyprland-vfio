@@ -8,10 +8,6 @@
 
 
 <p align="center">
-  ⚡ Declarative • 🎮 Gaming • 🧪 VFIO • 🐧 NixOS
-</p>
-
-<p align="center">
   <img src="./assets/desktop.png" width="49%" />
   <img src="./assets/terminal.png" width="49%" />
 </p>
