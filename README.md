@@ -85,3 +85,97 @@ A fully declarative NixOS configuration that merges a clean Wayland desktop, AMD
 ---
 
 ## Repository Structure
+├── assets/ # screenshots
+├── install.sh # Safe automated setup script
+├── nixos/
+│ ├── flake.nix
+│ ├── flake.lock
+│ ├── configuration.nix
+│ └── home.nix
+├── vm-xml/ # optional Windows VM XML examples
+├── wallpaper/ # sample live wallpapers
+├── cs2.cfg / csgo.cfg # game configs
+├── KURULUM.md # Turkish installation guide
+└── README.md
+
+text
+
+> **Note:** `hardware-configuration.nix` is **not** included – it must be generated per machine.
+
+---
+
+## Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/kUmutUK/Declarative-NixOS-Gaming-VFIO-Setup-Hyprland-AMD-GPU-Passthrough-.git
+   cd Declarative-NixOS-Gaming-VFIO-Setup-Hyprland-AMD-GPU-Passthrough-
+(Fresh install only) Generate hardware config
+
+bash
+sudo nixos-generate-config
+The generated hardware-configuration.nix must contain your disk UUIDs.
+
+Run the safe setup script
+
+bash
+chmod +x install.sh
+./install.sh
+It will backup your old configs, copy the new files, and ask you for:
+
+GPU PCI addresses
+
+Monitor output name
+
+Hyprland monitor line
+
+Git user details
+Safe sed substitutions are applied automatically.
+
+Create your hashed password
+
+bash
+mkpasswd -m sha-512 | sudo tee /etc/nixos/hashedPassword
+Verify hardware‑specific changes (non‑AMD systems)
+The script will show you what to change manually.
+
+Rebuild
+
+bash
+sudo nixos-rebuild switch --flake /etc/nixos#nixos
+Post‑Install
+Waydroid: waydroid init -f
+
+AI model: ollama pull llama3
+
+Check VFIO logs: cat /var/log/libvirt/vfio.log
+
+Usage
+Gaming
+bash
+mangohud gamemoderun gamescope -f -- %command%
+VFIO VM
+Start your VM via virt-manager – the hook handles the rest.
+
+Snapper & Maintenance
+bash
+snap-root    snap-home    btrfs-df
+nrs          nup          nclean
+Non‑AMD Hardware
+Component	Required Changes
+Intel CPU	Replace kvm-amd → kvm-intel, amd_iommu → intel_iommu, remove amd_pstate
+NVIDIA GPU	Change videoDrivers to nvidia, add hardware.nvidia.modesetting.enable, remove AMD env vars, switch ollama to ollama-cuda
+Intel iGPU	Use modesetting driver, remove AMD‑specific parameters, ollama to CPU
+Important Notes
+Single‑GPU VFIO: host display goes dark during VM.
+
+GPU IDs: update gpuPCI and gpuAudio in configuration.nix (the installer does this).
+
+SSH: password auth disabled – add your key with ssh-copy-id localhost@nixos.
+
+Default user: localhost
+
+License
+MIT — see LICENSE file.
+
+Maintainer: kUmutUK
