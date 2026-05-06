@@ -424,7 +424,7 @@ let
         session_lock_xray = true
 
         enable_swallow = true
-        swallow_regex = (kitty)
+        swallow_regex = (kitty.*)
     }
 
     cursor {
@@ -1025,14 +1025,12 @@ in
 
   # ========== TÜM DOTFİLE'LAR NİX İLE YÖNETİLİYOR ==========
 
-# home.nix içinde, xdg.configFile altında:
-xdg.configFile = {
+  xdg.configFile = {
     "hypr/hyprland.conf".text = hyprlandConf;
     "hypr/hyprlock.conf".text = hyprlockConf;
     "waybar/style.css".text = waybarStyle;
-    # Bu satırı değiştir:
-    "waybar/config.jsonc".text = waybarConfig;  # <-- .jsonc yaptık
-};
+    "waybar/config.jsonc".text = waybarConfig;
+  };
 
   home.file.".local/bin/waybar-temperature.sh" = {
     executable = true;
@@ -1296,7 +1294,7 @@ xdg.configFile = {
     };
     Service = {
       Type = "simple";
-      Environment = "PATH=/run/current-system/sw/bin";
+      Environment = "PATH=${lib.makeBinPath [ pkgs.mpvpaper pkgs.mpv ]}";
       ExecStart = "${pkgs.mpvpaper}/bin/mpvpaper -p --mpv-options \"loop=inf\" DP-3 /home/localhost/wallpaper/mylivewallpapers-com-Ryou-Yamada-Bocchi-the-Rock-4K.mp4";
       Restart = "on-failure";
       RestartSec = 3;

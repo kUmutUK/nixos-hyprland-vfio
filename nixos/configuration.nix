@@ -118,7 +118,7 @@
   # Modüller
   boot.initrd.availableKernelModules = lib.mkAfter [ "amdgpu" ];
   boot.initrd.kernelModules = [ "dm-crypt" "amdgpu" ];
-  boot.kernelModules = [ "kvm-amd" "binder_linux" "ashmem_linux" ];
+  boot.kernelModules = [ "kvm-amd" "binder_linux" "ashmem_linux" "vfio-pci" ];
 
   boot.kernel.sysctl = {
     "vm.max_map_count" = 1048576;
@@ -126,7 +126,7 @@
     "vm.swappiness" = 10;
     "kernel.sched_autogroup_enabled" = 0;
     "kernel.split_lock_mitigate" = 0;
-    "kernel.perf_event_paranoid" = 1; # Mangohud için yeterli, güvenlikten ödün vermek isterseniz -1 yapabilirsiniz
+    "kernel.perf_event_paranoid" = 1; # Mangohud için yeterli
     "fs.inotify.max_user_watches" = 524288;
     "fs.inotify.max_user_instances" = 512;
     "net.core.rmem_max" = 16777216;
@@ -298,16 +298,19 @@
   users.users.localhost = {
     isNormalUser = true;
     description = "Local User";
-    # ⚠️ İLK GİRİŞTE `passwd` İLE PAROLANIZI DEĞİŞTİRİN!
-    initialPassword = "nixos";
+    # Parolanızı systemd‑hashed‑password ile oluşturulan bir dosyadan okuyor.
+    # `mkpasswd -m sha-512` ile hash oluşturup /etc/nixos/hashedPassword dosyasına yazın.
+    # Alternatif olarak aşağıdaki satırı yorumsuz bırakıp düz metin parola da kullanabilirsiniz.
+    hashedPasswordFile = "/etc/nixos/hashedPassword";
+    # initialPassword = "nixos";   # güvensiz, yalnızca ilk kurulumda kullanın
     shell = pkgs.fish;
     extraGroups = [
       "wheel" "networkmanager" "video" "audio" "storage"
       "gamemode" "libvirtd" "kvm" "input" "render"
     ];
-openssh.authorizedKeys.keys = [
-    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIO2qlcENvrPCXZrwtIBZ4ctXHfmYWsLCw5QUmtNHjyL5 141457520+kUmutUK@users.noreply.github.com"
-  ];
+    openssh.authorizedKeys.keys = [
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIO2qlcENvrPCXZrwtIBZ4ctXHfmYWsLCw5QUmtNHjyL5 141457520+kUmutUK@users.noreply.github.com"
+    ];
   };
 
   home-manager.users.localhost = import ./home.nix;
