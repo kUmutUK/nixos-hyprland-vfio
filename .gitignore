@@ -1,0 +1,20 @@
+# Nix build results
+result
+result-*
+
+# Archives
+*.tar.gz
+*.zip
+
+# IDE / editor temporary files
+.vscode/
+.idea/
+*.swp
+*~
+
+# macOS
+.DS_Store
+
+# Sensitive files that should never be committed
+hashedPassword
+*.private
