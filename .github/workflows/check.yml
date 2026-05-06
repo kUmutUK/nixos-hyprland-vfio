@@ -15,5 +15,7 @@ jobs:
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@main
 
-      - name: Run flake check
-        run: nix flake check --all-systems
+      - name: Run flake check (inside nixos/)
+        run: |
+          cd nixos
+          nix flake check --all-systems
