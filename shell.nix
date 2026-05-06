@@ -1,12 +1,11 @@
-# Development shell for working on the NixOS config
 { pkgs ? import <nixpkgs> {} }:
 
 pkgs.mkShell {
   buildInputs = with pkgs; [
-    nixpkgs-fmt   # Nix code formatter
-    statix        # Lint and analyse Nix code
-    shellcheck    # Shell script analysis
-    nodePackages.prettier  # For formatting CSS / JSON
+    nixpkgs-fmt
+    statix
+    shellcheck
+    nodePackages.prettier
   ];
 
   shellHook = ''
