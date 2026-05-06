@@ -4,11 +4,8 @@ let
   rootDev    = "/dev/disk/by-uuid/2b423ef5-f0e7-4113-a094-8fbb3fd929b4";
   commonOpts = [ "noatime" "compress=zstd:1" "ssd" "space_cache=v2" "discard=async" ];
 in
-
 {
-  imports =
-    [ (modulesPath + "/installer/scan/not-detected.nix")
-    ];
+  imports = [ (modulesPath + "/installer/scan/not-detected.nix") ];
 
   boot.initrd.availableKernelModules = [
     "nvme" "xhci_pci" "ahci" "usb_storage" "usbhid" "sd_mod"
@@ -57,10 +54,10 @@ in
     options = [ "fmask=0077" "dmask=0077" ];
   };
 
-  swapDevices =
-    [ { device = "/dev/disk/by-uuid/5e349735-5d50-4d95-a8ba-7b833ea0ad9b";
-        priority = 10;
-      } ];
+  swapDevices = [{
+    device = "/dev/disk/by-uuid/5e349735-5d50-4d95-a8ba-7b833ea0ad9b";
+    priority = 10;
+  }];
 
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
   hardware.cpu.amd.updateMicrocode = lib.mkDefault config.hardware.enableRedistributableFirmware;

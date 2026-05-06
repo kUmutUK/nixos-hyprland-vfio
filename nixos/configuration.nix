@@ -1,11 +1,11 @@
-# configuration.nix — 10/10 (tüm düzeltmeler yapıldı)
-
 { config, pkgs, lib, ... }:
 
+let
+  gpuPCI   = "0000:0b:00.0";
+  gpuAudio = "0000:0b:00.1";
+in
 {
-  imports = [
-    ./hardware-configuration.nix
-  ];
+  imports = [ ./hardware-configuration.nix ];
 
   hardware.enableRedistributableFirmware = true;
 
@@ -14,17 +14,15 @@
     nerd-fonts.jetbrains-mono
   ];
 
-  # ============================================================
-  # TAM LİBVIRT HOOK (GPU passthrough + Hyprland durdurma)
-  # ============================================================
+  # VFIO libvirt hook
   environment.etc."libvirt/hooks/qemu" = {
     mode = "0755";
     text = ''
       #!/usr/bin/env bash
       mkdir -p /var/log/libvirt
       LOGFILE="/var/log/libvirt/vfio.log"
-      GPU_PCI="0000:0b:00.0"
-      GPU_AUDIO="0000:0b:00.1"
+      GPU_PCI="${gpuPCI}"
+      GPU_AUDIO="${gpuAudio}"
       VFIO_PATH="/sys/bus/pci/drivers/vfio-pci"
       AMDGPU_PATH="/sys/bus/pci/drivers/amdgpu"
 
@@ -67,8 +65,13 @@
       stop_hyprland() {
         log "Greetd durduruluyor..."
         systemctl stop greetd 2>/dev/null || true
-        # Kullanıcı oturumunun tamamen sonlanması için bekle
-        sleep 5
+        for i in $(seq 1 20); do
+          if ! fuser /dev/dri/card0 >/dev/null 2>&1; then
+            break
+          fi
+          sleep 0.5
+        done
+        sleep 1
       }
 
       start_hyprland() {
@@ -103,19 +106,17 @@
     '';
   };
 
-  # Boot / Kernel
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
   boot.kernelParams = [
     "amd_pstate=active" "nowatchdog" "nmi_watchdog=0"
     "transparent_hugepage=madvise" "amd_iommu=on" "iommu=pt"
     "usbcore.autosuspend=-1" "video=efifb:off"
-    "amdgpu.ppfeaturemask=0xffffffff" "kvm.ignore_msrs=1"
+    "amdgpu.ppfeaturemask=0xfffd7fff" "kvm.ignore_msrs=1"
     "pcie_aspm=off" "rcupdate.rcu_expedited=1"
     "apparmor=1"
   ];
 
-  # Modüller
   boot.initrd.availableKernelModules = lib.mkAfter [ "amdgpu" ];
   boot.initrd.kernelModules = [ "dm-crypt" "amdgpu" ];
   boot.kernelModules = [ "kvm-amd" "binder_linux" "ashmem_linux" "vfio-pci" ];
@@ -126,7 +127,7 @@
     "vm.swappiness" = 10;
     "kernel.sched_autogroup_enabled" = 0;
     "kernel.split_lock_mitigate" = 0;
-    "kernel.perf_event_paranoid" = 1; # Mangohud için yeterli
+    "kernel.perf_event_paranoid" = 1;
     "fs.inotify.max_user_watches" = 524288;
     "fs.inotify.max_user_instances" = 512;
     "net.core.rmem_max" = 16777216;
@@ -141,7 +142,6 @@
     { domain = "@gamemode"; item = "nice"; type = "-"; value = "-10"; }
   ];
 
-  # Güvenlik
   security.apparmor.enable = true;
   services.fail2ban = {
     enable = true;
@@ -161,6 +161,19 @@
           bantime = "48h";
           findtime = "10m";
         };
+      };
+    };
+  };
+
+  services.logrotate = {
+    enable = true;
+    settings = {
+      "/var/log/libvirt/vfio.log" = {
+        frequency = "weekly";
+        rotate = 4;
+        compress = true;
+        missingok = true;
+        notifempty = true;
       };
     };
   };
@@ -242,7 +255,6 @@
   };
 
   programs.kdeconnect.enable = true;
-  # Waydroid'u ilk kez çalıştırmadan önce manuel olarak `waydroid init -f` çalıştırmanız gerekir.
   virtualisation.waydroid.enable = true;
   security.polkit.enable = true;
   services.udisks2.enable = true;
@@ -298,11 +310,7 @@
   users.users.localhost = {
     isNormalUser = true;
     description = "Local User";
-    # Parolanızı systemd‑hashed‑password ile oluşturulan bir dosyadan okuyor.
-    # `mkpasswd -m sha-512` ile hash oluşturup /etc/nixos/hashedPassword dosyasına yazın.
-    # Alternatif olarak aşağıdaki satırı yorumsuz bırakıp düz metin parola da kullanabilirsiniz.
     hashedPasswordFile = "/etc/nixos/hashedPassword";
-    # initialPassword = "nixos";   # güvensiz, yalnızca ilk kurulumda kullanın
     shell = pkgs.fish;
     extraGroups = [
       "wheel" "networkmanager" "video" "audio" "storage"
@@ -321,8 +329,7 @@
     hyprlock hypridle wlogout hyprpicker
     hyprpolkitagent pyprland waypaper
     networkmanagerapplet brightnessctl playerctl
-    pavucontrol cliphist kdePackages.konsole
-    kdePackages.dolphin stdenv.cc.cc.lib
+    pavucontrol cliphist
     ntfs3g exfat gparted
     steam gamemode gamescope mangohud
     heroic protonup-qt wine nodejs

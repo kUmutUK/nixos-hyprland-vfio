@@ -1,356 +1,142 @@
-# home.nix — 10/10 (tüm dotfile'lar Nix ile yönetiliyor)
-
 { config, pkgs, lib, ... }:
 
 let
+  # ---------------------- Kullanıcıya özel değişkenler ----------------------
+  gitName      = "Umpug";
+  gitEmail     = "141457520+kUmutUK@users.noreply.github.com";
+  monitorOutput    = "DP-3";          # mpvpaper için monitör çıkışı
+  hyprlandMonitorLine = "monitor = ,preferred,auto,1";
+
+  # ------------------------------ GTK CSS ---------------------------------
   gtkCss = ''
-    /* === colors.css (saf siyah tema) === */
     @define-color accent_color              #cba6f7;
     @define-color accent_fg_color           #000000;
     @define-color accent_bg_color           #cba6f7;
-
     @define-color window_bg_color           #000000;
     @define-color window_fg_color           #ffffff;
-
     @define-color view_bg_color             #0a0a0a;
     @define-color view_fg_color             #ffffff;
-
     @define-color headerbar_bg_color        #000000;
     @define-color headerbar_fg_color        #ffffff;
     @define-color headerbar_border_color    #222222;
     @define-color headerbar_backdrop_color  #000000;
     @define-color headerbar_shade_color     #000000;
-
     @define-color card_bg_color             #111111;
     @define-color card_fg_color             #ffffff;
     @define-color card_shade_color          #000000;
-
     @define-color popover_bg_color          #111111;
     @define-color popover_fg_color          #ffffff;
-
     @define-color dialog_bg_color           #000000;
     @define-color dialog_fg_color           #ffffff;
-
     @define-color sidebar_bg_color          #000000;
     @define-color sidebar_fg_color          #ffffff;
     @define-color sidebar_border_color      #222222;
-
     @define-color warning_color             #f9e2af;
     @define-color error_color               #f38ba8;
     @define-color success_color             #a6e3a1;
-
     @define-color destructive_color         #f38ba8;
     @define-color destructive_bg_color      #f38ba8;
     @define-color destructive_fg_color      #000000;
 
-    /* === gtk.css === */
-    window,
-    .background {
+    window, .background {
       background-color: @window_bg_color;
       color: @window_fg_color;
     }
-
-    titlebar,
-    headerbar {
+    titlebar, headerbar {
       background-color: @headerbar_bg_color;
       color: @headerbar_fg_color;
       border-bottom: 1px solid @headerbar_border_color;
-      min-height: 38px;
-      padding: 0 8px;
+      min-height: 38px; padding: 0 8px;
     }
-
-    titlebar button,
-    headerbar button {
-      min-height: 24px;
-      min-width: 24px;
-      padding: 2px;
-      border-radius: 6px;
-      background: transparent;
-      color: @headerbar_fg_color;
+    titlebar button, headerbar button {
+      min-height: 24px; min-width: 24px; padding: 2px; border-radius: 6px;
+      background: transparent; color: @headerbar_fg_color;
     }
-
-    titlebar button:hover,
-    headerbar button:hover {
+    titlebar button:hover, headerbar button:hover {
       background: alpha(@accent_color, 0.2);
     }
-
     button {
-      background: @card_bg_color;
-      color: @card_fg_color;
-      border: 1px solid @headerbar_border_color;
-      border-radius: 8px;
-      padding: 6px 12px;
-      min-height: 28px;
-      transition: 0.15s;
+      background: @card_bg_color; color: @card_fg_color;
+      border: 1px solid @headerbar_border_color; border-radius: 8px;
+      padding: 6px 12px; min-height: 28px; transition: 0.15s;
     }
-
-    button:hover {
-      background: shade(@card_bg_color, 1.15);
-    }
-
-    button:active {
-      background: shade(@card_bg_color, 0.9);
-    }
-
+    button:hover { background: shade(@card_bg_color, 1.15); }
+    button:active { background: shade(@card_bg_color, 0.9); }
     button.suggested-action {
-      background: @accent_bg_color;
-      color: @accent_fg_color;
-      border-color: @accent_color;
+      background: @accent_bg_color; color: @accent_fg_color; border-color: @accent_color;
     }
-
     button.destructive-action {
-      background: @destructive_bg_color;
-      color: @destructive_fg_color;
-      border-color: @destructive_color;
+      background: @destructive_bg_color; color: @destructive_fg_color; border-color: @destructive_color;
     }
-
-    button:disabled {
-      opacity: 0.5;
-    }
-
+    button:disabled { opacity: 0.5; }
     entry {
-      background: @view_bg_color;
-      color: @view_fg_color;
-      border: 1px solid @headerbar_border_color;
-      border-radius: 8px;
-      padding: 6px 10px;
-      min-height: 28px;
+      background: @view_bg_color; color: @view_fg_color;
+      border: 1px solid @headerbar_border_color; border-radius: 8px;
+      padding: 6px 10px; min-height: 28px;
     }
-
-    entry:focus {
-      border-color: @accent_color;
-      box-shadow: 0 0 0 2px alpha(@accent_color, 0.3);
+    entry:focus { border-color: @accent_color; box-shadow: 0 0 0 2px alpha(@accent_color, 0.3); }
+    textview text, list, treeview, .view { background: @view_bg_color; color: @view_fg_color; }
+    list row, treeview row {
+      padding: 4px 8px; border-bottom: 1px solid alpha(@headerbar_border_color, 0.3);
     }
-
-    textview text,
-    list,
-    treeview,
-    .view {
-      background: @view_bg_color;
-      color: @view_fg_color;
+    list row:selected, treeview row:selected { background: @accent_bg_color; color: @accent_fg_color; }
+    scrollbar { background: transparent; border: none; }
+    scrollbar slider { background: @popover_bg_color; border-radius: 10px; min-width: 6px; min-height: 6px; }
+    scrollbar slider:hover { background: @card_bg_color; }
+    menu, popover {
+      background: @popover_bg_color; color: @popover_fg_color;
+      border: 1px solid @headerbar_border_color; border-radius: 10px; padding: 4px;
     }
-
-    list row,
-    treeview row {
-      padding: 4px 8px;
-      border-bottom: 1px solid alpha(@headerbar_border_color, 0.3);
-    }
-
-    list row:selected,
-    treeview row:selected {
-      background: @accent_bg_color;
-      color: @accent_fg_color;
-    }
-
-    scrollbar {
-      background: transparent;
-      border: none;
-    }
-
-    scrollbar slider {
-      background: @popover_bg_color;
-      border-radius: 10px;
-      min-width: 6px;
-      min-height: 6px;
-    }
-
-    scrollbar slider:hover {
-      background: @card_bg_color;
-    }
-
-    menu,
-    popover {
-      background: @popover_bg_color;
-      color: @popover_fg_color;
-      border: 1px solid @headerbar_border_color;
-      border-radius: 10px;
-      padding: 4px;
-    }
-
-    menuitem,
-    modelbutton {
-      padding: 6px 12px;
-      border-radius: 6px;
-    }
-
-    menuitem:hover,
-    modelbutton:hover {
-      background: alpha(@accent_color, 0.2);
-    }
-
+    menuitem, modelbutton { padding: 6px 12px; border-radius: 6px; }
+    menuitem:hover, modelbutton:hover { background: alpha(@accent_color, 0.2); }
     tooltip {
-      background: @card_bg_color;
-      color: @card_fg_color;
-      border: 1px solid @headerbar_border_color;
-      border-radius: 8px;
-      padding: 4px 8px;
+      background: @card_bg_color; color: @card_fg_color;
+      border: 1px solid @headerbar_border_color; border-radius: 8px; padding: 4px 8px;
     }
-
-    tooltip label {
-      color: @card_fg_color;
-    }
-
-    paned separator {
-      background: @headerbar_border_color;
-      min-width: 1px;
-      min-height: 1px;
-    }
-
+    tooltip label { color: @card_fg_color; }
+    paned separator { background: @headerbar_border_color; min-width: 1px; min-height: 1px; }
     infobar {
-      background: @window_bg_color;
-      border: 1px solid @headerbar_border_color;
-      border-radius: 8px;
-      margin: 4px;
-      padding: 8px;
+      background: @window_bg_color; border: 1px solid @headerbar_border_color;
+      border-radius: 8px; margin: 4px; padding: 8px;
     }
-
-    infobar.info {
-      background: alpha(@accent_color, 0.1);
-      border-color: @accent_color;
-    }
-
-    infobar.warning {
-      background: alpha(@warning_color, 0.1);
-      border-color: @warning_color;
-    }
-
-    infobar.error {
-      background: alpha(@error_color, 0.1);
-      border-color: @error_color;
-    }
-
+    infobar.info { background: alpha(@accent_color, 0.1); border-color: @accent_color; }
+    infobar.warning { background: alpha(@warning_color, 0.1); border-color: @warning_color; }
+    infobar.error { background: alpha(@error_color, 0.1); border-color: @error_color; }
     notebook tab {
-      background: @sidebar_bg_color;
-      color: @sidebar_fg_color;
-      padding: 6px 12px;
-      border: 1px solid @sidebar_border_color;
-      border-bottom: none;
+      background: @sidebar_bg_color; color: @sidebar_fg_color;
+      padding: 6px 12px; border: 1px solid @sidebar_border_color; border-bottom: none;
       border-radius: 8px 8px 0 0;
     }
-
-    notebook tab:checked {
-      background: @window_bg_color;
-      border-color: @headerbar_border_color;
+    notebook tab:checked { background: @window_bg_color; border-color: @headerbar_border_color; }
+    progressbar trough { background: @view_bg_color; border-radius: 6px; min-height: 6px; }
+    progressbar progress { background: @accent_bg_color; border-radius: 6px; }
+    frame { border: 1px solid @headerbar_border_color; border-radius: 8px; padding: 4px; }
+    switch { background: @popover_bg_color; border-radius: 12px; min-width: 44px; min-height: 24px; padding: 2px; }
+    switch slider { background: @window_fg_color; border-radius: 10px; min-width: 20px; min-height: 20px; }
+    switch:checked { background: @accent_bg_color; }
+    switch:checked slider { background: @accent_fg_color; }
+    checkbutton check, radiobutton radio {
+      background: @view_bg_color; border: 1px solid @headerbar_border_color;
+      color: @window_fg_color; min-width: 18px; min-height: 18px; border-radius: 4px; padding: 2px;
     }
-
-    progressbar trough {
-      background: @view_bg_color;
-      border-radius: 6px;
-      min-height: 6px;
+    checkbutton check:checked, radiobutton radio:checked {
+      background: @accent_bg_color; border-color: @accent_color; color: @accent_fg_color;
     }
-
-    progressbar progress {
-      background: @accent_bg_color;
-      border-radius: 6px;
-    }
-
-    frame {
-      border: 1px solid @headerbar_border_color;
-      border-radius: 8px;
-      padding: 4px;
-    }
-
-    switch {
-      background: @popover_bg_color;
-      border-radius: 12px;
-      min-width: 44px;
-      min-height: 24px;
-      padding: 2px;
-    }
-
-    switch slider {
-      background: @window_fg_color;
-      border-radius: 10px;
-      min-width: 20px;
-      min-height: 20px;
-    }
-
-    switch:checked {
-      background: @accent_bg_color;
-    }
-
-    switch:checked slider {
-      background: @accent_fg_color;
-    }
-
-    checkbutton check,
-    radiobutton radio {
-      background: @view_bg_color;
-      border: 1px solid @headerbar_border_color;
-      color: @window_fg_color;
-      min-width: 18px;
-      min-height: 18px;
-      border-radius: 4px;
-      padding: 2px;
-    }
-
-    checkbutton check:checked,
-    radiobutton radio:checked {
-      background: @accent_bg_color;
-      border-color: @accent_color;
-      color: @accent_fg_color;
-    }
-
-    scale trough {
-      background: @view_bg_color;
-      border-radius: 6px;
-      min-height: 6px;
-    }
-
-    scale highlight {
-      background: @accent_bg_color;
-      border-radius: 6px;
-    }
-
-    scale slider {
-      background: @window_fg_color;
-      border-radius: 10px;
-      min-width: 16px;
-      min-height: 16px;
-    }
-
-    separator {
-      background: @headerbar_border_color;
-      min-height: 1px;
-      min-width: 1px;
-    }
-
-    entry placeholder {
-      color: alpha(@window_fg_color, 0.5);
-    }
-
-    levelbar trough {
-      background: @view_bg_color;
-      border-radius: 4px;
-      min-height: 6px;
-    }
-
-    levelbar block {
-      background: @accent_bg_color;
-      border-radius: 4px;
-    }
-
-    treeview expander {
-      color: @window_fg_color;
-    }
-
-    calendar {
-      background: @window_bg_color;
-      color: @window_fg_color;
-    }
-
-    calendar:selected {
-      background: @accent_bg_color;
-      color: @accent_fg_color;
-    }
+    scale trough { background: @view_bg_color; border-radius: 6px; min-height: 6px; }
+    scale highlight { background: @accent_bg_color; border-radius: 6px; }
+    scale slider { background: @window_fg_color; border-radius: 10px; min-width: 16px; min-height: 16px; }
+    separator { background: @headerbar_border_color; min-height: 1px; min-width: 1px; }
+    entry placeholder { color: alpha(@window_fg_color, 0.5); }
+    levelbar trough { background: @view_bg_color; border-radius: 4px; min-height: 6px; }
+    levelbar block { background: @accent_bg_color; border-radius: 4px; }
+    treeview expander { color: @window_fg_color; }
+    calendar { background: @window_bg_color; color: @window_fg_color; }
+    calendar:selected { background: @accent_bg_color; color: @accent_fg_color; }
   '';
 
+  # ----------------------------- Hyprland --------------------------------
   hyprlandConf = ''
-    # ===========================================================================
-    # hyprland.conf — Saf Siyah Tema + Tüm Premium Özellikler (0.54)
-    # ===========================================================================
-
-    monitor = ,preferred,auto,1
+    ${hyprlandMonitorLine}
 
     $accent = rgba(cba6f7ff)
     $bg = rgba(000000ff)
@@ -381,7 +167,6 @@ let
     decoration {
         rounding = 10
         dim_inactive = false
-
         shadow {
             enabled = true
             range = 50
@@ -389,19 +174,13 @@ let
             offset = 0 5
             color = $bg
         }
-
-        blur {
-            enabled = false
-        }
     }
 
     animations {
         enabled = true
-
         bezier = smoothOut, 0.25, 0.05, 0.1, 1.0
         bezier = overshot, 0.05, 0.9, 0.1, 1.1
         bezier = bounce, 0.3, 1.6, 0.6, 1.0
-
         animation = windowsIn,  1, 5, smoothOut, slide
         animation = windowsOut, 1, 4, smoothOut, popin 80%
         animation = fade,       1, 4, smoothOut
@@ -422,7 +201,6 @@ let
         animate_mouse_windowdragging = false
         allow_session_lock_restore = true
         session_lock_xray = true
-
         enable_swallow = true
         swallow_regex = (kitty.*)
     }
@@ -434,7 +212,6 @@ let
 
     $mainMod = SUPER
 
-    # -- Uygulamalar --
     bind = $mainMod, A, exec, rofi -show drun -theme arthur
     bind = $mainMod, C, exec, kitty
     bind = $mainMod, Q, killactive
@@ -445,7 +222,6 @@ let
     bind = $mainMod, L, exec, hyprlock
     bind = $mainMod, W, exec, waypaper
 
-    # Scratchpad
     bind = $mainMod, S, exec, pypr toggle term
     bind = $mainMod SHIFT, S, exec, pypr toggle music
     bind = $mainMod CTRL, S, exec, pypr toggle filemanager
@@ -454,7 +230,6 @@ let
     bind = $mainMod, scroll:down, layoutmsg, cyclenext scroll
     bind = $mainMod, scroll:up, layoutmsg, cycleprev scroll
 
-    # Pencere yerleştirme
     bind = $mainMod SHIFT, left,  movewindow, l
     bind = $mainMod SHIFT, right, movewindow, r
     bind = $mainMod SHIFT, up,    movewindow, u
@@ -470,7 +245,6 @@ let
     bind = $mainMod CTRL, up,    resizeactive,   0 -40
     bind = $mainMod CTRL, down,  resizeactive,   0  40
 
-    # VIM tarzı HJKL
     bind = $mainMod, H, movefocus, l
     bind = $mainMod, L, movefocus, r
     bind = $mainMod, J, movefocus, d
@@ -486,7 +260,6 @@ let
     bind = $mainMod CTRL, J, resizeactive,  0  50
     bind = $mainMod CTRL, K, resizeactive,  0 -50
 
-    # Çalışma alanları
     bind = $mainMod, 1, workspace, 1
     bind = $mainMod, 2, workspace, 2
     bind = $mainMod, 3, workspace, 3
@@ -511,7 +284,6 @@ let
 
     bind = $mainMod, Tab, workspace, previous
 
-    # Ses tuşları
     binde = , XF86AudioRaiseVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+
     binde = , XF86AudioLowerVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-
     bind  = , XF86AudioMute,        exec, wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
@@ -521,7 +293,6 @@ let
     bindm = $mainMod, mouse:272, movewindow
     bindm = $mainMod, mouse:273, resizewindow
 
-    # Pencere kuralları
     windowrule = match:class ^(cs2)$, immediate on, fullscreen on, no_blur on, no_shadow on, no_anim on, rounding 0
     windowrule = match:class ^(gamescope|Gamescope)$, immediate on, fullscreen on, no_blur on, no_shadow on, no_anim on, rounding 0
     windowrule = match:class ^(pavucontrol)$, float on, size 500 600
@@ -539,262 +310,109 @@ let
     exec-once = pypr
   '';
 
+  # ------------------------------ Hyprlock ---------------------------------
   hyprlockConf = ''
-    # =============================================================================
-    # Hyprlock Yapılandırması - AMD RX 6700 XT + Saf Siyah Tema
-    # =============================================================================
-
     general {
         grace = 0
         disable_loading_bar = false
     }
-
-    # Saf siyah arka plan
-    background {
-        color = rgba(0, 0, 0, 1.0)
-    }
-
-    # Hatalı giriş mesajı
+    background { color = rgba(0, 0, 0, 1.0) }
     auth-msg {
-        position = 0, -200
-        size = 400, 50
-        halign = center
-        valign = center
-        font_family = JetBrainsMono Nerd Font
-        font_size = 14
-        font_color = rgba(243, 139, 168, 1.0)
-        shadow_passes = 0
+        position = 0, -200; size = 400, 50; halign = center; valign = center;
+        font_family = JetBrainsMono Nerd Font; font_size = 14;
+        font_color = rgba(243, 139, 168, 1.0); shadow_passes = 0;
     }
-
     label {
-        position = 0, -65
-        size = 250, 50
-        halign = center
-        valign = center
-        text = 
-        font_family = JetBrainsMono Nerd Font
-        font_size = 15
-        color = rgba(203, 166, 247, 1.0)
-        shadow_passes = 0
+        position = 0, -65; size = 250, 50; halign = center; valign = center;
+        text = ; font_family = JetBrainsMono Nerd Font; font_size = 15;
+        color = rgba(203, 166, 247, 1.0); shadow_passes = 0;
     }
-
     input-field {
-        position = 0, -120
-        size = 300, 50
-        halign = center
-        valign = center
-        placeholder_text =  Şifre...
-        font_family = JetBrainsMono Nerd Font
-        font_size = 20
-        dots_size = 0.55
-        dots_spacing = 0.15
-        check_symbol = 
-        placeholder_color = rgba(255, 255, 255, 0.4)
-        font_color = rgba(255, 255, 255, 1.0)
-        check_color = rgba(166, 227, 161, 1.0)
-        fail_color  = rgba(243, 139, 168, 1.0)
-        fail_transition = 300
-        hide_input = false
-        rounding = 10
-        outline_thickness = 2
-        outer_color = rgba(255, 255, 255, 0.1)
-        inner_color = rgba(0, 0, 0, 0.9)
-        shadow_passes = 0
+        position = 0, -120; size = 300, 50; halign = center; valign = center;
+        placeholder_text =  Şifre...; font_family = JetBrainsMono Nerd Font; font_size = 20;
+        dots_size = 0.55; dots_spacing = 0.15; check_symbol = ;
+        placeholder_color = rgba(255, 255, 255, 0.4); font_color = rgba(255, 255, 255, 1.0);
+        check_color = rgba(166, 227, 161, 1.0); fail_color = rgba(243, 139, 168, 1.0);
+        fail_transition = 300; hide_input = false; rounding = 10;
+        outline_thickness = 2; outer_color = rgba(255, 255, 255, 0.1);
+        inner_color = rgba(0, 0, 0, 0.9); shadow_passes = 0;
     }
-
     label {
-        position = 0, 150
-        size = 500, 100
-        halign = center
-        valign = center
-        text =  {H:M}
-        font_family = JetBrainsMono Nerd Font
-        font_size = 80
-        font_color = rgba(255, 255, 255, 1.0)
-        shadow_passes = 0
+        position = 0, 150; size = 500, 100; halign = center; valign = center;
+        text =  {H:M}; font_family = JetBrainsMono Nerd Font; font_size = 80;
+        font_color = rgba(255, 255, 255, 1.0); shadow_passes = 0;
     }
-
     label {
-        position = 0, 60
-        size = 500, 50
-        halign = center
-        valign = center
-        text = cmd[update:60000, LC_TIME=tr_TR.UTF-8 date +"%d %B %Y"]
-        font_family = JetBrainsMono Nerd Font
-        font_size = 20
-        font_color = rgba(255, 255, 255, 0.6)
-        shadow_passes = 0
+        position = 0, 60; size = 500, 50; halign = center; valign = center;
+        text = cmd[update:60000, LC_TIME=tr_TR.UTF-8 date +"%d %B %Y"];
+        font_family = JetBrainsMono Nerd Font; font_size = 20;
+        font_color = rgba(255, 255, 255, 0.6); shadow_passes = 0;
     }
-
     label {
-        position = 0, 10
-        size = 500, 50
-        halign = center
-        valign = center
-        text =  {user}
-        font_family = JetBrainsMono Nerd Font
-        font_size = 15
-        font_color = rgba(255, 255, 255, 0.4)
-        shadow_passes = 0
+        position = 0, 10; size = 500, 50; halign = center; valign = center;
+        text =  {user}; font_family = JetBrainsMono Nerd Font; font_size = 15;
+        font_color = rgba(255, 255, 255, 0.4); shadow_passes = 0;
     }
-
     label {
-        position = 20, 20
-        size = 200, 50
-        halign = left
-        valign = top
-        text = cmd[update:2000, wpctl get-volume @DEFAULT_AUDIO_SINK@ | awk '{printf "%.0f%%", $2*100}']
-        font_family = JetBrainsMono Nerd Font
-        font_size = 15
-        font_color = rgba(249, 226, 175, 1.0)
-        shadow_passes = 0
+        position = 20, 20; size = 200, 50; halign = left; valign = top;
+        text = cmd[update:2000, wpctl get-volume @DEFAULT_AUDIO_SINK@ | awk '{printf "%.0f%%", $2*100}'];
+        font_family = JetBrainsMono Nerd Font; font_size = 15;
+        font_color = rgba(249, 226, 175, 1.0); shadow_passes = 0;
     }
-
     label {
-        position = 20, 20
-        size = 200, 50
-        halign = right
-        valign = top
-        text = cmd[update:5000, nmcli -t -f NAME,TYPE,STATE con show --active 2>/dev/null | grep -v loopback | head -1 | cut -d: -f1 | xargs -I{} echo " {}" || echo " Bağlı Değil"]
-        font_family = JetBrainsMono Nerd Font
-        font_size = 15
-        font_color = rgba(148, 226, 213, 1.0)
-        shadow_passes = 0
+        position = 20, 20; size = 200, 50; halign = right; valign = top;
+        text = cmd[update:5000, nmcli -t -f NAME,TYPE,STATE con show --active 2>/dev/null | grep -v loopback | head -1 | cut -d: -f1 | xargs -I{} echo " {}" || echo " Bağlı Değil"];
+        font_family = JetBrainsMono Nerd Font; font_size = 15;
+        font_color = rgba(148, 226, 213, 1.0); shadow_passes = 0;
     }
-
     button {
-        position = -20, -20
-        size = 50, 50
-        halign = right
-        valign = bottom
-        font_family = JetBrainsMono Nerd Font
-        font_size = 20
-        text = ⏻
-        on_click = wlogout
-        font_color = rgba(243, 139, 168, 1.0)
-        rounding = 10
-        outline_thickness = 2
-        outer_color = rgba(243, 139, 168, 0.3)
+        position = -20, -20; size = 50, 50; halign = right; valign = bottom;
+        font_family = JetBrainsMono Nerd Font; font_size = 20;
+        text = ⏻; on_click = wlogout;
+        font_color = rgba(243, 139, 168, 1.0); rounding = 10;
+        outline_thickness = 2; outer_color = rgba(243, 139, 168, 0.3);
     }
-
     button {
-        position = -80, -20
-        size = 50, 50
-        halign = right
-        valign = bottom
-        font_family = JetBrainsMono Nerd Font
-        font_size = 20
-        text = 💤
-        on_click = systemctl suspend
-        font_color = rgba(255, 255, 255, 0.8)
-        rounding = 10
-        outline_thickness = 2
-        outer_color = rgba(255, 255, 255, 0.2)
+        position = -80, -20; size = 50, 50; halign = right; valign = bottom;
+        font_family = JetBrainsMono Nerd Font; font_size = 20;
+        text = 💤; on_click = systemctl suspend;
+        font_color = rgba(255, 255, 255, 0.8); rounding = 10;
+        outline_thickness = 2; outer_color = rgba(255, 255, 255, 0.2);
     }
   '';
 
+  # ------------------------------ Waybar ---------------------------------
   waybarStyle = ''
     * {
       font-family: "JetBrainsMono Nerd Font", monospace;
-      font-size: 12px;
-      font-weight: 500;
-      min-height: 0;
+      font-size: 12px; font-weight: 500; min-height: 0;
     }
-
-    #waybar {
-      background: #000000;
-      color: #ffffff;
-      border-bottom: 1px solid #222222;
-    }
-
-    tooltip {
-      background: #0a0a0a;
-      border: 1px solid #cba6f7;
-      border-radius: 8px;
-    }
-
-    tooltip label {
-      color: #ffffff;
-      padding: 2px 6px;
-      font-size: 11px;
-    }
-
-    #workspaces {
-      background: #0a0a0a;
-      border-radius: 10px;
-      margin: 4px 6px;
-      padding: 0 4px;
-    }
-
+    #waybar { background: #000000; color: #ffffff; border-bottom: 1px solid #222222; }
+    tooltip { background: #0a0a0a; border: 1px solid #cba6f7; border-radius: 8px; }
+    tooltip label { color: #ffffff; padding: 2px 6px; font-size: 11px; }
+    #workspaces { background: #0a0a0a; border-radius: 10px; margin: 4px 6px; padding: 0 4px; }
     #workspaces button {
-      color: #888888;
-      background: transparent;
-      border: none;
-      border-radius: 8px;
-      padding: 4px 10px;
-      margin: 3px 2px;
-      font-weight: 600;
+      color: #888888; background: transparent; border: none;
+      border-radius: 8px; padding: 4px 10px; margin: 3px 2px; font-weight: 600;
     }
-
-    #workspaces button.active {
-      color: #000000;
-      background: #cba6f7;
-    }
-
-    #workspaces button:hover {
-      color: #ffffff;
-      background: #222222;
-    }
-
-    #window {
-      color: #aaaaaa;
-      padding: 4px 12px;
-      font-style: italic;
-      font-size: 11px;
-    }
-
+    #workspaces button.active { color: #000000; background: #cba6f7; }
+    #workspaces button:hover { color: #ffffff; background: #222222; }
+    #window { color: #aaaaaa; padding: 4px 12px; font-style: italic; font-size: 11px; }
     #clock {
-      font-size: 13px;
-      font-weight: 600;
-      color: #ffffff;
-      background: #0a0a0a;
-      padding: 4px 14px;
-      border-radius: 10px;
-      margin: 4px;
+      font-size: 13px; font-weight: 600; color: #ffffff;
+      background: #0a0a0a; padding: 4px 14px; border-radius: 10px; margin: 4px;
     }
-
-    #cpu,
-    #memory,
-    #temperature,
-    #pulseaudio,
-    #network,
-    #gamemode,
-    #battery,
-    #tray,
-    #custom-temperature {
-      padding: 4px 10px;
-      margin: 4px 3px;
-      border-radius: 10px;
-      background: #0a0a0a;
+    #cpu, #memory, #temperature, #pulseaudio, #network, #gamemode, #battery, #tray, #custom-temperature {
+      padding: 4px 10px; margin: 4px 3px; border-radius: 10px; background: #0a0a0a;
     }
-
     #cpu.warning { color: #f9e2af; }
     #cpu.critical { color: #f38ba8; }
     #memory.warning { color: #f9e2af; }
     #memory.critical { color: #f38ba8; }
-
-    #mpris {
-      background: #111111;
-      color: #cba6f7;
-      border-radius: 10px;
-      padding: 4px 10px;
-      margin: 4px 3px;
-    }
-
+    #mpris { background: #111111; color: #cba6f7; border-radius: 10px; padding: 4px 10px; margin: 4px 3px; }
     #mpris.playing { color: #a6e3a1; }
     #mpris.paused  { color: #f9e2af; }
     #mpris.stopped { color: #6c7086; }
-
     #cpu { color: #89b4fa; }
     #memory { color: #a6e3a1; }
     #custom-temperature { color: #fab387; }
@@ -802,20 +420,11 @@ let
     #network { color: #94e2d5; }
     #gamemode { color: #cba6f7; font-weight: bold; }
     #battery { color: #a6e3a1; }
-
     #custom-power {
-      color: #f38ba8;
-      font-size: 15px;
-      font-weight: bold;
-      padding: 4px 12px;
-      margin: 4px;
-      background: #0a0a0a;
-      border-radius: 10px;
+      color: #f38ba8; font-size: 15px; font-weight: bold;
+      padding: 4px 12px; margin: 4px; background: #0a0a0a; border-radius: 10px;
     }
-
-    #custom-power:hover {
-      background: #222222;
-    }
+    #custom-power:hover { background: #222222; }
   '';
 
   waybarConfig = builtins.toJSON {
@@ -842,9 +451,7 @@ let
       on-click = "activate";
       all-outputs = false;
       show-special = false;
-      persistent-workspaces = {
-        "1" = []; "2" = []; "3" = [];
-      };
+      persistent-workspaces = { "1" = []; "2" = []; "3" = []; };
     };
 
     "hyprland/window" = {
@@ -877,10 +484,7 @@ let
       tooltip = true;
       tooltip-format = "CPU kullanımı: {usage}%\nFrequency: {frequency} GHz";
       on-click = "kitty -e btop";
-      states = {
-        warning = 70;
-        critical = 90;
-      };
+      states = { warning = 70; critical = 90; };
     };
 
     memory = {
@@ -890,10 +494,7 @@ let
       tooltip = true;
       tooltip-format = "Kullanılan: {used:0.1f} GiB\nToplam: {total:0.1f} GiB\nBoş: {avail:0.1f} GiB";
       on-click = "kitty -e btop";
-      states = {
-        warning = 70;
-        critical = 90;
-      };
+      states = { warning = 70; critical = 90; };
     };
 
     "custom/temperature" = {
@@ -957,23 +558,15 @@ let
       timezone = "Europe/Istanbul";
     };
 
-    tray = {
-      icon-size = 16;
-      spacing = 8;
-      show-passive-icons = true;
-    };
+    tray = { icon-size = 16; spacing = 8; show-passive-icons = true; };
 
     mpris = {
       player = ["spotify" "spotifyd" "com.spotify.Client" "firefox" "chromium" "brave-browser"];
       format = "{player_icon} {artist} - {title}";
       format-paused = "⏸ {artist} - {title}";
       format-stopped = "";
-      player-icons = {
-        default = "🎵"; spotify = ""; firefox = "🦊"; chromium = "";
-      };
-      status-icons = {
-        paused = "⏸"; playing = "▶"; stopped = "■";
-      };
+      player-icons = { default = "🎵"; spotify = ""; firefox = "🦊"; chromium = ""; };
+      status-icons = { paused = "⏸"; playing = "▶"; stopped = "■"; };
       max-length = 40;
       on-click = "playerctl play-pause";
       on-click-right = "playerctl stop";
@@ -1023,8 +616,6 @@ in
     gtk4.extraCss = gtkCss;
   };
 
-  # ========== TÜM DOTFİLE'LAR NİX İLE YÖNETİLİYOR ==========
-
   xdg.configFile = {
     "hypr/hyprland.conf".text = hyprlandConf;
     "hypr/hyprlock.conf".text = hyprlockConf;
@@ -1041,7 +632,6 @@ in
         if [ -e "$hwmon/name" ]; then
           name=$(cat "$hwmon/name")
           if [ "$name" = "amdgpu" ]; then
-            # junction sensörünü bul (temp1 veya temp2 olabilir)
             for label_file in "$hwmon"/temp*_label; do
               [ -e "$label_file" ] || continue
               label=$(cat "$label_file")
@@ -1052,7 +642,6 @@ in
                 break 2
               fi
             done
-            # junction bulunamazsa ilk temp değerini al
             if [ -z "$temp" ]; then
               for input in "$hwmon"/temp*_input; do
                 [ -e "$input" ] && { raw=$(cat "$input"); temp=$((raw / 1000)); break; }
@@ -1062,7 +651,6 @@ in
           fi
         fi
       done
-      # hiçbir şey bulunamazsa genel fallback
       if [ -z "$temp" ]; then
         raw=$(cat /sys/class/hwmon/hwmon*/temp1_input 2>/dev/null | head -1)
         [ -n "$raw" ] && temp=$((raw / 1000))
@@ -1177,8 +765,8 @@ in
     git = {
       enable = true;
       settings = {
-        user.name = "Umpug";
-        user.email = "141457520+kUmutUK@users.noreply.github.com";
+        user.name = gitName;
+        user.email = gitEmail;
         core.editor = "nano";
         core.autocrlf = "input";
         pull.rebase = false;
@@ -1257,7 +845,6 @@ in
     };
   };
 
-  # Hypridle servisi
   services.hypridle = {
     enable = true;
     settings = {
@@ -1285,7 +872,6 @@ in
     };
   };
 
-  # mpvpaper servisi – canlı video duvar kağıdı (çalışan sürüm)
   systemd.user.services.mpvpaper = {
     Unit = {
       Description = "mpvpaper live wallpaper service (looped)";
@@ -1295,7 +881,7 @@ in
     Service = {
       Type = "simple";
       Environment = "PATH=${lib.makeBinPath [ pkgs.mpvpaper pkgs.mpv ]}";
-      ExecStart = "${pkgs.mpvpaper}/bin/mpvpaper -p --mpv-options \"loop=inf\" DP-3 /home/localhost/wallpaper/mylivewallpapers-com-Ryou-Yamada-Bocchi-the-Rock-4K.mp4";
+      ExecStart = "${pkgs.mpvpaper}/bin/mpvpaper -p --mpv-options \"loop=inf\" ${monitorOutput} /home/localhost/wallpaper/mylivewallpapers-com-Ryou-Yamada-Bocchi-the-Rock-4K.mp4";
       Restart = "on-failure";
       RestartSec = 3;
     };
