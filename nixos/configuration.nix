@@ -344,7 +344,7 @@ in
     qbittorrent flatpak gnome-software
     btrfs-progs compsize snapper
     mpvpaper flatpak-builder
-    apparmor-utils
+    apparmor-utils stdenv.cc.cc.lib kdePackages.konsole kdePackages.dolphin
   ];
 
   programs.gamemode = {
