@@ -1,4 +1,7 @@
 # 🚀 NixOS Hyprland Gaming + VFIO (AMD-Optimized)
+<p align="center">
+  ⚡ Declarative • 🎮 Gaming • 🧪 VFIO • 🐧 NixOS
+</p>
 
 <p align="center">
   <img src="./assets/desktop.png" width="49%" />
