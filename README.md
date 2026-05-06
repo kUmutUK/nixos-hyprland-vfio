@@ -1,4 +1,5 @@
-# 🚀 NixOS Hyprland Gaming + VFIO (AMD-Optimized)
+# 🚀 NixOS Hyprland + VFIO
+
 <p align="center">
   ⚡ Declarative • 🎮 Gaming • 🧪 VFIO • 🐧 NixOS
 </p>
@@ -132,7 +133,7 @@ A fully declarative NixOS setup combining a clean Hyprland desktop, AMD-focused 
 ### 🔐 Security
 
 * AppArmor
-* Fail2ban (3 SSH failures → 48h ban)
+* Fail2ban (3 SSH fails → 48h ban)
 * SSH password disabled, root login disabled
 * Firewall enabled
 
@@ -162,8 +163,8 @@ A fully declarative NixOS setup combining a clean Hyprland desktop, AMD-focused 
 ## ⚡ Quick Start
 
 ```bash
-git clone https://github.com/kUmutUK/Declarative-NixOS-Gaming-VFIO-Setup-Hyprland-AMD-GPU-Passthrough-.git
-cd Declarative-NixOS-Gaming-VFIO-Setup-Hyprland-AMD-GPU-Passthrough-
+git clone https://github.com/kUmutUK/nixos-hyprland-vfio.git
+cd nixos-hyprland-vfio
 chmod +x install.sh
 ./install.sh
 ```
