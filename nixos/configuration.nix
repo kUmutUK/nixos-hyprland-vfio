@@ -1,8 +1,8 @@
 { config, pkgs, lib, ... }:
 
 let
-  gpuPCI   = "";
-  gpuAudio = "";
+  gpuPCI   = "0000:0b:00.0";
+  gpuAudio = "0000:0b:00.1";
 in
 {
   imports = [ ./hardware-configuration.nix ];
@@ -14,96 +14,10 @@ in
     nerd-fonts.jetbrains-mono
   ];
 
-  # VFIO libvirt hook
+  # VFIO libvirt hook – artık harici dosyadan alınıyor
   environment.etc."libvirt/hooks/qemu" = {
     mode = "0755";
-    text = ''
-      #!/usr/bin/env bash
-      mkdir -p /var/log/libvirt
-      LOGFILE="/var/log/libvirt/vfio.log"
-      GPU_PCI="${gpuPCI}"
-      GPU_AUDIO="${gpuAudio}"
-      VFIO_PATH="/sys/bus/pci/drivers/vfio-pci"
-      AMDGPU_PATH="/sys/bus/pci/drivers/amdgpu"
-
-      log() {
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOGFILE"
-      }
-
-      bind_vfio() {
-        for dev in "$@"; do
-          if [ -e "/sys/bus/pci/devices/$dev/driver" ]; then
-            echo "$dev" > "/sys/bus/pci/devices/$dev/driver/unbind" 2>/dev/null
-          fi
-          echo "vfio-pci" > "/sys/bus/pci/devices/$dev/driver_override"
-          echo "$dev" > "/sys/bus/pci/drivers/vfio-pci/bind" 2>/dev/null ||
-            echo "$dev" > /sys/bus/pci/drivers_probe 2>/dev/null
-        done
-      }
-
-      bind_amdgpu() {
-        for dev in "$@"; do
-          if [ -e "/sys/bus/pci/devices/$dev/driver" ]; then
-            echo "$dev" > "/sys/bus/pci/devices/$dev/driver/unbind" 2>/dev/null
-          fi
-          echo "amdgpu" > "/sys/bus/pci/devices/$dev/driver_override"
-          echo "$dev" > "/sys/bus/pci/drivers/amdgpu/bind" 2>/dev/null ||
-            echo "$dev" > /sys/bus/pci/drivers_probe 2>/dev/null
-        done
-      }
-
-      vendor_reset() {
-        if [ -e "/sys/bus/pci/devices/$1/reset_method" ]; then
-          echo "device_specific" > "/sys/bus/pci/devices/$1/reset_method" 2>/dev/null || true
-        fi
-        if [ -e "/sys/bus/pci/devices/$1/reset" ]; then
-          echo 1 > "/sys/bus/pci/devices/$1/reset" 2>/dev/null || true
-        fi
-        sleep 1
-      }
-
-      stop_hyprland() {
-        log "Greetd durduruluyor..."
-        systemctl stop greetd 2>/dev/null || true
-        for i in $(seq 1 20); do
-          if ! fuser /dev/dri/card0 >/dev/null 2>&1; then
-            break
-          fi
-          sleep 0.5
-        done
-        sleep 1
-      }
-
-      start_hyprland() {
-        log "Greetd başlatılıyor..."
-        systemctl start greetd 2>/dev/null || true
-      }
-
-      GUEST="$1"
-      ACTION="$2"
-
-      if [ "$ACTION" = "prepare" ]; then
-        log "VM $GUEST başlatılıyor, masaüstü durduruluyor..."
-        stop_hyprland
-        echo 0 > /sys/class/vtconsole/vtcon0/bind 2>/dev/null || true
-        echo 0 > /sys/class/vtconsole/vtcon1/bind 2>/dev/null || true
-        echo efi-framebuffer.0 > /sys/bus/platform/drivers/efi-framebuffer/unbind 2>/dev/null || true
-        sleep 1
-        bind_vfio "$GPU_PCI" "$GPU_AUDIO"
-        vendor_reset "$GPU_PCI"
-        log "GPU vfio-pci'ye bağlandı."
-      fi
-
-      if [ "$ACTION" = "release" ]; then
-        log "VM $GUEST kapandı, GPU geri alınıyor..."
-        bind_amdgpu "$GPU_PCI" "$GPU_AUDIO"
-        echo 1 > /sys/class/vtconsole/vtcon0/bind 2>/dev/null || true
-        echo 1 > /sys/class/vtconsole/vtcon1/bind 2>/dev/null || true
-        echo efi-framebuffer.0 > /sys/bus/platform/drivers/efi-framebuffer/bind 2>/dev/null || true
-        start_hyprland
-        log "GPU amdgpu'ya geri verildi, masaüstü başlatıldı."
-      fi
-    '';
+    source = ./hooks/qemu;  # dosya yolu
   };
 
   boot.loader.systemd-boot.enable = true;
@@ -114,7 +28,7 @@ in
     "usbcore.autosuspend=-1" "video=efifb:off"
     "amdgpu.ppfeaturemask=0xfffd7fff" "kvm.ignore_msrs=1"
     "pcie_aspm=off" "rcupdate.rcu_expedited=1"
-    "apparmor=1"
+    # "apparmor=1"  ✅ NixOS security.apparmor.enable tarafından otomatik eklenir
   ];
 
   boot.initrd.availableKernelModules = lib.mkAfter [ "amdgpu" ];
@@ -343,7 +257,7 @@ in
     brave telegram-desktop discord proton-vpn
     qbittorrent flatpak gnome-software
     btrfs-progs compsize snapper
-    mpvpaper flatpak-builder
+    mpvpaper flatpak-builder psmisc
     apparmor-utils stdenv.cc.cc.lib kdePackages.konsole kdePackages.dolphin
   ];
 
@@ -424,9 +338,8 @@ in
   programs.nix-ld.enable = true;
 
   # Ananicy servisini ve CachyOS kurallarını etkinleştir
-services.ananicy = {
-  enable = true;
-  rulesProvider = pkgs.ananicy-rules-cachyos;
-};
-
+  services.ananicy = {
+    enable = true;
+    rulesProvider = pkgs.ananicy-rules-cachyos;
+  };
 }

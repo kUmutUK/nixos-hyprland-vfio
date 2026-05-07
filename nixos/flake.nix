@@ -28,7 +28,7 @@
           ];
           boot.kernelPackages = pkgs.cachyosKernels.linuxPackages-cachyos-bore;
           programs.hyprland.package = pkgs.hyprland;
-          services.xserver.videoDrivers = [ "amdgpu" ];
+          # services.xserver.videoDrivers = [ "amdgpu" ];   # X server kapalı, gerek yok
           environment.systemPackages = [ pkgs.pyprland ];
         })
         ./configuration.nix

@@ -138,8 +138,9 @@
   hyprlandConf = ''
     ${hyprlandMonitorLine}
 
-    $accent = rgba(cba6f7ff)
-    $bg = rgba(000000ff)
+    # ✅ DÜZELTİLDİ: Renkler artık doğru formatta (0x hex + virgül)
+    $accent = 0xcba6f7ff
+    $bg     = 0x000000ff
 
     env = XCURSOR_SIZE,16
     env = XCURSOR_THEME,capitaine-cursors
