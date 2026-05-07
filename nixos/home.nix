@@ -1,12 +1,13 @@
 { config, pkgs, lib, ... }:
 
-  let
+let
   # ---------------------- Kullanıcıya özel değişkenler ----------------------
-  gitName      = "Umpug";
-  gitEmail     = "141457520+kUmutUK@users.noreply.github.com";
-  monitorOutput    = "DP-3";          # mpvpaper için monitör çıkışı
+  gitName            = "Umpug";
+  gitEmail           = "141457520+kUmutUK@users.noreply.github.com";
+  monitorOutput      = "DP-3";
   hyprlandMonitorLine = "monitor = ,preferred,auto,1";
-  wallpaperVideo = "/home/localhost/wallpaper/mylivewallpapers-com-Ryou-Yamada-Bocchi-the-Rock-4K.mp4"; 
+  wallpaperVideo     = "/home/localhost/wallpaper/mylivewallpapers-com-Ryou-Yamada-Bocchi-the-Rock-4K.mp4";
+
   # ------------------------------ GTK CSS ---------------------------------
   gtkCss = ''
     @define-color accent_color              #cba6f7;
@@ -138,7 +139,6 @@
   hyprlandConf = ''
     ${hyprlandMonitorLine}
 
-    # ✅ DÜZELTİLDİ: Renkler artık doğru formatta (0x hex + virgül)
     $accent = 0xcba6f7ff
     $bg     = 0x000000ff
 
@@ -165,6 +165,10 @@
         no_focus_fallback = false
     }
 
+    dwindle {
+        smart_resizing = true
+    }
+
     decoration {
         rounding = 10
         dim_inactive = false
@@ -182,13 +186,14 @@
         bezier = smoothOut, 0.25, 0.05, 0.1, 1.0
         bezier = overshot, 0.05, 0.9, 0.1, 1.1
         bezier = bounce, 0.3, 1.6, 0.6, 1.0
-        animation = windowsIn,  1, 5, smoothOut, slide
-        animation = windowsOut, 1, 4, smoothOut, popin 80%
+        animation = windowsIn,  1, 7, smoothOut, slide
+        animation = windowsOut, 1, 7, smoothOut, slide
         animation = fade,       1, 4, smoothOut
         animation = workspaces, 1, 5, overshot, slide
-        animation = layers, 1, 4, smoothOut, fade
+        animation = layers, 1, 6, overshot, fade
         animation = border, 1, 10, smoothOut
-        animation = specialWorkspace, 1, 5, overshot, slidevert
+        animation = specialWorkspace, 1, 6, overshot, slidevert
+
     }
 
     misc {
@@ -220,6 +225,7 @@
     bind = $mainMod, F, fullscreen
     bind = $mainMod, V, togglefloating
     bind = $mainMod, P, exec, grim -g "$(slurp)" - | wl-copy
+    bind = $mainMod SHIFT, P, exec, grim -g "$(slurp)" - | satty -f - | wl-copy
     bind = $mainMod, L, exec, hyprlock
     bind = $mainMod, W, exec, waypaper
 
@@ -283,11 +289,16 @@
     bind = $mainMod SHIFT, 9, movetoworkspace, 9
     bind = $mainMod SHIFT, 0, movetoworkspace, 10
 
+    bind = $mainMod, G, togglegroup
+    bind = $mainMod, TAB, changegroupactive
+
     bind = $mainMod, Tab, workspace, previous
 
     binde = , XF86AudioRaiseVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+
     binde = , XF86AudioLowerVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-
     bind  = , XF86AudioMute,        exec, wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
+
+    bind = $mainMod SHIFT, C, exec, hyprpicker -a && notify-send "Renk" "$(wl-paste)" -t 2000
 
     bind = $mainMod SHIFT, E, exit
 
@@ -480,7 +491,8 @@
 
     cpu = {
       interval = 5;
-      format = " {usage}%";
+      format = " {usage}% {icon}";
+      format-icons = ["▁" "▂" "▃" "▄" "▅" "▆" "▇" "█"];
       format-alt = "⚡ {usage}%";
       tooltip = true;
       tooltip-format = "CPU kullanımı: {usage}%\nFrequency: {frequency} GHz";
@@ -857,23 +869,28 @@ in
       };
       listener = [
         {
-          timeout = 300;
+          timeout = 300;  # 5 dakika sonra ekranı kapat
           on-timeout = "hyprctl dispatch dpms off";
           on-resume = "hyprctl dispatch dpms on";
         }
         {
-          timeout = 600;
+          timeout = 150;   # 2.5 dakika sonra ekranı karart (%70)
+          on-timeout = "brightnessctl -s set 70%";
+          on-resume = "brightnessctl -r";
+        }
+        {
+          timeout = 600;   # 10 dakika sonra kilitle
           on-timeout = "pidof hyprlock || hyprlock";
         }
         {
-          timeout = 900;
+          timeout = 900;   # 15 dakika sonra askıya al
           on-timeout = "pidof hyprlock || hyprlock; systemctl suspend";
         }
       ];
     };
   };
 
-systemd.user.services.mpvpaper = {
+  systemd.user.services.mpvpaper = {
     Unit = {
       Description = "mpvpaper live wallpaper service (looped)";
       After = [ "graphical-session.target" ];
@@ -892,6 +909,6 @@ systemd.user.services.mpvpaper = {
   home.packages = with pkgs; [
     fd ripgrep jq wget curl file tree
     playerctl pamixer hyprpicker wev
-    nano
+    nano satty          # ekran görüntüsü düzenleme
   ];
 }
