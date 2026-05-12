@@ -1,4 +1,3 @@
-
 { config, pkgs, lib, ... }:
 
 let
@@ -9,6 +8,26 @@ let
   hyprlandMonitorLine = "monitor = ,preferred,auto,1";
   wallpaperVideo     = "/home/localhost/wallpaper/mylivewallpapers-com-Ryou-Yamada-Bocchi-the-Rock-4K.mp4";
 
+  # ------------------------- Gamemode bildirim betiği -------------------------
+    gamemodeNotifyScript = pkgs.writeShellScriptBin "gamemode-notify" ''
+  NOTIFY_SEND="${pkgs.libnotify}/bin/notify-send"
+  # Gamemode sinyallerini dinle (GameRegistered / GameUnregistered)
+  ${pkgs.dbus}/bin/dbus-monitor --session \
+    "type='signal',interface='com.feralinteractive.GameMode'" |
+  while read -r line; do
+    if echo "$line" | grep -q 'GameRegistered'; then
+      $NOTIFY_SEND -i games "🎮 GameMode" "Aktif – yüksek performans" -t 3000
+    elif echo "$line" | grep -q 'GameUnregistered'; then
+      # Kapanmadan önce başka oyun kaldı mı diye kontrol et
+      count=$(${pkgs.systemd}/bin/busctl --user get-property com.feralinteractive.GameMode \
+                /com/feralinteractive/GameMode com.feralinteractive.GameMode ClientCount \
+                2>/dev/null | cut -d' ' -f2)
+      if [ "$count" = "0" ]; then
+        $NOTIFY_SEND -i games "🎮 GameMode" "Devre dışı – normal mod" -t 3000
+      fi
+    fi
+  done
+'';
   # ------------------------------ GTK CSS ---------------------------------
   gtkCss = ''
     @define-color accent_color              #cba6f7;
@@ -322,6 +341,7 @@ let
     exec-once = dbus-update-activation-environment --systemd DISPLAY
     exec-once = pypr
     exec-once = /home/localhost/.local/bin/mpvpaper-watchdog   # canlı duvar kağıdı izleyici
+    exec-once = systemctl --user start gamemode-notify
   '';
 
   # ------------------------------ Hyprlock ---------------------------------
@@ -910,21 +930,21 @@ in
       };
       listener = [
         {
-          timeout = 300;  # 5 dakika sonra ekranı kapat
+          timeout = 300;
           on-timeout = "hyprctl dispatch dpms off";
           on-resume = "hyprctl dispatch dpms on";
         }
         {
-          timeout = 150;   # 2.5 dakika sonra ekranı karart (%70)
+          timeout = 150;
           on-timeout = "brightnessctl -s set 70%";
           on-resume = "brightnessctl -r";
         }
         {
-          timeout = 600;   # 10 dakika sonra kilitle
+          timeout = 600;
           on-timeout = "pidof hyprlock || hyprlock";
         }
         {
-          timeout = 900;   # 15 dakika sonra askıya al
+          timeout = 900;
           on-timeout = "pidof hyprlock || hyprlock; systemctl suspend";
         }
       ];
@@ -948,20 +968,20 @@ in
       Install.WantedBy = [ "graphical-session.target" ];
     };
 
-memofast = {
-  Unit = {
-    Description = "MemoFast TR Dummy Process";
-    After = [ "graphical-session.target" ];
-    PartOf = [ "graphical-session.target" ];
-  };
-  Service = {
-    ExecStart = "${pkgs.bash}/bin/bash -c 'while true; do sleep 10; done'";
-    Restart = "on-failure";
-  };
-  Install.WantedBy = [ "default.target" ];   # ← bu satır değişti
-};
-    
-mpvpaper-watchdog = {
+    memofast = {
+      Unit = {
+        Description = "MemoFast TR Dummy Process";
+        After = [ "graphical-session.target" ];
+        PartOf = [ "graphical-session.target" ];
+      };
+      Service = {
+        ExecStart = "${pkgs.bash}/bin/bash -c 'while true; do sleep 10; done'";
+        Restart = "on-failure";
+      };
+      Install.WantedBy = [ "default.target" ];
+    };
+
+    mpvpaper-watchdog = {
       Unit = {
         Description = "Brave açıldığında canlı duvar kağıdını durdurur";
         After = [ "graphical-session.target" ];
@@ -977,12 +997,31 @@ mpvpaper-watchdog = {
       };
       Install.WantedBy = [ "graphical-session.target" ];
     };
+
+    # ---- Yeni eklenen gamemode bildirim servisi ----
+    gamemode-notify = {
+      Unit = {
+        Description = "Gamemode durum değişikliklerini Dunst ile bildir";
+        After = [ "graphical-session-pre.target" ];
+        PartOf = [ "graphical-session.target" ];
+      };
+      Install = {
+        WantedBy = [ "graphical-session.target" ];
+      };
+      Service = {
+        Type = "simple";
+        ExecStart = "${gamemodeNotifyScript}/bin/gamemode-notify";
+        Restart = "on-failure";
+        RestartSec = 5;
+        Environment = "PATH=${lib.makeBinPath [ pkgs.libnotify pkgs.dbus pkgs.gnugrep pkgs.systemd pkgs.coreutils ]}";
+      };
+    };
   };
 
 
   home.packages = with pkgs; [
     fd ripgrep jq wget curl file tree
     playerctl pamixer hyprpicker wev
-    nano satty socat          # ekran görüntüsü düzenleme
+    nano satty socat libnotify
   ];
 }
