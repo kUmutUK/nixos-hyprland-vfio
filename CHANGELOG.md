@@ -1,54 +1,38 @@
-# 📜 Changelog
+# Sürüm Notları (Changelog)
 
-Tüm önemli değişiklikler bu dosyada belgelenmiştir.
+Bu dosya, NixOS Hyprland VFIO projesindeki tüm önemli değişiklikleri sürüm bazında listeler.
+Proje, [Keep a Changelog](https://keepachangelog.com/tr/1.0.0/) biçimini temel alır ve 
+[Semantic Versioning](https://semver.org/lang/tr/) kurallarına uyar.
 
----
+## [1.0.0] – 2026-05-12
+### Eklenenler
+- **VFIO (GPU Passthrough)**: Tek AMD GPU’nun Windows VM’e dinamik olarak devredilmesini 
+  sağlayan libvirt hook mekanizması (`hooks/qemu`). Looking Glass desteği.
+- **CachyOS BORE Kernel**: Düşük gecikme ve oyun performansı için özel kernel.
+- **Hyprland 0.55.0**: Wayland tabanlı, animasyonlu ve tamamen özelleştirilmiş pencere yöneticisi.
+- **Catppuccin Tema Entegrasyonu**: GTK, Hyprland, Kitty, Waybar, btop ve fzf gibi tüm 
+  bileşenlerde tutarlı renk paleti.
+- **Canlı Duvar Kağıdı Desteği**: `mpvpaper` ile video duvar kağıdı. `mpvpaper-watchdog` 
+  sayesinde tam ekran uygulamalarda otomatik durdurma/başlatma.
+- **Dinamik Kısayol Pencereleri**: `pyprland` ile terminal (`scratchterm`), müzik ve dosya 
+  yöneticisi için çabuk erişim.
+- **Oyun Optimizasyonları**: GameMode (CPU/GPU önceliği, duvar kağıdı kontrolü), Ananicy 
+  (CachyOS kuralları), MangoHud ve Gamescope desteği.
+- **Yapay Zeka (AI)**: AMD GPU üzerinde çalışan Ollama (ROCm) entegrasyonu.
+- **Güvenlik**: AppArmor zorunlu erişim kontrolü, Fail2ban SSH koruması, 
+  parola girişi kapalı SSH yapılandırması.
+- **Sistem Bakımı**: Otomatik Nix çöp toplama, Btrfs scrub, Snapper anlık görüntüleri, 
+  zramSwap ve logrotate.
+- **Detaylı Dokümantasyon**: Türkçe `KURULUM.md` (LUKS+Btrfs adımlarıyla), 
+  `CONTRIBUTING.md`, `install.sh` otomatik kurulum betiği ve GitHub Actions CI.
+- **Kapsamlı CLI Deneyimi**: Fish shell, Starship, Zoxide, fzf, eza, bat ve bolca alias.
 
-## [2.0.0] – 2026-05-06
+### Değişiklikler
+- Sistem temeli NixOS 26.05 (Yarara) olarak güncellendi.
+- `dbus-broker` ve `initrd`’de `systemd` etkinleştirildi.
+- Hyprland yapılandırması v0.55.0 uyumlu hale getirildi.
 
-### ✨ Eklenenler
+### Düzeltmeler
+- İlk kararlı sürüm. Önceki beta sürümlerinden gelen tüm bilinen hatalar giderildi.
 
-* Güvenli `install.sh`: GPU PCI adresleri, monitör, git bilgileri gibi değişkenleri soran ve dosyalara işleyen etkileşimli betik
-* Kapsamlı `README.md`: özellikler, kurulum, kullanım, donanım uyarlama ve SSS
-* Türkçe kurulum rehberi (`KURULUM.md`)
-* `LICENSE` (MIT), `.gitignore`, `CONTRIBUTING.md`, `CHANGELOG.md`
-* GitHub Actions CI (`.github/workflows/check.yml`) – her commit'te `nix flake check`
-* Geliştirme kabuğu (`shell.nix`)
-
----
-
-### 🔧 Değişiklikler
-
-* GPU PCI adresleri ve monitör çıkışı `configuration.nix` ve `home.nix` içinde `let` bloklarıyla değişkenleştirildi
-* `amdgpu.ppfeaturemask`:
-
-  * `0xffffffff` → `0xfffd7fff` (daha güvenli)
-* VFIO hook iyileştirildi:
-
-  * `sleep 5` kaldırıldı
-  * yerine `fuser /dev/dri/card0` ile GPU serbest kalma kontrolü eklendi
-* Hyprland 0.54 ile uyumsuz `blur { ... }` bloğu kaldırıldı
-* Git bilgileri ve mpvpaper video yolu `home.nix` içinde değişken yapıldı
-* `install.sh`, riskli `sed` işlemlerinden arındırıldı
-
----
-
-### 🐞 Düzeltmeler
-
-* README’de hatalı parola bilgisi düzeltildi (`hashedPasswordFile`)
-* Intel / NVIDIA donanım uyarlama talimatları iyileştirildi
-* `flake.nix` içinde Hyprland sürümü `v0.54.0` olarak sabitlendi
-
----
-
-## [1.0.0] – 2026-04-??
-
-### 🎉 İlk Sürüm
-
-* CachyOS BORE kernel
-* Hyprland masaüstü
-* Oyun optimizasyonları
-* VFIO GPU passthrough
-* Home-Manager ile tam entegre dotfile yönetimi
-
----
+[1.0.0]: https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.0.0
