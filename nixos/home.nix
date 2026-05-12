@@ -1,3 +1,4 @@
+
 { config, pkgs, lib, ... }:
 
 let
@@ -320,6 +321,7 @@ let
     exec-once = hyprpolkitagent
     exec-once = dbus-update-activation-environment --systemd DISPLAY
     exec-once = pypr
+    exec-once = /home/localhost/.local/bin/mpvpaper-watchdog   # canlı duvar kağıdı izleyici
   '';
 
   # ------------------------------ Hyprlock ---------------------------------
@@ -676,6 +678,45 @@ in
     '';
   };
 
+  home.file.".local/bin/mpvpaper-watchdog" = {
+    executable = true;
+    text = ''
+      #!/usr/bin/env bash
+      MONITORED_CLASSES="brave-browser,kitty,dolphin"
+
+      HYPR_SOCK="$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock"
+
+      count_monitored() {
+        hyprctl clients -j | jq -r --arg classes "$MONITORED_CLASSES" \
+          '[.[].class | select(. != null)] | map(select(. as $c | $classes | split(",") | index($c))) | length'
+      }
+
+      update_wallpaper() {
+        if [ "$(count_monitored)" -gt 0 ]; then
+          systemctl --user stop mpvpaper.service 2>/dev/null
+        else
+          systemctl --user start mpvpaper.service 2>/dev/null
+        fi
+      }
+
+      update_wallpaper
+
+      if [ -S "$HYPR_SOCK" ]; then
+        socat -u "UNIX-CONNECT:$HYPR_SOCK" - | while read -r line; do
+          case "$line" in
+            openwindow*|closewindow*|activewindowv2*)
+              update_wallpaper
+              ;;
+          esac
+        done
+      else
+        echo "Hyprland socket bulunamadı" >&2
+        exit 1
+      fi
+    '';
+  };
+
+
   programs = {
     home-manager.enable = true;
 
@@ -890,25 +931,58 @@ in
     };
   };
 
-  systemd.user.services.mpvpaper = {
-    Unit = {
-      Description = "mpvpaper live wallpaper service (looped)";
-      After = [ "graphical-session.target" ];
-      PartOf = [ "graphical-session.target" ];
+  systemd.user.services = {
+    mpvpaper = {
+      Unit = {
+        Description = "mpvpaper live wallpaper service (looped)";
+        After = [ "graphical-session.target" ];
+        PartOf = [ "graphical-session.target" ];
+      };
+      Service = {
+        Type = "simple";
+        Environment = "PATH=${lib.makeBinPath [ pkgs.mpvpaper pkgs.mpv ]}";
+        ExecStart = "${pkgs.mpvpaper}/bin/mpvpaper -p --mpv-options \"loop=inf\" ${monitorOutput} ${wallpaperVideo}";
+        Restart = "on-failure";
+        RestartSec = 3;
+      };
+      Install.WantedBy = [ "graphical-session.target" ];
     };
-    Service = {
-      Type = "simple";
-      Environment = "PATH=${lib.makeBinPath [ pkgs.mpvpaper pkgs.mpv ]}";
-      ExecStart = "${pkgs.mpvpaper}/bin/mpvpaper -p --mpv-options \"loop=inf\" ${monitorOutput} ${wallpaperVideo}";
-      Restart = "on-failure";
-      RestartSec = 3;
-    };
-    Install.WantedBy = [ "graphical-session.target" ];
+
+memofast = {
+  Unit = {
+    Description = "MemoFast TR Dummy Process";
+    After = [ "graphical-session.target" ];
+    PartOf = [ "graphical-session.target" ];
   };
+  Service = {
+    ExecStart = "${pkgs.bash}/bin/bash -c 'while true; do sleep 10; done'";
+    Restart = "on-failure";
+  };
+  Install.WantedBy = [ "default.target" ];   # ← bu satır değişti
+};
+    
+mpvpaper-watchdog = {
+      Unit = {
+        Description = "Brave açıldığında canlı duvar kağıdını durdurur";
+        After = [ "graphical-session.target" ];
+        PartOf = [ "graphical-session.target" ];
+        BindsTo = [ "mpvpaper.service" ];
+      };
+      Service = {
+        Type = "simple";
+        Environment = "PATH=${lib.makeBinPath [ pkgs.hyprland pkgs.jq pkgs.socat pkgs.systemd ]}";
+        ExecStart = "${pkgs.bash}/bin/bash /home/localhost/.local/bin/mpvpaper-watchdog";
+        Restart = "on-failure";
+        RestartSec = 3;
+      };
+      Install.WantedBy = [ "graphical-session.target" ];
+    };
+  };
+
 
   home.packages = with pkgs; [
     fd ripgrep jq wget curl file tree
     playerctl pamixer hyprpicker wev
-    nano satty          # ekran görüntüsü düzenleme
+    nano satty socat          # ekran görüntüsü düzenleme
   ];
 }

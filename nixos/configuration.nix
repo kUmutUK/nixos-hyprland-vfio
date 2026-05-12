@@ -329,6 +329,11 @@ in
   };
 
   system.stateVersion = "26.05";
+  
+  # Yeni NixOS 26.05 varsayılanları
+  services.dbus.implementation = "broker";   # ← dbus-broker etkin
+  boot.initrd.systemd.enable = true;         # ← initrd'de systemd
+
 
   services.ollama = {
     enable = true;
