@@ -6,6 +6,11 @@ let
 in
 {
   imports = [ ./hardware-configuration.nix ];
+    
+  services.lsfg-vk = {
+  enable = true;
+  ui.enable = true;   # İstersen ayar arayüzü için
+};
 
   hardware.enableRedistributableFirmware = true;
 
@@ -19,7 +24,7 @@ in
     mode = "0755";
     source = ./hooks/qemu;  # dosya yolu
   };
-
+  
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
   boot.kernelParams = [
@@ -347,4 +352,7 @@ in
     enable = true;
     rulesProvider = pkgs.ananicy-rules-cachyos;
   };
+  environment.persistence."/nix/persist/system".directories = [
+  "/etc/vulkan/implicit_layer.d"
+];
 }

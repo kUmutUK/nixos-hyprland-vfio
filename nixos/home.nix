@@ -736,6 +736,9 @@ in
     '';
   };
 
+home.persistence."/nix/persist/home" = {
+  directories = [ ".config/lsfg-vk" ];
+};
 
   programs = {
     home-manager.enable = true;
