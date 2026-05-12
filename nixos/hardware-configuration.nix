@@ -28,6 +28,7 @@ in
     device  = rootDev;
     fsType  = "btrfs";
     options = commonOpts ++ [ "subvol=@home" ];
+    neededForBoot = true;
   };
 
   fileSystems."/nix" = {
