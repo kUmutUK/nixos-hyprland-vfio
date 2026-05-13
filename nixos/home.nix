@@ -698,13 +698,23 @@ in
     '';
   };
 
+  # ⚡ DÜZELTİLMİŞ MPVPAPER WATCHDOG (gamemode kontrolü eklendi)
   home.file.".local/bin/mpvpaper-watchdog" = {
     executable = true;
     text = ''
       #!/usr/bin/env bash
-      MONITORED_CLASSES="brave-browser,kitty,dolphin"
+      MONITORED_CLASSES="brave-browser"
 
       HYPR_SOCK="$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock"
+
+      # ───── Gamemode durum kontrolü ─────
+      is_gamemode_active() {
+        local count
+        count=$(busctl --user get-property com.feralinteractive.GameMode \
+          /com/feralinteractive/GameMode com.feralinteractive.GameMode ClientCount \
+          2>/dev/null | awk '{print $2}')
+        [ -n "$count" ] && [ "$count" -gt 0 ]
+      }
 
       count_monitored() {
         hyprctl clients -j | jq -r --arg classes "$MONITORED_CLASSES" \
@@ -715,7 +725,12 @@ in
         if [ "$(count_monitored)" -gt 0 ]; then
           systemctl --user stop mpvpaper.service 2>/dev/null
         else
-          systemctl --user start mpvpaper.service 2>/dev/null
+          # Eğer gamemode aktifse duvar kâğıdını sakın başlatma
+          if is_gamemode_active; then
+            systemctl --user stop mpvpaper.service 2>/dev/null
+          else
+            systemctl --user start mpvpaper.service 2>/dev/null
+          fi
         fi
       }
 

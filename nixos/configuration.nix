@@ -282,8 +282,9 @@ in
         amd_performance_level = "high";
       };
       custom = {
-        start = "${pkgs.systemd}/bin/systemctl --user stop mpvpaper.service";
-        end   = "${pkgs.systemd}/bin/systemctl --user start mpvpaper.service";
+      start = "${pkgs.systemd}/bin/systemctl --user stop mpvpaper.service";
+      end   = "${pkgs.systemd}/bin/systemctl --user start mpvpaper.service";
+   
       };
     };
   };
