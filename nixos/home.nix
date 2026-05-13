@@ -755,6 +755,10 @@ home.persistence."/nix/persist/home" = {
   directories = [ ".config/lsfg-vk" ];
 };
 
+home.sessionVariables = {
+  RADV_ANTILAG = "1";
+};
+
   programs = {
     home-manager.enable = true;
 

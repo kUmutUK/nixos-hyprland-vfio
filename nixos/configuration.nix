@@ -250,7 +250,7 @@ in
     networkmanagerapplet brightnessctl playerctl
     pavucontrol cliphist
     ntfs3g exfat gparted
-    steam gamemode gamescope mangohud
+    steam gamemode gamescope mangohud vkbasalt winetricks
     heroic protonup-qt wine nodejs
     virt-manager looking-glass-client capitaine-cursors
     btop nvtopPackages.amd fastfetch
