@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="./assets/banner.png" width="100%" />
-</p>
-
 <h1 align="center">🚀 NixOS Hyprland + VFIO</h1>
 
 <p align="center">
@@ -18,13 +14,8 @@
 
 
 <p align="center">
-  <img src="./assets/desktop-.png" width="49%" />
-  <img src="./assets/terminal-.png" width="49%" />
-</p>
-
-<p align="center">
-  <img src="./assets/app-.png" width="49%" />
-  <img src="./assets/dolphin-.png" width="49%" />
+  <img src="./assets/.wall.png" width="49%" />
+  <img src="./assets/.kitty.png" width="49%" />
 </p>
 
 > ⚠️ **Advanced setup** — requires familiarity with Nix Flakes, Wayland and low-level Linux configuration.
