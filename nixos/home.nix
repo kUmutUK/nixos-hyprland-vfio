@@ -6,7 +6,7 @@ let
   gitEmail           = "141457520+kUmutUK@users.noreply.github.com";
   monitorOutput      = "DP-3";
   hyprlandMonitorLine = "monitor = ,preferred,auto,1";
-  wallpaperVideo     = "/home/localhost/wallpaper/mylivewallpapers-com-Ryou-Yamada-Bocchi-the-Rock-4K.mp4";
+  wallpaperVideo     = "/home/localhost/Downloads/arthur-leywin-the-beginning-after-the-end.3840x2160.mp4";
 
   # ------------------------- Gamemode bildirim betiği -------------------------
     gamemodeNotifyScript = pkgs.writeShellScriptBin "gamemode-notify" ''
