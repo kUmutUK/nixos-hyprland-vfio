@@ -14,8 +14,8 @@
 
 
 <p align="center">
-  <img src="./assets/.wall.png" width="49%" />
-  <img src="./assets/.kitty.png" width="49%" />
+  <img src="./assets/wall-.png" width="49%" />
+  <img src="./assets/kitty-.png" width="49%" />
 </p>
 
 > ⚠️ **Advanced setup** — requires familiarity with Nix Flakes, Wayland and low-level Linux configuration.
