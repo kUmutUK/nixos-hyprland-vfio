@@ -990,19 +990,6 @@ home.sessionVariables = {
       Install.WantedBy = [ "graphical-session.target" ];
     };
 
-    memofast = {
-      Unit = {
-        Description = "MemoFast TR Dummy Process";
-        After = [ "graphical-session.target" ];
-        PartOf = [ "graphical-session.target" ];
-      };
-      Service = {
-        ExecStart = "${pkgs.bash}/bin/bash -c 'while true; do sleep 10; done'";
-        Restart = "on-failure";
-      };
-      Install.WantedBy = [ "default.target" ];
-    };
-
     mpvpaper-watchdog = {
       Unit = {
         Description = "Brave açıldığında canlı duvar kağıdını durdurur";
