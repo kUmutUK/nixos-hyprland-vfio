@@ -92,7 +92,7 @@ A fully declarative NixOS setup combining a clean Hyprland desktop, AMD-focused 
 
 ### 🖥️ Desktop
 
-* Hyprland 0.54 (Wayland only)
+* Hyprland 0.55 (Wayland only)
 * greetd + tuigreet (no X11)
 * Waybar (custom modules)
 * Dunst, Rofi
