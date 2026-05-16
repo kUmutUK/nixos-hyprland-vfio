@@ -196,8 +196,6 @@ sudo nixos-rebuild switch --flake /etc/nixos#nixos
 ├── KURULUM.md
 ├── LICENSE
 ├── README.md
-├── cs2.cfg
-├── csgo.cfg
 ├── install.sh
 └── shell.nix
 ```
