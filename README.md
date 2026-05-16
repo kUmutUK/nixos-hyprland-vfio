@@ -235,19 +235,16 @@ KURULUM.md
 * troubleshooting
 
 ---
-
 ## 🎮 Usage
 
 ### Gaming
-
 ```bash
 mangohud gamemoderun gamescope -f -- %command%
 ```
 
 ### VM
-
-* `virt-manager` ile başlat
-* GPU otomatik handle edilir
+- Start with `virt-manager`
+- GPU passthrough is handled automatically
 
 ---
 
@@ -270,7 +267,7 @@ sudo nixos-rebuild dry-activate --flake .#nixos
 
 ## 🤝 Contributing
 
-```
+```text
 CONTRIBUTING.md
 ```
 
@@ -278,7 +275,7 @@ CONTRIBUTING.md
 
 ## 📜 Changelog
 
-```
+```text
 CHANGELOG.md
 ```
 
@@ -286,9 +283,9 @@ CHANGELOG.md
 
 ## ⚠️ Notes
 
-* `hardware-configuration.nix` makineye özeldir
-* GPU PCI ID’lerini güncelle
-* SSH sadece key ile çalışır
+- `hardware-configuration.nix` is machine-specific
+- Update GPU PCI IDs for your hardware
+- SSH authentication is key-based only
 
 ---
 
