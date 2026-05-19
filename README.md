@@ -5,6 +5,12 @@
 </p>
 
 <p align="center">
+  <img src="./assets/wall-.png" width="49%" />
+  <img src="./assets/kitty-.png" width="49%" />
+  Built for ultra-low latency Linux gaming and single-GPU virtualization.
+</p>
+
+<p align="center">
   Built for ultra-low latency Linux gaming and single-GPU virtualization.
 </p>
 
