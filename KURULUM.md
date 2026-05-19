@@ -1,109 +1,139 @@
-# 🇹🇷 NixOS Hyprland + VFIO Kurulum Rehberi
+# NixOS Hyprland + VFIO Kurulum Rehberi
 
 Bu rehber, AMD işlemci ve AMD ekran kartı için optimize edilmiş NixOS yapılandırmasını adım adım kurmanıza yardımcı olur.
 
 ---
 
-## ⚙️ Ön Gereksinimler
+# ⚙️ Ön Gereksinimler
 
-* NixOS 26.05 (unstable) canlı ISO veya mevcut bir NixOS kurulumu
-* UEFI önyükleme
-* En az 50 GB boş disk alanı
-* AMD Ryzen işlemci + AMD Radeon RX 6000/7000 serisi ekran kartı
+- NixOS 26.05 canlı ISO
+- UEFI sistem
+- En az 50 GB boş alan
+- AMD Ryzen işlemci
+- AMD Radeon RX 6000/7000 serisi ekran kartı
 
 ---
 
-## 🔌 Adım 1 – Canlı Ortamı Başlatın
+# 🚀 Adım 1 — Canlı Ortamı Başlatın
 
 NixOS ISO’sunu USB’ye yazdırın ve UEFI modunda başlatın.
-İnternete bağlanın (kablolu veya `nmtui` ile Wi-Fi).
 
----
-
-## 💽 Adım 2 – Diskleri Hazırlayın
-
-Bu yapılandırma **LUKS2 şifreleme** ve **Btrfs** üzerine kuruludur.
-
-### Örnek disk yapısı
-
-* `/dev/nvme0n1p1` – EFI (FAT32, 512 MB)
-* `/dev/nvme0n1p2` – Swap (isteğe bağlı)
-* `/dev/nvme0n1p3` – LUKS → Btrfs (kök)
-
-Diskleri kendi ihtiyacınıza göre bölümlendirin.
-
----
-
-## 🔐 Adım 3 – LUKS ve Btrfs Oluşturun
+İnternete bağlanın:
 
 ```bash
-# LUKS konteyneri
+nmtui
+```
+
+---
+
+# 💾 Adım 2 — Disk Bölümlendirme
+
+Örnek yapı:
+
+| Bölüm | Açıklama |
+|---|---|
+| `/dev/nvme0n1p1` | EFI (512MB FAT32) |
+| `/dev/nvme0n1p2` | Swap (opsiyonel) |
+| `/dev/nvme0n1p3` | LUKS2 → Btrfs |
+
+Diskleri ihtiyacınıza göre bölümlendirin.
+
+---
+
+# 🔒 Adım 3 — LUKS2 + Btrfs
+
+## LUKS
+
+```bash
 cryptsetup luksFormat --type luks2 /dev/nvme0n1p3
 cryptsetup open /dev/nvme0n1p3 cryptroot
+```
 
-# Btrfs dosya sistemi
+## Btrfs
+
+```bash
 mkfs.btrfs -L NixOS /dev/mapper/cryptroot
+```
 
-# Subvolume oluşturma
+## Subvolume Oluşturma
+
+```bash
 mount /dev/mapper/cryptroot /mnt
+
 btrfs subvolume create /mnt/@
 btrfs subvolume create /mnt/@home
 btrfs subvolume create /mnt/@nix
 btrfs subvolume create /mnt/@log
 btrfs subvolume create /mnt/@snapshots
+
 umount /mnt
+```
 
-# Mount işlemleri
+## Mount İşlemleri
+
+```bash
 mount -o subvol=@,compress=zstd:1,noatime,ssd,discard=async /dev/mapper/cryptroot /mnt
-mkdir -p /mnt/{home,nix,var/log,.snapshots,boot}
-mount -o subvol=@home,compress=zstd:1,noatime /dev/mapper/cryptroot /mnt/home
-mount -o subvol=@nix,noatime,nodatacow /dev/mapper/cryptroot /mnt/nix
-mount -o subvol=@log,noatime /dev/mapper/cryptroot /mnt/var/log
-mount -o subvol=@snapshots,compress=zstd:1,noatime /dev/mapper/cryptroot /mnt/.snapshots
-mount /dev/nvme0n1p1 /mnt/boot
 
-# Swap (isteğe bağlı)
+mkdir -p /mnt/{home,nix,var/log,.snapshots,boot}
+
+mount -o subvol=@home,compress=zstd:1,noatime,ssd,discard=async /dev/mapper/cryptroot /mnt/home
+
+mount -o subvol=@nix,noatime,nodatacow,ssd,discard=async /dev/mapper/cryptroot /mnt/nix
+
+mount -o subvol=@log,noatime,ssd,discard=async /dev/mapper/cryptroot /mnt/var/log
+
+mount -o subvol=@snapshots,compress=zstd:1,noatime,ssd,discard=async /dev/mapper/cryptroot /mnt/.snapshots
+
+mount /dev/nvme0n1p1 /mnt/boot
+```
+
+## Swap (Opsiyonel)
+
+```bash
 mkswap /dev/nvme0n1p2
 swapon /dev/nvme0n1p2
 ```
 
 ---
 
-## 🛠️ Adım 4 – NixOS’u Kurun
+# ⚙️ Adım 4 — NixOS Config Oluşturma
 
 ```bash
 nixos-generate-config --root /mnt
 ```
 
-📌 Oluşan dosya:
+Oluşan dosya:
 
-```
+```text
 /mnt/etc/nixos/hardware-configuration.nix
 ```
 
-Bu dosyayı daha sonra kullanmak için saklayın.
+Bu dosyayı daha sonra kullanacaksınız.
 
 ---
 
-## 📦 Adım 5 – Repo ve Kurulum
+# 📦 Adım 5 — Repo Kurulumu
 
 ```bash
 git clone https://github.com/kUmutUK/nixos-hyprland-vfio.git /tmp/nixos-config
+
 cd /tmp/nixos-config
+
 chmod +x install.sh
+
 ./install.sh
 ```
 
-### Betik sizden şunları ister:
+Kurulum betiği şunları isteyecektir:
 
-* GPU PCI adresleri → `lspci -nn | grep -i vga`
-* Monitör çıkışı (örn. `DP-3`)
-* Hyprland monitor satırı
-* Git kullanıcı adı ve e-posta
+- GPU PCI adresleri
+- monitör çıkışı
+- Hyprland monitor satırı
+- Git kullanıcı bilgileri
 
 ---
 
-## 📁 Adım 6 – hardware-configuration.nix
+# 🧩 Adım 6 — hardware-configuration.nix
 
 ```bash
 cp /mnt/etc/nixos/hardware-configuration.nix /etc/nixos/
@@ -117,7 +147,7 @@ lsblk -f
 
 ---
 
-## 🔑 Adım 7 – Parola Oluşturun
+# 🔑 Adım 7 — Kullanıcı Parolası
 
 ```bash
 mkpasswd -m sha-512 | sudo tee /etc/nixos/hashedPassword
@@ -125,7 +155,7 @@ mkpasswd -m sha-512 | sudo tee /etc/nixos/hashedPassword
 
 ---
 
-## ⚡ Adım 8 – Sistemi Derleyin
+# ⚡ Adım 8 — Sistemi Derleme
 
 ```bash
 sudo nixos-rebuild switch --flake /etc/nixos#nixos
@@ -135,31 +165,43 @@ Kurulum tamamlandıktan sonra sistemi yeniden başlatın.
 
 ---
 
-## 🎉 Kurulum Sonrası
+# 🖥️ Kurulum Sonrası
+
+## Waydroid
 
 ```bash
 waydroid init -f
+```
+
+## Ollama
+
+```bash
 ollama pull llama3
-cat /var/log/libvirt/vfio.log
+```
+
+## VFIO Logları
+
+```bash
+tail -f /var/log/libvirt/vfio.log
 ```
 
 ---
 
-## 🧪 Sorun Giderme
+# 🛠️ Sorun Giderme
 
-### Hyprland açılmazsa
+## Hyprland Açılmazsa
 
 ```bash
 cat ~/.local/share/hyprland/hyprland.log
 ```
 
-### VFIO çalışmazsa
+## VFIO Çalışmazsa
 
 ```bash
 journalctl -u libvirtd
 ```
 
-### Wi-Fi yoksa
+## Wi-Fi Yoksa
 
 ```bash
 nmtui
@@ -167,10 +209,9 @@ nmtui
 
 ---
 
-## 💡 Önemli Notlar
+# ⚠️ Önemli Notlar
 
-* Single-GPU passthrough sırasında ekran kararır (normal davranış)
-* GPU PCI ID’lerinin doğru olduğundan emin olun
-* SSH için anahtar (key) kullanımı önerilir
-
----
+- Single-GPU passthrough sırasında ekran kararır
+- GPU PCI ID’lerinin doğru olduğundan emin olun
+- SSH için key-based authentication önerilir
+- low_latency_layer tüm Vulkan oyunlarında otomatik olarak etkindir
