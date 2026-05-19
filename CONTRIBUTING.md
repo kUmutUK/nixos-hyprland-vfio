@@ -1,59 +1,100 @@
-# 🤝 Contributing
+# Contributing
 
-Thank you for considering a contribution to this project!
+Thank you for contributing to the project.
 
 ---
 
-## 🚀 How to Contribute
+# Development Guidelines
 
-1. **Fork** the repository
-2. Create a new branch for your feature or bugfix
-3. Make your changes and follow the existing structure
-4. Test your changes locally:
+## Workflow
+
+1. Fork the repository
+2. Create a feature branch
+3. Make changes
+4. Test locally
+5. Open a Pull Request
+
+---
+
+# Validation
+
+Run before submitting changes:
 
 ```bash
 nix flake check
 sudo nixos-rebuild dry-activate --flake .#nixos
 ```
 
-5. Commit using **descriptive messages**
-6. Push to your fork and open a **Pull Request**
+---
+
+# Style Guidelines
+
+## Nix
+
+- Use 2-space indentation
+- Format with `nixpkgs-fmt`
+
+```bash
+nixpkgs-fmt .
+```
+
+## Shell
+
+- Keep scripts POSIX-compliant where possible
+- Run shellcheck
+
+```bash
+shellcheck install.sh
+```
 
 ---
 
-## 🧹 Code Style
+# Project Philosophy
 
-* Use **2-space indentation** for Nix files
-* Format Nix code with `nixpkgs-fmt`
-* Keep shell scripts **POSIX-compliant** where possible
-* Run `shellcheck` on scripts
-* Maintain the **declarative approach** — all configs should be managed by Nix
+This project follows a declarative-first approach.
+
+All system configuration should be managed through Nix whenever possible.
+
+Avoid:
+
+- manual state mutation
+- imperative package installs
+- runtime patching
 
 ---
 
-## 🐞 Reporting Issues
+# Pull Requests
 
 Please include:
 
-* NixOS version:
-
-  ```bash
-  nixos-version
-  ```
-* Kernel version:
-
-  ```bash
-  uname -r
-  ```
-* Relevant logs:
-
-  ```bash
-  journalctl -u libvirtd
-  cat /var/log/libvirt/vfio.log
-  ```
+- clear description
+- screenshots if UI-related
+- logs if bugfix-related
+- reproduction steps
 
 ---
 
-## ❤️ Final Notes
+# Bug Reports
 
-All contributions are welcome — whether it's a typo fix or a new feature!
+Include:
+
+- NixOS version
+- kernel version
+- GPU model
+- relevant logs
+
+## Useful Logs
+
+```bash
+journalctl -u libvirtd
+```
+
+```bash
+cat /var/log/libvirt/vfio.log
+```
+
+---
+
+# Thank You
+
+All contributions are welcome.
