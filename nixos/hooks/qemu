@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+mkdir -p /var/log/libvirt
+LOGFILE="/var/log/libvirt/vfio.log"
+GPU_PCI="0000:0b:00.0"
+GPU_AUDIO="0000:0b:00.1"
+VFIO_PATH="/sys/bus/pci/drivers/vfio-pci"
+AMDGPU_PATH="/sys/bus/pci/drivers/amdgpu"
+
+log() {
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOGFILE"
+}
+
+bind_vfio() {
+  for dev in "$@"; do
+    if [ -e "/sys/bus/pci/devices/$dev/driver" ]; then
+      echo "$dev" > "/sys/bus/pci/devices/$dev/driver/unbind" 2>/dev/null
+    fi
+    echo "vfio-pci" > "/sys/bus/pci/devices/$dev/driver_override"
+    echo "$dev" > "/sys/bus/pci/drivers/vfio-pci/bind" 2>/dev/null ||
+      echo "$dev" > /sys/bus/pci/drivers_probe 2>/dev/null
+  done
+}
+
+bind_amdgpu() {
+  for dev in "$@"; do
+    if [ -e "/sys/bus/pci/devices/$dev/driver" ]; then
+      echo "$dev" > "/sys/bus/pci/devices/$dev/driver/unbind" 2>/dev/null
+    fi
+    echo "amdgpu" > "/sys/bus/pci/devices/$dev/driver_override"
+    echo "$dev" > "/sys/bus/pci/drivers/amdgpu/bind" 2>/dev/null ||
+      echo "$dev" > /sys/bus/pci/drivers_probe 2>/dev/null
+  done
+}
+
+vendor_reset() {
+  if [ -e "/sys/bus/pci/devices/$1/reset_method" ]; then
+    echo "device_specific" > "/sys/bus/pci/devices/$1/reset_method" 2>/dev/null || true
+  fi
+  if [ -e "/sys/bus/pci/devices/$1/reset" ]; then
+    echo 1 > "/sys/bus/pci/devices/$1/reset" 2>/dev/null || true
+  fi
+  sleep 1
+}
+
+stop_hyprland() {
+  log "Greetd durduruluyor..."
+  systemctl stop greetd 2>/dev/null || true
+  for i in $(seq 1 20); do
+    if ! /run/current-system/sw/bin/fuser /dev/dri/card0 >/dev/null 2>&1; then
+      break
+    fi
+    sleep 0.5
+  done
+  sleep 1
+}
+
+start_hyprland() {
+  log "Greetd başlatılıyor..."
+  systemctl start greetd 2>/dev/null || true
+}
+
+GUEST="$1"
+ACTION="$2"
+
+if [ "$ACTION" = "prepare" ]; then
+  log "VM $GUEST başlatılıyor, masaüstü durduruluyor..."
+  stop_hyprland
+  echo 0 > /sys/class/vtconsole/vtcon0/bind 2>/dev/null || true
+  echo 0 > /sys/class/vtconsole/vtcon1/bind 2>/dev/null || true
+  echo efi-framebuffer.0 > /sys/bus/platform/drivers/efi-framebuffer/unbind 2>/dev/null || true
+  sleep 1
+  bind_vfio "$GPU_PCI" "$GPU_AUDIO"
+  vendor_reset "$GPU_PCI"
+  log "GPU vfio-pci'ye bağlandı."
+fi
+
+if [ "$ACTION" = "release" ]; then
+  log "VM $GUEST kapandı, GPU geri alınıyor..."
+  bind_amdgpu "$GPU_PCI" "$GPU_AUDIO"
+  echo 1 > /sys/class/vtconsole/vtcon0/bind 2>/dev/null || true
+  echo 1 > /sys/class/vtconsole/vtcon1/bind 2>/dev/null || true
+  echo efi-framebuffer.0 > /sys/bus/platform/drivers/efi-framebuffer/bind 2>/dev/null || true
+  start_hyprland
+  log "GPU amdgpu'ya geri verildi, masaüstü başlatıldı."
+fi
