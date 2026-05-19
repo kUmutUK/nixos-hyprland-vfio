@@ -10,10 +10,6 @@
   Built for ultra-low latency Linux gaming and single-GPU virtualization.
 </p>
 
-<p align="center">
-  Built for ultra-low latency Linux gaming and single-GPU virtualization.
-</p>
-
 AMD-optimized declarative gaming setup featuring:
 
 - Hyprland Wayland desktop
