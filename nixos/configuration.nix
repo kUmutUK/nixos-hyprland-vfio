@@ -3,14 +3,55 @@
 let
   gpuPCI   = "0000:0b:00.0";
   gpuAudio = "0000:0b:00.1";
+
+  # --------------- low_latency_layer türetmesi ---------------
+  low-latency-layer = pkgs.stdenv.mkDerivation rec {
+    pname = "low_latency_layer";
+    version = "1.0.0";   # Güncel sürümü kontrol edip değiştirebilirsiniz
+
+    src = pkgs.fetchFromGitHub {
+      owner = "Korthos-Software";       # ← DOĞRU REPO
+      repo = "low_latency_layer";
+      rev = "948a5611f7c7a0568f1685e82df9f7bfbddb3f18";
+      sha256 = "sha256-iUdcNnmY4NqaEnhoJUn7KEKTFQrlqo4tYOkLwEhmL+s=";                      # ← İlk derlemede boş bırakın, Nix size doğru hash'i söyleyecek
+    };
+
+    nativeBuildInputs = with pkgs; [ cmake glslang ];
+    buildInputs = with pkgs; [ 
+      vulkan-headers
+      vulkan-loader
+      vulkan-utility-libraries   # ← yeni eklendi
+      shaderc                    # ← glslc derleyicisi için eklendi
+
+ ];
+
+    cmakeFlags = [ "-DCMAKE_BUILD_TYPE=Release" ];
+
+    installPhase = ''
+      mkdir -p $out/lib $out/share/vulkan/implicit_layer.d
+
+      # Paylaşılan kütüphaneyi doğru yere koy
+      cp libVkLayer_KORTHOS_LowLatency.so $out/lib/
+
+      # Katman JSON dosyasını oluştur ve kütüphane yolunu yerleştir
+      substitute ${./low_latency_layer.json.in} $out/share/vulkan/implicit_layer.d/low_latency_layer.json \
+        --subst-var-by libdir "$out/lib"
+    '';
+
+    meta = with lib; {
+      description = "Vulkan layer for hardware agnostic input latency reduction (Reflex/Anti-Lag)";
+      license = licenses.mit;
+      platforms = platforms.linux;
+    };
+  };
 in
 {
   imports = [ ./hardware-configuration.nix ];
     
   services.lsfg-vk = {
-  enable = true;
-  ui.enable = true;   # İstersen ayar arayüzü için
-};
+    enable = true;
+    ui.enable = true;   # İstersen ayar arayüzü için
+  };
 
   hardware.enableRedistributableFirmware = true;
 
@@ -134,6 +175,11 @@ in
     QT_QPA_PLATFORM = "wayland;xcb";
     XCURSOR_THEME = "capitaine-cursors";
     XCURSOR_SIZE = "16";
+
+    # low_latency_layer: Reflex modunu bütün Vulkan uygulamaları için varsayılan olarak etkinleştir
+    LOW_LATENCY_LAYER_REFLEX = "1";
+    # AMD/Intel kartlarda NVIDIA Reflex isteyen oyunları kandırmak için (isteğe bağlı):
+    # LOW_LATENCY_LAYER_SPOOF_NVIDIA = "1";
   };
 
   programs.fish.enable = true;
@@ -245,11 +291,11 @@ in
 
   environment.systemPackages = with pkgs; [
     kitty waybar rofi dunst grim slurp wl-clipboard
-    hyprlock hypridle wlogout hyprpicker
+    hyprlock hypridle wlogout hyprpicker 
     hyprpolkitagent pyprland waypaper
     networkmanagerapplet brightnessctl playerctl
-    pavucontrol cliphist
-    ntfs3g exfat gparted
+    pavucontrol cliphist libmtp jmtpfs android-file-transfer
+    ntfs3g exfat gparted crow-translate tesseract translate-shell libnotify 
     steam gamemode gamescope mangohud vkbasalt winetricks
     heroic protonup-qt wine nodejs
     virt-manager looking-glass-client capitaine-cursors
@@ -264,7 +310,14 @@ in
     btrfs-progs compsize snapper
     mpvpaper flatpak-builder psmisc
     apparmor-utils stdenv.cc.cc.lib kdePackages.konsole kdePackages.dolphin
+
+    # ⭐ low_latency_layer paketini sisteme ekle
+    low-latency-layer vulkan-tools
   ];
+
+  # Vulkan implicit layer dosyasını /etc/vulkan/implicit_layer.d altına yerleştir
+  environment.etc."vulkan/implicit_layer.d/low_latency_layer.json".source =
+    "${low-latency-layer}/share/vulkan/implicit_layer.d/low_latency_layer.json";
 
   programs.gamemode = {
     enable = true;
@@ -282,9 +335,8 @@ in
         amd_performance_level = "high";
       };
       custom = {
-      start = "${pkgs.systemd}/bin/systemctl --user stop mpvpaper.service";
-      end   = "${pkgs.systemd}/bin/systemctl --user start mpvpaper.service";
-   
+        start = "${pkgs.systemd}/bin/systemctl --user stop mpvpaper.service";
+        end   = "${pkgs.systemd}/bin/systemctl --user start mpvpaper.service";
       };
     };
   };
@@ -340,7 +392,6 @@ in
   services.dbus.implementation = "broker";   # ← dbus-broker etkin
   boot.initrd.systemd.enable = true;         # ← initrd'de systemd
 
-
   services.ollama = {
     enable = true;
     package = pkgs.ollama-rocm;
@@ -353,7 +404,8 @@ in
     enable = true;
     rulesProvider = pkgs.ananicy-rules-cachyos;
   };
+
   environment.persistence."/nix/persist/system".directories = [
-  "/etc/vulkan/implicit_layer.d"
-];
+    "/etc/vulkan/implicit_layer.d"
+  ];
 }
