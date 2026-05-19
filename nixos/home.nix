@@ -342,6 +342,7 @@ let
     exec-once = pypr
     exec-once = /home/localhost/.local/bin/mpvpaper-watchdog   # canlı duvar kağıdı izleyici
     exec-once = systemctl --user start gamemode-notify
+    bind = $mainMod, T, exec, grim -g "$(slurp)" - | tesseract - stdout -l eng 2>/dev/null | trans -b :tr | notify-send -t 10000 "Çeviri" "$(cat -)"
   '';
 
   # ------------------------------ Hyprlock ---------------------------------
