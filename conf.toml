@@ -1,0 +1,43 @@
+version = 1
+
+[global]
+
+[[game]]
+exe = "Genshin"
+multiplier = 3
+flow_scale = 1.0
+performance_mode = false
+hdr_mode = false
+experimental_present_mode = "fifo"
+
+[[game]]
+exe = "benchmark"
+multiplier = 4
+flow_scale = 1.0
+performance_mode = false
+hdr_mode = false
+experimental_present_mode = "fifo"
+
+[[game]]
+exe = "cs2"
+multiplier = 2
+flow_scale = 0.75
+performance_mode = false
+hdr_mode = true
+experimental_present_mode = "fifo"
+
+[[game]]
+exe = "vkcube"
+multiplier = 4
+flow_scale = 1.0
+performance_mode = true
+hdr_mode = false
+experimental_present_mode = "fifo"
+
+[[game]]
+exe = "wuwa"
+multiplier = 2
+flow_scale = 0.9
+performance_mode = false
+hdr_mode = true
+experimental_present_mode = "fifo"

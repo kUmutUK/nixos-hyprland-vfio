@@ -1,0 +1,17 @@
+{
+  "file_format_version": "1.0.0",
+  "layer": {
+    "name": "VK_LAYER_ishitatsuyuki_low_latency_layer",
+    "type": "GLOBAL",
+    "library_path": "/nix/store/a524l4dnzg7q2n77h5kp4wxyy5nall3w-low_latency_layer-1.0.0/lib/libVkLayer_KORTHOS_LowLatency.so",
+    "api_version": "1.3.261",
+    "implementation_version": "1",
+    "description": "Low latency layer (Reflex / Anti-Lag)",
+    "enable_environment": {
+      "ENABLE_LOW_LATENCY_LAYER": "1"
+    },
+    "disable_environment": {
+      "DISABLE_LOW_LATENCY_LAYER": "1"
+    }
+  }
+}
