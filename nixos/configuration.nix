@@ -279,7 +279,7 @@ in
     shell = pkgs.fish;
     extraGroups = [
       "wheel" "networkmanager" "video" "audio" "storage"
-      "gamemode" "libvirtd" "kvm" "input" "render"
+      "gamemode" "libvirtd" "kvm" "input" "render" "openrazer"
     ];
     openssh.authorizedKeys.keys = [
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIO2qlcENvrPCXZrwtIBZ4ctXHfmYWsLCw5QUmtNHjyL5 141457520+kUmutUK@users.noreply.github.com"
@@ -288,6 +288,13 @@ in
 
   home-manager.users.localhost = import ./home.nix;
   home-manager.backupFileExtension = "backup";
+
+  hardware.openrazer.enable = true;
+  
+  hardware.uinput.enable = true;
+
+  services.udev.packages = [ pkgs.libinput ];  
+
 
   environment.systemPackages = with pkgs; [
     kitty waybar rofi dunst grim slurp wl-clipboard
@@ -305,8 +312,8 @@ in
       vscode = vscode.fhs;
       vscodeExtensions = with vscode-extensions; [ continue.continue ];
     })
-    brave telegram-desktop discord proton-vpn
-    qbittorrent flatpak gnome-software
+    brave telegram-desktop discord proton-vpn fzf openrazer-daemon polychromatic input-remapper razer-cli
+    qbittorrent flatpak gnome-software xorg.xev wev
     btrfs-progs compsize snapper
     mpvpaper flatpak-builder psmisc
     apparmor-utils stdenv.cc.cc.lib kdePackages.konsole kdePackages.dolphin
@@ -314,6 +321,7 @@ in
     # ⭐ low_latency_layer paketini sisteme ekle
     low-latency-layer vulkan-tools
   ];
+
 
   # Vulkan implicit layer dosyasını /etc/vulkan/implicit_layer.d altına yerleştir
   environment.etc."vulkan/implicit_layer.d/low_latency_layer.json".source =
