@@ -301,7 +301,7 @@ in
     })
     brave telegram-desktop discord proton-vpn fzf openrazer-daemon polychromatic input-remapper razer-cli
     qbittorrent flatpak gnome-software xorg.xev wev pcmanfm
-    imagemagick
+    imagemagick python312Packages.argostranslate
     btrfs-progs compsize snapper
     mpvpaper flatpak-builder psmisc
     apparmor-utils stdenv.cc.cc.lib kdePackages.konsole kdePackages.dolphin
