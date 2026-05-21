@@ -7,33 +7,28 @@ let
   # --------------- low_latency_layer türetmesi ---------------
   low-latency-layer = pkgs.stdenv.mkDerivation rec {
     pname = "low_latency_layer";
-    version = "1.0.0";   # Güncel sürümü kontrol edip değiştirebilirsiniz
+    version = "1.0.0";
 
     src = pkgs.fetchFromGitHub {
-      owner = "Korthos-Software";       # ← DOĞRU REPO
+      owner = "Korthos-Software";
       repo = "low_latency_layer";
       rev = "948a5611f7c7a0568f1685e82df9f7bfbddb3f18";
-      sha256 = "sha256-iUdcNnmY4NqaEnhoJUn7KEKTFQrlqo4tYOkLwEhmL+s=";                      # ← İlk derlemede boş bırakın, Nix size doğru hash'i söyleyecek
+      sha256 = "sha256-iUdcNnmY4NqaEnhoJUn7KEKTFQrlqo4tYOkLwEhmL+s=";
     };
 
     nativeBuildInputs = with pkgs; [ cmake glslang ];
-    buildInputs = with pkgs; [ 
+    buildInputs = with pkgs; [
       vulkan-headers
       vulkan-loader
-      vulkan-utility-libraries   # ← yeni eklendi
-      shaderc                    # ← glslc derleyicisi için eklendi
-
- ];
+      vulkan-utility-libraries
+      shaderc
+    ];
 
     cmakeFlags = [ "-DCMAKE_BUILD_TYPE=Release" ];
 
     installPhase = ''
       mkdir -p $out/lib $out/share/vulkan/implicit_layer.d
-
-      # Paylaşılan kütüphaneyi doğru yere koy
       cp libVkLayer_KORTHOS_LowLatency.so $out/lib/
-
-      # Katman JSON dosyasını oluştur ve kütüphane yolunu yerleştir
       substitute ${./low_latency_layer.json.in} $out/share/vulkan/implicit_layer.d/low_latency_layer.json \
         --subst-var-by libdir "$out/lib"
     '';
@@ -47,10 +42,10 @@ let
 in
 {
   imports = [ ./hardware-configuration.nix ];
-    
+
   services.lsfg-vk = {
     enable = true;
-    ui.enable = true;   # İstersen ayar arayüzü için
+    ui.enable = true;
   };
 
   hardware.enableRedistributableFirmware = true;
@@ -60,12 +55,11 @@ in
     nerd-fonts.jetbrains-mono
   ];
 
-  # VFIO libvirt hook – artık harici dosyadan alınıyor
   environment.etc."libvirt/hooks/qemu" = {
     mode = "0755";
-    source = ./hooks/qemu;  # dosya yolu
+    source = ./hooks/qemu;
   };
-  
+
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
   boot.kernelParams = [
@@ -74,7 +68,6 @@ in
     "usbcore.autosuspend=-1" "video=efifb:off"
     "amdgpu.ppfeaturemask=0xfffd7fff" "kvm.ignore_msrs=1"
     "pcie_aspm=off" "rcupdate.rcu_expedited=1"
-    # "apparmor=1"  ✅ NixOS security.apparmor.enable tarafından otomatik eklenir
   ];
 
   boot.initrd.availableKernelModules = lib.mkAfter [ "amdgpu" ];
@@ -175,11 +168,8 @@ in
     QT_QPA_PLATFORM = "wayland;xcb";
     XCURSOR_THEME = "capitaine-cursors";
     XCURSOR_SIZE = "16";
-
-    # low_latency_layer: Reflex modunu bütün Vulkan uygulamaları için varsayılan olarak etkinleştir
     LOW_LATENCY_LAYER_REFLEX = "1";
-    # AMD/Intel kartlarda NVIDIA Reflex isteyen oyunları kandırmak için (isteğe bağlı):
-    # LOW_LATENCY_LAYER_SPOOF_NVIDIA = "1";
+    RADV_ANTILAG = "1";                      # ← yeni eklendi
   };
 
   programs.fish.enable = true;
@@ -290,19 +280,16 @@ in
   home-manager.backupFileExtension = "backup";
 
   hardware.openrazer.enable = true;
-  
   hardware.uinput.enable = true;
-
-  services.udev.packages = [ pkgs.libinput ];  
-
+  services.udev.packages = [ pkgs.libinput ];
 
   environment.systemPackages = with pkgs; [
     kitty waybar rofi dunst grim slurp wl-clipboard
-    hyprlock hypridle wlogout hyprpicker 
+    hyprlock hypridle wlogout hyprpicker
     hyprpolkitagent pyprland waypaper
     networkmanagerapplet brightnessctl playerctl
     pavucontrol cliphist libmtp jmtpfs android-file-transfer
-    ntfs3g exfat gparted crow-translate tesseract translate-shell libnotify 
+    ntfs3g exfat gparted crow-translate tesseract translate-shell libnotify
     steam gamemode gamescope mangohud vkbasalt winetricks
     heroic protonup-qt wine nodejs
     virt-manager looking-glass-client capitaine-cursors
@@ -313,17 +300,14 @@ in
       vscodeExtensions = with vscode-extensions; [ continue.continue ];
     })
     brave telegram-desktop discord proton-vpn fzf openrazer-daemon polychromatic input-remapper razer-cli
-    qbittorrent flatpak gnome-software xorg.xev wev
+    qbittorrent flatpak gnome-software xorg.xev wev pcmanfm
+    imagemagick
     btrfs-progs compsize snapper
     mpvpaper flatpak-builder psmisc
     apparmor-utils stdenv.cc.cc.lib kdePackages.konsole kdePackages.dolphin
-
-    # ⭐ low_latency_layer paketini sisteme ekle
     low-latency-layer vulkan-tools
   ];
 
-
-  # Vulkan implicit layer dosyasını /etc/vulkan/implicit_layer.d altına yerleştir
   environment.etc."vulkan/implicit_layer.d/low_latency_layer.json".source =
     "${low-latency-layer}/share/vulkan/implicit_layer.d/low_latency_layer.json";
 
@@ -395,19 +379,17 @@ in
   };
 
   system.stateVersion = "26.05";
-  
-  # Yeni NixOS 26.05 varsayılanları
-  services.dbus.implementation = "broker";   # ← dbus-broker etkin
-  boot.initrd.systemd.enable = true;         # ← initrd'de systemd
+  services.dbus.implementation = "broker";
+  boot.initrd.systemd.enable = true;
 
   services.ollama = {
     enable = true;
     package = pkgs.ollama-rocm;
+    rocmOverrideGfx = "10.3.0";
   };
 
   programs.nix-ld.enable = true;
 
-  # Ananicy servisini ve CachyOS kurallarını etkinleştir
   services.ananicy = {
     enable = true;
     rulesProvider = pkgs.ananicy-rules-cachyos;

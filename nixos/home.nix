@@ -1,34 +1,30 @@
 { config, pkgs, lib, ... }:
 
 let
-  # ---------------------- Kullanıcıya özel değişkenler ----------------------
   gitName            = "Umpug";
   gitEmail           = "141457520+kUmutUK@users.noreply.github.com";
   monitorOutput      = "DP-3";
   hyprlandMonitorLine = "monitor = ,preferred,auto,1";
   wallpaperVideo     = "/home/localhost/Downloads/arthur-leywin-the-beginning-after-the-end.3840x2160.mp4";
 
-  # ------------------------- Gamemode bildirim betiği -------------------------
-    gamemodeNotifyScript = pkgs.writeShellScriptBin "gamemode-notify" ''
-  NOTIFY_SEND="${pkgs.libnotify}/bin/notify-send"
-  # Gamemode sinyallerini dinle (GameRegistered / GameUnregistered)
-  ${pkgs.dbus}/bin/dbus-monitor --session \
-    "type='signal',interface='com.feralinteractive.GameMode'" |
-  while read -r line; do
-    if echo "$line" | grep -q 'GameRegistered'; then
-      $NOTIFY_SEND -i games "🎮 GameMode" "Aktif – yüksek performans" -t 3000
-    elif echo "$line" | grep -q 'GameUnregistered'; then
-      # Kapanmadan önce başka oyun kaldı mı diye kontrol et
-      count=$(${pkgs.systemd}/bin/busctl --user get-property com.feralinteractive.GameMode \
-                /com/feralinteractive/GameMode com.feralinteractive.GameMode ClientCount \
-                2>/dev/null | cut -d' ' -f2)
-      if [ "$count" = "0" ]; then
-        $NOTIFY_SEND -i games "🎮 GameMode" "Devre dışı – normal mod" -t 3000
+  gamemodeNotifyScript = pkgs.writeShellScriptBin "gamemode-notify" ''
+    NOTIFY_SEND="${pkgs.libnotify}/bin/notify-send"
+    ${pkgs.dbus}/bin/dbus-monitor --session \
+      "type='signal',interface='com.feralinteractive.GameMode'" |
+    while read -r line; do
+      if echo "$line" | grep -q 'GameRegistered'; then
+        $NOTIFY_SEND -i games "🎮 GameMode" "Aktif – yüksek performans" -t 3000
+      elif echo "$line" | grep -q 'GameUnregistered'; then
+        count=$(${pkgs.systemd}/bin/busctl --user get-property com.feralinteractive.GameMode \
+                  /com/feralinteractive/GameMode com.feralinteractive.GameMode ClientCount \
+                  2>/dev/null | cut -d' ' -f2)
+        if [ "$count" = "0" ]; then
+          $NOTIFY_SEND -i games "🎮 GameMode" "Devre dışı – normal mod" -t 3000
+        fi
       fi
-    fi
-  done
-'';
-  # ------------------------------ GTK CSS ---------------------------------
+    done
+  '';
+
   gtkCss = ''
     @define-color accent_color              #cba6f7;
     @define-color accent_fg_color           #000000;
@@ -155,7 +151,6 @@ let
     calendar:selected { background: @accent_bg_color; color: @accent_fg_color; }
   '';
 
-  # ----------------------------- Hyprland --------------------------------
   hyprlandConf = ''
     ${hyprlandMonitorLine}
 
@@ -213,7 +208,6 @@ let
         animation = layers, 1, 6, overshot, fade
         animation = border, 1, 10, smoothOut
         animation = specialWorkspace, 1, 6, overshot, slidevert
-
     }
 
     misc {
@@ -246,7 +240,7 @@ let
     bind = $mainMod, V, togglefloating
     bind = $mainMod, P, exec, grim -g "$(slurp)" - | wl-copy
     bind = $mainMod SHIFT, P, exec, grim -g "$(slurp)" - | satty -f - | wl-copy
-    bind = $mainMod, L, exec, hyprlock
+    bind = $mainMod, Escape, exec, hyprlock          # ← hyprlock yeni tuş
     bind = $mainMod, W, exec, waypaper
 
     bind = $mainMod, S, exec, pypr toggle term
@@ -322,6 +316,12 @@ let
 
     bind = $mainMod SHIFT, E, exit
 
+    # WuWa otomatik çeviri toggle (Y tuşuna)
+    bind = $mainMod, Y, exec, pkill -f wuwa-auto.sh || ~/.config/hypr/scripts/wuwa-auto.sh
+
+    # Manuel OCR çeviri (SHIFT+T)
+    bind = $mainMod SHIFT, T, exec, grim -g "$(slurp)" - | tesseract - stdout -l eng 2>/dev/null | trans -b :tr | notify-send -t 10000 "Çeviri" "$(cat -)"
+
     bindm = $mainMod, mouse:272, movewindow
     bindm = $mainMod, mouse:273, resizewindow
 
@@ -331,6 +331,7 @@ let
     windowrule = match:class ^(nm-connection-editor)$, float on
     windowrule = match:title ^(scratchterm)$, float on, size 60% 60%
 
+    exec-once = pcmanfm --desktop
     exec-once = systemctl --user start mpvpaper.service
     exec-once = hyprctl setcursor capitaine-cursors 16
     exec-once = waybar
@@ -340,12 +341,10 @@ let
     exec-once = hyprpolkitagent
     exec-once = dbus-update-activation-environment --systemd DISPLAY
     exec-once = pypr
-    exec-once = /home/localhost/.local/bin/mpvpaper-watchdog   # canlı duvar kağıdı izleyici
+    exec-once = /home/localhost/.local/bin/mpvpaper-watchdog
     exec-once = systemctl --user start gamemode-notify
-    bind = $mainMod, T, exec, grim -g "$(slurp)" - | tesseract - stdout -l eng 2>/dev/null | trans -b :tr | notify-send -t 10000 "Çeviri" "$(cat -)"
   '';
 
-  # ------------------------------ Hyprlock ---------------------------------
   hyprlockConf = ''
     general {
         grace = 0
@@ -416,7 +415,6 @@ let
     }
   '';
 
-  # ------------------------------ Waybar ---------------------------------
   waybarStyle = ''
     * {
       font-family: "JetBrainsMono Nerd Font", monospace;
@@ -699,16 +697,14 @@ in
     '';
   };
 
-  # ⚡ DÜZELTİLMİŞ MPVPAPER WATCHDOG (gamemode kontrolü eklendi)
+  # mpvpaper watchdog (BindsTo kaldırıldı)
   home.file.".local/bin/mpvpaper-watchdog" = {
     executable = true;
     text = ''
       #!/usr/bin/env bash
       MONITORED_CLASSES="brave-browser"
-
       HYPR_SOCK="$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock"
 
-      # ───── Gamemode durum kontrolü ─────
       is_gamemode_active() {
         local count
         count=$(busctl --user get-property com.feralinteractive.GameMode \
@@ -726,7 +722,6 @@ in
         if [ "$(count_monitored)" -gt 0 ]; then
           systemctl --user stop mpvpaper.service 2>/dev/null
         else
-          # Eğer gamemode aktifse duvar kâğıdını sakın başlatma
           if is_gamemode_active; then
             systemctl --user stop mpvpaper.service 2>/dev/null
           else
@@ -752,13 +747,9 @@ in
     '';
   };
 
-home.persistence."/nix/persist/home" = {
-  directories = [ ".config/lsfg-vk" ];
-};
-
-home.sessionVariables = {
-  RADV_ANTILAG = "1";
-};
+  home.persistence."/nix/persist/home" = {
+    directories = [ ".config/lsfg-vk" ];
+  };
 
   programs = {
     home-manager.enable = true;
@@ -996,7 +987,7 @@ home.sessionVariables = {
         Description = "Brave açıldığında canlı duvar kağıdını durdurur";
         After = [ "graphical-session.target" ];
         PartOf = [ "graphical-session.target" ];
-        BindsTo = [ "mpvpaper.service" ];
+        # BindsTo kaldırıldı
       };
       Service = {
         Type = "simple";
@@ -1008,7 +999,6 @@ home.sessionVariables = {
       Install.WantedBy = [ "graphical-session.target" ];
     };
 
-    # ---- Yeni eklenen gamemode bildirim servisi ----
     gamemode-notify = {
       Unit = {
         Description = "Gamemode durum değişikliklerini Dunst ile bildir";
@@ -1027,7 +1017,6 @@ home.sessionVariables = {
       };
     };
   };
-
 
   home.packages = with pkgs; [
     fd ripgrep jq wget curl file tree
