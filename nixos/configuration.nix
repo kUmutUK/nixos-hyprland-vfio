@@ -269,7 +269,7 @@ in
     shell = pkgs.fish;
     extraGroups = [
       "wheel" "networkmanager" "video" "audio" "storage"
-      "gamemode" "libvirtd" "kvm" "input" "render" "openrazer"
+      "gamemode" "libvirtd" "kvm" "input" "render"
     ];
     openssh.authorizedKeys.keys = [
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIO2qlcENvrPCXZrwtIBZ4ctXHfmYWsLCw5QUmtNHjyL5 141457520+kUmutUK@users.noreply.github.com"
@@ -279,7 +279,6 @@ in
   home-manager.users.localhost = import ./home.nix;
   home-manager.backupFileExtension = "backup";
 
-  hardware.openrazer.enable = true;
   hardware.uinput.enable = true;
   services.udev.packages = [ pkgs.libinput ];
 
@@ -299,7 +298,7 @@ in
       vscode = vscode.fhs;
       vscodeExtensions = with vscode-extensions; [ continue.continue ];
     })
-    brave telegram-desktop discord proton-vpn fzf openrazer-daemon polychromatic input-remapper razer-cli
+    brave telegram-desktop discord proton-vpn fzf input-remapper
     qbittorrent flatpak gnome-software xorg.xev wev pcmanfm
     imagemagick python312Packages.argostranslate
     btrfs-progs compsize snapper
