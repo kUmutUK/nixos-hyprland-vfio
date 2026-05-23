@@ -7,8 +7,11 @@
 <p align="center">
   <img src="./assets/wall-.png" width="49%" />
   <img src="./assets/kitty-.png" width="49%" />
+  <br/>
   Built for ultra-low latency Linux gaming and single-GPU virtualization.
 </p>
+
+---
 
 AMD-optimized declarative gaming setup featuring:
 
@@ -42,12 +45,11 @@ AMD-optimized declarative gaming setup featuring:
 
 ### BORE Scheduler
 
-The CachyOS BORE scheduler improves:
-
+Improves:
 - desktop responsiveness
 - frame pacing
 - input latency
-- task scheduling under gaming workloads
+- scheduling under gaming load
 
 ---
 
@@ -63,19 +65,13 @@ The CachyOS BORE scheduler improves:
 - GameMode
 - ProtonUp-Qt
 
-## Low Latency
+## Low Latency Layer
 
-### low_latency_layer
-
-Hardware-agnostic NVIDIA Reflex & AMD Anti-Lag 2 Vulkan layer.
-
-Features:
+Hardware-agnostic Vulkan latency layer:
 
 - Global Reflex support
-- NVIDIA spoofing for unsupported games
-- Vulkan layer injection
-
-Environment variables:
+- NVIDIA spoofing for compatibility
+- Vulkan injection layer
 
 ```bash
 LOW_LATENCY_LAYER_REFLEX=1
@@ -97,13 +93,13 @@ RADV_PERFTEST=gpl,nggc
 
 ### lsfg-vk
 
-Vulkan-based frame generation support.
+Vulkan frame generation support.
 
 ---
 
 # 🖥️ Hyprland Desktop
 
-- Hyprland 0.55.0+
+- Hyprland 0.55+
 - Wayland-only environment
 - greetd + tuigreet
 - Waybar
@@ -113,29 +109,20 @@ Vulkan-based frame generation support.
 - Hyprlock
 - mpvpaper
 
-## Gaming Tweaks
-
 ```ini
 allow_tearing = true
 vrr = 2
 ```
 
-Per-game window rules included.
-
 ---
 
 # 🔊 Audio
 
-PipeWire low-latency configuration:
+PipeWire low-latency:
 
 - 48kHz
 - quantum = 128
-
-Includes:
-
-- ALSA
-- PulseAudio compatibility
-- JACK compatibility
+- ALSA / Pulse / JACK support
 - WirePlumber
 - rtkit
 
@@ -145,13 +132,10 @@ Includes:
 
 ## LUKS2 + Btrfs
 
-Features:
-
 - Full disk encryption
-- Btrfs subvolumes
 - Snapper snapshots
 - Monthly scrub
-- zram + disk swap
+- zram swap
 
 ### Subvolumes
 
@@ -161,76 +145,47 @@ Features:
 - `@log`
 - `@snapshots`
 
-### Mount Options
-
-```fstab
-compress=zstd:1
-noatime
-discard=async
-space_cache=v2
-```
-
 ---
 
 # 🤖 AI Integration
 
-- Ollama with ROCm acceleration
+- Ollama (ROCm acceleration)
 - Local LLM support
 
 ---
 
 # 🖥️ VFIO / GPU Passthrough
 
-Single-GPU passthrough setup using declarative libvirt hooks.
-
-## Workflow
+Single-GPU passthrough setup:
 
 ### VM Start
-
-- stop greetd
+- stop display manager
 - unbind amdgpu
 - bind vfio-pci
-- launch Windows VM
+- launch VM
 
 ### VM Stop
-
 - rebind amdgpu
-- restart greetd
+- restart display manager
 
-## Notes
-
-- Host display will go black during passthrough
-- Looking Glass recommended
-- IVSHMEM required for Looking Glass
-- Some AMD GPUs may require vendor-reset
+> Host screen will go black during passthrough (expected)
 
 ---
 
 # 🔒 Security
 
 - AppArmor
-- Fail2ban
 - Firewall enabled
-- SSH password login disabled
+- Fail2ban
+- SSH key-only auth
 - Root login disabled
-
----
-
-# 🔗 Integration
-
-- KDE Connect
-- Waydroid
-- Flatpak
-- GNOME Software
-- Virt-Manager
-- Looking Glass
 
 ---
 
 # 🧪 Tested Hardware
 
 | Component | Model |
-|---|---|
+|----------|------|
 | CPU | AMD Ryzen 5 5600 |
 | GPU | AMD Radeon RX 6700 XT |
 | RAM | 32GB DDR4 |
@@ -240,23 +195,13 @@ Single-GPU passthrough setup using declarative libvirt hooks.
 
 # ⚡ Quick Start
 
-## Clone
-
 ```bash
 git clone https://github.com/kUmutUK/nixos-hyprland-vfio.git
 cd nixos-hyprland-vfio
-```
 
-## Run Installer
-
-```bash
 chmod +x install.sh
 ./install.sh
-```
 
-## Build System
-
-```bash
 sudo nixos-rebuild switch --flake /etc/nixos#nixos
 ```
 
@@ -290,78 +235,32 @@ sudo nixos-rebuild switch --flake /etc/nixos#nixos
 
 # 📚 Documentation
 
-## English
-
-- README.md
+- README.md (English)
+- KURULUM.md (Turkish)
 - CONTRIBUTING.md
-- CHANGELOG.md
-
-## Türkçe
-
-- KURULUM.md
-
----
-
-# 🇹🇷 Turkish Installation Guide
-
-Detailed installation instructions:
-
-```text
-KURULUM.md
-```
-
-Includes:
-
-- disk partitioning
-- LUKS2 setup
-- Btrfs subvolumes
-- VFIO configuration
-- troubleshooting
-- hardware configuration
 
 ---
 
 # 🕹️ Usage
 
-## Gaming
-
 ```bash
 mangohud gamemoderun gamescope -f -- %command%
 ```
-
-## Reflex / Anti-Lag 2
-
-Already enabled globally.
-
-For games requiring NVIDIA detection:
 
 ```bash
 LOW_LATENCY_LAYER_SPOOF_NVIDIA=1 %command%
 ```
 
-## VM
-
-Launch via:
-
 ```bash
 virt-manager
 ```
-
-GPU passthrough is automatic.
 
 ---
 
 # 🛠️ Development
 
-## Legacy Shell
-
 ```bash
 nix-shell
-```
-
-## Modern Flake Shell
-
-```bash
 nix develop
 ```
 
@@ -376,13 +275,12 @@ sudo nixos-rebuild dry-activate --flake .#nixos
 
 ---
 
-# ⚠️ Important Notes
+# ⚠️ Notes
 
-- `hardware-configuration.nix` is machine-specific
-- Update GPU PCI IDs for your hardware
-- SSH authentication is key-only
-- `low_latency_layer.json.in` is a template
-- Single-GPU passthrough temporarily disables host graphics
+- hardware-configuration.nix machine-specific
+- GPU PCI IDs must be updated
+- VFIO disables host display temporarily
+- SSH uses key authentication
 
 ---
 
