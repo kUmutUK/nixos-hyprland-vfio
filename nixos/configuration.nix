@@ -300,7 +300,7 @@ in
     })
     brave telegram-desktop discord proton-vpn fzf input-remapper
     qbittorrent flatpak gnome-software xorg.xev wev pcmanfm
-    imagemagick python312Packages.argostranslate
+    imagemagick
     btrfs-progs compsize snapper
     mpvpaper flatpak-builder psmisc
     apparmor-utils stdenv.cc.cc.lib kdePackages.konsole kdePackages.dolphin
