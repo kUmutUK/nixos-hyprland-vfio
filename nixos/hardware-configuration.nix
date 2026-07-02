@@ -1,7 +1,7 @@
 { config, lib, pkgs, modulesPath, ... }:
 
 let
-  rootDev    = "/dev/disk/by-uuid/4822b18c-2663-4aa2-9f73-cd026da4b6e6";
+  rootDev    = "/dev/disk/by-uuid/14d6b717-2c6d-42fb-9794-f3bb4ad729a9";
   commonOpts = [ "noatime" "compress=zstd:1" "ssd" "space_cache=v2" "discard=async" ];
 in
 {
@@ -13,7 +13,7 @@ in
   ];
 
   boot.initrd.luks.devices."cryptroot" = {
-    device           = "/dev/disk/by-uuid/ec0388fd-9499-4df0-8966-5a1b45477473";
+    device           = "/dev/disk/by-uuid/334805fa-4601-4410-8bf5-299fbbd5aba7";
     allowDiscards    = true;
     bypassWorkqueues = true;
   };
@@ -50,13 +50,13 @@ in
   };
 
   fileSystems."/boot" = {
-    device  = "/dev/disk/by-uuid/0D62-0386";
+    device  = "/dev/disk/by-uuid/FB17-7687";
     fsType  = "vfat";
     options = [ "fmask=0077" "dmask=0077" ];
   };
 
   swapDevices = [{
-    device = "/dev/disk/by-uuid/f3f695b4-4e9d-4b28-9b76-4bca970270c8";
+    device = "/dev/disk/by-uuid/9c308abc-19d2-436e-b283-51256ac32600";
     priority = 10;
   }];
 
