@@ -298,7 +298,7 @@ in
       vscode = vscode.fhs;
       vscodeExtensions = with vscode-extensions; [ continue.continue ];
     })
-    brave telegram-desktop discord proton-vpn fzf input-remapper
+    brave telegram-desktop discord proton-vpn fzf input-remapper yt-dlp ffmpeg cloudflare-warp
     qbittorrent flatpak gnome-software xorg.xev wev pcmanfm
     imagemagick
     btrfs-progs compsize snapper
@@ -334,6 +334,7 @@ in
 
   programs.steam.enable = true;
   services.flatpak.enable = true;
+  services.cloudflare-warp.enable = true; #reference:9
 
   virtualisation.libvirtd = {
     enable = true;
@@ -397,4 +398,21 @@ in
   environment.persistence."/nix/persist/system".directories = [
     "/etc/vulkan/implicit_layer.d"
   ];
+
+    services.nextdns = {
+  enable = true;
+  arguments = [
+    "-config"
+    "xxxxxx"
+  ];
+};
+
+    networking.networkmanager.dns = "none";
+
+networking.nameservers = [
+  "127.0.0.1"
+  "::1"
+];
+
 }
+
