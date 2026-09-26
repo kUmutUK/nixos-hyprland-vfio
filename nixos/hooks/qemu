@@ -4,7 +4,6 @@ LOGFILE="/var/log/libvirt/vfio.log"
 GPU_PCI="0000:0b:00.0"
 GPU_AUDIO="0000:0b:00.1"
 VFIO_PATH="/sys/bus/pci/drivers/vfio-pci"
-AMDGPU_PATH="/sys/bus/pci/drivers/amdgpu"
 
 log() {
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOGFILE"
@@ -21,14 +20,21 @@ bind_vfio() {
   done
 }
 
-bind_amdgpu() {
+release_host_driver() {
+  # GPU_PCI (fonksiyon .0) amdgpu'ya, GPU_AUDIO (fonksiyon .1) ise
+  # normalde snd_hda_intel'e bağlanır — ikisi FARKLI sürücüler.
+  # Önceki sürüm ikisini de zorla "amdgpu"ya bağlamaya çalışıyordu;
+  # audio fonksiyonu amdgpu'nun ID tablosunda olmadığından bind
+  # başarısız oluyor, driver_override "amdgpu" olarak takılı kalıyor
+  # ve ses fonksiyonu sürücüsüz kalıyordu. Bunun yerine override'ı
+  # temizleyip kernelin normal PCI ID eşleştirmesiyle (drivers_probe)
+  # doğru sürücüyü kendisinin bulmasına izin veriyoruz.
   for dev in "$@"; do
     if [ -e "/sys/bus/pci/devices/$dev/driver" ]; then
       echo "$dev" > "/sys/bus/pci/devices/$dev/driver/unbind" 2>/dev/null
     fi
-    echo "amdgpu" > "/sys/bus/pci/devices/$dev/driver_override"
-    echo "$dev" > "/sys/bus/pci/drivers/amdgpu/bind" 2>/dev/null ||
-      echo "$dev" > /sys/bus/pci/drivers_probe 2>/dev/null
+    echo "" > "/sys/bus/pci/devices/$dev/driver_override" 2>/dev/null
+    echo "$dev" > /sys/bus/pci/drivers_probe 2>/dev/null
   done
 }
 
@@ -61,6 +67,14 @@ start_hyprland() {
 
 GUEST="$1"
 ACTION="$2"
+TARGET_VM="win10"
+
+# Bu script libvirt tarafından TÜM VM'ler için çağrılır (sadece $TARGET_VM
+# için değil). Filtre olmadan ileride eklenecek herhangi bir VM de host
+# GPU'sunu vfio-pci'ye alıp masaüstünü kapatır.
+if [ "$GUEST" != "$TARGET_VM" ]; then
+  exit 0
+fi
 
 if [ "$ACTION" = "prepare" ]; then
   log "VM $GUEST başlatılıyor, masaüstü durduruluyor..."
@@ -76,7 +90,7 @@ fi
 
 if [ "$ACTION" = "release" ]; then
   log "VM $GUEST kapandı, GPU geri alınıyor..."
-  bind_amdgpu "$GPU_PCI" "$GPU_AUDIO"
+  release_host_driver "$GPU_PCI" "$GPU_AUDIO"
   echo 1 > /sys/class/vtconsole/vtcon0/bind 2>/dev/null || true
   echo 1 > /sys/class/vtconsole/vtcon1/bind 2>/dev/null || true
   echo efi-framebuffer.0 > /sys/bus/platform/drivers/efi-framebuffer/bind 2>/dev/null || true
