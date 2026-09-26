@@ -322,6 +322,11 @@ let
     # Manuel OCR çeviri (SHIFT+T)
     bind = $mainMod SHIFT, T, exec, grim -g "$(slurp)" - | tesseract - stdout -l eng 2>/dev/null | trans -b :tr | notify-send -t 10000 "Çeviri" "$(cat -)"
 
+    # Sürekli panoya-göre otomatik çeviri toggle (ALT+T) — daha önce
+    # scripts/auto-translate.sh repo'da vardı ama hiçbir kısayola
+    # bağlı değildi, artık gerçekten kullanılabilir.
+    bind = $mainMod ALT, T, exec, pkill -f auto-translate.sh || ~/.config/hypr/scripts/auto-translate.sh
+
     bindm = $mainMod, mouse:272, movewindow
     bindm = $mainMod, mouse:273, resizewindow
 
@@ -655,6 +660,20 @@ in
     "hypr/hyprlock.conf".text = hyprlockConf;
     "waybar/style.css".text = waybarStyle;
     "waybar/config.jsonc".text = waybarConfig;
+
+    # Bu iki script daha önce sadece .config/hypr/scripts/ altında repo'da
+    # duruyordu ama hiçbir yerde deploy edilmiyordu — "Y" kısayolu script
+    # gerçekte ~/.config/hypr/scripts/wuwa-auto.sh'ta olmadığı için no-op'tu.
+    # Home-manager üzerinden gerçek dosya sistemine yazıp çalıştırılabilir
+    # yapıyoruz ki kısayollar fiilen çalışsın.
+    "hypr/scripts/wuwa-auto.sh" = {
+      source = ../.config/hypr/scripts/wuwa-auto.sh;
+      executable = true;
+    };
+    "hypr/scripts/auto-translate.sh" = {
+      source = ../.config/hypr/scripts/auto-translate.sh;
+      executable = true;
+    };
   };
 
   home.file.".local/bin/waybar-temperature.sh" = {
