@@ -293,7 +293,7 @@ in
     heroic protonup-qt wine nodejs
     virt-manager looking-glass-client capitaine-cursors
     btop nvtopPackages.amd fastfetch
-    git zip unzip usbutils p7zip android-tools
+    git zip unzip usbutils pciutils p7zip android-tools
     (vscode-with-extensions.override {
       vscode = vscode.fhs;
       vscodeExtensions = with vscode-extensions; [ continue.continue ];
