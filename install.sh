@@ -164,6 +164,15 @@ for f in configuration.nix home.nix flake.nix flake.lock; do
         warn "Skipping missing file: $f"
     fi
 done
+
+if [ -d "$REPO_DIR/nixos/hooks" ]; then
+    sudo cp -r "$REPO_DIR/nixos/hooks" "$NIXOS_DIR/hooks"
+    sudo chmod 0755 "$NIXOS_DIR/hooks/qemu"
+    log "Copied hooks/ (configuration.nix references ./hooks/qemu as a relative path — without this, nixos-rebuild fails with 'path does not exist')."
+else
+    error "nixos/hooks/ directory not found — configuration.nix will fail to evaluate without it."
+fi
+
 warn "hardware-configuration.nix was NOT copied (machine-specific)."
 warn "If you're using a fresh install, generate it with 'nixos-generate-config' and copy the resulting hardware-configuration.nix manually."
 
@@ -175,13 +184,30 @@ sudo sed -i \
     -e "s|gpuAudio = .*;|gpuAudio = \"${gpu_audio}\";|" \
     "$NIXOS_DIR/configuration.nix" && log "GPU PCI addresses set."
 
-sudo sed -i \
-    -e "s|gitName      = .*;|gitName      = \"${git_name}\";|" \
-    -e "s|gitEmail     = .*;|gitEmail     = \"${git_email}\";|" \
-    -e "s|monitorOutput    = .*;|monitorOutput    = \"${monitor_output}\";|" \
-    -e "s|hyprlandMonitorLine = .*;|hyprlandMonitorLine = \"${hypr_mon_line}\";|" \
-    -e "s|wallpaperVideo = .*;|wallpaperVideo = \"${wallpaper_video}\";|" \
-    "$NIXOS_DIR/home.nix" && log "Home-manager variables updated."
+HOME_NIX="$NIXOS_DIR/home.nix"
+apply_var() {
+  local var_name="$1" new_value="$2"
+  # [[:space:]]* yerine sabit boşluk sayısına güvenmiyoruz: home.nix'teki
+  # hizalama boşlukları script'in beklediğinden farklıysa literal sed
+  # deseni hiçbir şeyi değiştirmeden sessizce başarılı döner.
+  if ! grep -qE "^[[:space:]]*${var_name}[[:space:]]*=" "$HOME_NIX"; then
+    warn "Variable '${var_name}' not found in home.nix — skipped, please set it manually."
+    return
+  fi
+  sudo sed -i -E "s|^([[:space:]]*${var_name}[[:space:]]*=).*;|\1 \"${new_value}\";|" "$HOME_NIX"
+  # Doğrula: satır gerçekten yeni değeri içeriyor mu?
+  if grep -qF "\"${new_value}\";" "$HOME_NIX"; then
+    log "Set ${var_name}."
+  else
+    warn "Failed to verify substitution for '${var_name}' — check home.nix manually."
+  fi
+}
+
+apply_var "gitName" "$git_name"
+apply_var "gitEmail" "$git_email"
+apply_var "monitorOutput" "$monitor_output"
+apply_var "hyprlandMonitorLine" "$hypr_mon_line"
+apply_var "wallpaperVideo" "$wallpaper_video"
 
 # ─── Final checklist ────────────────────────────────────
 step "Summary"
