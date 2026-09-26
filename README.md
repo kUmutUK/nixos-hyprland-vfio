@@ -212,7 +212,7 @@ sudo nixos-rebuild switch --flake /etc/nixos#nixos
 ```text
 .
 ├── assets/
-├── etc/libvirt/hooks/
+├── .config/hypr/scripts/    # wuwa-auto.sh, auto-translate.sh (home.nix ile deploy edilir)
 ├── nixos/
 │   ├── configuration.nix
 │   ├── hardware-configuration.nix
@@ -281,6 +281,30 @@ sudo nixos-rebuild dry-activate --flake .#nixos
 - GPU PCI IDs must be updated
 - VFIO disables host display temporarily
 - SSH uses key authentication
+
+---
+
+# 🚧 Known Limitations
+
+### AMD GPU reset bug (RX 6000 series)
+
+The single-GPU passthrough hook (`nixos/hooks/qemu`) attempts a generic
+PCI/vendor-specific reset when the VM shuts down. This reliably works for
+GPUs officially supported by [gnif/vendor-reset](https://github.com/gnif/vendor-reset)
+(Polaris, Vega10/20, Navi 10/12/14 — i.e. the 5000 series and older).
+
+**Navi 21/22/23 (RX 6000 series, including the RX 6700 XT this repo was
+tested on) is not in that supported list**, and in practice some of these
+cards still exhibit reset-bug-like symptoms (black screen, GPU dropping off
+the PCIe bus) on the second VM start. There is currently no universal
+software fix for this on Navi2x — reported community workarounds involve
+vendor-specific VBIOS reflashing, which is risky and hardware-specific, so
+it is intentionally **not** automated here.
+
+The hook now logs (`/var/log/libvirt/vfio.log`) whether the reset actually
+succeeded, so a failed reset is visible instead of silently swallowed. If
+the host display doesn't come back after stopping the VM, a full host
+reboot is the safe fallback.
 
 ---
 
