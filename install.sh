@@ -156,7 +156,7 @@ step "Copying configuration files"
 [[ ! -d "$REPO_DIR/nixos" ]] && error "nixos/ directory not found in repository."
 
 sudo mkdir -p "$NIXOS_DIR"
-for f in configuration.nix home.nix flake.nix flake.lock; do
+for f in configuration.nix home.nix flake.nix flake.lock low_latency_layer.json.in; do
     if [ -f "$REPO_DIR/nixos/$f" ]; then
         sudo cp "$REPO_DIR/nixos/$f" "$NIXOS_DIR/$f"
         log "Copied $f"
@@ -164,6 +164,10 @@ for f in configuration.nix home.nix flake.nix flake.lock; do
         warn "Skipping missing file: $f"
     fi
 done
+# configuration.nix'teki low-latency-layer derivation'ı
+# "./low_latency_layer.json.in" göreli yoluyla bu dosyayı arıyor. Bu yol
+# configuration.nix'in bulunduğu dizine göre çözülüyor; dosya buraya
+# kopyalanmazsa nixos-rebuild "path does not exist" hatasıyla patlar.
 
 if [ -d "$REPO_DIR/nixos/hooks" ]; then
     sudo cp -r "$REPO_DIR/nixos/hooks" "$NIXOS_DIR/hooks"
