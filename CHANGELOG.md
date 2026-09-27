@@ -8,6 +8,32 @@ This project follows:
 
 ---
 
+# [1.1.3] - 2026-09-27
+
+## 🐛 Fixed
+
+- **`install.sh` didn't copy `low_latency_layer.json.in`.** `configuration.nix`'s
+  `low-latency-layer` derivation reads this file via a relative path
+  (`./low_latency_layer.json.in`), which resolves against the directory
+  `configuration.nix` itself lives in. `install.sh` copied
+  `configuration.nix`/`home.nix`/`flake.nix`/`flake.lock`/`hooks/` into
+  `/etc/nixos` but never this file, so on any install done through the
+  installer, `nixos-rebuild switch` failed evaluation with a missing-path
+  error the moment it tried to build the Vulkan layer. `install.sh` now also
+  copies `low_latency_layer.json.in` alongside the other nixos/ files.
+- **`home.persistence` (impermanence) was never wired into Home Manager.**
+  `home.nix` sets `home.persistence."/nix/persist/home"`, but that option is
+  defined by impermanence's *Home Manager* module, not its NixOS module.
+  `flake.nix` only imported `impermanence.nixosModules.impermanence` at the
+  system level — nothing passed the Home Manager module into
+  `home-manager.users.localhost`, so the option didn't exist and
+  `nixos-rebuild switch` failed evaluation with "option `home.persistence`
+  does not exist". Fixed by adding
+  `home-manager.sharedModules = [ impermanence.homeManagerModules.impermanence ];`
+  to `flake.nix`.
+
+---
+
 # [1.1.2] - 2026-09-27
 
 ## 🐛 Fixed
