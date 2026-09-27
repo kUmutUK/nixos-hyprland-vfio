@@ -347,6 +347,7 @@ in
     enable = true;
     settings = {
       PasswordAuthentication = false;
+      KbdInteractiveAuthentication = false;
       PermitRootLogin = "no";
       X11Forwarding = false;
       MaxAuthTries = 3;
