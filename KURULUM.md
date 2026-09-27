@@ -111,23 +111,33 @@ swapon /dev/nvme0n1p2
 
 ---
 
-# 🧠 7. NixOS Config
+# 🧠 7. Repo Kurulumu (DOĞRU YÖNTEM)
+
+`nixos-generate-config` zaten `/mnt/etc/nixos/configuration.nix` ve
+`hardware-configuration.nix` dosyalarını oluşturur — bu yüzden repo'yu
+doğrudan `/mnt/etc/nixos`'a klonlamaya çalışmak "already exists and is
+not an empty directory" hatası verir. Önce ayrı bir dizine klonlayın,
+sadece donanıma özel dosyayı (`hardware-configuration.nix`) oradan
+alın, gerisini repo'nunkiyle değiştirin:
 
 ```bash
 nixos-generate-config --root /mnt
+
+git clone https://github.com/kUmutUK/nixos-hyprland-vfio.git /tmp/repo
+cp /mnt/etc/nixos/hardware-configuration.nix /tmp/repo/nixos/hardware-configuration.nix
+
+rm -rf /mnt/etc/nixos
+mkdir -p /mnt/etc/nixos
+cp -r /tmp/repo/. /mnt/etc/nixos/
 ```
+
+> ⚠️ `hardware-configuration.nix`'i UUID'lerinizle güncellemeyi unutmayın
+> (bkz. Notlar). Repo'daki flake `nixos/flake.nix`'te olduğu için kurulum
+> komutu da o alt dizini işaret etmeli — bir sonraki adıma bakın.
 
 ---
 
-# 📁 8. Repo Kurulumu (DOĞRU YÖNTEM)
-
-```bash
-git clone https://github.com/kUmutUK/nixos-hyprland-vfio.git /mnt/etc/nixos
-```
-
----
-
-# 🔑 9. Root Şifre
+# 🔑 8. Root Şifre
 
 ```bash
 nixos-enter --root /mnt -c 'passwd root'
@@ -135,15 +145,18 @@ nixos-enter --root /mnt -c 'passwd root'
 
 ---
 
-# ⚡ 10. Kurulum
+# ⚡ 9. Kurulum
+
+flake.nix repo kökünde değil, `nixos/` alt dizininde olduğu için `#nixos`
+öncesindeki yol da buna göre verilmeli:
 
 ```bash
-nixos-install --flake /mnt/etc/nixos#nixos
+nixos-install --flake /mnt/etc/nixos/nixos#nixos
 ```
 
 ---
 
-# 🔄 11. Reboot
+# 🔄 10. Reboot
 
 ```bash
 reboot
@@ -156,7 +169,7 @@ reboot
 ## Sistem güncelle
 
 ```bash
-sudo nixos-rebuild switch --flake /etc/nixos#nixos
+sudo nixos-rebuild switch --flake /etc/nixos/nixos#nixos
 ```
 
 ## Log kontrol

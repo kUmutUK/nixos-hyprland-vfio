@@ -103,6 +103,34 @@ echo ""
 read -rp "Enter GPU VGA PCI address (e.g. 0000:0b:00.0): " gpu_pci
 read -rp "Enter GPU Audio PCI address (e.g. 0000:0b:00.1): " gpu_audio
 
+# ─── IOMMU group preflight ─────────────────────────────────
+# Single-GPU VFIO passthrough çalışması için GPU'nun ve ses fonksiyonunun
+# bulunduğu IOMMU grubunda başka, passthrough'a dahil edilmeyen bir
+# cihaz olmaması gerekir. Bu kontrol olmadan installer, gerçekte izole
+# olmayan bir GPU için de "kurulum tamam" der.
+step "IOMMU group check"
+short_pci() { echo "$1" | sed -E 's/^0000://'; }
+gpu_short="$(short_pci "$gpu_pci")"
+iommu_dir="/sys/bus/pci/devices/0000:${gpu_short}/iommu_group"
+if [ -e "$iommu_dir" ]; then
+  group_num="$(basename "$(readlink -f "$iommu_dir")")"
+  info "GPU (0000:${gpu_short}) IOMMU group: ${group_num}"
+  echo "Bu gruptaki tüm PCI cihazları:"
+  for dev in /sys/kernel/iommu_groups/"${group_num}"/devices/*; do
+    dev_addr="$(basename "$dev")"
+    lspci -nns "${dev_addr#0000:}" | sed 's/^/    /'
+  done
+  echo ""
+  warn "Yukarıdaki listede GPU (${gpu_pci}) ve ses fonksiyonu (${gpu_audio})"
+  warn "DIŞINDA bir cihaz varsa, o cihaz da VM'e verilmeden GPU'yu tek"
+  warn "başına ayıramazsınız (ACS override gibi ek önlemler gerekir)."
+  read -rp "Devam etmek istiyor musunuz? (yes/no): " iommu_confirm
+  [[ "$iommu_confirm" != "yes" ]] && { info "Aborted."; exit 0; }
+else
+  warn "IOMMU group bilgisi okunamadı (${iommu_dir} yok)."
+  warn "IOMMU'nun BIOS'ta etkin olduğundan emin olun; kontrol atlanıyor."
+fi
+
 echo ""
 # Monitör tespiti (hem Hyprland hem de DRM üzerinden)
 monitor_output="DP-3"
