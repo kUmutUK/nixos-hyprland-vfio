@@ -43,6 +43,11 @@ This project follows:
   the hook now falls back to a community-reported `remove` + `rtcwake`
   suspend + PCI `rescan` recovery sequence before giving up and logging
   that a host reboot may be needed.
+- `nixos/hooks/qemu`: `stop_hyprland()` no longer hardcodes `/dev/dri/card0`
+  when checking whether the GPU is still in use. It now resolves the DRM
+  card node from `$GPU_PCI` via sysfs (`gpu_drm_card()`), so the check
+  stays correct even if card numbering changes (e.g. an iGPU is added, or
+  the board enumerates devices in a different order).
 
 ## 📚 Documentation
 
