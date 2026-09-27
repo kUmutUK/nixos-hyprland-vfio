@@ -38,6 +38,11 @@ This project follows:
   if not, instead of silently continuing regardless of outcome. Added
   `pciutils` to `environment.systemPackages` so `setpci` is available to
   the hook.
+- `nixos/hooks/qemu`: on `release`, if the quiet unbind/rebind doesn't
+  restore a real driver to the GPU (checked via `device_has_real_driver`),
+  the hook now falls back to a community-reported `remove` + `rtcwake`
+  suspend + PCI `rescan` recovery sequence before giving up and logging
+  that a host reboot may be needed.
 
 ## 📚 Documentation
 
