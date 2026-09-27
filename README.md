@@ -302,9 +302,15 @@ vendor-specific VBIOS reflashing, which is risky and hardware-specific, so
 it is intentionally **not** automated here.
 
 The hook now logs (`/var/log/libvirt/vfio.log`) whether the reset actually
-succeeded, so a failed reset is visible instead of silently swallowed. If
-the host display doesn't come back after stopping the VM, a full host
-reboot is the safe fallback.
+succeeded, so a failed reset is visible instead of silently swallowed. On
+`release`, if the quiet unbind/rebind doesn't restore a real driver to the
+GPU, the hook automatically falls back to a community-reported recovery
+trick: `remove` the device from the PCI tree entirely, briefly suspend the
+host to RAM via `rtcwake` (auto-wakes after a few seconds), then `rescan`
+the bus so the device re-enumerates and binds normally. This works for some
+Navi2x boards where a plain reset doesn't; it isn't guaranteed for every
+board/VBIOS combination. If the host display still doesn't come back after
+this, a full host reboot is the safe fallback.
 
 ---
 
