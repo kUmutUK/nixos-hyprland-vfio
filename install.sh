@@ -169,6 +169,17 @@ if [ -d "$REPO_DIR/nixos/hooks" ]; then
     sudo cp -r "$REPO_DIR/nixos/hooks" "$NIXOS_DIR/hooks"
     sudo chmod 0755 "$NIXOS_DIR/hooks/qemu"
     log "Copied hooks/ (configuration.nix references ./hooks/qemu as a relative path — without this, nixos-rebuild fails with 'path does not exist')."
+
+    # configuration.nix'teki gpuPCI/gpuAudio değişkenleri hiçbir yerde
+    # kullanılmıyor (yalnızca bu script'in sed ile hedeflediği ölü
+    # değişkenler) — asıl VFIO davranışını belirleyen, hooks/qemu
+    # içindeki GPU_PCI/GPU_AUDIO sabitleri. Onları güncellemezsek,
+    # kullanıcı burada farklı bir PCI adresi girse bile gerçek hook
+    # hep 0000:0b:00.0 / .1'i kullanmaya devam ederdi.
+    sudo sed -i \
+        -e "s|^GPU_PCI=\".*\"|GPU_PCI=\"${gpu_pci}\"|" \
+        -e "s|^GPU_AUDIO=\".*\"|GPU_AUDIO=\"${gpu_audio}\"|" \
+        "$NIXOS_DIR/hooks/qemu" && log "Hook script'teki GPU PCI adresleri de güncellendi."
 else
     error "nixos/hooks/ directory not found — configuration.nix will fail to evaluate without it."
 fi

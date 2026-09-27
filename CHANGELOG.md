@@ -8,7 +8,45 @@ This project follows:
 
 ---
 
-# [1.1.1] - 2026-09-26
+# [1.1.2] - 2026-09-27
+
+## 🐛 Fixed
+
+- **`home.nix` xdg.configFile paths broke `install.sh` installs.** The two
+  hypr scripts (`wuwa-auto.sh`, `auto-translate.sh`) were deployed via a
+  path relative to the repo root (`../.config/hypr/scripts/...`). This
+  only resolves correctly when `home.nix` is evaluated from inside a full
+  repo checkout. `install.sh` copies `home.nix` alone into `/etc/nixos/`
+  without the `.config/` directory, so on an installer-based setup the
+  relative path pointed at a file that doesn't exist and `nixos-rebuild`
+  would fail evaluation. Fixed by inlining both scripts' contents directly
+  in `home.nix` (no external file dependency at all now).
+- **`install.sh` didn't apply the user's GPU PCI address to the actual
+  hook.** The installer asks for `GPU PCI` / `GPU Audio` addresses and
+  patches `configuration.nix`'s `gpuPCI`/`gpuAudio` — but those two
+  variables aren't read by anything; the real VFIO behavior comes from
+  `GPU_PCI`/`GPU_AUDIO` hardcoded in `hooks/qemu`. On any machine whose GPU
+  isn't at `0000:0b:00.0`/`.1`, the installer silently produced a broken
+  VFIO setup despite asking for and appearing to accept the correct
+  addresses. `install.sh` now also sed-patches the copied `hooks/qemu`.
+- **`hooks/qemu` `prepare`: no failure detection or rollback.** If
+  `bind_vfio` silently failed (errors were swallowed), the script still
+  logged "GPU vfio-pci'ye bağlandı" and returned success — after already
+  stopping greetd and unbinding the VT/EFI framebuffer. The VM could then
+  fail to start with the host left headless and no automatic recovery.
+  Added `device_bound_to_vfio()` verification; on failure the hook now
+  rolls back (restores the host driver, VT console, EFI framebuffer,
+  greetd) and exits non-zero so libvirt aborts the domain start instead of
+  proceeding with a half-configured system.
+- **`hooks/qemu` `release`: recovery check only verified the GPU, not
+  audio.** After the `suspend_rescan_recovery` fallback, only `$GPU_PCI`
+  was re-checked for a real driver. If the recovery fixed the GPU function
+  but left the audio function driverless, the hook had no way to know and
+  logged nothing. Now both functions are verified independently.
+
+---
+
+
 
 ## 🐛 Fixed
 
