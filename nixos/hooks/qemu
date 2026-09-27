@@ -98,11 +98,30 @@ vendor_reset() {
   fi
 }
 
+# $GPU_PCI'nin hangi /dev/dri/cardN düğümüne karşılık geldiğini sistemden
+# soruyoruz. Öncesinde "card0" sabit varsayılıyordu — iGPU eklenmesi ya da
+# kart numaralandırmasının değişmesi durumunda stop_hyprland() yanlış
+# cihazın kullanımda olup olmadığına bakabilirdi. Bu makinede (iGPU'suz
+# Ryzen 5 5600 + tek RX 6700 XT) pratikte hep card0 çıkıyordu ama bu artık
+# varsayıma değil, gerçek PCI eşleşmesine dayanıyor.
+gpu_drm_card() {
+  local dev="$1" node
+  node=$(ls -d "/sys/bus/pci/devices/$dev/drm/card"* 2>/dev/null | head -n1)
+  if [ -n "$node" ]; then
+    basename "$node"
+  else
+    log "UYARI: $dev için /sys/.../drm/cardN bulunamadı, card0'a düşülüyor."
+    echo "card0"
+  fi
+}
+
 stop_hyprland() {
   log "Greetd durduruluyor..."
   systemctl stop greetd 2>/dev/null || true
+  local card
+  card=$(gpu_drm_card "$GPU_PCI")
   for i in $(seq 1 20); do
-    if ! /run/current-system/sw/bin/fuser /dev/dri/card0 >/dev/null 2>&1; then
+    if ! /run/current-system/sw/bin/fuser "/dev/dri/$card" >/dev/null 2>&1; then
       break
     fi
     sleep 0.5
