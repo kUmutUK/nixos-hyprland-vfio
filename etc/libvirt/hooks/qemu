@@ -4,7 +4,6 @@ LOGFILE="/var/log/libvirt/vfio.log"
 GPU_PCI="0000:0b:00.0"
 GPU_AUDIO="0000:0b:00.1"
 VFIO_PATH="/sys/bus/pci/drivers/vfio-pci"
-AMDGPU_PATH="/sys/bus/pci/drivers/amdgpu"
 
 log() {
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOGFILE"
@@ -21,25 +20,82 @@ bind_vfio() {
   done
 }
 
-bind_amdgpu() {
+release_host_driver() {
+  # GPU_PCI (fonksiyon .0) amdgpu'ya, GPU_AUDIO (fonksiyon .1) ise
+  # normalde snd_hda_intel'e bağlanır — ikisi FARKLI sürücüler.
+  # Önceki sürüm ikisini de zorla "amdgpu"ya bağlamaya çalışıyordu;
+  # audio fonksiyonu amdgpu'nun ID tablosunda olmadığından bind
+  # başarısız oluyor, driver_override "amdgpu" olarak takılı kalıyor
+  # ve ses fonksiyonu sürücüsüz kalıyordu. Bunun yerine override'ı
+  # temizleyip kernelin normal PCI ID eşleştirmesiyle (drivers_probe)
+  # doğru sürücüyü kendisinin bulmasına izin veriyoruz.
   for dev in "$@"; do
     if [ -e "/sys/bus/pci/devices/$dev/driver" ]; then
       echo "$dev" > "/sys/bus/pci/devices/$dev/driver/unbind" 2>/dev/null
     fi
-    echo "amdgpu" > "/sys/bus/pci/devices/$dev/driver_override"
-    echo "$dev" > "/sys/bus/pci/drivers/amdgpu/bind" 2>/dev/null ||
-      echo "$dev" > /sys/bus/pci/drivers_probe 2>/dev/null
+    echo "" > "/sys/bus/pci/devices/$dev/driver_override" 2>/dev/null
+    echo "$dev" > /sys/bus/pci/drivers_probe 2>/dev/null
   done
 }
 
-vendor_reset() {
-  if [ -e "/sys/bus/pci/devices/$1/reset_method" ]; then
-    echo "device_specific" > "/sys/bus/pci/devices/$1/reset_method" 2>/dev/null || true
-  fi
-  if [ -e "/sys/bus/pci/devices/$1/reset" ]; then
-    echo 1 > "/sys/bus/pci/devices/$1/reset" 2>/dev/null || true
+# Cihaz gerçek (vfio-pci olmayan, boş olmayan) bir sürücüye bağlanmış mı?
+device_has_real_driver() {
+  local dev="$1" drv
+  drv=$(basename "$(readlink -f "/sys/bus/pci/devices/$dev/driver" 2>/dev/null)" 2>/dev/null)
+  [ -n "$drv" ] && [ "$drv" != "vfio-pci" ]
+}
+
+# TOPLULUK ÇÖZÜMÜ (fallback): RDNA1/RDNA2 (Navi 10-23, RX 6700 XT dahil)
+# kartların bir kısmında düz unbind/rebind ("release_host_driver") host'a
+# döndükten sonra GPU'yu canlandırmıyor. VFIO forumlarında en çok işe
+# yarayan yöntem: cihazı PCI ağacından TAMAMEN kaldırıp (remove), host'u
+# kısaca RAM'e uyutup (rtcwake ile kendiliğinden uyandırarak) sonra bus'ı
+# yeniden taratmak (rescan). Bu, cihazı sanki yeni takılmış gibi sıfırdan
+# enumerate ettirip normal sürücü eşleşmesini (amdgpu / snd_hda_intel)
+# tetikliyor. Host'u kısaca uyuttuğu için görünür/rahatsız edici bir adım
+# — bu yüzden SADECE sessiz unbind/rebind yetersiz kalırsa devreye giriyor.
+suspend_rescan_recovery() {
+  log "Sessiz unbind/rebind yetersiz kaldı, remove+suspend+rescan kurtarma deneniyor..."
+  for dev in "$@"; do
+    echo 1 > "/sys/bus/pci/devices/$dev/remove" 2>/dev/null || true
+  done
+  sleep 1
+  if [ -x /run/current-system/sw/bin/rtcwake ]; then
+    /run/current-system/sw/bin/rtcwake -m mem -s 3 >>"$LOGFILE" 2>&1 || \
+      log "UYARI: rtcwake başarısız oldu (bkz. log), suspend adımı atlanmış olabilir."
+  else
+    log "UYARI: rtcwake bulunamadı (util-linux), suspend adımı atlandı — sadece rescan deneniyor."
   fi
   sleep 1
+  echo 1 > /sys/bus/pci/rescan 2>/dev/null || true
+  sleep 2
+}
+
+# ÖNEMLİ SINIRLAMA: Bu fonksiyon "device_specific"/"reset" sysfs yollarını
+# dener, ama bu GENEL bir reset denemesidir — gnif/vendor-reset kernel
+# modülünün resmi olarak desteklediği "reset bug" listesi Polaris, Vega10,
+# Vega20 ve Navi 10/12/14 (5000 serisi) ile sınırlıdır. Navi 21/22/23
+# (RX 6000 serisi, bu depoda test edilen RX 6700 XT dahil) bu listede YOK.
+# Yani bu kart bazı sistemlerde VM ikinci kez açılmaya çalışıldığında hâlâ
+# "reset bug"a benzer şekilde takılabilir (ekran kararması / GPU'nun PCIe
+# bus'tan tamamen düşmesi). "release" aşamasında bu durum artık
+# suspend_rescan_recovery() fallback'iyle ayrıca ele alınıyor.
+vendor_reset() {
+  local dev="$1" ok=0
+  if [ -e "/sys/bus/pci/devices/$dev/reset_method" ]; then
+    echo "device_specific" > "/sys/bus/pci/devices/$dev/reset_method" 2>/dev/null && ok=1
+  fi
+  if [ -e "/sys/bus/pci/devices/$dev/reset" ]; then
+    echo 1 > "/sys/bus/pci/devices/$dev/reset" 2>/dev/null && ok=1
+  fi
+  sleep 1
+  # Reset sonrası cihaz hâlâ PCI config space üzerinden okunabiliyor mu?
+  # Okunamıyorsa (kart bus'tan düştüyse) bunu en azından log'a yazalım.
+  if ! /run/current-system/sw/bin/setpci -s "$dev" 0x0.w >/dev/null 2>&1; then
+    log "UYARI: $dev reset sonrası yanıt vermiyor — GPU PCIe bus'tan düşmüş olabilir (bilinen Navi2x sınırlaması). Ekran geri gelmezse host reboot gerekebilir."
+  elif [ "$ok" -eq 0 ]; then
+    log "UYARI: $dev için reset_method/reset sysfs yolları bulunamadı, reset denenemedi."
+  fi
 }
 
 stop_hyprland() {
@@ -61,6 +117,14 @@ start_hyprland() {
 
 GUEST="$1"
 ACTION="$2"
+TARGET_VM="win10"
+
+# Bu script libvirt tarafından TÜM VM'ler için çağrılır (sadece $TARGET_VM
+# için değil). Filtre olmadan ileride eklenecek herhangi bir VM de host
+# GPU'sunu vfio-pci'ye alıp masaüstünü kapatır.
+if [ "$GUEST" != "$TARGET_VM" ]; then
+  exit 0
+fi
 
 if [ "$ACTION" = "prepare" ]; then
   log "VM $GUEST başlatılıyor, masaüstü durduruluyor..."
@@ -76,10 +140,21 @@ fi
 
 if [ "$ACTION" = "release" ]; then
   log "VM $GUEST kapandı, GPU geri alınıyor..."
-  bind_amdgpu "$GPU_PCI" "$GPU_AUDIO"
+  release_host_driver "$GPU_PCI" "$GPU_AUDIO"
+  sleep 1
+
+  # Sessiz unbind/rebind işe yaramadıysa (Navi2x reset bug ihtimali),
+  # ağır ama daha güvenilir remove+suspend+rescan yöntemine düş.
+  if ! device_has_real_driver "$GPU_PCI" || ! device_has_real_driver "$GPU_AUDIO"; then
+    suspend_rescan_recovery "$GPU_AUDIO" "$GPU_PCI"
+    if ! device_has_real_driver "$GPU_PCI"; then
+      log "UYARI: $GPU_PCI kurtarma sonrası da normal sürücüye bağlanmadı — GPU muhtemelen PCIe bus'tan düştü, host reboot gerekebilir."
+    fi
+  fi
+
   echo 1 > /sys/class/vtconsole/vtcon0/bind 2>/dev/null || true
   echo 1 > /sys/class/vtconsole/vtcon1/bind 2>/dev/null || true
   echo efi-framebuffer.0 > /sys/bus/platform/drivers/efi-framebuffer/bind 2>/dev/null || true
   start_hyprland
-  log "GPU amdgpu'ya geri verildi, masaüstü başlatıldı."
+  log "GPU host'a geri verildi (bkz. yukarıdaki loglar), masaüstü başlatıldı."
 fi
