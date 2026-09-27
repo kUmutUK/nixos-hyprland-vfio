@@ -134,6 +134,26 @@ start_hyprland() {
   systemctl start greetd 2>/dev/null || true
 }
 
+# Cihaz gerçekten vfio-pci'ye bağlanmış mı? (bind_vfio'nun sessizce
+# yuttuğu hataları burada gerçek bir kontrolle yakalıyoruz.)
+device_bound_to_vfio() {
+  local dev="$1" drv
+  drv=$(basename "$(readlink -f "/sys/bus/pci/devices/$dev/driver" 2>/dev/null)" 2>/dev/null)
+  [ "$drv" = "vfio-pci" ]
+}
+
+# ROLLBACK: prepare aşamasında VFIO bind başarısız olursa, host'u yarım
+# durumda (masaüstü kapalı, GPU ne host'ta ne guest'te) bırakmak yerine
+# elden geldiğince eski haline döndürmeye çalışıyoruz.
+rollback_prepare() {
+  log "HATA: GPU vfio-pci'ye bağlanamadı, rollback deneniyor..."
+  release_host_driver "$GPU_PCI" "$GPU_AUDIO"
+  echo 1 > /sys/class/vtconsole/vtcon0/bind 2>/dev/null || true
+  echo 1 > /sys/class/vtconsole/vtcon1/bind 2>/dev/null || true
+  echo efi-framebuffer.0 > /sys/bus/platform/drivers/efi-framebuffer/bind 2>/dev/null || true
+  start_hyprland
+}
+
 GUEST="$1"
 ACTION="$2"
 TARGET_VM="win10"
@@ -154,6 +174,16 @@ if [ "$ACTION" = "prepare" ]; then
   sleep 1
   bind_vfio "$GPU_PCI" "$GPU_AUDIO"
   vendor_reset "$GPU_PCI"
+
+  # bind_vfio() içindeki hatalar sessizce yutuluyordu ve script bu durumda
+  # bile "bağlandı" diye loglayıp devam ediyordu — halbuki host masaüstü
+  # zaten kapatılmış oluyordu. Şimdi gerçekten vfio-pci'ye bağlanıp
+  # bağlanmadığını kontrol ediyoruz; bağlanmadıysa rollback yapıp libvirt'e
+  # (exit 1 ile) VM'i başlatmamasını söylüyoruz.
+  if ! device_bound_to_vfio "$GPU_PCI" || ! device_bound_to_vfio "$GPU_AUDIO"; then
+    rollback_prepare
+    exit 1
+  fi
   log "GPU vfio-pci'ye bağlandı."
 fi
 
@@ -168,6 +198,11 @@ if [ "$ACTION" = "release" ]; then
     suspend_rescan_recovery "$GPU_AUDIO" "$GPU_PCI"
     if ! device_has_real_driver "$GPU_PCI"; then
       log "UYARI: $GPU_PCI kurtarma sonrası da normal sürücüye bağlanmadı — GPU muhtemelen PCIe bus'tan düştü, host reboot gerekebilir."
+    fi
+    # Önceden sadece GPU (.0) tekrar kontrol ediliyordu; audio (.1)
+    # fonksiyonu kurtarma sonrası sürücüsüz kalsa bile bu fark edilmiyordu.
+    if ! device_has_real_driver "$GPU_AUDIO"; then
+      log "UYARI: $GPU_AUDIO (ses fonksiyonu) kurtarma sonrası da normal sürücüye bağlanmadı."
     fi
   fi
 
