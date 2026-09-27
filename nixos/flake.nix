@@ -41,6 +41,16 @@
           boot.kernelPackages = pkgs.cachyosKernels.linuxPackages-cachyos-bore;
           programs.hyprland.package = pkgs.hyprland;
           environment.systemPackages = [ pkgs.pyprland ];
+
+          # ⭐ home.nix "home.persistence" (impermanence) kullanıyor, ama bu
+          # seçenek Home Manager'ın KENDİ impermanence modülünden geliyor —
+          # yukarıdaki impermanence.nixosModules.impermanence sadece sistem
+          # (NixOS) tarafını sağlıyor. sharedModules olmadan
+          # home-manager.users.localhost, home.persistence'i tanımayıp
+          # "option does not exist" hatasıyla evaluation'ı kırar.
+          home-manager.sharedModules = [
+            impermanence.homeManagerModules.impermanence
+          ];
         })
         ./configuration.nix
       ];
