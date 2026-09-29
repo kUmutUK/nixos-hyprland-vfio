@@ -287,7 +287,7 @@ in
     hyprlock hypridle wlogout hyprpicker
     hyprpolkitagent pyprland waypaper
     networkmanagerapplet brightnessctl playerctl
-    pavucontrol cliphist libmtp jmtpfs android-file-transfer
+    pavucontrol cliphist libmtp android-file-transfer
     ntfs3g exfat gparted crow-translate tesseract translate-shell libnotify
     steam gamemode gamescope mangohud vkbasalt winetricks
     heroic protonup-qt wine nodejs
@@ -392,9 +392,10 @@ in
   programs.nix-ld.enable = true;
 
   services.ananicy = {
-    enable = true;
-    rulesProvider = pkgs.ananicy-rules-cachyos;
-  };
+  enable = true;
+  package = pkgs.ananicy-cpp;
+  rulesProvider = pkgs.ananicy-rules-cachyos;
+};
 
   environment.persistence."/nix/persist/system".directories = [
     "/etc/vulkan/implicit_layer.d"
@@ -404,7 +405,7 @@ in
   enable = true;
   arguments = [
     "-config"
-    "xxxxxx"
+    "843948"
   ];
 };
 
