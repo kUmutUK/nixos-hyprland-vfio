@@ -74,22 +74,41 @@ Hardware-agnostic Vulkan latency layer:
 - Vulkan injection layer
 
 ```bash
+# Sistem genelinde (configuration.nix'de zaten ayarlı):
 LOW_LATENCY_LAYER_REFLEX=1
-LOW_LATENCY_LAYER_SPOOF_NVIDIA=1
 ```
+
+> **Düzelten (2026-10-03):** Bu katman `948a561` rev'ine sabitlenmiş ve
+> upstream manifestinde `enable_environment` **yoktur** — yani varsayılan olarak
+> **açıktır**. Repodaki özel manifest `ENABLE_LOW_LATENCY_LAYER` ekliyordu;
+> o değişken hiçbir yerde set edilmediği için Vulkan loader katmanı sessizce
+> atlıyor, Reflex/Anti-Lag hiç çalışmıyordu. Artık upstream'in kendi
+> manifesti (cmake `install` kuralı) kullanılıyor.
+>
+> **Not:** `LOW_LATENCY_LAYER_SPOOF_NVIDIA` **sistem genelinde ayarlanmaz.**
+> Upstream bunu "birçok uygulamanın Reflex seçeneğini göstermesi için
+> gerekli" diye belgeler ama yeni sürümlerde `DXVK_CONFIG="dxgi.hideAmdGpu = True"`
+> alternatifini öneriyor. Oyun bazında gerekiyorsa Steam başlatma seçeneğine
+> ekleyin:
+>
+> ```bash
+> PROTON_FORCE_NVAPI=1 LOW_LATENCY_LAYER_REFLEX=1 LOW_LATENCY_LAYER_SPOOF_NVIDIA=1 %command%
+> ```
 
 ### RADV Anti-Lag
 
-```bash
-RADV_ANTILAG=1
-```
+> **Düzelten (2026-10-03):** `RADV_ANTILAG=1` kaldırıldı. Bu bir Mesa değişkeni
+> değil; pinned low_latency_layer rev'i `VK_AMD_anti_lag` uzantısını **kendi
+> sunar**, ayrı bir ortam değişkenine gerek yok.
 
 ### Vulkan Tweaks
 
 ```bash
 AMD_VULKAN_ICD=RADV
-RADV_PERFTEST=gpl,nggc
+RADV_PERFTEST=gpl
 ```
+> **Düzelten (2026-10-03):** `nggc` kaldırıldı — NGG culling GFX10.3'te
+> (RX 6700 XT) Mesa'da zaten varsayılan olarak açık, bayrak etkisizdi.
 
 ### lsfg-vk
 
@@ -202,8 +221,14 @@ cd nixos-hyprland-vfio
 chmod +x install.sh
 ./install.sh
 
-sudo nixos-rebuild switch --flake /etc/nixos#nixos
+# flake nixos/ altındadır
+sudo nixos-rebuild switch --flake /etc/nixos/nixos#nixos
 ```
+
+> **Düzelten (2026-10-03):** README bu yolu `/etc/nixos#nixos` gösteriyordu,
+> `KURULUM.md` ise `/etc/nixos/nixos#nixos` diyordu — ikisi çelişiyordu.
+> `install.sh` dosyaları düz `/etc/nixos/` altına kopyalıyor, flake ise
+> `nixos/` altında; doğru yol **her iki dokümanda da** `/etc/nixos/nixos#nixos`.
 
 ---
 
@@ -211,25 +236,31 @@ sudo nixos-rebuild switch --flake /etc/nixos#nixos
 
 ```text
 .
-├── assets/
-├── .config/hypr/scripts/    # wuwa-auto.sh, auto-translate.sh (home.nix ile deploy edilir)
-├── nixos/
+├── nixos/                       # flake burada → /etc/nixos/nixos#nixos
 │   ├── configuration.nix
 │   ├── hardware-configuration.nix
-│   ├── home.nix
+│   ├── home.nix                 # masaüstü config'lerinin TEK kaynağı
 │   ├── flake.nix
 │   ├── flake.lock
-│   ├── hooks/
-│   └── low_latency_layer.json.in
-├── vm-xml/
-├── wallpaper/
+│   └── hooks/qemu               # VFIO hook
+├── vm-xml/win10.xml
+├── assets/                      # ekran görüntüleri (wall-.png, kitty-.png)
+├── gemma-modelfile
+├── wuwa-modelfile
+├── install.sh
+├── shell.nix
 ├── CHANGELOG.md
 ├── CONTRIBUTING.md
 ├── KURULUM.md
-├── install.sh
-├── shell.nix
+├── LICENSE
 └── README.md
 ```
+
+> **Düzelten (2026-10-03):** `.config/`, `waybar/`, `gtk/`, kökteki
+> `conf.toml` / `MangoHud.conf` / `*.json` kopyaları **silindi**. Bunlar
+> `home.nix` içindeki inline kopyalarla drift etmişti ve hiç deploy edilmiyordu.
+> `home.nix` tek doğruluk kaynağıdır; CI de bunları geri getirmeye çalışan
+> bir regresyon kontrolü içerir.
 
 ---
 
@@ -260,8 +291,13 @@ virt-manager
 # 🛠️ Development
 
 ```bash
+# shell.nix legacy <nixpkgs> channel import ediyor; flakes-only sistemlerde
+# çalışması için NIX_PATH tanımlı olmalı.
 nix-shell
-nix develop
+
+# VEYA: kökte flake.niz yok, bu yüzden `nix develop` yerine:
+nix-shell -p nixpkgs-fmt statix shellcheck
+cd nixos && nix flake check
 ```
 
 ---
@@ -280,7 +316,10 @@ sudo nixos-rebuild dry-activate --flake .#nixos
 - hardware-configuration.nix machine-specific
 - GPU PCI IDs must be updated
 - VFIO disables host display temporarily
-- SSH uses key authentication
+- SSH uses key authentication. `configuration.nix` ships with an **empty**
+  `authorizedKeys.keys` — add your own (`ssh-ed25519 …`). Earlier versions
+  shipped the maintainer's public key, which granted remote access to anyone
+  who installed this config.
 
 ---
 

@@ -10,7 +10,7 @@ Bu rehber AMD sistemler için optimize edilmiş **NixOS + LUKS2 + Btrfs + Hyprla
 - UEFI sistem
 - AMD Ryzen CPU
 - AMD Radeon RX 6000/7000 GPU
-- En az 50GB boş disk
+- En az 800 GB boş disk (aşağıdaki bölümlendirme 800 GB kullanıyor)
 
 ---
 
@@ -83,6 +83,9 @@ btrfs subvolume create /mnt/@home
 btrfs subvolume create /mnt/@nix
 btrfs subvolume create /mnt/@log
 btrfs subvolume create /mnt/@snapshots
+# NOT: @home/.snapshots alt hacmi BURADA oluşturulamaz — @home henüz mount
+# edilmedi. services.snapper.configs.home (SUBVOLUME="/home") için gereken
+# alt hacim, aşağıda @home mount edildikten SONRA oluşturulur (bkz. §6).
 
 umount /mnt
 ```
@@ -96,13 +99,20 @@ mount -o subvol=@,noatime,compress=zstd:1,ssd,discard=async /dev/mapper/cryptroo
 
 mkdir -p /mnt/{boot,home,nix,var/log,.snapshots}
 
+# @home mount EDİLDİKTEN SONRA oluşturulur (aşağıda)
+
 mount -o subvol=@home,noatime,compress=zstd:1,ssd,discard=async /dev/mapper/cryptroot /mnt/home
+
+# @home mount edildi → şimdi home snapper alt hacmini oluştur ve bağla
+btrfs subvolume create /mnt/home/.snapshots
+mount -o subvol=@home/.snapshots,noatime,compress=zstd:1,ssd,discard=async /dev/mapper/cryptroot /mnt/home/.snapshots
 
 mount -o subvol=@nix,noatime,nodatacow,ssd,discard=async /dev/mapper/cryptroot /mnt/nix
 
 mount -o subvol=@log,noatime,ssd,discard=async /dev/mapper/cryptroot /mnt/var/log
 
 mount -o subvol=@snapshots,noatime,compress=zstd:1,ssd,discard=async /dev/mapper/cryptroot /mnt/.snapshots
+
 
 mount /dev/nvme0n1p1 /mnt/boot
 
@@ -131,9 +141,14 @@ mkdir -p /mnt/etc/nixos
 cp -r /tmp/repo/. /mnt/etc/nixos/
 ```
 
-> ⚠️ `hardware-configuration.nix`'i UUID'lerinizle güncellemeyi unutmayın
-> (bkz. Notlar). Repo'daki flake `nixos/flake.nix`'te olduğu için kurulum
-> komutu da o alt dizini işaret etmeli — bir sonraki adıma bakın.
+> ℹ️ `hardware-configuration.nix` yukarıdaki `cp` komutuyla **sizin makinenizden
+> `nixos-generate-config` ile üretilmiş** olanla değiştirildiği için UUID'ler zaten
+> doğrudur; ayrıca elle güncellemeniz gerekmez. Yalnızca `lsblk -f` çıktısı
+> beklediğinizle örtüşmüyorsa kontrol edin.
+>
+> Repo yapısı korunarak kopyalandığı için flake `/mnt/etc/nixos/nixos` altında
+> durur → kurulum komutunda `#nixos` öncesi bu dizini göstermelisiniz
+> (bir sonraki adıma bakın).
 
 ---
 
@@ -189,6 +204,9 @@ cat ~/.local/share/hyprland/hyprland.log
 - VFIO sırasında ekran kararır (normal)
 - GPU PCI ID doğru girilmelidir
 - hardware-configuration.nix cihaz bağımlıdır
+- Mevcut bir sistemi güncelliyorsanız /home/.snapshots alt hacmini
+  `sudo btrfs subvolume create /home/.snapshots` ile ÖNCE oluşturun,
+  aksi halde neededForBoot yüzünden acil kipe düşersiniz
 - UEFI zorunludur
 - SSH key authentication önerilir
 - LUKS şifresi açılışta istenir
