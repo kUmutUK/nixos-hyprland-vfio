@@ -26,11 +26,20 @@ let
 
     cmakeFlags = [ "-DCMAKE_BUILD_TYPE=Release" ];
 
+    # Upstream'in kendi install kuralı kullanılıyor. CMakeLists.txt hem .so'yu
+    # $out/lib altına, hem de DOĞRU manifesti $out/share/vulkan/implicit_layer.d/
+    # altına kopyalıyor. Daha önce elle yazılmış bir manifest
+    # (low_latency_layer.json.in) kullanılıyordu; o dosyada hem yanlış katman
+    # adı/api sürümü vardı hem de "functions" eşlemesi yoktu. En kötüsü:
+    # enable_environment: ENABLE_LOW_LATENCY_LAYER eklenmişti, ama o değişken
+    # hiçbir yerde set edilmiyordu — Vulkan loader katmanı bu yüzden
+    # SESSİZCE atlıyor ve Reflex/Anti-Lag hiç çalışmıyordu.
+    # Upstream manifestinde enable_environment YOKTUR: bu rev'de katman
+    # varsayılan olarak etkindir, sadece disable_environment ile kapatılır.
     installPhase = ''
-      mkdir -p $out/lib $out/share/vulkan/implicit_layer.d
-      cp libVkLayer_KORTHOS_LowLatency.so $out/lib/
-      substitute ${./low_latency_layer.json.in} $out/share/vulkan/implicit_layer.d/low_latency_layer.json \
-        --subst-var-by libdir "$out/lib"
+      runHook preInstall
+      cmake --install .
+      runHook postInstall
     '';
 
     meta = with lib; {
@@ -39,6 +48,24 @@ let
       platforms = platforms.linux;
     };
   };
+
+  # ─── libvirt VFIO hook ──────────────────────────────────────────────
+  # libvirt, hook'u SADECE $SYSCONFDIR/libvirt/hooks altından arar. nixpkgs
+  # libvirt'i --sysconfdir=/var/lib ile derdiği için bu yol
+  # /var/lib/libvirt/hooks olur; libvirt bu dizini ve <dizini>/qemu.d/
+  # içindeki dosyaları tarar. /etc/libvirt/hooks HİÇ okunmaz.
+  #
+  # Daha önce environment.etc."libvirt/hooks/qemu" ile /etc'ye kopyalanıyordu;
+  # libvirt onu görmüyor, hook hiç çalışmıyor, GPU vfio-pci'ye hiç bağlanmıyordu.
+  #
+  # Shebang de ayrı bir sorundu: libvirtd.service'in PATH'i yalnızca
+  # qemu + netcat + swtpm içeriyor, bash yok. Bu yüzden bash ve coreutils
+  # store yolundan garanti ediliyor; hook'un kendi /run/current-system/sw/bin
+  # mutlak çağrıları (setpci, fuser, rtcwake) zaten sorun değil.
+  vfioHook = pkgs.writeShellScript "libvirt-vfio-hook" ''
+    export PATH="${lib.makeBinPath [ pkgs.coreutils pkgs.systemd ]}:$PATH"
+    ${builtins.readFile ./hooks/qemu}
+  '';
 in
 {
   imports = [ ./hardware-configuration.nix ];
@@ -55,10 +82,10 @@ in
     nerd-fonts.jetbrains-mono
   ];
 
-  environment.etc."libvirt/hooks/qemu" = {
-    mode = "0755";
-    source = ./hooks/qemu;
-  };
+  # ESKİ YOL (KALDIRILDI): environment.etc."libvirt/hooks/qemu" = { … };
+  # libvirt /etc/libvirt/hooks dizinini okumaz; hook aşağıdaki
+  # virtualisation.libvirtd.hooks.qemu ile /var/lib/libvirt/hooks/qemu.d/
+  # altına symlink olarak kurulur.
 
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
@@ -153,8 +180,11 @@ in
   networking.firewall = {
     enable = true;
     allowedTCPPorts = [ 22 ];
-    allowedTCPPortRanges = [ { from = 1714; to = 1764; } ];
-    allowedUDPPortRanges = [ { from = 1714; to = 1764; } ];
+    # 1714-1764 aralığı (51 port) açıktı. Bu, bir "güvenlik" bölümü olan
+    # config için gereksiz bir genişleme. P2P/seed istiyorsanız tek port
+    # açın (örn. 51413). Şimdilik kaldırıldı.
+    # allowedTCPPortRanges = [ { from = 1714; to = 1764; } ];
+    # allowedUDPPortRanges = [ { from = 1714; to = 1764; } ];
     allowPing = true;
   };
 
@@ -162,14 +192,18 @@ in
   hardware.graphics.enable32Bit = true;
   environment.variables = {
     AMD_VULKAN_ICD = "RADV";
-    RADV_PERFTEST = "gpl,nggc";
+    # "nggc" kaldırıldı: NGG culling GFX10.3'te (RX 6700 XT) Mesa'da zaten
+    # varsayılan olarak açık, bayrak etkisizdi. Geriye yalnızca gpl kalır.
+    RADV_PERFTEST = "gpl";
     NIXOS_OZONE_WL = "1";
     MOZ_ENABLE_WAYLAND = "1";
     QT_QPA_PLATFORM = "wayland;xcb";
     XCURSOR_THEME = "capitaine-cursors";
     XCURSOR_SIZE = "16";
+    # pinned low_latency_layer rev'inde (948a561) bu katman varsayılan olarak
+    # VK_AMD_anti_lag sunar; ayrıca "RADV_ANTILAG" diye bir Mesa değişkeni yok.
+    # Reflex modu için LOW_LATENCY_LAYER_REFLEX=1 geçerlidir.
     LOW_LATENCY_LAYER_REFLEX = "1";
-    RADV_ANTILAG = "1";                      # ← yeni eklendi
   };
 
   programs.fish.enable = true;
@@ -272,7 +306,15 @@ in
       "gamemode" "libvirtd" "kvm" "input" "render"
     ];
     openssh.authorizedKeys.keys = [
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIO2qlcENvrPCXZrwtIBZ4ctXHfmYWsLCw5QUmtNHjyL5 141457520+kUmutUK@users.noreply.github.com"
+      # ⚠️ ÖNCEKİ HALİNDE proje bakımcısının (kUmutUK) açık anahtarı buradaydı.
+      # Böylece bu configi kuran herkes, kendi anahtarı olmadan da o anahtarla
+      # uzaktan giriş yapabiliyordu; kendi anahtarınız yoksa da SSH erişiminiz
+      # kapalı kalıyordu (PasswordAuthentication = false).
+      # Kendi anahtarınızı ekleyin:
+      #   ssh-keygen -t ed25519
+      #   cat ~/.ssh/id_ed25519.pub
+      # ardından aşağıya yapıştırın. SSH kullanmayacaksanız bu listeyi
+      # boş bırakıp services.openssh'i kapatabilirsiniz.
     ];
   };
 
@@ -305,6 +347,10 @@ in
     mpvpaper flatpak-builder psmisc
     apparmor-utils stdenv.cc.cc.lib kdePackages.konsole kdePackages.dolphin
     low-latency-layer vulkan-tools
+    # wuwa-auto.sh "argos-translate" çağırıyordu ama paket hiçbir yerde
+    # tanımlı değildi → translate_fast() her zaman sessizce başarısız oluyor,
+    # her çeviri Ollama'ya düşüyordu. translate-shell (`trans`) bunun yerine geçmez.
+    argos-translate
   ];
 
   environment.etc."vulkan/implicit_layer.d/low_latency_layer.json".source =
@@ -340,6 +386,9 @@ in
     enable = true;
     qemu.swtpm.enable = true;
     qemu.runAsRoot = false;
+
+    # libvirt'in gerçekten taradığı yer: /var/lib/libvirt/hooks/qemu.d/vfio
+    hooks.qemu.vfio = vfioHook;
   };
   programs.virt-manager.enable = true;
 
@@ -389,6 +438,38 @@ in
     rocmOverrideGfx = "10.3.0";
   };
 
+  # wuwa-auto.sh, Ollama'dan "wuwa-gemma" adlı bir model istiyordu ama model
+  # hiçbir yerde oluşturulmuyordu. Modelfile içeriği Nix'e gömüldü; servis
+  # ELLE ÇALIŞTIRILIR (otomatik başlatma yok → ilk açılışta 8 GB'lık
+  # aya-expanse indirilmez):
+  #   sudo systemctl start wuwa-gemma-init.service
+  #   ollama list | grep wuwa-gemma
+  wuwaGemmaModelfile = pkgs.writeText "wuwa-gemma.modelfile" ''
+    FROM aya-expanse:8b
+    SYSTEM You are a professional game localizer specializing in fantasy RPGs. Fix any OCR typos in the provided English text. Translate it into natural, fluent Turkish, preserving the tone (e.g., formal, sarcastic, emotional). Never output anything except the Turkish translation.
+  '';
+
+  systemd.services.wuwa-gemma-init = {
+    description = "Ollama için wuwa-gemma modelini oluşturur (elle çalıştırılır)";
+    after = [ "ollama.service" ];
+    wants = [ "ollama.service" ];
+    wantedBy = [ ];               # otomatik başlatMA
+    serviceConfig = {
+      Type = "oneshot";
+      Environment = "HOME=/root";
+      ExecStart = pkgs.writeShellScript "wuwa-gemma-init" ''
+        if ${pkgs.ollama-rocm}/bin/ollama list | grep -q '^wuwa-gemma'; then
+          echo "wuwa-gemma zaten var, atlanıyor."
+        else
+          echo "aya-expanse:8b çekiliyor (yaklaşık 8 GB)…"
+          ${pkgs.ollama-rocm}/bin/ollama pull aya-expanse:8b
+          ${pkgs.ollama-rocm}/bin/ollama create wuwa-gemma -f ${wuwaGemmaModelfile}
+          echo "wuwa-gemma hazır."
+        fi
+      '';
+    };
+  };
+
   programs.nix-ld.enable = true;
 
   services.ananicy = {
@@ -397,24 +478,30 @@ in
   rulesProvider = pkgs.ananicy-rules-cachyos;
 };
 
-  environment.persistence."/nix/persist/system".directories = [
-    "/etc/vulkan/implicit_layer.d"
-  ];
+  # /etc/vulkan/implicit_layer.d, environment.etc ile yazılıyor (Vulkan
+  # manifesti salt-okunur bir store dosyası). Eskiden environment.persistence
+  # ile de aynı dizin impermanence bind-mount'una veriliyordu; persist
+  # dizini ilk açılışta boş olduğu için etc dosyasını gölgeliyordu.
+  # Kalıcılık bu yol için bir şey kazandırmıyor → kaldırıldı.
+  # home.persistence (home.nix) tarafındaki .config/lsfg-vk ise ayrı ve geçerli.
 
-    services.nextdns = {
-  enable = true;
-  arguments = [
-    "-config"
-    "xxxxxx"
-  ];
-};
+  # ─── DNS ────────────────────────────────────────────────────────────
+  # ESKİ HALİ: services.nextdns + networking.networkmanager.dns = "none" +
+  # nameservers = 127.0.0.1. Bu üçlü, nextdns geçersiz config ile başlamazsa
+  # (config ID "xxxxxx" idi) sistemde HİÇ DNS çözümlemesi kalmıyordu.
+  # Çözüm: nextdns devre dışı, DNS yine NetworkManager'ın yönetiminde.
+  # Kendi NextDNS hesabınızı kullanmak istiyorsanız: servisi açın ve
+  # arguments içindeki "xxxxxx" yerine GERÇEK DoH/DoT config ID'nizi yazın.
+  #
+  # services.nextdns = {
+  #   enable = true;
+  #   arguments = [ "-config" "<GERÇEK-CONFIG-ID>" ];
+  # };
 
-    networking.networkmanager.dns = "none";
-
-networking.nameservers = [
-  "127.0.0.1"
-  "::1"
-];
+  # NOT: aşağıdaki iki satır bilinçli olarak yorumda. DNS çözümlemesi
+  # NetworkManager'ın varsayılan davranışıyla (DHCP/DHCPv6) yapılır.
+  # networking.networkmanager.dns = "none";
+  # networking.nameservers = [ "127.0.0.1" "::1" ];
 
 }
 
