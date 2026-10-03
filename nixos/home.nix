@@ -234,7 +234,7 @@ let
 
     # Rofi teması (arthur) repoda hiçbir yerde bulunmuyordu; bu satır
     # rofi'yi temalı başlatmaya çalışıp düşüyordu. Varsayılan temaya dönüldü.
-    bind = $mainMod, A, exec, rofi -show drun
+    bind = $mainMod, A, exec, ${pkgs.rofi}/bin/rofi -show drun
     bind = $mainMod, C, exec, kitty
     bind = $mainMod, Q, killactive
     bind = $mainMod, Return, exec, kitty
@@ -242,8 +242,8 @@ let
     bind = $mainMod, V, togglefloating
     bind = $mainMod, P, exec, grim -g "$(slurp)" - | wl-copy
     bind = $mainMod SHIFT, P, exec, grim -g "$(slurp)" - | satty -f - | wl-copy
-    bind = $mainMod, Escape, exec, hyprlock          # ← hyprlock yeni tuş
-    bind = $mainMod, W, exec, waypaper
+    bind = $mainMod, Escape, exec, ${pkgs.hyprlock}/bin/hyprlock          # ← hyprlock yeni tuş
+    bind = $mainMod, W, exec, ${pkgs.waypaper}/bin/waypaper
 
     bind = $mainMod, S, exec, pypr toggle term
     bind = $mainMod SHIFT, S, exec, pypr toggle music
@@ -314,7 +314,7 @@ let
     binde = , XF86AudioLowerVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-
     bind  = , XF86AudioMute,        exec, wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
 
-    bind = $mainMod SHIFT, C, exec, hyprpicker -a && notify-send "Renk" "$(wl-paste)" -t 2000
+    bind = $mainMod SHIFT, C, exec, ${pkgs.hyprpicker}/bin/hyprpicker -a && notify-send "Renk" "$(wl-paste)" -t 2000
 
     bind = $mainMod SHIFT, E, exit
 
@@ -351,13 +351,13 @@ let
     # user unit'lerinden başlatılıyor. Eskiden hem hyprland exec-once hem
     # systemd aynı servisi tetikliyordu (watchdog için iki instance, yarış
     # koşulu; mpvpaper ve gamemode-notify için gereksiz tekrar).
-    exec-once = pcmanfm --desktop
+    exec-once = ${pkgs.pcmanfm}/bin/pcmanfm --desktop
     exec-once = hyprctl setcursor capitaine-cursors 16
     exec-once = waybar
     exec-once = dunst
     exec-once = wl-paste --watch cliphist store
     exec-once = nm-applet --indicator
-    exec-once = hyprpolkitagent
+    exec-once = ${pkgs.hyprpolkitagent}/bin/hyprpolkitagent
     exec-once = dbus-update-activation-environment --systemd DISPLAY
     exec-once = pypr
     exec-once = systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE
@@ -806,33 +806,44 @@ in
       experimental_present_mode = "fifo"
     '';
 
-    # pyprland kurulu ama ~/.config/pypr/config.toml yoktu; hyprland.conf'taki
+    # pyprland kurulu ama config'i yoktu; hyprland.conf'taki
     # "pypr toggle term/music/filemanager" bağlantıları tanımsızdı.
-    "pypr/config.toml".text = ''
-      [pypr]
-      enableHotReload = true
-      height = 50
-      width = 70
-      xOffset = 15
-      yOffset = 20
-      logLevel = "INFO"
-      border = { visible = true, size = 1 }
+    #
+    # pyprland resmi formatı:
+    #   dosya  : ~/.config/hypr/pyprland.toml   (pypr/config.toml DEĞİL)
+    #   bölüm  : [pyprland] plugins = [...]  +  [scratchpads.<ad>]
+    # Daha önce [[pypr.apps]] / useOn / [pypr] yazılmıştı — bunların hiçbiri
+    # pyprland tarafından okunmaz, scratchpad'ler sessizce hiç oluşmazdı.
+    "hypr/pyprland.toml".text = ''
+      [pyprland]
+      plugins = [ "scratchpads" ]
 
-      [[pypr.apps]]
-      name = "term"
-      cmd = "kitty"
-      useOn = "workspace special:alacritty"
+      # hyprland.conf: bind = $mainMod, S, exec, pypr toggle term
+      [scratchpads.term]
+      animation = "fromTop"
+      command = "kitty --class pypr-term"
+      class = "pypr-term"
+      size = "70% 60%"
+      margin = 50
 
-      [[pypr.apps]]
-      name = "music"
-      cmd = "playerctl --player=spotifyplayer"
-      player = "spotify"
-      useOn = "workspace special:music"
+      # bind = $mainMod SHIFT, S, exec, pypr toggle music
+      # playerctl'ın pencereesi yok; bu bir medya oynatıcı (mpv, zaten kurulu).
+      # Farklı bir oynatıcı isterseniz command/class değerlerini değiştirin.
+      [scratchpads.music]
+      animation = "fromRight"
+      command = "mpv --class pypr-music --no-config --idle"
+      class = "pypr-music"
+      size = "45% 70%"
+      unfocus = "hide"
+      lazy = true
 
-      [[pypr.apps]]
-      name = "filemanager"
-      cmd = "pcmanfm"
-      useOn = "workspace special:files"
+      # bind = $mainMod CTRL, S, exec, pypr toggle filemanager
+      [scratchpads.filemanager]
+      animation = "fromRight"
+      command = "pcmanfm"
+      class = "pcmanfm"
+      size = "60% 70%"
+      lazy = true
     '';
 
     # Bu iki script daha önce ../.config/hypr/scripts/*.sh şeklinde repo
@@ -1280,93 +1291,91 @@ done
   };
 
   services.hypridle = {
-    enable = true;
-    settings = {
-      general = {
-        before_sleep_cmd = "hyprlock";
-        after_sleep_cmd = "hyprctl dispatch dpms on";
-        lock_cmd = "pidof hyprlock || hyprlock";
-        ignore_dbus_inhibit = false;
-      };
-      listener = [
-        {
-          timeout = 300;
-          on-timeout = "hyprctl dispatch dpms off";
-          on-resume = "hyprctl dispatch dpms on";
-        }
-        {
-          timeout = 150;
-          on-timeout = "brightnessctl -s set 70%";
-          on-resume = "brightnessctl -r";
-        }
-        {
-          timeout = 600;
-          on-timeout = "pidof hyprlock || hyprlock";
-        }
-        {
-          timeout = 900;
-          on-timeout = "pidof hyprlock || hyprlock; systemctl suspend";
-        }
-      ];
+  enable = true;
+  settings = {
+    general = {
+      before_sleep_cmd = "${pkgs.hyprlock}/bin/hyprlock";
+      after_sleep_cmd = "${pkgs.hyprland}/bin/hyprctl dispatch dpms on";
+      lock_cmd = "${pkgs.hyprlock}/bin/hyprlock";
+      ignore_dbus_inhibit = false;
     };
+    listener = [
+      {
+        timeout = 300;
+        on-timeout = "${pkgs.hyprland}/bin/hyprctl dispatch dpms off";
+        on-resume = "${pkgs.hyprland}/bin/hyprctl dispatch dpms on";
+      }
+      {
+        timeout = 150;
+        on-timeout = "${pkgs.brightnessctl}/bin/brightnessctl -s set 70%";
+        on-resume = "${pkgs.brightnessctl}/bin/brightnessctl -r";
+      }
+      {
+        timeout = 600;
+        on-timeout = "${pkgs.hyprlock}/bin/hyprlock";
+      }
+      {
+        timeout = 900;
+        on-timeout = "${pkgs.hyprlock}/bin/hyprlock; ${pkgs.systemd}/bin/systemctl suspend";
+      }
+    ];
+  };
+};
+
+systemd.user.services = {
+  mpvpaper = {
+    Unit = {
+      Description = "mpvpaper live wallpaper service (looped)";
+      After = [ "graphical-session.target" ];
+      PartOf = [ "graphical-session.target" ];
+    };
+    Service = {
+      Type = "simple";
+      Environment = "PATH=${lib.makeBinPath [ pkgs.mpvpaper pkgs.mpv ]}";
+      ExecStart = "${pkgs.mpvpaper}/bin/mpvpaper -p --mpv-options \"loop=inf\" ${monitorOutput} ${wallpaperVideo}";
+      Restart = "on-failure";
+      RestartSec = 3;
+    };
+    Install.WantedBy = [ "graphical-session.target" ];
   };
 
-  systemd.user.services = {
-    mpvpaper = {
-      Unit = {
-        Description = "mpvpaper live wallpaper service (looped)";
-        After = [ "graphical-session.target" ];
-        PartOf = [ "graphical-session.target" ];
-      };
-      Service = {
-        Type = "simple";
-        Environment = "PATH=${lib.makeBinPath [ pkgs.mpvpaper pkgs.mpv ]}";
-        ExecStart = "${pkgs.mpvpaper}/bin/mpvpaper -p --mpv-options \"loop=inf\" ${monitorOutput} ${wallpaperVideo}";
-        Restart = "on-failure";
-        RestartSec = 3;
-      };
-      Install.WantedBy = [ "graphical-session.target" ];
+  mpvpaper-watchdog = {
+    Unit = {
+      Description = "Brave açıldığında canlı duvar kağıdını durdurur";
+      After = [ "graphical-session.target" ];
+      PartOf = [ "graphical-session.target" ];
     };
-
-    mpvpaper-watchdog = {
-      Unit = {
-        Description = "Brave açıldığında canlı duvar kağıdını durdurur";
-        After = [ "graphical-session.target" ];
-        PartOf = [ "graphical-session.target" ];
-        # BindsTo kaldırıldı
-      };
-      Service = {
-        Type = "simple";
-        Environment = "PATH=${lib.makeBinPath [ pkgs.hyprland pkgs.jq pkgs.socat pkgs.systemd pkgs.gawk ]}";
-        ExecStart = "${pkgs.bash}/bin/bash /home/localhost/.local/bin/mpvpaper-watchdog";
-        Restart = "on-failure";
-        RestartSec = 3;
-      };
-      Install.WantedBy = [ "graphical-session.target" ];
+    Service = {
+      Type = "simple";
+      Environment = "PATH=${lib.makeBinPath [ pkgs.hyprland pkgs.jq pkgs.socat pkgs.systemd pkgs.gawk ]}";
+      ExecStart = "${pkgs.bash}/bin/bash /home/localhost/.local/bin/mpvpaper-watchdog";
+      Restart = "on-failure";
+      RestartSec = 3;
     };
-
-    gamemode-notify = {
-      Unit = {
-        Description = "Gamemode durum değişikliklerini Dunst ile bildir";
-        After = [ "graphical-session-pre.target" ];
-        PartOf = [ "graphical-session.target" ];
-      };
-      Install = {
-        WantedBy = [ "graphical-session.target" ];
-      };
-      Service = {
-        Type = "simple";
-        ExecStart = "${gamemodeNotifyScript}/bin/gamemode-notify";
-        Restart = "on-failure";
-        RestartSec = 5;
-        Environment = "PATH=${lib.makeBinPath [ pkgs.libnotify pkgs.dbus pkgs.gnugrep pkgs.systemd pkgs.coreutils ]}";
-      };
-    };
+    Install.WantedBy = [ "graphical-session.target" ];
   };
 
-  home.packages = with pkgs; [
-    fd ripgrep jq wget curl file tree
-    playerctl pamixer hyprpicker wev
-    nano satty socat libnotify
-  ];
-}
+  gamemode-notify = {
+    Unit = {
+      Description = "Gamemode durum değişikliklerini Dunst ile bildir";
+      After = [ "graphical-session-pre.target" ];
+      PartOf = [ "graphical-session.target" ];
+    };
+    Install = {
+      WantedBy = [ "graphical-session.target" ];
+    };
+    Service = {
+      Type = "simple";
+      ExecStart = "${gamemodeNotifyScript}/bin/gamemode-notify";
+      Restart = "on-failure";
+      RestartSec = 5;
+      Environment = "PATH=${lib.makeBinPath [ pkgs.libnotify pkgs.dbus pkgs.gnugrep pkgs.systemd pkgs.coreutils ]}";
+    };
+  };
+};
+
+home.packages = with pkgs; [
+  fd ripgrep jq wget curl file tree
+  playerctl pamixer hyprpicker wev
+  nano satty socat libnotify
+];

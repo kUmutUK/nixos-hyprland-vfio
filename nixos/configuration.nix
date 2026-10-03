@@ -458,12 +458,12 @@ in
       Type = "oneshot";
       Environment = "HOME=/root";
       ExecStart = pkgs.writeShellScript "wuwa-gemma-init" ''
-        if ${pkgs.ollama}/bin/ollama list | grep -q '^wuwa-gemma'; then
+        if ${pkgs.ollama-rocm}/bin/ollama list | grep -q '^wuwa-gemma'; then
           echo "wuwa-gemma zaten var, atlanıyor."
         else
           echo "aya-expanse:8b çekiliyor (yaklaşık 8 GB)…"
-          ${pkgs.ollama}/bin/ollama pull aya-expanse:8b
-          ${pkgs.ollama}/bin/ollama create wuwa-gemma -f ${wuwaGemmaModelfile}
+          ${pkgs.ollama-rocm}/bin/ollama pull aya-expanse:8b
+          ${pkgs.ollama-rocm}/bin/ollama create wuwa-gemma -f ${wuwaGemmaModelfile}
           echo "wuwa-gemma hazır."
         fi
       '';
