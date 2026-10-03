@@ -232,7 +232,9 @@ let
 
     $mainMod = SUPER
 
-    bind = $mainMod, A, exec, rofi -show drun -theme arthur
+    # Rofi teması (arthur) repoda hiçbir yerde bulunmuyordu; bu satır
+    # rofi'yi temalı başlatmaya çalışıp düşüyordu. Varsayılan temaya dönüldü.
+    bind = $mainMod, A, exec, ${pkgs.rofi}/bin/rofi -show drun
     bind = $mainMod, C, exec, kitty
     bind = $mainMod, Q, killactive
     bind = $mainMod, Return, exec, kitty
@@ -240,8 +242,8 @@ let
     bind = $mainMod, V, togglefloating
     bind = $mainMod, P, exec, grim -g "$(slurp)" - | wl-copy
     bind = $mainMod SHIFT, P, exec, grim -g "$(slurp)" - | satty -f - | wl-copy
-    bind = $mainMod, Escape, exec, hyprlock          # ← hyprlock yeni tuş
-    bind = $mainMod, W, exec, waypaper
+    bind = $mainMod, Escape, exec, ${pkgs.hyprlock}/bin/hyprlock          # ← hyprlock yeni tuş
+    bind = $mainMod, W, exec, ${pkgs.waypaper}/bin/waypaper
 
     bind = $mainMod, S, exec, pypr toggle term
     bind = $mainMod SHIFT, S, exec, pypr toggle music
@@ -312,12 +314,19 @@ let
     binde = , XF86AudioLowerVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-
     bind  = , XF86AudioMute,        exec, wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
 
-    bind = $mainMod SHIFT, C, exec, hyprpicker -a && notify-send "Renk" "$(wl-paste)" -t 2000
+    bind = $mainMod SHIFT, C, exec, ${pkgs.hyprpicker}/bin/hyprpicker -a && notify-send "Renk" "$(wl-paste)" -t 2000
 
     bind = $mainMod SHIFT, E, exit
 
-    # WuWa otomatik çeviri toggle (Y tuşuna)
-    bind = $mainMod, Y, exec, pkill -f wuwa-auto.sh || ~/.config/hypr/scripts/wuwa-auto.sh
+    # WuWa otomatik çeviri toggle (Y tuşu).
+    # ESKİ HALİ: pkill -f wuwa-auto.sh || ~/.config/.../wuwa-auto.sh
+    # Bu kalıp ÇALIŞMIYORDU: Hyprland exec'i "/bin/sh -c '<satır>'" ile
+    # çalıştırıyor, kabuğun komut satırı "wuwa-auto.sh" metnini içeriyor ve
+    # pkill -f kendi üst kabuğunu öldürüyordu → || fallback'i asla çalışmıyor,
+    # tuşa basmak hiçbir şey yapmıyordu. Sandbox'ta yeniden üretildi.
+    # Çözüm: ayrı bir toggle betiği. Betiğin kendi yolu "toggle-wuwa.sh"
+    # olduğu için "wuwa-auto[.]sh" deseni onu EŞLEŞTİRMEZ.
+    bind = $mainMod, Y, exec, ~/.config/hypr/scripts/toggle-wuwa.sh
 
     # Manuel OCR çeviri (SHIFT+T)
     bind = $mainMod SHIFT, T, exec, grim -g "$(slurp)" - | tesseract - stdout -l eng 2>/dev/null | trans -b :tr | notify-send -t 10000 "Çeviri" "$(cat -)"
@@ -325,7 +334,8 @@ let
     # Sürekli panoya-göre otomatik çeviri toggle (ALT+T) — daha önce
     # scripts/auto-translate.sh repo'da vardı ama hiçbir kısayola
     # bağlı değildi, artık gerçekten kullanılabilir.
-    bind = $mainMod ALT, T, exec, pkill -f auto-translate.sh || ~/.config/hypr/scripts/auto-translate.sh
+    # Aynı pkill -f kendini-kill sorunu burada da vardı → ayrı toggle betiği.
+    bind = $mainMod ALT, T, exec, ~/.config/hypr/scripts/toggle-auto-translate.sh
 
     bindm = $mainMod, mouse:272, movewindow
     bindm = $mainMod, mouse:273, resizewindow
@@ -336,18 +346,21 @@ let
     windowrule = match:class ^(nm-connection-editor)$, float on
     windowrule = match:title ^(scratchterm)$, float on, size 60% 60%
 
-    exec-once = pcmanfm --desktop
-    exec-once = systemctl --user start mpvpaper.service
+    # ÇİFT BAŞLATMA TEMİZLİĞİ:
+    # mpvpaper, mpvpaper-watchdog ve gamemode-notify artık yalnızca systemd
+    # user unit'lerinden başlatılıyor. Eskiden hem hyprland exec-once hem
+    # systemd aynı servisi tetikliyordu (watchdog için iki instance, yarış
+    # koşulu; mpvpaper ve gamemode-notify için gereksiz tekrar).
+    exec-once = ${pkgs.pcmanfm}/bin/pcmanfm --desktop
     exec-once = hyprctl setcursor capitaine-cursors 16
     exec-once = waybar
     exec-once = dunst
     exec-once = wl-paste --watch cliphist store
     exec-once = nm-applet --indicator
-    exec-once = hyprpolkitagent
+    exec-once = ${pkgs.hyprpolkitagent}/bin/hyprpolkitagent
     exec-once = dbus-update-activation-environment --systemd DISPLAY
     exec-once = pypr
-    exec-once = /home/localhost/.local/bin/mpvpaper-watchdog
-    exec-once = systemctl --user start gamemode-notify
+    exec-once = systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE
   '';
 
   hyprlockConf = ''
@@ -356,11 +369,6 @@ let
         disable_loading_bar = false
     }
     background { color = rgba(0, 0, 0, 1.0) }
-    auth-msg {
-        position = 0, -200; size = 400, 50; halign = center; valign = center;
-        font_family = JetBrainsMono Nerd Font; font_size = 14;
-        font_color = rgba(243, 139, 168, 1.0); shadow_passes = 0;
-    }
     label {
         position = 0, -65; size = 250, 50; halign = center; valign = center;
         text = ; font_family = JetBrainsMono Nerd Font; font_size = 15;
@@ -661,6 +669,183 @@ in
     "waybar/style.css".text = waybarStyle;
     "waybar/config.jsonc".text = waybarConfig;
 
+    # ── Toggle betikleri (P0-6) ──────────────────────────────────────
+    # Hyprland exec'i "/bin/sh -c '<satır>'" ile çalıştırır. Satırın İÇİNDE
+    # "pkill -f wuwa-auto.sh || …/wuwa-auto.sh" yazılıydı; pkill -f komut
+    # satırının tamamını aradığı için kendi üst kabuğunu öldürüyor, || fallback'i
+    # hiç çalışmıyor ve tuş hiçbir şey yapmıyordu.
+    # Ayrı betiğe taşınca sorun yok: betiğin kendi yolu "toggle-wuwa.sh" olduğu
+    # için "wuwa-auto[.]sh" deseni onu eşleştirmiyor.
+    # Bu desen sandbox'ta T1/T2/T3 olarak test edildi: başlatıyor, durduruyor ve
+    # sh -c üzerinden (Hyprland'ın gerçek çağrı yolu) de çalışıyor.
+    "hypr/scripts/toggle-wuwa.sh" = {
+      executable = true;
+      text = ''
+        #!${pkgs.bash}/bin/bash
+        if pgrep -f "hypr/scripts/wuwa-auto[.]sh" >/dev/null 2>&1; then
+          pkill -f "hypr/scripts/wuwa-auto[.]sh"
+          notify-send "WuWa AI" "Durduruldu" -t 2000
+        else
+          exec "$HOME/.config/hypr/scripts/wuwa-auto.sh"
+        fi
+      '';
+    };
+
+    "hypr/scripts/toggle-auto-translate.sh" = {
+      executable = true;
+      text = ''
+        #!${pkgs.bash}/bin/bash
+        if pgrep -f "hypr/scripts/auto-translate[.]sh" >/dev/null 2>&1; then
+          pkill -f "hypr/scripts/auto-translate[.]sh"
+          notify-send "Otomatik Çeviri" "Durduruldu" -t 2000
+        else
+          exec "$HOME/.config/hypr/scripts/auto-translate.sh"
+        fi
+      '';
+    };
+
+    # ── Daha önce hiçbir yere deploy edilmeyen dosyalar ───────────────
+    # MangoHud.conf ve conf.toml (lsfg-vk) repoda duruyordu ama hiçbir modül
+    # onları kullanmıyordu; oyunlarda o ayarlar hiç uygulanmıyordu.
+    "MangoHud/MangoHud.conf".text = ''
+      ###############################
+      # MangoHud - Catppuccin Mocha
+      ###############################
+
+      frame_timing=1
+      fps=1
+      frametime=1
+      gpu_stats=1
+      cpu_stats=1
+      gpu_temp=1
+      cpu_temp=1
+      gpu_vram=1
+      ram=1
+
+      fps_format="FPS: {fps}"
+      frametime_format="FT: {frametime}"
+      gpu_format="GPU: {gpu} {gpu_temp}°C"
+      cpu_format="CPU: {cpu} {cpu_temp}°C"
+      vram_format="VRAM: {vram}"
+      ram_format="RAM: {ram}"
+
+      position=top-left
+      offset_x=10
+      offset_y=10
+
+      background_alpha=0.6
+      background_color=1E1E2E
+      text_color=CDD6F4
+      fps_color=CDD6F4
+      frametime_color=F9E2AF
+      gpu_color=89B4FA
+      cpu_color=FAB387
+      vram_color=A6E3A1
+      ram_color=A6E3A1
+      temperature_color=F38BA8
+
+      font_size=20
+
+      legacy_layout=false
+      io_read=0
+      io_write=0
+      battery=0
+      network=0
+
+      gpu_text=GPU
+      cpu_text=CPU
+      vram_text=VRAM
+      ram_text=RAM
+    '';
+
+    "lsfg-vk/conf.toml".text = ''
+      version = 1
+
+      [global]
+
+      # Oyun başına kare üretim çarpanı. exe alanı süreç adıyla eşleşir.
+      # (Eski değerde "Genshin" yazıyordu; süreç adı GenshinImpact.)
+      [[game]]
+      exe = "GenshinImpact"
+      multiplier = 3
+      flow_scale = 1.0
+      performance_mode = false
+      hdr_mode = false
+      experimental_present_mode = "fifo"
+
+      [[game]]
+      exe = "benchmark"
+      multiplier = 4
+      flow_scale = 1.0
+      performance_mode = false
+      hdr_mode = false
+      experimental_present_mode = "fifo"
+
+      [[game]]
+      exe = "cs2"
+      multiplier = 2
+      flow_scale = 0.75
+      performance_mode = false
+      hdr_mode = true
+      experimental_present_mode = "fifo"
+
+      [[game]]
+      exe = "vkcube"
+      multiplier = 4
+      flow_scale = 1.0
+      performance_mode = true
+      hdr_mode = false
+      experimental_present_mode = "fifo"
+
+      [[game]]
+      exe = "wuwa"
+      multiplier = 2
+      flow_scale = 0.9
+      performance_mode = false
+      hdr_mode = true
+      experimental_present_mode = "fifo"
+    '';
+
+    # pyprland kurulu ama config'i yoktu; hyprland.conf'taki
+    # "pypr toggle term/music/filemanager" bağlantıları tanımsızdı.
+    #
+    # pyprland resmi formatı:
+    #   dosya  : ~/.config/hypr/pyprland.toml   (pypr/config.toml DEĞİL)
+    #   bölüm  : [pyprland] plugins = [...]  +  [scratchpads.<ad>]
+    # Daha önce [[pypr.apps]] / useOn / [pypr] yazılmıştı — bunların hiçbiri
+    # pyprland tarafından okunmaz, scratchpad'ler sessizce hiç oluşmazdı.
+    "hypr/pyprland.toml".text = ''
+      [pyprland]
+      plugins = [ "scratchpads" ]
+
+      # hyprland.conf: bind = $mainMod, S, exec, pypr toggle term
+      [scratchpads.term]
+      animation = "fromTop"
+      command = "kitty --class pypr-term"
+      class = "pypr-term"
+      size = "70% 60%"
+      margin = 50
+
+      # bind = $mainMod SHIFT, S, exec, pypr toggle music
+      # playerctl'ın pencereesi yok; bu bir medya oynatıcı (mpv, zaten kurulu).
+      # Farklı bir oynatıcı isterseniz command/class değerlerini değiştirin.
+      [scratchpads.music]
+      animation = "fromRight"
+      command = "mpv --class pypr-music --no-config --idle"
+      class = "pypr-music"
+      size = "45% 70%"
+      unfocus = "hide"
+      lazy = true
+
+      # bind = $mainMod CTRL, S, exec, pypr toggle filemanager
+      [scratchpads.filemanager]
+      animation = "fromRight"
+      command = "pcmanfm"
+      class = "pcmanfm"
+      size = "60% 70%"
+      lazy = true
+    '';
+
     # Bu iki script daha önce ../.config/hypr/scripts/*.sh şeklinde repo
     # köküne göreli bir "source" yolu ile deploy ediliyordu. install.sh ise
     # /etc/nixos altına sadece configuration.nix/home.nix/flake*/hooks
@@ -674,7 +859,7 @@ in
     "hypr/scripts/wuwa-auto.sh" = {
       executable = true;
       text = ''
-#!/usr/bin/env bash
+#!${pkgs.bash}/bin/bash
 
 # ─── Yeni bölge tanımları (Senin jilet gibi hassas koordinatların) ───
 GEOMETRY_MAIN="0,971 2560x438"
@@ -795,7 +980,7 @@ done
     "hypr/scripts/auto-translate.sh" = {
       executable = true;
       text = ''
-#!/usr/bin/env bash
+#!${pkgs.bash}/bin/bash
 
 # Önceki seçimi hafızada tutmak için değişken
 LAST_SELECTION=""
@@ -832,7 +1017,7 @@ done
   home.file.".local/bin/waybar-temperature.sh" = {
     executable = true;
     text = ''
-      #!/usr/bin/env bash
+      #!${pkgs.bash}/bin/bash
       temp=""
       for hwmon in /sys/class/hwmon/hwmon*; do
         if [ -e "$hwmon/name" ]; then
@@ -873,7 +1058,7 @@ done
   home.file.".local/bin/mpvpaper-watchdog" = {
     executable = true;
     text = ''
-      #!/usr/bin/env bash
+      #!${pkgs.bash}/bin/bash
       MONITORED_CLASSES="brave-browser"
       HYPR_SOCK="$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock"
 
@@ -933,10 +1118,10 @@ done
         la = "eza -a --icons";
         l = "eza -lah --icons";
         cat = "bat";
-        nrs = "sudo nixos-rebuild switch --flake /etc/nixos#nixos";
+        nrs = "sudo nixos-rebuild switch --flake /etc/nixos/nixos#nixos";
         nup = "nix flake update";
         nclean = "nix-collect-garbage -d && sudo nix-collect-garbage -d";
-        ntest = "sudo nixos-rebuild dry-activate --flake /etc/nixos#nixos";
+        ntest = "sudo nixos-rebuild dry-activate --flake /etc/nixos/nixos#nixos";
         lock = "hyprlock";
         suspend = "systemctl suspend";
         reboot = "systemctl reboot";
@@ -1106,93 +1291,91 @@ done
   };
 
   services.hypridle = {
-    enable = true;
-    settings = {
-      general = {
-        before_sleep_cmd = "hyprlock";
-        after_sleep_cmd = "hyprctl dispatch dpms on";
-        lock_cmd = "pidof hyprlock || hyprlock";
-        ignore_dbus_inhibit = false;
-      };
-      listener = [
-        {
-          timeout = 300;
-          on-timeout = "hyprctl dispatch dpms off";
-          on-resume = "hyprctl dispatch dpms on";
-        }
-        {
-          timeout = 150;
-          on-timeout = "brightnessctl -s set 70%";
-          on-resume = "brightnessctl -r";
-        }
-        {
-          timeout = 600;
-          on-timeout = "pidof hyprlock || hyprlock";
-        }
-        {
-          timeout = 900;
-          on-timeout = "pidof hyprlock || hyprlock; systemctl suspend";
-        }
-      ];
+  enable = true;
+  settings = {
+    general = {
+      before_sleep_cmd = "${pkgs.hyprlock}/bin/hyprlock";
+      after_sleep_cmd = "${pkgs.hyprland}/bin/hyprctl dispatch dpms on";
+      lock_cmd = "${pkgs.hyprlock}/bin/hyprlock";
+      ignore_dbus_inhibit = false;
     };
+    listener = [
+      {
+        timeout = 300;
+        on-timeout = "${pkgs.hyprland}/bin/hyprctl dispatch dpms off";
+        on-resume = "${pkgs.hyprland}/bin/hyprctl dispatch dpms on";
+      }
+      {
+        timeout = 150;
+        on-timeout = "${pkgs.brightnessctl}/bin/brightnessctl -s set 70%";
+        on-resume = "${pkgs.brightnessctl}/bin/brightnessctl -r";
+      }
+      {
+        timeout = 600;
+        on-timeout = "${pkgs.hyprlock}/bin/hyprlock";
+      }
+      {
+        timeout = 900;
+        on-timeout = "${pkgs.hyprlock}/bin/hyprlock; ${pkgs.systemd}/bin/systemctl suspend";
+      }
+    ];
+  };
+};
+
+systemd.user.services = {
+  mpvpaper = {
+    Unit = {
+      Description = "mpvpaper live wallpaper service (looped)";
+      After = [ "graphical-session.target" ];
+      PartOf = [ "graphical-session.target" ];
+    };
+    Service = {
+      Type = "simple";
+      Environment = "PATH=${lib.makeBinPath [ pkgs.mpvpaper pkgs.mpv ]}";
+      ExecStart = "${pkgs.mpvpaper}/bin/mpvpaper -p --mpv-options \"loop=inf\" ${monitorOutput} ${wallpaperVideo}";
+      Restart = "on-failure";
+      RestartSec = 3;
+    };
+    Install.WantedBy = [ "graphical-session.target" ];
   };
 
-  systemd.user.services = {
-    mpvpaper = {
-      Unit = {
-        Description = "mpvpaper live wallpaper service (looped)";
-        After = [ "graphical-session.target" ];
-        PartOf = [ "graphical-session.target" ];
-      };
-      Service = {
-        Type = "simple";
-        Environment = "PATH=${lib.makeBinPath [ pkgs.mpvpaper pkgs.mpv ]}";
-        ExecStart = "${pkgs.mpvpaper}/bin/mpvpaper -p --mpv-options \"loop=inf\" ${monitorOutput} ${wallpaperVideo}";
-        Restart = "on-failure";
-        RestartSec = 3;
-      };
-      Install.WantedBy = [ "graphical-session.target" ];
+  mpvpaper-watchdog = {
+    Unit = {
+      Description = "Brave açıldığında canlı duvar kağıdını durdurur";
+      After = [ "graphical-session.target" ];
+      PartOf = [ "graphical-session.target" ];
     };
-
-    mpvpaper-watchdog = {
-      Unit = {
-        Description = "Brave açıldığında canlı duvar kağıdını durdurur";
-        After = [ "graphical-session.target" ];
-        PartOf = [ "graphical-session.target" ];
-        # BindsTo kaldırıldı
-      };
-      Service = {
-        Type = "simple";
-        Environment = "PATH=${lib.makeBinPath [ pkgs.hyprland pkgs.jq pkgs.socat pkgs.systemd ]}";
-        ExecStart = "${pkgs.bash}/bin/bash /home/localhost/.local/bin/mpvpaper-watchdog";
-        Restart = "on-failure";
-        RestartSec = 3;
-      };
-      Install.WantedBy = [ "graphical-session.target" ];
+    Service = {
+      Type = "simple";
+      Environment = "PATH=${lib.makeBinPath [ pkgs.hyprland pkgs.jq pkgs.socat pkgs.systemd pkgs.gawk ]}";
+      ExecStart = "${pkgs.bash}/bin/bash /home/localhost/.local/bin/mpvpaper-watchdog";
+      Restart = "on-failure";
+      RestartSec = 3;
     };
-
-    gamemode-notify = {
-      Unit = {
-        Description = "Gamemode durum değişikliklerini Dunst ile bildir";
-        After = [ "graphical-session-pre.target" ];
-        PartOf = [ "graphical-session.target" ];
-      };
-      Install = {
-        WantedBy = [ "graphical-session.target" ];
-      };
-      Service = {
-        Type = "simple";
-        ExecStart = "${gamemodeNotifyScript}/bin/gamemode-notify";
-        Restart = "on-failure";
-        RestartSec = 5;
-        Environment = "PATH=${lib.makeBinPath [ pkgs.libnotify pkgs.dbus pkgs.gnugrep pkgs.systemd pkgs.coreutils ]}";
-      };
-    };
+    Install.WantedBy = [ "graphical-session.target" ];
   };
 
-  home.packages = with pkgs; [
-    fd ripgrep jq wget curl file tree
-    playerctl pamixer hyprpicker wev
-    nano satty socat libnotify
-  ];
-}
+  gamemode-notify = {
+    Unit = {
+      Description = "Gamemode durum değişikliklerini Dunst ile bildir";
+      After = [ "graphical-session-pre.target" ];
+      PartOf = [ "graphical-session.target" ];
+    };
+    Install = {
+      WantedBy = [ "graphical-session.target" ];
+    };
+    Service = {
+      Type = "simple";
+      ExecStart = "${gamemodeNotifyScript}/bin/gamemode-notify";
+      Restart = "on-failure";
+      RestartSec = 5;
+      Environment = "PATH=${lib.makeBinPath [ pkgs.libnotify pkgs.dbus pkgs.gnugrep pkgs.systemd pkgs.coreutils ]}";
+    };
+  };
+};
+
+home.packages = with pkgs; [
+  fd ripgrep jq wget curl file tree
+  playerctl pamixer hyprpicker wev
+  nano satty socat libnotify
+];
