@@ -236,31 +236,24 @@ sudo nixos-rebuild switch --flake /etc/nixos/nixos#nixos
 
 ```text
 .
-├── nixos/                       # flake burada → /etc/nixos/nixos#nixos
+├── assets/
+├── .config/hypr/scripts/    # wuwa-auto.sh, auto-translate.sh (home.nix ile deploy edilir)
+├── nixos/
 │   ├── configuration.nix
 │   ├── hardware-configuration.nix
-│   ├── home.nix                 # masaüstü config'lerinin TEK kaynağı
+│   ├── home.nix
 │   ├── flake.nix
 │   ├── flake.lock
-│   └── hooks/qemu               # VFIO hook
-├── vm-xml/win10.xml
-├── assets/                      # ekran görüntüleri (wall-.png, kitty-.png)
-├── gemma-modelfile
-├── wuwa-modelfile
-├── install.sh
-├── shell.nix
+│   └── hooks/
+├── vm-xml/
+├── assets/
 ├── CHANGELOG.md
 ├── CONTRIBUTING.md
 ├── KURULUM.md
-├── LICENSE
+├── install.sh
+├── shell.nix
 └── README.md
 ```
-
-> **Düzelten (2026-10-03):** `.config/`, `waybar/`, `gtk/`, kökteki
-> `conf.toml` / `MangoHud.conf` / `*.json` kopyaları **silindi**. Bunlar
-> `home.nix` içindeki inline kopyalarla drift etmişti ve hiç deploy edilmiyordu.
-> `home.nix` tek doğruluk kaynağıdır; CI de bunları geri getirmeye çalışan
-> bir regresyon kontrolü içerir.
 
 ---
 
