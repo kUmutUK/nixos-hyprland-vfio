@@ -360,6 +360,7 @@ let
     exec-once = ${pkgs.hyprpolkitagent}/bin/hyprpolkitagent
     exec-once = dbus-update-activation-environment --systemd DISPLAY
     exec-once = pypr
+    exec-once = systemctl --user start mpvpaper-watchdog gamemode-notify
     exec-once = systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE
   '';
 
