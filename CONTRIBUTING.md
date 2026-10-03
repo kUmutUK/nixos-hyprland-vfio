@@ -22,6 +22,8 @@ Thank you for contributing to this project.
 Before submitting changes:
 
 ```bash
+# flake nixos/ altında — cd nixos'tan sonra yol ".#nixos" olur
+cd nixos
 nix flake check
 sudo nixos-rebuild dry-activate --flake .#nixos
 ```
