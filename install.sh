@@ -18,7 +18,7 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKUP_DIR="$HOME/.nixos-config-backup-$(date +%Y%m%d-%H%M%S)"
 NIXOS_DIR="/etc/nixos"
 # Flake nixos/ altında olduğu için dosyalar da /etc/nixos/nixos/ altına
-# gider. Bu, KURULUM.md'deki tam disk kurulum yoluyla AYNI sonucu verir:
+# gider. Bu, KURALUM.md'deki tam disk kurulum yoluyla AYNI sonucu verir:
 # tek bir flake yolu kalır → /etc/nixos/nixos#nixos
 # (Daha önce dosyalar düz /etc/nixos/'a kopyalanıp rebuild komutu
 #  /etc/nixos/nixos#nixos'i gösteriyordu; o yol hiç oluşmuyordu.)
@@ -181,8 +181,7 @@ mkdir -p "$BACKUP_DIR"
 for src in "$HOME/.config/hypr" "$HOME/.config/waybar" "$HOME/.config/gtk-3.0" "$HOME/.config/gtk-4.0" \
            "$NIXOS_FLAKE_DIR/configuration.nix" "$NIXOS_FLAKE_DIR/home.nix" \
            "$NIXOS_FLAKE_DIR/flake.nix" "$NIXOS_FLAKE_DIR/flake.lock" \
-           "$NIXOS_DIR/hardware-configuration.nix" \
-           "$NIXOS_FLAKE_DIR/hardware-configuration.nix"; do
+           "$NIXOS_DIR/hardware-configuration.nix"; do
     if [ -e "$src" ]; then
         cp -rL "$src" "$BACKUP_DIR/" 2>/dev/null && log "Backed up: $(basename "$src")" || true
     fi
@@ -244,10 +243,10 @@ echo -e "     ${CYAN}lsblk -f${NC}  # UUID'leri kontrol edin"
 # ─── Variable substitution ──────────────────────────────
 step "Applying safe variable substitutions"
 
-sudo sed -i \
-    -e "s|gpuPCI   = .*;|gpuPCI   = \"${gpu_pci}\";|" \
-    -e "s|gpuAudio = .*;|gpuAudio = \"${gpu_audio}\";|" \
-    "$NIXOS_FLAKE_DIR/configuration.nix" && log "GPU PCI addresses set."
+# configuration.nix'te artık GPU PCI adresi tutan değişken YOK (ölüydü,
+# deadnix yakalıyordu). Gerçek VFIO davranışı hooks/qemu içindeki
+# GPU_PCI/GPU_AUDIO sabitlerinden geliyor ve yukarıda zaten güncellendi.
+# Buradaki eski sed, hiçbir şeye dokunmuyordu — kaldırıldı.
 
 HOME_NIX="$NIXOS_FLAKE_DIR/home.nix"
 apply_var() {
@@ -292,7 +291,7 @@ echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 step_num=1
 
-echo -e "${step_num}. Update disk UUIDs in ${CYAN}${NIXOS_FLAKE_DIR}/hardware-configuration.nix${NC}:"
+echo -e "${step_num}. Update disk UUIDs in ${CYAN}/etc/nixos/hardware-configuration.nix${NC}:"
 echo "   lsblk -f   # to see UUIDs"
 echo "   Then set: LUKS device, Btrfs subvolumes, EFI, swap."
 ((step_num++))
