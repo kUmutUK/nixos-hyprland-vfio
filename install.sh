@@ -17,6 +17,12 @@ step()  { echo -e "\n${BOLD}${CYAN}▶ $1${NC}"; }
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKUP_DIR="$HOME/.nixos-config-backup-$(date +%Y%m%d-%H%M%S)"
 NIXOS_DIR="/etc/nixos"
+# Flake nixos/ altında olduğu için dosyalar da /etc/nixos/nixos/ altına
+# gider. Bu, KURULUM.md'deki tam disk kurulum yoluyla AYNI sonucu verir:
+# tek bir flake yolu kalır → /etc/nixos/nixos#nixos
+# (Daha önce dosyalar düz /etc/nixos/'a kopyalanıp rebuild komutu
+#  /etc/nixos/nixos#nixos'i gösteriyordu; o yol hiç oluşmuyordu.)
+NIXOS_FLAKE_DIR="$NIXOS_DIR/nixos"
 
 echo ""
 echo -e "${CYAN}==============================================================${NC}"
@@ -173,8 +179,10 @@ git_email="${git_email:-141457520+kUmutUK@users.noreply.github.com}"
 step "Backing up current configurations"
 mkdir -p "$BACKUP_DIR"
 for src in "$HOME/.config/hypr" "$HOME/.config/waybar" "$HOME/.config/gtk-3.0" "$HOME/.config/gtk-4.0" \
-           "$NIXOS_DIR/configuration.nix" "$NIXOS_DIR/home.nix" "$NIXOS_DIR/flake.nix" \
-           "$NIXOS_DIR/flake.lock" "$NIXOS_DIR/hardware-configuration.nix"; do
+           "$NIXOS_FLAKE_DIR/configuration.nix" "$NIXOS_FLAKE_DIR/home.nix" \
+           "$NIXOS_FLAKE_DIR/flake.nix" "$NIXOS_FLAKE_DIR/flake.lock" \
+           "$NIXOS_DIR/hardware-configuration.nix" \
+           "$NIXOS_FLAKE_DIR/hardware-configuration.nix"; do
     if [ -e "$src" ]; then
         cp -rL "$src" "$BACKUP_DIR/" 2>/dev/null && log "Backed up: $(basename "$src")" || true
     fi
@@ -185,13 +193,13 @@ log "Backup saved to $BACKUP_DIR"
 step "Copying configuration files"
 [[ ! -d "$REPO_DIR/nixos" ]] && error "nixos/ directory not found in repository."
 
-sudo mkdir -p "$NIXOS_DIR"
+sudo mkdir -p "$NIXOS_FLAKE_DIR"
 # low_latency_layer.json.in ARTIK GEREKMİYOR: configuration.nix artık elle
 # yazılmış manifest kullanmıyor, upstream'in (cmake'in) kurduğu doğru manifesti
 # kullanıyor. Dosya repodan da silindi.
 for f in configuration.nix home.nix flake.nix flake.lock; do
     if [ -f "$REPO_DIR/nixos/$f" ]; then
-        sudo cp "$REPO_DIR/nixos/$f" "$NIXOS_DIR/$f"
+        sudo cp "$REPO_DIR/nixos/$f" "$NIXOS_FLAKE_DIR/$f"
         log "Copied $f"
     else
         warn "Skipping missing file: $f"
@@ -200,9 +208,9 @@ done
 
 if [ -d "$REPO_DIR/nixos/hooks" ]; then
     # rm -rf: ikinci çalıştırmada "hooks/hooks" diye iç içe dizin oluşuyordu
-    sudo rm -rf "$NIXOS_DIR/hooks"
-    sudo cp -r "$REPO_DIR/nixos/hooks" "$NIXOS_DIR/hooks"
-    sudo chmod 0755 "$NIXOS_DIR/hooks/qemu"
+    sudo rm -rf "$NIXOS_FLAKE_DIR/hooks"
+    sudo cp -r "$REPO_DIR/nixos/hooks" "$NIXOS_FLAKE_DIR/hooks"
+    sudo chmod 0755 "$NIXOS_FLAKE_DIR/hooks/qemu"
     log "Copied hooks/ (configuration.nix references ./hooks/qemu as a relative path — without this, nixos-rebuild fails with 'path does not exist')."
 
     # configuration.nix'teki gpuPCI/gpuAudio değişkenleri hiçbir yerde
@@ -214,13 +222,24 @@ if [ -d "$REPO_DIR/nixos/hooks" ]; then
     sudo sed -i \
         -e "s|^GPU_PCI=\".*\"|GPU_PCI=\"${gpu_pci}\"|" \
         -e "s|^GPU_AUDIO=\".*\"|GPU_AUDIO=\"${gpu_audio}\"|" \
-        "$NIXOS_DIR/hooks/qemu" && log "Hook script'teki GPU PCI adresleri de güncellendi."
+        "$NIXOS_FLAKE_DIR/hooks/qemu" && log "Hook script'teki GPU PCI adresleri de güncellendi."
 else
     error "nixos/hooks/ directory not found — configuration.nix will fail to evaluate without it."
 fi
 
-warn "hardware-configuration.nix was NOT copied (machine-specific)."
-warn "If you're using a fresh install, generate it with 'nixos-generate-config' and copy the resulting hardware-configuration.nix manually."
+warn "hardware-configuration.nix was NOT copied (machine-specific — UUID'ler size özel)."
+warn "Flake ./hardware-configuration.nix bekliyor, yani dosya şurada olmalı:"
+echo -e "     ${CYAN}${NIXOS_FLAKE_DIR}/hardware-configuration.nix${NC}"
+echo ""
+echo "   Mevcut sistemde zaten varsa:"
+echo -e "     ${CYAN}sudo cp ${NIXOS_DIR}/hardware-configuration.nix ${NIXOS_FLAKE_DIR}/${NC}"
+echo ""
+echo "   Yeni kurulumda (önce nixos-generate-config çalıştırdıysanız):"
+echo -e "     ${CYAN}sudo cp /mnt/etc/nixos/hardware-configuration.nix ${NIXOS_FLAKE_DIR}/${NC}"
+echo ""
+echo "   Ya da elle oluşturun:"
+echo -e "     ${CYAN}sudo nixos-generate-config --root /mnt${NC}"
+echo -e "     ${CYAN}lsblk -f${NC}  # UUID'leri kontrol edin"
 
 # ─── Variable substitution ──────────────────────────────
 step "Applying safe variable substitutions"
@@ -228,9 +247,9 @@ step "Applying safe variable substitutions"
 sudo sed -i \
     -e "s|gpuPCI   = .*;|gpuPCI   = \"${gpu_pci}\";|" \
     -e "s|gpuAudio = .*;|gpuAudio = \"${gpu_audio}\";|" \
-    "$NIXOS_DIR/configuration.nix" && log "GPU PCI addresses set."
+    "$NIXOS_FLAKE_DIR/configuration.nix" && log "GPU PCI addresses set."
 
-HOME_NIX="$NIXOS_DIR/home.nix"
+HOME_NIX="$NIXOS_FLAKE_DIR/home.nix"
 apply_var() {
   local var_name="$1" new_value="$2"
   # [[:space:]]* yerine sabit boşluk sayısına güvenmiyoruz: home.nix'teki
@@ -273,7 +292,7 @@ echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 step_num=1
 
-echo -e "${step_num}. Update disk UUIDs in ${CYAN}/etc/nixos/hardware-configuration.nix${NC}:"
+echo -e "${step_num}. Update disk UUIDs in ${CYAN}${NIXOS_FLAKE_DIR}/hardware-configuration.nix${NC}:"
 echo "   lsblk -f   # to see UUIDs"
 echo "   Then set: LUKS device, Btrfs subvolumes, EFI, swap."
 ((step_num++))
