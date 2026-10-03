@@ -1378,4 +1378,5 @@ home.packages = with pkgs; [
   fd ripgrep jq wget curl file tree
   playerctl pamixer hyprpicker wev
   nano satty socat libnotify
-];
+ ];
+}
