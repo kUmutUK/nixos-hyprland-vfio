@@ -141,9 +141,14 @@ mkdir -p /mnt/etc/nixos
 cp -r /tmp/repo/. /mnt/etc/nixos/
 ```
 
-> ⚠️ `hardware-configuration.nix`'i UUID'lerinizle güncellemeyi unutmayın
-> (bkz. Notlar). Repo'daki flake `nixos/flake.nix`'te olduğu için kurulum
-> komutu da o alt dizini işaret etmeli — bir sonraki adıma bakın.
+> ℹ️ `hardware-configuration.nix` yukarıdaki `cp` komutuyla **sizin makinenizden
+> `nixos-generate-config` ile üretilmiş** olanla değiştirildiği için UUID'ler zaten
+> doğrudur; ayrıca elle güncellemeniz gerekmez. Yalnızca `lsblk -f` çıktısı
+> beklediğinizle örtüşmüyorsa kontrol edin.
+>
+> Repo yapısı korunarak kopyalandığı için flake `/mnt/etc/nixos/nixos` altında
+> durur → kurulum komutunda `#nixos` öncesi bu dizini göstermelisiniz
+> (bir sonraki adıma bakın).
 
 ---
 
