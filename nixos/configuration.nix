@@ -357,7 +357,6 @@ in
     # wuwa-auto.sh "argos-translate" çağırıyordu ama paket hiçbir yerde
     # tanımlı değildi → translate_fast() her zaman sessizce başarısız oluyor,
     # her çeviri Ollama'ya düşüyordu. translate-shell (`trans`) bunun yerine geçmez.
-    argos-translate
   ];
 
   environment.etc."vulkan/implicit_layer.d/low_latency_layer.json".source =
