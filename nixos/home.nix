@@ -360,7 +360,6 @@ let
     exec-once = ${pkgs.hyprpolkitagent}/bin/hyprpolkitagent
     exec-once = dbus-update-activation-environment --systemd DISPLAY
     exec-once = pypr
-    exec-once = systemctl --user start mpvpaper-watchdog gamemode-notify
     exec-once = systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE
   '';
 
@@ -1292,92 +1291,93 @@ done
   };
 
   services.hypridle = {
-  enable = true;
-  settings = {
-    general = {
-      before_sleep_cmd = "${pkgs.hyprlock}/bin/hyprlock";
-      after_sleep_cmd = "${pkgs.hyprland}/bin/hyprctl dispatch dpms on";
-      lock_cmd = "${pkgs.hyprlock}/bin/hyprlock";
-      ignore_dbus_inhibit = false;
-    };
-    listener = [
-      {
-        timeout = 300;
-        on-timeout = "${pkgs.hyprland}/bin/hyprctl dispatch dpms off";
-        on-resume = "${pkgs.hyprland}/bin/hyprctl dispatch dpms on";
-      }
-      {
-        timeout = 150;
-        on-timeout = "${pkgs.brightnessctl}/bin/brightnessctl -s set 70%";
-        on-resume = "${pkgs.brightnessctl}/bin/brightnessctl -r";
-      }
-      {
-        timeout = 600;
-        on-timeout = "${pkgs.hyprlock}/bin/hyprlock";
-      }
-      {
-        timeout = 900;
-        on-timeout = "${pkgs.hyprlock}/bin/hyprlock; ${pkgs.systemd}/bin/systemctl suspend";
-      }
-    ];
-  };
-};
-
-systemd.user.services = {
-  mpvpaper = {
-    Unit = {
-      Description = "mpvpaper live wallpaper service (looped)";
-      After = [ "graphical-session.target" ];
-      PartOf = [ "graphical-session.target" ];
-    };
-    Service = {
-      Type = "simple";
-      Environment = "PATH=${lib.makeBinPath [ pkgs.mpvpaper pkgs.mpv ]}";
-      ExecStart = "${pkgs.mpvpaper}/bin/mpvpaper -p --mpv-options \"loop=inf\" ${monitorOutput} ${wallpaperVideo}";
-      Restart = "on-failure";
-      RestartSec = 3;
-    };
-    Install.WantedBy = [ "graphical-session.target" ];
-  };
-
-  mpvpaper-watchdog = {
-    Unit = {
-      Description = "Brave açıldığında canlı duvar kağıdını durdurur";
-      After = [ "graphical-session.target" ];
-      PartOf = [ "graphical-session.target" ];
-    };
-    Service = {
-      Type = "simple";
-      Environment = "PATH=${lib.makeBinPath [ pkgs.hyprland pkgs.jq pkgs.socat pkgs.systemd pkgs.gawk ]}";
-      ExecStart = "${pkgs.bash}/bin/bash /home/localhost/.local/bin/mpvpaper-watchdog";
-      Restart = "on-failure";
-      RestartSec = 3;
-    };
-    Install.WantedBy = [ "graphical-session.target" ];
-  };
-
-  gamemode-notify = {
-    Unit = {
-      Description = "Gamemode durum değişikliklerini Dunst ile bildir";
-      After = [ "graphical-session-pre.target" ];
-      PartOf = [ "graphical-session.target" ];
-    };
-    Install = {
-      WantedBy = [ "graphical-session.target" ];
-    };
-    Service = {
-      Type = "simple";
-      ExecStart = "${gamemodeNotifyScript}/bin/gamemode-notify";
-      Restart = "on-failure";
-      RestartSec = 5;
-      Environment = "PATH=${lib.makeBinPath [ pkgs.libnotify pkgs.dbus pkgs.gnugrep pkgs.systemd pkgs.coreutils ]}";
+    enable = true;
+    settings = {
+      general = {
+        before_sleep_cmd = "hyprlock";
+        after_sleep_cmd = "hyprctl dispatch dpms on";
+        lock_cmd = "pidof hyprlock || hyprlock";
+        ignore_dbus_inhibit = false;
+      };
+      listener = [
+        {
+          timeout = 300;
+          on-timeout = "hyprctl dispatch dpms off";
+          on-resume = "hyprctl dispatch dpms on";
+        }
+        {
+          timeout = 150;
+          on-timeout = "${pkgs.brightnessctl}/bin/brightnessctl -s set 70%";
+          on-resume = "${pkgs.brightnessctl}/bin/brightnessctl -r";
+        }
+        {
+          timeout = 600;
+          on-timeout = "pidof hyprlock || hyprlock";
+        }
+        {
+          timeout = 900;
+          on-timeout = "pidof hyprlock || hyprlock; systemctl suspend";
+        }
+      ];
     };
   };
-};
 
-home.packages = with pkgs; [
-  fd ripgrep jq wget curl file tree
-  playerctl pamixer hyprpicker wev
-  nano satty socat libnotify
- ];
+  systemd.user.services = {
+    mpvpaper = {
+      Unit = {
+        Description = "mpvpaper live wallpaper service (looped)";
+        After = [ "graphical-session.target" ];
+        PartOf = [ "graphical-session.target" ];
+      };
+      Service = {
+        Type = "simple";
+        Environment = "PATH=${lib.makeBinPath [ pkgs.mpvpaper pkgs.mpv ]}";
+        ExecStart = "${pkgs.mpvpaper}/bin/mpvpaper -p --mpv-options \"loop=inf\" ${monitorOutput} ${wallpaperVideo}";
+        Restart = "on-failure";
+        RestartSec = 3;
+      };
+      Install.WantedBy = [ "graphical-session.target" ];
+    };
+
+    mpvpaper-watchdog = {
+      Unit = {
+        Description = "Brave açıldığında canlı duvar kağıdını durdurur";
+        After = [ "graphical-session.target" ];
+        PartOf = [ "graphical-session.target" ];
+        # BindsTo kaldırıldı
+      };
+      Service = {
+        Type = "simple";
+        Environment = "PATH=${lib.makeBinPath [ pkgs.hyprland pkgs.jq pkgs.socat pkgs.systemd pkgs.gawk ]}";
+        ExecStart = "${pkgs.bash}/bin/bash /home/localhost/.local/bin/mpvpaper-watchdog";
+        Restart = "on-failure";
+        RestartSec = 3;
+      };
+      Install.WantedBy = [ "graphical-session.target" ];
+    };
+
+    gamemode-notify = {
+      Unit = {
+        Description = "Gamemode durum değişikliklerini Dunst ile bildir";
+        After = [ "graphical-session-pre.target" ];
+        PartOf = [ "graphical-session.target" ];
+      };
+      Install = {
+        WantedBy = [ "graphical-session.target" ];
+      };
+      Service = {
+        Type = "simple";
+        ExecStart = "${gamemodeNotifyScript}/bin/gamemode-notify";
+        Restart = "on-failure";
+        RestartSec = 5;
+        Environment = "PATH=${lib.makeBinPath [ pkgs.libnotify pkgs.dbus pkgs.gnugrep pkgs.systemd pkgs.coreutils ]}";
+      };
+    };
+  };
+
+  home.packages = with pkgs; [
+    fd ripgrep jq wget curl file tree
+    playerctl pamixer hyprpicker wev
+    nano satty socat libnotify
+  ];
 }
