@@ -1,11 +1,9 @@
 { config, pkgs, lib, ... }:
 
 let
-  # NOT: Burada gpuPCI / gpuAudio değişkenleri vardı ama HİÇBİR YERDE
-  # okunmuyordu (deadnix bunu yakalıyordu). Gerçek VFIO davranışı
-  # hooks/qemu içindeki GPU_PCI/GPU_AUDIO sabitlerinden geliyor ve
-  # install.sh sed ile ORALARI güncelliyor. Ölü değişkenler kaldırıldı.
-  #
+  gpuPCI   = "0000:0b:00.0";
+  gpuAudio = "0000:0b:00.1";
+
   # --------------- low_latency_layer türetmesi ---------------
   low-latency-layer = pkgs.stdenv.mkDerivation rec {
     pname = "low_latency_layer";
@@ -67,6 +65,13 @@ let
   vfioHook = pkgs.writeShellScript "libvirt-vfio-hook" ''
     export PATH="${lib.makeBinPath [ pkgs.coreutils pkgs.systemd ]}:$PATH"
     ${builtins.readFile ./hooks/qemu}
+  '';
+
+  # wuwa-auto.sh, Ollama'dan "wuwa-gemma" modelini istiyor. Modelfile içeriği
+  # burada Nix'e gömülüyor; systemd servisi bunu kullanarak modeli oluşturur.
+  wuwaGemmaModelfile = pkgs.writeText "wuwa-gemma.modelfile" ''
+    FROM aya-expanse:8b
+    SYSTEM You are a professional game localizer specializing in fantasy RPGs. Fix any OCR typos in the provided English text. Translate it into natural, fluent Turkish, preserving the tone (e.g., formal, sarcastic, emotional). Never output anything except the Turkish translation.
   '';
 in
 {
@@ -352,7 +357,6 @@ in
     # wuwa-auto.sh "argos-translate" çağırıyordu ama paket hiçbir yerde
     # tanımlı değildi → translate_fast() her zaman sessizce başarısız oluyor,
     # her çeviri Ollama'ya düşüyordu. translate-shell (`trans`) bunun yerine geçmez.
-    argos-translate
   ];
 
   environment.etc."vulkan/implicit_layer.d/low_latency_layer.json".source =
@@ -440,17 +444,6 @@ in
     rocmOverrideGfx = "10.3.0";
   };
 
-  # wuwa-auto.sh, Ollama'dan "wuwa-gemma" adlı bir model istiyordu ama model
-  # hiçbir yerde oluşturulmuyordu. Modelfile içeriği Nix'e gömüldü; servis
-  # ELLE ÇALIŞTIRILIR (otomatik başlatma yok → ilk açılışta 8 GB'lık
-  # aya-expanse indirilmez):
-  #   sudo systemctl start wuwa-gemma-init.service
-  #   ollama list | grep wuwa-gemma
-  wuwaGemmaModelfile = pkgs.writeText "wuwa-gemma.modelfile" ''
-    FROM aya-expanse:8b
-    SYSTEM You are a professional game localizer specializing in fantasy RPGs. Fix any OCR typos in the provided English text. Translate it into natural, fluent Turkish, preserving the tone (e.g., formal, sarcastic, emotional). Never output anything except the Turkish translation.
-  '';
-
   systemd.services.wuwa-gemma-init = {
     description = "Ollama için wuwa-gemma modelini oluşturur (elle çalıştırılır)";
     after = [ "ollama.service" ];
@@ -506,4 +499,3 @@ in
   # networking.nameservers = [ "127.0.0.1" "::1" ];
 
 }
-
