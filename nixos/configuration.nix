@@ -1,8 +1,6 @@
 { config, pkgs, lib, ... }:
 
 let
-  gpuPCI   = "0000:0b:00.0";
-  gpuAudio = "0000:0b:00.1";
 
   # --------------- low_latency_layer türetmesi ---------------
   low-latency-layer = pkgs.stdenv.mkDerivation rec {
