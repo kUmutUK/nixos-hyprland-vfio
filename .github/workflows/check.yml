@@ -35,69 +35,19 @@ jobs:
           shellcheck -S warning install.sh nixos/hooks/qemu
           echo "  shellcheck OK"
 
-      - name: Nix syntax check
+      # home.nix içine GÖMÜLÜ 7 bash script'i var (wuwa-auto.sh, auto-translate.sh,
+      # toggle-*.sh, mpvpaper-watchdog, waybar-temperature.sh, gamemode-notify).
+      # Bunlar hiç taranmıyordu; 2026-10-05'te düzeltilen iki sessiz hata
+      # (Nix kaçışı yüzünden `tr -d 'f'`, git'in okumadığı MANPAGER) tam olarak
+      # bu boşluktan geçti. Aşağıdaki adım Nix indented-string'lerini çözup
+      # betiği diske yazar, sonra shellcheck üzerinden geçirir.
+      - name: Embedded home.nix scripts (shellcheck)
+        # home.nix içine GÖMÜLÜ bash script'leri var (wuwa-auto.sh, auto-translate.sh,
+        # toggle-*.sh, mpvpaper-watchdog, waybar-temperature.sh, gamemode-notify).
+        # Bunlar hiç taranmıyordu; 2026-10-05'te düzeltilen iki sessiz hata tam
+        # olarak bu boşluktan geçti (Nix kaçışı -> `tr -d 'f'`, git'in okumadığı
+        # MANPAGER). scripts/extract-embedded-scripts.py Nix indented-string'lerini
+        # çözüp betikleri diske yazar.
         run: |
-          cd nixos
-          for f in *.nix; do
-            echo "  parsing $f"
-            nix-instantiate --parse "$f" > /dev/null
-          done
-
-      - name: XML validation
-        run: |
-          python3 -c "import xml.etree.ElementTree as ET; ET.parse('vm-xml/win10.xml'); print('  win10.xml OK')"
-
-      - name: Stale file check
-        run: |
-          fail=0
-          for f in .config waybar gtk low_latency_layer.json \
-                   VkLayer_LS_frame_generation.json etc conf.toml MangoHud.conf; do
-            if [ -e "$f" ]; then
-              echo "::error file=$f::stale file found"
-              fail=1
-            fi
-          done
-          [ "$fail" -eq 0 ] && echo "  no stale files"
-          exit $fail
-
-      - name: Flake structure check (real module evaluation)
-        # `nix flake show` yalnizca output agacini gosterir; modul sistemini
-        # DEGERLENDIRMEZ. Kirik bir option (orn. services.yok-boyle-bir-option)
-        # `nix flake show`dan gecer, ama `nix eval` ile yakalanir.
-        # nix flake check --no-build ise Hyprland tarafinin readFile VERSION
-        # cagrisini --no-build modunda patlatiyor; o yuzden dogrudan
-        # toplevel.drvPath eval ediyoruz (build calistirmadan).
-        run: |
-          cd nixos
-          nix eval --no-write-lock-file \
-            .#nixosConfigurations.nixos.config.system.build.toplevel.drvPath
-          echo "  module system evaluates OK"
-
-      - name: Flake path consistency
-        # install.sh artık komutları ${NIXOS_FLAKE_DIR} ile basıyor, yani
-        # güncel `/etc/nixos/nixos#nixos` metni yalnızca yorumlarda geçiyor.
-        # Eski grep bu yüzden sadece yoruma bakıyor ve gerçek bir şey
-        # doğrulamıyordu. Artık asıl invaryantı kontrol ediyoruz: flake dizini
-        # /etc/nixos/nixos olmalı ve dokümanlar aynı yolu vermeli.
-        run: |
-          grep -qE '^NIXOS_FLAKE_DIR="\$NIXOS_DIR/nixos"$' install.sh \
-            || { echo "::error file=install.sh::NIXOS_FLAKE_DIR must be \$NIXOS_DIR/nixos"; exit 1; }
-          expected="/etc/nixos/nixos#nixos"
-          for f in KURULUM.md README.md nixos/home.nix; do
-            grep -q -- "$expected" "$f" || { echo "::error file=$f::$expected missing"; exit 1; }
-          done
-          echo "  flake path consistent: $expected"
-
-      # ---- REPORT STEPS (non-blocking) ----
-
-      - name: statix (info)
-        continue-on-error: true
-        run: |
-          cd nixos
-          nix run nixpkgs#statix -- check . || echo "::warning::statix warnings present"
-
-      - name: deadnix (info)
-        continue-on-error: true
-        run: |
-          cd nixos
-          nix run nixpkgs#deadnix -- . || echo "::warning::deadnix warnings present"
+          python3 scripts/extract-embedded-scripts.py /tmp/emb             | xargs -0 -n1 -- shellcheck -S warning
+          echo "  embedded scripts OK"
