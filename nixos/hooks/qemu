@@ -126,7 +126,11 @@ stop_hyprland() {
   for svc in ollama lookup-guest.lookup-guest-service polkit.service; do
     if systemctl is-active --quiet "$svc" 2>/dev/null; then
       log "  durduruluyor: $svc"
-      systemctl stop "$svc" 2>/dev/null || true
+      # DÜZELTME (2026-10-04): stop sessizce yutuluyordu; başarısızlık
+      # ancak 20 sn sonra fuser zaman aşımı olarak ortaya çıkıyordu.
+      if ! systemctl stop "$svc" 2>/dev/null; then
+        log "  UYARI: $svc durdurulamadi — /dev/kfd hala acik olabilir."
+      fi
     fi
   done
   # Kullanıcı seviyesindeki GPU tutucuları da kapat (hyprland, oyun vs.).
@@ -163,11 +167,16 @@ start_hyprland() {
   log "Greetd başlatılıyor..."
   systemctl start greetd 2>/dev/null || true
   # Hook'un durdurduğu GPU servisleri geri aç (VM kapanınca).
-  for svc in ollama; do
-    if systemctl is-enabled --quiet "$svc" 2>/dev/null; then
-      systemctl start "$svc" 2>/dev/null || true
+  # DÜZELTME (2026-10-04): tek elemanlı `for svc in ollama` loop'u SC2043
+  # (useless loop) uyarısı veriyordu ve CI gate'i -S warning olduğu için
+  # kırıyordu. Tek servis olduğu için doğrudan if yazıldı.
+  if systemctl is-enabled --quiet ollama 2>/dev/null; then
+    if systemctl start ollama 2>/dev/null; then
+      log "  ollama yeniden baslatildi."
+    else
+      log "  UYARI: ollama yeniden baslatilamadi (GPU'ya erisim gecikmeli)."
     fi
-  done
+  fi
 }
 
 # Cihaz gerçekten vfio-pci'ye bağlanmış mı? (bind_vfio'nun sessizce
