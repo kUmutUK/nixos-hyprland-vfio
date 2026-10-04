@@ -114,7 +114,13 @@ in
 
   boot.initrd.availableKernelModules = lib.mkAfter [ "amdgpu" ];
   boot.initrd.kernelModules = [ "dm-crypt" "amdgpu" ];
-  boot.kernelModules = [ "kvm-amd" "binder_linux" "ashmem_linux" "vfio-pci" ];
+  # ⚠️ "ashmem_linux" BURADAN KALDIRILDI. ashmem Linux 5.18'de tamamen
+  # kaldırıldı; CachyOS BORE 6.18'de modprobe ashmem_linux her boot'ta
+  # "FATAL: Module not found" veriyor. Waydroid 5.18+ ashmem yerine memfd
+  # kullanıyor. `sudo waydroid init` sonrası şunu bir kez doğrula:
+  #   grep sys.use_memfd=true /var/lib/waydroid/waydroid_base.prop
+  # yoksa: echo sys.use_memfd=true | sudo tee -a /var/lib/waydroid/waydroid_base.prop
+  boot.kernelModules = [ "kvm-amd" "binder_linux" "vfio-pci" ];
 
   boot.kernel.sysctl = {
     "vm.max_map_count" = 1048576;
