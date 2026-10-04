@@ -59,8 +59,8 @@ suspend_rescan_recovery() {
     echo 1 > "/sys/bus/pci/devices/$dev/remove" 2>/dev/null || true
   done
   sleep 1
-  if [ -x /run/current-system/sw/bin/rtcwake ]; then
-    /run/current-system/sw/bin/rtcwake -m mem -s 3 >>"$LOGFILE" 2>&1 || \
+  if [ -x "${HOOK_RTCWAKE:-/run/current-system/sw/bin/rtcwake}" ]; then
+    "${HOOK_RTCWAKE:-/run/current-system/sw/bin/rtcwake}" -m mem -s 3 >>"$LOGFILE" 2>&1 || \
       log "UYARI: rtcwake başarısız oldu (bkz. log), suspend adımı atlanmış olabilir."
   else
     log "UYARI: rtcwake bulunamadı (util-linux), suspend adımı atlandı — sadece rescan deneniyor."
@@ -90,7 +90,7 @@ vendor_reset() {
   sleep 1
   # Reset sonrası cihaz hâlâ PCI config space üzerinden okunabiliyor mu?
   # Okunamıyorsa (kart bus'tan düştüyse) bunu en azından log'a yazalım.
-  if ! /run/current-system/sw/bin/setpci -s "$dev" 0x0.w >/dev/null 2>&1; then
+  if ! "${HOOK_SETPCI:-/run/current-system/sw/bin/setpci}" -s "$dev" 0x0.w >/dev/null 2>&1; then
     log "UYARI: $dev reset sonrası yanıt vermiyor — GPU PCIe bus'tan düşmüş olabilir (bilinen Navi2x sınırlaması). Ekran geri gelmezse host reboot gerekebilir."
   elif [ "$ok" -eq 0 ]; then
     log "UYARI: $dev için reset_method/reset sysfs yolları bulunamadı, reset denenemedi."
@@ -121,7 +121,7 @@ stop_hyprland() {
   card=$(gpu_drm_card "$GPU_PCI")
   # _unused: sayaç değeri kullanılmıyor, sadece kaç kez beklendiğini sayıyoruz.
   for _unused in $(seq 1 20); do
-    if ! /run/current-system/sw/bin/fuser "/dev/dri/$card" >/dev/null 2>&1; then
+    if ! "${HOOK_FUSER:-/run/current-system/sw/bin/fuser}" "/dev/dri/$card" >/dev/null 2>&1; then
       break
     fi
     sleep 0.5
