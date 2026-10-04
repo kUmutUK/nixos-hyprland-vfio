@@ -551,6 +551,9 @@ in
     rocmOverrideGfx = "10.3.0";
   };
 
+  # C24: ashmem kaldırıldıysa Waydroid memfd moduna geçmeli.
+  system.activationScripts.sysuse-memfd = "true";
+
   systemd.services.wuwa-gemma-init = {
     description = "Ollama için wuwa-gemma modelini oluşturur (elle çalıştırılır)";
     after = [ "ollama.service" ];

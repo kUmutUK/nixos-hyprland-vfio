@@ -2,7 +2,7 @@
 
 let
   rootDev    = "/dev/disk/by-uuid/14d6b717-2c6d-42fb-9794-f3bb4ad729a9";
-  commonOpts = [ "noatime" "compress=zstd:1" "ssd" "space_cache=v2" "discard=async" ];
+  commonOpts = [ "noatime" "compress=zstd:1" "ssd" "discard=async" ];
 in
 {
   imports = [ (modulesPath + "/installer/scan/not-detected.nix") ];

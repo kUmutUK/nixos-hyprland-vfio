@@ -1,8 +1,8 @@
 { config, pkgs, lib, ... }:
 
 let
-  gitName            = "Umpug";
-  gitEmail           = "141457520+kUmutUK@users.noreply.github.com";
+  gitName            = "changeme";
+  gitEmail           = "you@example.com";
   monitorOutput      = "DP-3";
   hyprlandMonitorLine = "monitor = ,preferred,auto,1";
   wallpaperVideo     = "${config.home.homeDirectory}/Downloads/arthur-leywin-the-beginning-after-the-end.3840x2160.mp4";
@@ -157,9 +157,6 @@ let
     $accent = 0xcba6f7ff
     $bg     = 0x000000ff
 
-    env = XCURSOR_SIZE,16
-    env = XCURSOR_THEME,capitaine-cursors
-    env = DISPLAY, :0
 
     input {
         kb_layout = tr
@@ -356,7 +353,7 @@ let
     bind = $mainMod, Y, exec, ~/.config/hypr/scripts/toggle-wuwa.sh
 
     # Manuel OCR çeviri (SHIFT+T)
-    bind = $mainMod SHIFT, T, exec, grim -g "$(slurp)" - | tesseract - stdout -l eng 2>/dev/null | trans -b :tr | notify-send -t 10000 "Çeviri" "$(cat -)"
+    bind = $mainMod SHIFT, T, exec, grim -g "$(slurp)" - | tesseract - stdout -l eng 2>/dev/null | trans -b :tr | { read -r _t; notify-send -t 10000 "Çeviri" "$_t"; }
 
     # Sürekli panoya-göre otomatik çeviri toggle (ALT+T) — daha önce
     # scripts/auto-translate.sh repo'da vardı ama hiçbir kısayola
@@ -960,13 +957,13 @@ translate() {
     [ "$letter_count" -lt 5 ] && { echo ""; return; }
 
     # Önbellek kontrolü
-    local cached=$(grep -F "$raw" "$CACHE_FILE" | head -n 1 | cut -d'|' -f2)
+    local cached=$(grep -F -m1 -- "$raw" "$CACHE_FILE" 2>/dev/null | head -n 1 | cut -d'\t' -f2)
     [ -n "$cached" ] && { echo "$cached"; return; }
 
     # Hızlı çeviriyi dene
     local fast=$(translate_fast "$raw")
     if [ -n "$fast" ] && [ "''${#fast}" -gt 2 ]; then
-        echo "$raw|$fast" >> "$CACHE_FILE"
+        printf '%s\t%s\n' "$raw" "$fast" >> "$CACHE_FILE"
         echo "$fast"
         return
     fi
@@ -974,7 +971,7 @@ translate() {
     # Yedek olarak LLM'ye (Aya/Gemma) sor
     local llm=$(translate_llm "$raw")
     if [ -n "$llm" ]; then
-        echo "$raw|$llm" >> "$CACHE_FILE"
+        printf '%s\t%s\n' "$raw" "$llm" >> "$CACHE_FILE"
         echo "$llm"
         return
     fi
@@ -1061,7 +1058,7 @@ while true; do
         # Eğer çeviri başarılıysa Dunst vasıtasıyla ekranda göster
         if [ -n "$TRANSLATION" ]; then
             # -r 9999 parametresi bildirimlerin üst üste binmesini engeller, sürekli günceller
-            notify-send -r 9999 "Çeviri:" "$TRANSLATION"
+            notify-send -r 9997 "Çeviri:" "$TRANSLATION"
         fi
     fi
     # İşlemciyi yormamak için her yarım saniyede bir kontrol et
