@@ -3,7 +3,6 @@ mkdir -p /var/log/libvirt
 LOGFILE="/var/log/libvirt/vfio.log"
 GPU_PCI="0000:0b:00.0"
 GPU_AUDIO="0000:0b:00.1"
-VFIO_PATH="/sys/bus/pci/drivers/vfio-pci"
 
 log() {
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOGFILE"
@@ -120,7 +119,8 @@ stop_hyprland() {
   systemctl stop greetd 2>/dev/null || true
   local card
   card=$(gpu_drm_card "$GPU_PCI")
-  for i in $(seq 1 20); do
+  # _unused: sayaç değeri kullanılmıyor, sadece kaç kez beklendiğini sayıyoruz.
+  for _unused in $(seq 1 20); do
     if ! /run/current-system/sw/bin/fuser "/dev/dri/$card" >/dev/null 2>&1; then
       break
     fi
