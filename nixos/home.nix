@@ -249,9 +249,36 @@ let
     bind = $mainMod SHIFT, S, exec, pypr toggle music
     bind = $mainMod CTRL, S, exec, pypr toggle filemanager
 
-    bind = $mainMod, M, exec, hyprctl dispatch layoutmsg set monocle
-    bind = $mainMod, scroll:down, layoutmsg, cyclenext scroll
-    bind = $mainMod, scroll:up, layoutmsg, cycleprev scroll
+    # ── Tekerlekle oda değiştirme ───────────────────────────────────
+    # Hyprland v0.55.0'te tekerlek artık tuş değil EKSEN (axis) olayı
+    # üretiyor. KeybindManager::onAxisEvent (KeybindManager.cpp:407-434)
+    # dikey eksende e.delta<0 için "mouse_down", e.delta>0 için "mouse_up"
+    # ismiyle handleKeybinds() çağırıyor. "scroll:down" / "scroll:up" isimleri
+    # HİÇ üretilmiyor → eski satırlar config yüklenirken hatasız geçiyor,
+    # basılınca da hiçbir şey olmuyordu.
+    #
+    # İkinci hata aynı satırlardaydı: "layoutmsg, cyclenext scroll".
+    #   * "scroll" argümanı geçersiz;
+    #   * dwindle'in layoutmsg alt komutları YALNIZCA togglesplit /
+    #     swapsplit / rotatesplit / movetoroot / preselect / splitratio
+    #     (DwindleAlgorithm.cpp:640-733) — "cyclenext" aralarında değil;
+    #   * "cycleprev" ise hiçbir dispatcher değil; v0.55.0 listesinde yalnız
+    #     "cyclenext" var (KeybindManager.cpp:37-105).
+    # Doğru biçim `cyclenext` dispatcher'ı: argümansız = sonraki pencere,
+    # "prev" = önceki (DispatcherTranslator.cpp:471-489).
+    bind = $mainMod, mouse_down, cyclenext
+    bind = $mainMod, mouse_up, cyclenext prev
+
+    # ⚠️ $mainMod + M (monocle) BİLEREK BAĞLI DEĞİL.
+    # Eski satır `hyprctl dispatch layoutmsg set monocle` idi ve dwindle'da
+    # "Unknown dwindle layoutmsg: set monocle" hatası veriyordu. v0.55.0'in
+    # legacy dispatcher listesinde çalışma zamanında layout değiştiren hiçbir
+    # komut yok; monocle yalnızca çalışma zamanı DIŞINDA, kural ile seçilir:
+    #
+    #     workspace = 1, layout:monocle
+    #
+    # (kalıcı, workspace başına) ya da hyprwm-community/workspacelayout
+    # plugin'i ile. İkisi de bu config'te bilerek yok.
 
     bind = $mainMod SHIFT, left,  movewindow, l
     bind = $mainMod SHIFT, right, movewindow, r
@@ -337,6 +364,13 @@ let
     # Aynı pkill -f kendini-kill sorunu burada da vardı → ayrı toggle betiği.
     bind = $mainMod ALT, T, exec, ~/.config/hypr/scripts/toggle-auto-translate.sh
 
+    # SUPER + sol/sağ tuşla sürükleme. 272/273 = BTN_LEFT / BTN_RIGHT
+    # (0x110 / 0x111) — bunlar GERÇEK buton kodlarıdır, tekerlek ekseni
+    # değil; onMouseEvent() (KeybindManager.cpp:438-448) onları
+    # "mouse:<code>" adıyla tetikliyor. Bu iki satır ÇALIŞIYOR ve yukarıdaki
+    # tekerlek binding'leriyle karışmıyor, çünkü anahtar adları farklı
+    # ("mouse:272" ≠ "mouse_down") ve handleKeybinds m_keybinds'i ortak
+    # haritada, yalnız ad+modmask eşleştiriyor.
     bindm = $mainMod, mouse:272, movewindow
     bindm = $mainMod, mouse:273, resizewindow
 
@@ -810,12 +844,22 @@ in
     # pyprland kurulu ama config'i yoktu; hyprland.conf'taki
     # "pypr toggle term/music/filemanager" bağlantıları tanımsızdı.
     #
-    # pyprland resmi formatı:
-    #   dosya  : ~/.config/hypr/pyprland.toml   (pypr/config.toml DEĞİL)
-    #   bölüm  : [pyprland] plugins = [...]  +  [scratchpads.<ad>]
-    # Daha önce [[pypr.apps]] / useOn / [pypr] yazılmıştı — bunların hiçbiri
-    # pyprland tarafından okunmaz, scratchpad'ler sessizce hiç oluşmazdı.
-    "hypr/pyprland.toml".text = ''
+    # pyprland 3.4.4 (nixpkgs 3b4545497180) üç yol tanıyor
+    # (src/constants.py:45-47):
+    #   CONFIG_FILE        = ~/.config/pypr/config.toml     ← KANONİK
+    #   LEGACY_CONFIG_FILE = ~/.config/hypr/pyprland.toml  ← ESKİ
+    #   OLD_CONFIG_FILE    = ~/.config/hypr/pyprland.json   ← çok eski
+    # Daha önce LEGACY yola yazılıyordu. Önceki yorum "pypr/config.toml
+    # pyprland tarafından okunmaz" diyordu; bu TERSİNE DOĞRUYDU — okunan
+    # legacy yoldu. Legacy dosya yine de okunur, ama her açılışta
+    # "Config at legacy location. Move to: …/pypr/config.toml" uyarısı
+    # basılır ve ekranda migration bildirimi gösterilir
+    # (src/config_loader.py:173-185). Artık kanonik yola yazılıyor.
+    #
+    # Bölüm formatı:
+    #   [pyprland] plugins = [...]  +  [scratchpads.<ad>]
+    # [[pypr.apps]] / useOn / [pypr] pyprland tarafından hiç okunmaz.
+    "pypr/config.toml".text = ''
       [pyprland]
       plugins = [ "scratchpads" ]
 
