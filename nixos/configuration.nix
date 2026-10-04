@@ -208,7 +208,8 @@ in
     # pinned low_latency_layer rev'inde (948a561) bu katman varsayılan olarak
     # VK_AMD_anti_lag sunar; ayrıca "RADV_ANTILAG" diye bir Mesa değişkeni yok.
     # Reflex modu için LOW_LATENCY_LAYER_REFLEX=1 geçerlidir.
-    LOW_LATENCY_LAYER_REFLEX = "1";
+     LOW_LATENCY_LAYER = "1";
+     LOW_LATENCY_LAYER_REFLEX = "1";
   };
 
   programs.fish.enable = true;
