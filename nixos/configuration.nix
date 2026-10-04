@@ -376,10 +376,13 @@ in
 
   # Düzeltme (2026-10-04): hyprlock yalnızca systemPackages'ta vardı, PAM
   # servisi tanımlı değildi → kilit ekranı parolayı kabul etmeyebiliyordu.
+  # NOT (2026-10-04): `backend = "pam_unix.so"` CI'da
+  # "The option `security.pam.services.hyprlock.backend' does not exist"
+  # hatası verdi — bu nixpkgs rev'inde PAM submodule'ında böyle bir option yok.
+  # Boş attrset bırakılıyor: systemd.services.hyprlock bunu okuyup
+  # /etc/pam.d/hyprlock'u üretir, varsayılan PAM stack'i (pam_unix) kullanılır.
   # Doğrula: ls /etc/pam.d/hyprlock
-  security.pam.services.hyprlock = {
-    backend = "pam_unix.so";
-  };
+  security.pam.services.hyprlock = { };
 
   environment.systemPackages = with pkgs; [
     kitty waybar rofi dunst grim slurp wl-clipboard
