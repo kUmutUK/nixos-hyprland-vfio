@@ -193,7 +193,7 @@ nixos-enter --root /mnt -c 'passwd root'
 > # sonra hedefe yaz ve izinleri 600 yap:
 > install -d -m 755 /mnt/etc/nixos
 > printf '%s\n' "$HASH" | sudo tee /mnt/etc/nixos/hashedPassword >/dev/null
-> chmod 600 /mnt/etc/nixos/hashedPassword
+> sudo chmod 600 /mnt/etc/nixos/hashedPassword
 > ```
 >
 > `tee` tek başına 644 açtığı için `chmod 600` adımı atlanmamalı.
