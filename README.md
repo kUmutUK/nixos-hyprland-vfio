@@ -173,6 +173,19 @@ PipeWire low-latency:
 
 ---
 
+### WuWa Otomatik Çeviri — İlk Kurulum
+
+`SUPER+Y` toggle'ı `wuwa-gemma` Ollama modelini kullanır. Model otomatik indirilmez (yaklaşık 8 GB). İlk kullanımdan önce terminalde çalıştır:
+
+    sudo systemctl start wuwa-gemma-init.service
+    ollama list | grep wuwa-gemma
+
+**Not:** `argos-translate` nixpkgs'ta yok → script her zaman Ollama'ya düşer. Yavaş ama çalışır.
+
+**Manuel OCR çeviri** için `SUPER+SHIFT+T` kullan (bu `translate-shell` kullanır, ek kurulum gerekmez).
+
+---
+
 # 🖥️ VFIO / GPU Passthrough
 
 Single-GPU passthrough setup:
