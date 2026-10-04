@@ -62,7 +62,10 @@ else
 fi
 log "CPU: $CPU_VENDOR"
 
-gpu_line=$(lspci | grep -iE "vga|3d|display" | head -1)
+# DÜZELTME (2026-10-04): `| head -1` erken kapanınca grep'e SIGPIPE (141)
+# gönderiyor; `set -o pipefail` yüzünden betik burada sessizce ölüyordu.
+# `grep -m1` aynı işi yapıp hattı düzgün kapatır.
+gpu_line=$(lspci | grep -im1 -E "vga|3d|display" || true)
 if echo "$gpu_line" | grep -qi "AMD\|ATI\|Radeon"; then
   GPU_VENDOR="amd"
 elif echo "$gpu_line" | grep -qi "NVIDIA\|GeForce"; then
@@ -86,12 +89,14 @@ if [[ "$CPU_VENDOR" != "amd" || "$GPU_VENDOR" != "amd" ]]; then
     echo "  - Remove 'amd_pstate=active' kernel parameter"
   fi
   if [[ "$GPU_VENDOR" == "nvidia" ]]; then
-    echo "  - Change videoDrivers from ['amdgpu'] to ['nvidia']"
-    echo "  - Add hardware.nvidia.modesetting.enable = true;"
+    # DÜZELTME (2026-10-04): bu config'te `videoDrivers` option'ı hiç
+    # tanımlı değil (NVIDIA yolu hiç yazılmamış) — kullanıcı var olmayan
+    # bir yeri düzenlemeye yönlendiriyordu. Gerçek gerekenler:
+    echo "  - Bu repo NVIDIA'yı desteklemiyor; amdgpu varsayılan."
     echo "  - Remove AMD_VULKAN_ICD, RADV_PERFTEST variables"
     echo "  - Switch ollama package to ollama-cuda"
   elif [[ "$GPU_VENDOR" == "intel" ]]; then
-    echo "  - Change videoDrivers to ['modesetting']"
+    # DÜZELTME (2026-10-04): yine `videoDrivers` yok; gerçek değişecek yerler:
     echo "  - Remove AMD-specific env vars and amdgpu.ppfeaturemask"
     echo "  - Switch ollama to pkgs.ollama (CPU only)"
   fi
@@ -355,6 +360,16 @@ echo -e "   ${CYAN}mkpasswd --method yescrypt | sudo tee /etc/nixos/hashedPasswo
 echo -e "   ${CYAN}sudo chmod 600 /etc/nixos/hashedPassword${NC}   ${YELLOW}(tee 644 acar; hash okunur kalmasin)${NC}"
 echo -e "   ${YELLOW}(mkpasswd, whois paketiyle gelir; sistemde yoksa: nix-shell -p whois)${NC}"
 echo -e "   ${YELLOW}Sıfırlama:  sudo rm /etc/nixos/hashedPassword${NC}"
+((step_num++))
+
+echo ""
+echo -e "${step_num}. ${CYAN}VM'yi libvirt'e tanıt (ATLAMA):${NC}"
+echo -e "   ${YELLOW}Bu adım hiçbir dokümanda yoktu; atlanırsa domain tanımsız${NC}"
+echo -e "   ${YELLOW}kalır, hook'un \$GUEST=\"win10\" filtresi eşleşmez ve VFIO${NC}"
+echo -e "   ${YELLOW}hiç devreye girmez.${NC}"
+echo -e "   ${CYAN}sudo cp ${REPO_DIR}/vm-xml/win10.xml /var/lib/libvirt/ && sudo virsh define /var/lib/libvirt/win10.xml${NC}"
+echo -e "   ${CYAN}virsh list --all${NC}   ${YELLOW}→ 'win10' running değil ama 'shut off' olarak görünmeli${NC}"
+echo -e "   ${YELLOW}Not: disk/NVRAM yolları XML'de sabit; kendi diskine göre düzenle.${NC}"
 ((step_num++))
 
 echo ""
