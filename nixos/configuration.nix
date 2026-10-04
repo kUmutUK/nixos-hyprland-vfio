@@ -383,10 +383,13 @@ in
 
   environment.systemPackages = with pkgs; [
     kitty waybar rofi dunst grim slurp wl-clipboard
-    # DÜZELTME (2026-10-04): wuwa-auto.sh (home.nix) hızlı çeviri için
-    # `argos-translate` çağırıyordu ama paket hiçbir yerde kurulu değildi →
-    # hızlı çeviri her zaman sessizce başarısız olup Ollama'ya düşüyordu.
-    argos-translate
+    # DÜZELTME (2026-10-04): `argos-translate` binary paketi nixpkgs'te
+    # YOK (search.nixos.org'da sadece python313/314Packages.argos-translate-files
+    # var) — eklemek build'i kırıyordu. Bu yüzden paket EKLENMEDİ; bunun yerine
+    # home.nix'deki wuwa-auto.sh artık `command -v` ile varlık kontrolü yapıyor
+    # ve argos yoksa doğrudan Ollama'ya düşüyor. Argos istersen ayrı flake:
+    #   inputs.argos.url = "github:argosopentech/argos-translate";
+    #   packages = [ inputs.argos.packages.${system}.argos-translate ];
     hyprlock hypridle wlogout hyprpicker
     hyprpolkitagent pyprland waypaper
     networkmanagerapplet brightnessctl playerctl

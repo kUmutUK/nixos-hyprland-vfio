@@ -934,6 +934,12 @@ touch "$CACHE_FILE"
 
 # ─── Hızlı çeviri (Argos Translate) ───
 translate_fast() {
+    # DÜZELTME (2026-10-04): nixpkgs'te `argos-translate` paketi yok
+    # (sadece python3XXPackages.argos-translate-files var, binary vermiyor).
+    # Önceden `2>/dev/null` ile hata yutuluyor, argos yokken her çağrı boşa
+    # çalışıp Ollama'ya düşüyordu. Artık varlık kontrolü yapılıyor; yoksa
+    # çağıran taraf doğrudan Ollama'ya gider (bkz. translate_choose).
+    command -v argos-translate >/dev/null 2>&1 || return 1
     echo "$1" | argos-translate --from-lang en --to-lang tr 2>/dev/null
 }
 
