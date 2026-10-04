@@ -235,14 +235,26 @@ Single-GPU passthrough setup:
 # ⚡ Quick Start
 
 ```bash
+# 1) Repoyu klonla
 git clone https://github.com/kUmutUK/nixos-hyprland-vfio.git
 cd nixos-hyprland-vfio
 
+# 2) ⚠️ install.sh hemen çalıştırılamaz. Önce KURULUM.md'yi takip et:
+#    - Disk bölümleme (LUKS + Btrfs)     → KURULUM.md §1-6
+#    - hardware-configuration.nix        → KURULUM.md §7
+#    - hashedPassword + SSH anahtarı     → KURULUM.md §8
+#    - nixos-install                     → KURULUM.md §9
+#
+# 3) Mevcut NixOS'u güncelliyorsan (sıfırdan kurulum DEĞİL):
 chmod +x install.sh
 ./install.sh
+# → UUID'leri hardware-configuration.nix'te kontrol et
+# → /home/.snapshots alt hacmi var mı doğrula
 
-# flake nixos/ altındadır
+# 4) Rebuild + reboot
+sudo nixos-rebuild dry-activate --flake /etc/nixos/nixos#nixos
 sudo nixos-rebuild switch --flake /etc/nixos/nixos#nixos
+sudo reboot   # ZORUNLU (iommu=pt, amd_iommu=on) 
 ```
 
 > **Düzelten (2026-10-03):** README bu yolu `/etc/nixos#nixos` gösteriyordu,
