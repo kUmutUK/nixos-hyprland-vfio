@@ -234,6 +234,7 @@ if [ -d "$REPO_DIR/nixos/hooks" ]; then
         -e "s|^GPU_AUDIO=\".*\"|GPU_AUDIO=\"${gpu_audio}\"|" \
         "$NIXOS_FLAKE_DIR/hooks/qemu" && log "Hook script'teki GPU PCI adresleri de güncellendi."
 
+    git -C "$NIXOS_FLAKE_DIR" update-index --no-skip-worktree hooks/qemu 2>/dev/null || true
     if git -C "$NIXOS_FLAKE_DIR" rev-parse --git-dir >/dev/null 2>&1; then
         git -C "$NIXOS_FLAKE_DIR" update-index --skip-worktree hooks/qemu 2>/dev/null \
             && log "hooks/qemu git'te skip-worktree olarak işaretlendi (git pull çakışmayacak)." \
@@ -267,6 +268,17 @@ echo -e "     ${CYAN}lsblk -f${NC}  # UUID'leri kontrol edin"
 # "/home" bekler olduğu için acil kipine (emergency mode) düşersiniz.
 # Bu yüzden rebuild'dan ÖNCE oluşturulmalı; bu adım daha önce hiçbir yerde
 # yoktu, yani tek P0 blocker installer'da karşılanmıyordu.
+step "VM disk image"
+mkdir -p /var/lib/libvirt/images /var/lib/libvirt/qemu
+if [ ! -f /var/lib/libvirt/images/win10new.qcow2 ]; then
+  warn "VM diski yok — 120G qcow2 oluşturuluyor."
+  sudo qemu-img create -f qcow2 /var/lib/libvirt/images/win10new.qcow2 120G
+fi
+echo "  ISO dosyalarını /var/lib/libvirt/images/ altına kopyalayın:"
+echo "    Win10_22H2_English_x64v1.iso"
+echo "    virtio-win-0.1.285.iso"
+echo ""
+
 step "Btrfs snapshot subvolume"
 if findmnt -no FSTYPE /home 2>/dev/null | grep -qi btrfs; then
   if [ -d /home/.snapshots ]; then
@@ -367,6 +379,8 @@ echo -e "${step_num}. ${CYAN}VM'yi libvirt'e tanıt (ATLAMA):${NC}"
 echo -e "   ${YELLOW}Bu adım hiçbir dokümanda yoktu; atlanırsa domain tanımsız${NC}"
 echo -e "   ${YELLOW}kalır, hook'un \$GUEST=\"win10\" filtresi eşleşmez ve VFIO${NC}"
 echo -e "   ${YELLOW}hiç devreye girmez.${NC}"
+echo -e "   ${CYAN}mkdir -p /var/lib/libvirt/images && sudo qemu-img create -f qcow2 /var/lib/libvirt/images/win10new.qcow2 120G${NC}
+echo "   ${YELLOW}ISO dosyalarını /var/lib/libvirt/images/ altına kopyalayın${NC}"
 echo -e "   ${CYAN}sudo cp ${REPO_DIR}/vm-xml/win10.xml /var/lib/libvirt/ && sudo virsh define /var/lib/libvirt/win10.xml${NC}"
 echo -e "   ${CYAN}virsh list --all${NC}   ${YELLOW}→ 'win10' running değil ama 'shut off' olarak görünmeli${NC}"
 echo -e "   ${YELLOW}Not: disk/NVRAM yolları XML'de sabit; kendi diskine göre düzenle.${NC}"
