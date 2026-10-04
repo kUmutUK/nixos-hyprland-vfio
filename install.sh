@@ -269,7 +269,7 @@ echo -e "     ${CYAN}lsblk -f${NC}  # UUID'leri kontrol edin"
 # Bu yüzden rebuild'dan ÖNCE oluşturulmalı; bu adım daha önce hiçbir yerde
 # yoktu, yani tek P0 blocker installer'da karşılanmıyordu.
 step "VM disk image"
-mkdir -p /var/lib/libvirt/images /var/lib/libvirt/qemu
+sudo mkdir -p /var/lib/libvirt/images /var/lib/libvirt/qemu
 if [ ! -f /var/lib/libvirt/images/win10new.qcow2 ]; then
   warn "VM diski yok — 120G qcow2 oluşturuluyor."
   sudo qemu-img create -f qcow2 /var/lib/libvirt/images/win10new.qcow2 120G
