@@ -553,7 +553,11 @@ in
   };
 
   # C24: ashmem kaldırıldıysa Waydroid memfd moduna geçmeli.
-  system.activationScripts.sysuse-memfd = "true";
+  system.activationScripts.sysuse-memfd = lib.mkIf (config.virtualisation.waydroid.enable) {}
+  # Waydroid 5.18+ ashmem yerine memfd kullanir; ashmem_linux modulune
+  # baglanmak boot'i kiriyordu. Dogrulama:
+  #   sudo waydroid init
+  #   grep sys.use_memfd=true /var/lib/waydroid/waydroid_base.prop
 
   systemd.services.wuwa-gemma-init = {
     description = "Ollama için wuwa-gemma modelini oluşturur (elle çalıştırılır)";
