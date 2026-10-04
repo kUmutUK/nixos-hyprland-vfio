@@ -60,14 +60,18 @@ jobs:
           [ "$fail" -eq 0 ] && echo "  no stale files"
           exit $fail
 
-      - name: Flake structure check
-        # nix flake check --no-build fails here because Hyprland derivation
-        # reads its own VERSION file via readFile, which fails when the
-        # source is not realized in --no-build mode.
+      - name: Flake structure check (real module evaluation)
+        # `nix flake show` yalnizca output agacini gosterir; modul sistemini
+        # DEGERLENDIRMEZ. Kirik bir option (orn. services.yok-boyle-bir-option)
+        # `nix flake show`dan gecer, ama `nix eval` ile yakalanir.
+        # nix flake check --no-build ise Hyprland tarafinin readFile VERSION
+        # cagrisini --no-build modunda patlatiyor; o yuzden dogrudan
+        # toplevel.drvPath eval ediyoruz (build calistirmadan).
         run: |
           cd nixos
-          nix flake show --no-write-lock-file > /dev/null
-          echo "  flake output structure OK"
+          nix eval --no-write-lock-file \
+            .#nixosConfigurations.nixos.config.system.build.toplevel.drvPath
+          echo "  module system evaluates OK"
 
       - name: Flake path consistency
         # install.sh artık komutları ${NIXOS_FLAKE_DIR} ile basıyor, yani
