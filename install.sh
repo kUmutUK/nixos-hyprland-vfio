@@ -379,7 +379,7 @@ echo -e "${step_num}. ${CYAN}VM'yi libvirt'e tanıt (ATLAMA):${NC}"
 echo -e "   ${YELLOW}Bu adım hiçbir dokümanda yoktu; atlanırsa domain tanımsız${NC}"
 echo -e "   ${YELLOW}kalır, hook'un \$GUEST=\"win10\" filtresi eşleşmez ve VFIO${NC}"
 echo -e "   ${YELLOW}hiç devreye girmez.${NC}"
-echo -e "   ${CYAN}mkdir -p /var/lib/libvirt/images && sudo qemu-img create -f qcow2 /var/lib/libvirt/images/win10new.qcow2 120G${NC}
+echo -e "   ${CYAN}mkdir -p /var/lib/libvirt/images && sudo qemu-img create -f qcow2 /var/lib/libvirt/images/win10new.qcow2 120G${NC}"
 echo "   ${YELLOW}ISO dosyalarını /var/lib/libvirt/images/ altına kopyalayın${NC}"
 echo -e "   ${CYAN}sudo cp ${REPO_DIR}/vm-xml/win10.xml /var/lib/libvirt/ && sudo virsh define /var/lib/libvirt/win10.xml${NC}"
 echo -e "   ${CYAN}virsh list --all${NC}   ${YELLOW}→ 'win10' running değil ama 'shut off' olarak görünmeli${NC}"
