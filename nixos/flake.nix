@@ -2,6 +2,22 @@
 {
   description = "NixOS CachyOS BORE Kernel – Gaming + pyprland + lsfg-vk";
 
+  # Düzeltme (2026-10-04): substituters/trusted-public-keys yalnızca
+  # configuration.nix içindeki nix.settings ile veriliyordu. Bu ayarlar
+  # FLAKE değerlendirildiğinde henüz uygulanmadığı için `nixos-install` ve
+  # ilk `nixos-rebuild` CachyOS kernel'ini büyük olasılıkla kaynaktan deriyordu.
+  # Buraya da ekleyip kullanımda `--accept-flake-config` gerektiğini not ediyoruz.
+  nixConfig = {
+    extra-substituters = [
+      "https://xddxdd.cachix.org"
+      "https://nix-community.cachix.org"
+    ];
+    extra-trusted-public-keys = [
+      "xddxdd.cachix.org-1:ay1HJyNDYmlSwj5NXQG065C8LfoqqKaTNCyzeixGjf8="
+      "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
+    ];
+  };
+
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     cachyos-kernel.url = "github:xddxdd/nix-cachyos-kernel";
@@ -27,6 +43,7 @@
   outputs = { self, nixpkgs, cachyos-kernel, home-manager, lsfg-vk-flake, impermanence, ... }:
   let
     system = "x86_64-linux";
+    pkgs = nixpkgs.legacyPackages.${system};
   in
   {
     nixosConfigurations.nixos = nixpkgs.lib.nixosSystem {
@@ -58,6 +75,29 @@
         })
         ./configuration.nix
       ];
+    };
+
+    # Düzeltme (2026-10-04): README `nix develop` diyordu ama flake'te
+    # devShells output'u yoktu; kökte ayrı bir `shell.nix` (<nixpkgs> channel
+    # yaklaşımı) vardı. İki ayrı development modeli yerine tek gerçek devShell.
+    devShells.${system}.default = pkgs.mkShell {
+      name = "nixos-hyprland-vfio";
+      packages = with pkgs; [
+            nixfmt-rfc-style
+            statix
+            deadnix
+            shellcheck
+            nix-output-monitor
+            git
+            coreutils
+            pciutils
+            curl
+            jq
+            libxml2
+          ];
+      shellHook = ''
+        echo "nixos-hyprland-vfio dev shell — nixfmt-rfc-style, statix, deadnix hazir"
+      '';
     };
   };
 }
