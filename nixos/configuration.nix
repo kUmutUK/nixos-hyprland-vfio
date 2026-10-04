@@ -77,6 +77,7 @@ let
 
   # wuwa-auto.sh, Ollama'dan "wuwa-gemma" modelini istiyor. Modelfile içeriği
   # burada Nix'e gömülüyor; systemd servisi bunu kullanarak modeli oluşturur.
+  cfgpkg = pkgs.ollama-rocm;
   wuwaGemmaModelfile = pkgs.writeText "wuwa-gemma.modelfile" ''
     FROM aya-expanse:8b
     SYSTEM You are a professional game localizer specializing in fantasy RPGs. Fix any OCR typos in the provided English text. Translate it into natural, fluent Turkish, preserving the tone (e.g., formal, sarcastic, emotional). Never output anything except the Turkish translation.
@@ -563,12 +564,12 @@ in
       Type = "oneshot";
       Environment = "HOME=/root";
       ExecStart = pkgs.writeShellScript "wuwa-gemma-init" ''
-        if ${pkgs.ollama-rocm}/bin/ollama list | grep -q '^wuwa-gemma'; then
+        if ${cfgpkg}/bin/ollama list | grep -q '^wuwa-gemma'; then
           echo "wuwa-gemma zaten var, atlanıyor."
         else
           echo "aya-expanse:8b çekiliyor (yaklaşık 8 GB)…"
-          ${pkgs.ollama-rocm}/bin/ollama pull aya-expanse:8b
-          ${pkgs.ollama-rocm}/bin/ollama create wuwa-gemma -f ${wuwaGemmaModelfile}
+          ${cfgpkg}/bin/ollama pull aya-expanse:8b
+          ${cfgpkg}/bin/ollama create wuwa-gemma -f ${wuwaGemmaModelfile}
           echo "wuwa-gemma hazır."
         fi
       '';
