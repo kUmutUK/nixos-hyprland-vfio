@@ -205,11 +205,24 @@ in
     QT_QPA_PLATFORM = "wayland;xcb";
     XCURSOR_THEME = "capitaine-cursors";
     XCURSOR_SIZE = "16";
-    # pinned low_latency_layer rev'inde (948a561) bu katman varsayılan olarak
-    # VK_AMD_anti_lag sunar; ayrıca "RADV_ANTILAG" diye bir Mesa değişkeni yok.
-    # Reflex modu için LOW_LATENCY_LAYER_REFLEX=1 geçerlidir.
-     LOW_LATENCY_LAYER = "1";
-     LOW_LATENCY_LAYER_REFLEX = "1";
+    # Pinned low_latency_layer rev'inde (948a561) upstream yalnızca şu üç
+    # değişkeni okuyor (src/layer_context.hh:52-61):
+    #   LOW_LATENCY_LAYER_REFLEX          → VK_AMD_anti_lag sunulur mu
+    #   LOW_LATENCY_LAYER_SPOOF_NVIDIA
+    #   LOW_LATENCY_LAYER_FORCE_DECOUPLED
+    # Upstream manifestindeki tek çevresel kapı ise
+    # DISABLE_LOW_LATENCY_LAYER (low_latency_layer.json.in) ve bu rev'de
+    # enable_environment YOKTUR → katman varsayılan olarak etkindir.
+    #
+    # ⚠️ "LOW_LATENCY_LAYER" diye bir değişken YOKTUR. Buraya daha önce
+    # `LOW_LATENCY_LAYER = "1";` eklenmişti; hiçbir kod onu okumuyordu,
+    # yani sessiz bir no-op'tu (config'in kendi düzelttiği
+    # ENABLE_LOW_LATENCY_LAYER hatasının aynısı). Tekrar eklenmemeli.
+    #
+    # Reflex modu için gereken tek değişken LOW_LATENCY_LAYER_REFLEX.
+    # SPOOF_NVIDIA bilinçli olarak sistem genelinde ayarlanmıyor: upstream
+    # bunu oyun bazında öneriyor (README §Reflex → Steam başlatma seçeneği).
+    LOW_LATENCY_LAYER_REFLEX = "1";
   };
 
   programs.fish.enable = true;
