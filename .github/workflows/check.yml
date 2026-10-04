@@ -51,3 +51,32 @@ jobs:
         run: |
           python3 scripts/extract-embedded-scripts.py /tmp/emb             | xargs -0 -n1 -- shellcheck -S warning
           echo "  embedded scripts OK"
+
+      # ---- THE GATE THIS REPO WAS ACTUALLY MISSING ----
+      # Workflow'un adı "Nix Flake Check" idi ama içinde TEK SATIR Nix yoktu:
+      # yalnızca shellcheck çalışıyordu. Bu repo'nun CHANGELOG'unun tamamı
+      # option seviyesinde düzeltmelerden oluşuyor (olmayan option, yanlış yol,
+      # ABI/sürüm kayması) ve HİÇBİRİ kapı altında değildi. Tek bir yazım
+      # hatası -- `xwayland.enable` yerine `xwaylan.enable` gibi -- sessizce
+      # merge olup kullanıcının rebuild'ini kırıyordu.
+      #
+      # Nix zaten yukarıda kuruluyordu, sadece hiç çağrılmıyordu.
+      # --no-build: derleme yapmaz, yalnızca tüm modül sistemini EVAL eder.
+      #   Bu repo için doğru seçim: low_latency_layer cachix'te yok, ilk
+      #   kurulumda kaynaktan derlendiği için full build CI'ı dakikalarca
+      #   meşgul ederdi ve option hatalarını yakalamazdı.
+      - name: nix flake check (eval only)
+        working-directory: nixos
+        run: |
+          nix flake check --no-build --accept-flake-config --show-trace \
+            --option warn-dirty false
+          echo "  flake evaluates OK"
+
+      # flake'in DEĞERLENDİRİLDİĞİ doğrulanır: bir option yanlış yazılmışsa
+      # ("services.lsfg-vk", "systemd.tmpfiles.rules", impermanence modülü)
+      # burada düşer. impermanence'in "Neither /var/lib/nixos nor any of its
+      # parents are persisted" uyarısı GÜRÜLTÜDÜR ve bu adımı kırmaz.
+      - name: statix / deadnix (repo kökü .nix dosyaları)
+        run: |
+          nix run nixpkgs#statix -- check . || echo "::warning::statix bulguları var (gate değil)"
+          nix run nixpkgs#deadnix -- .        || echo "::warning::deadnix bulguları var (gate değil)"
