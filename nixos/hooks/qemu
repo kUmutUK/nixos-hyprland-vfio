@@ -167,9 +167,12 @@ start_hyprland() {
   log "Greetd başlatılıyor..."
   systemctl start greetd 2>/dev/null || true
   # Hook'un durdurduğu GPU servisleri geri aç (VM kapanınca).
-  # DÜZELTME (2026-10-04): tek elemanlı `for svc in ollama` loop'u SC2043
-  # (useless loop) uyarısı veriyordu ve CI gate'i -S warning olduğu için
-  # kırıyordu. Tek servis olduğu için doğrudan if yazıldı.
+  # DÜZELTME (2026-10-04): burada tek elemanlı bir servis döngüsü vardı ve
+  # shellcheck SC2043 (useless loop) uyarısı veriyordu; CI gate'i -S warning
+  # olduğu için kırılıyordu. Tek servis olduğu için döngü tamamen kaldırıldı,
+  # doğrudan if yazıldı. NOT: açıklama metninde o döngü kalıbı TEKRAR
+  # yazılırsa, kaynak kodda taraması zor hatırlanan grep/CI adımları yorumu
+  # kod sanıp hata bildiriyor — bu satırda bilerek geçmiyor.
   if systemctl is-enabled --quiet ollama 2>/dev/null; then
     if systemctl start ollama 2>/dev/null; then
       log "  ollama yeniden baslatildi."
