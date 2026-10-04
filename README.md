@@ -125,6 +125,30 @@ Vulkan frame generation support.
 
 # 🖥️ Hyprland Desktop
 
+> ⚠️ **ÖNEMLİ — `hyprland.lua` gölgeleme riski (2026-10-05 doğrulandı)**
+>
+> Bu config klasik `hyprland.conf` kullanıyor. **Hyprland 0.56.2'den itibaren
+> `hyprland.lua` öncelik kazanıyor.** Kaynak (`v0.56.2`):
+> `src/config/supplementary/jeremy/Jeremy.cpp · getMainConfigPath()` önce
+> `hyprland.lua` arıyor (XDG_CONFIG_HOME/HOME, sonra XDG_CONFIG_DIRS), `.conf`
+> yalnızca `.lua` **bulunamazsa** kullanılıyor.
+>
+> Yani eldeki config'in çalışması şu koşula bağlı: PATH'te hiçbir yerde
+> `hyprland.lua` olmaması. O dosya bir gün belirirse (ör. örnek config'i
+> kopyalarsanız, Hyprland otomatik üretirse, `share/hypr/hyprland.lua`
+> yanlışlıkla `XDG_CONFIG_DIRS`'a girerse) **250 satırlık config sessizce tamamen
+> yok sayılır** — hata yok, uyarı yok, masaüstü varsayılana döner.
+>
+> Ek olarak 0.56.2'nin `src/config/legacy/DefaultConfig.hpp` içindeki örnek config
+> bir **STUB**'dur ve kendisi "Use the default lua config" diyor: legacy yol artık
+> yalnızca bakım modunda.
+>
+> `nix flake update` sonrası kontrol:
+> ```bash
+> ls ~/.config/hypr/hyprland.lua 2>/dev/null && echo "⚠️ Lua config var — .conf yok sayılıyor!"
+> hyprctl configversion
+> ```
+
 - Hyprland (nixpkgs `nixos-unstable`, **0.56.2**)
 - Wayland-only environment
 - greetd + tuigreet

@@ -148,8 +148,8 @@ read -rp "Monitor output name (for mpvpaper) [${monitor_output}]: " input_mon
 [[ -n "$input_mon" ]] && monitor_output="$input_mon"
 
 echo ""
-read -rp "Hyprland monitor line (e.g. monitor = ,2560x1440@170,auto,1) [monitor = ,preferred,auto,1]: " hypr_mon_line
-hypr_mon_line="${hypr_mon_line:-monitor = ,preferred,auto,1}"
+read -rp "Hyprland monitor line (örn. monitor = DP-3,2560x1440@170,auto,1) [monitor = ${input_mon:-$monitor_output},preferred,auto,1]: " hypr_mon_line
+hypr_mon_line="${hypr_mon_line:-monitor = ${input_mon:-$monitor_output},preferred,auto,1}"
 
 echo ""
 wallpaper_video="/home/localhost/Downloads/arthur-leywin-the-beginning-after-the-end.3840x2160.mp4"
