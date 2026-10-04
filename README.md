@@ -310,13 +310,25 @@ virt-manager
 # 🛠️ Development
 
 ```bash
-# shell.nix legacy <nixpkgs> channel import ediyor; flakes-only sistemlerde
-# çalışması için NIX_PATH tanımlı olmalı.
-nix-shell
+# DÜZELTME (2026-10-04): flake'e gerçek `devShells.x86_64-linux.default`
+# eklendi; README'deki `nix develop` artık boşa çalışmıyor. Kökteki
+# `shell.nix` legacy <nixpkgs> channel import ettiği için NIX_PATH gerektiriyor.
+cd nixos && nix develop
 
-# VEYA: kökte flake.niz yok, bu yüzden `nix develop` yerine:
-nix-shell -p nixpkgs-fmt statix shellcheck
+# NixOS config'ini değerlendir (ağır, kernel derlemesi yapabilir):
 cd nixos && nix eval .#nixosConfigurations.nixos.config.system.build.toplevel.drvPath
+```
+
+### 🖥️ VM'yi tanıt
+
+`vm-xml/win10.xml` repoda duruyor ama **otomatik kurulmuyor** — atlanırsa
+domain tanımsız kalır, VFIO hook'unun `$GUEST = "win10"` filtresi hiç
+eşleşmez ve GPU hiçbir zaman `vfio-pci`'ye geçmez:
+
+```bash
+sudo cp vm-xml/win10.xml /var/lib/libvirt/
+sudo virsh define /var/lib/libvirt/win10.xml
+virsh list --all        # 'win10' → "shut off" olarak görünmeli
 ```
 
 > Not: `nix flake check` CI'da **kullanılmıyor** — Hyprland türetmesi
