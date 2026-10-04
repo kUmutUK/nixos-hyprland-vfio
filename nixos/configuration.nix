@@ -125,7 +125,11 @@ in
   boot.kernel.sysctl = {
     "vm.max_map_count" = 1048576;
     "vm.nr_hugepages" = 0;
-    "vm.swappiness" = 10;
+    # Düzeltme (2026-10-04): 10 idi, ama zramSwap.priority = 100 ve disk
+    # swap priority = 10 iken kernel zram'ı hiç seçmiyordu (ölçülen: ~8 MiB).
+    # zram'ın kullanılabilmesi için swappiness yüksek olmalı; 180 = zram
+    # tercih edilir, disk swap yine son çare.
+    "vm.swappiness" = 180;
     "kernel.sched_autogroup_enabled" = 0;
     "kernel.split_lock_mitigate" = 0;
     "kernel.perf_event_paranoid" = 1;
@@ -369,6 +373,13 @@ in
 
   hardware.uinput.enable = true;
   services.udev.packages = [ pkgs.libinput ];
+
+  # Düzeltme (2026-10-04): hyprlock yalnızca systemPackages'ta vardı, PAM
+  # servisi tanımlı değildi → kilit ekranı parolayı kabul etmeyebiliyordu.
+  # Doğrula: ls /etc/pam.d/hyprlock
+  security.pam.services.hyprlock = {
+    backend = "pam_unix.so";
+  };
 
   environment.systemPackages = with pkgs; [
     kitty waybar rofi dunst grim slurp wl-clipboard

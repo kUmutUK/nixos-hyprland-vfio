@@ -394,8 +394,14 @@ let
     exec-once = ${pkgs.hyprpolkitagent}/bin/hyprpolkitagent
     exec-once = dbus-update-activation-environment --systemd DISPLAY
     exec-once = pypr
+    # Düzeltme (2026-10-04): import-environment ÜÇ değişkenle sınırlıydı.
+    # HYPRLAND_INSTANCE_SIGNATURE aktarılmadığı için mpvpaper-watchdog
+    # (bkz. aşağıdaki HYPR_SOCK) soketi bulamıyor, exit 1 ile çıkıyor ve
+    # systemd 3 saniyede bir yeniden başlatıyordu → duvar kağıdı hiç açılmıyor.
+    # AYRICA bu satır mpvpaper-watchdog'u BAŞLATAN satırın ALTINDAYDI;
+    # import önce, başlatma sonra olacak şekilde sıralandı.
+    exec-once = systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE HYPRLAND_INSTANCE_SIGNATURE HYPRLAND_DISPLAY
     exec-once = systemctl --user start mpvpaper-watchdog gamemode-notify
-    exec-once = systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE
   '';
 
   hyprlockConf = ''
