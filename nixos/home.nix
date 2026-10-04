@@ -982,7 +982,7 @@ translate_llm() {
     # önce kaçışları çözüyor. Nix `\n`'i GERÇEK satır sonuna çevirdiği için
     # printf formatında kaçış bırakmak Nix sürümüne göre farklı sonuç verir.
     # Belirsizliği tamamen kaldırmak için bash ANSI-C quoting ($'…') kullanılıyor:
-    # Nix'te `$` tek başına özel değildir (yalnız `${` interpolasyon açar), dolayısıyla
+    # Nix'te `$` tek başına özel değildir (yalnız \${ interpolasyon açar), dolayısıyla
     # $'\n' Nix'ten geçer ve bash'ta kesin olarak gerçek satır sonu üretir.
     local json_payload
     json_payload=$(jq -n --arg mod "wuwa-gemma" \
