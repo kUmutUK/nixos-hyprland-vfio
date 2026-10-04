@@ -361,7 +361,11 @@ let
     bind = $mainMod, Y, exec, ~/.config/hypr/scripts/toggle-wuwa.sh
 
     # Manuel OCR çeviri (SHIFT+T)
-    bind = $mainMod SHIFT, T, exec, grim -g "$(slurp)" - | tesseract - stdout -l eng 2>/dev/null | trans -b :tr | { read -r _t; notify-send -t 10000 "Çeviri" "$_t"; }
+    # DÜZELTME (2026-10-05): eski hâl `| { read -r _t; notify-send ... "$_t"; }`
+    # idi. `read -r` SADECE İLK satırı okur ve gerisini atar; çok satırlı bir
+    # çevirinin tamamı kayboluyordu. Artık tüm çıktı değişkende toplanıyor.
+    # Bash değişkeni varsayılan olarak yeni satırları korur.
+    bind = $mainMod SHIFT, T, exec, sh -c 'T=$(grim -g "$(slurp)" - | tesseract - stdout -l eng 2>/dev/null | trans -b :tr); [ -n "$T" ] && notify-send -t 10000 "Çeviri" "$T"'
 
     # Sürekli panoya-göre otomatik çeviri toggle (ALT+T) — daha önce
     # scripts/auto-translate.sh repo'da vardı ama hiçbir kısayola
@@ -406,6 +410,12 @@ let
     # AYRICA bu satır mpvpaper-watchdog'u BAŞLATAN satırın ALTINDAYDI;
     # import önce, başlatma sonra olacak şekilde sıralandı.
     exec-once = ${pkgs.coreutils}/bin/sh -c 'systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE HYPRLAND_INSTANCE_SIGNATURE HYPRLAND_DISPLAY; systemctl --user start mpvpaper-watchdog gamemode-notify'
+    # DÜZELTME (2026-10-05): mpvpaper.service `ConditionPathExists = ${wallpaperVideo}`
+    # taşıyor. Dosya yoksa systemd unit'i SESSİZCE atlar — ne hata, ne uyarı,
+    # ne de duvar kağıdı. Kurulumdan sonra "neden mpv yok?" diye bakmak,
+    # hatırlamak zorunda kalıyorsun. Şimdi kontrol burada, oturum açılışında,
+    # görünür şekilde yapılıyor.
+    exec-once = ${pkgs.coreutils}/bin/sh -c '[ -e "${wallpaperVideo}" ] || notify-send -t 15000 -u critical "mpvpaper" "Canlı duvar kağıdı bulunamadı: ${wallpaperVideo}\nDosyayı indirin veya home.nix içindeki wallpaperVideo değerini değiştirin, sonra: systemctl --user restart mpvpaper mpvpaper-watchdog"'
   '';
 
   hyprlockConf = ''
@@ -613,8 +623,8 @@ let
       format-bluetooth = "󰂯 {volume}%";
       format-bluetooth-muted = "󰂯";
       format-icons = {
-        headphone = ""; hands-free = "󰂰"; headset = "󰂰";
-        phone = ""; portable = ""; car = "";
+        headphone = "󰊋"; hands-free = "󰂰"; headset = "󰂰";
+        phone = "󰉠"; portable = "󰉠"; car = "󰉠";
         default = ["🔈" "🔉" "🔊"];
       };
       on-click = "pavucontrol";
@@ -667,7 +677,7 @@ let
       format = "{player_icon} {artist} - {title}";
       format-paused = "⏸ {artist} - {title}";
       format-stopped = "";
-      player-icons = { default = "🎵"; spotify = ""; firefox = "🦊"; chromium = ""; };
+      player-icons = { default = "🎵"; spotify = "󰀒"; firefox = "🦊"; chromium = "🦺"; };
       status-icons = { paused = "⏸"; playing = "▶"; stopped = "■"; };
       max-length = 40;
       on-click = "playerctl play-pause";
@@ -964,9 +974,20 @@ translate_fast() {
 # ─── Yedek çeviri (Ollama LLM - Güvenli JSON formatı ile) ───
 translate_llm() {
     local text="$1"
-    # jq kullanarak girdiyi güvenli bir şekilde JSON stringine çeviriyoruz, asla patlamaz
+    # DÜZELTME (2026-10-05): eski hâli `--arg pr "EN: $text\nTR:"` idi.
+    # jq'nin --arg'ı C kaçışlarını YORUMLAMAZ; "\n" modele literal
+    # backslash-n olarak gider ve istemci tek satırlık "EN: ...\nTR:" görür.
+    #
+    # Burada dikkat: bu satır bir Nix indented string'in İÇİNDE, yani Nix
+    # önce kaçışları çözüyor. Nix `\n`'i GERÇEK satır sonuna çevirdiği için
+    # printf formatında kaçış bırakmak Nix sürümüne göre farklı sonuç verir.
+    # Belirsizliği tamamen kaldırmak için bash ANSI-C quoting ($'…') kullanılıyor:
+    # Nix'te `$` tek başına özel değildir (yalnız `${` interpolasyon açar), dolayısıyla
+    # $'\n' Nix'ten geçer ve bash'ta kesin olarak gerçek satır sonu üretir.
     local json_payload
-    json_payload=$(jq -n --arg mod "wuwa-gemma" --arg pr "EN: $text\nTR:" '{model: $mod, prompt: $pr, stream: false, options: {temperature: 0.0, num_predict: 80}}')
+    json_payload=$(jq -n --arg mod "wuwa-gemma" \
+                         --arg pr "EN: ''${text}"$'\n'"TR:" \
+                         '{model: $mod, prompt: $pr, stream: false, options: {temperature: 0.0, num_predict: 80}}')
 
     curl -s http://localhost:11434/api/generate -d "$json_payload" | jq -r '.response' 2>/dev/null | xargs
 }
@@ -999,7 +1020,17 @@ translate() {
 }
 
 # ─── Ana döngü ───
+# DÜZELTME (2026-10-05): döngü koşulsuz 3 saniyede bir 2× grim + 2× mogrify +
+# 2× tesseract çalıştırıyordu — TÜM gün, sonsuza kadar, oyun oynanırken bile.
+# Tesseract ağır bir CPU yükü ve GPU'ya (VRAM/host bellek) bant genişliği
+# yiyor; oyunla yarışması kare düşmesi demek. Artık hiçbir bölgede değişiklik
+# yoksa bekleme süresi kademeli olarak 3s → 30s'e çıkıyor, ilk değişiklikte
+# anında 3s'ye dönüyor.
+IDLE_TICKS=0
+MAX_IDLE_SLEEP=30
+
 while true; do
+    CHANGED=0
     # 1. Ana altyazı
     grim -g "$GEOMETRY_MAIN" "$IMAGE_MAIN" 2>/dev/null
     mogrify -resize 200% \
@@ -1023,6 +1054,7 @@ while true; do
     if [ ''${#TEXT_MAIN} -gt 5 ]; then
         if [ "$TEXT_MAIN" != "$LAST_MAIN" ]; then
             LAST_MAIN="$TEXT_MAIN"
+            CHANGED=1
             TRANSLATION_MAIN=$(translate "$TEXT_MAIN")
             [ -n "$TRANSLATION_MAIN" ] && notify-send -r 9999 "💬 Wuwa AI (Altyazı)" "$TRANSLATION_MAIN"
         fi
@@ -1048,6 +1080,7 @@ while true; do
     if [ ''${#TEXT_CHOICE} -gt 5 ]; then
         if [ "$TEXT_CHOICE" != "$LAST_CHOICE" ]; then
             LAST_CHOICE="$TEXT_CHOICE"
+            CHANGED=1
             TRANSLATION_CHOICE=$(translate "$TEXT_CHOICE")
             [ -n "$TRANSLATION_CHOICE" ] && notify-send -r 9998 "💡 Wuwa AI (Seçenekler)" "$TRANSLATION_CHOICE"
         fi
@@ -1056,7 +1089,16 @@ while true; do
     fi
     rm -f "$IMAGE_CHOICE" 2>/dev/null
 
-    sleep 3
+    # Kademeli geri çekilme: 3s, 6s, 9s ... en fazla 30s.
+    if [ "$CHANGED" -eq 1 ]; then
+        IDLE_TICKS=0
+        sleep 3
+    else
+        IDLE_TICKS=$((IDLE_TICKS + 1))
+        S=$((3 + IDLE_TICKS * 3))
+        [ "$S" -gt "$MAX_IDLE_SLEEP" ] && S=$MAX_IDLE_SLEEP
+        sleep "$S"
+    fi
 done
 '';
     };
