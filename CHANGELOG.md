@@ -8,6 +8,140 @@ This project follows:
 
 ---
 
+# [1.3.0] - 2026-10-05
+
+Bağımsız kod & yapılandırma denetimi. Kaynak: `nixos-hyprland-vfio(4).zip`
+@ `0d35833`. Tüm iddialar **kilitli upstream kaynaklarına** karşı doğrulandı
+(nixpkgs `7a0f122`, Hyprland `v0.56.2`, hyprlock `v0.9.6`, hyprutils).
+
+## 🔴 Fixed — CI gerçekten doğrulamıyordu
+
+Workflow'un adı `Nix Flake Check` idi ama içinde **tek satır Nix yoktu**:
+`nix-installer-action` Nix'i kuruyor, sonra hiç çağrılmıyordu. Tek gate
+shellcheck'ti. Bu repo'nun CHANGELOG'unun tamamı option seviyesinde
+düzeltmelerden oluşuyor (olmayan option, yanlış libvirt yolu, ABI/sürüm
+ kayması) ve **hiçbiri** kapı altında değildi.
+
+- `nix flake check --no-build` eklendi (`working-directory: nixos`).
+  Derleme yapmaz, tüm modül sistemini eval eder — option hatalarını yakalar.
+- `statix` / `deadnix` eklendi (gate değil, uyarı seviyesi).
+
+## 🔴 Fixed — `flake.lock` `flake.nix`'i yalan söylüyordu
+
+`flake.nix`'e `impermanence.inputs.home-manager.follows` eklenmişti ama
+lock hâlâ `impermanence → home-manager_2` (`c47b2cc64a62`) çözüyordu, kök
+ise `7b4c5ec4beda` kullanıyordu — yani düzeltilen "iki HM sürümü aynı anda
+modül sisteminde" hatası **lock'ta hâlâ kodluydu**. Çalışmasının tek
+sebebi `nixos-rebuild`'ın lock'u sessizce yeniden yazmasıydı; readonly
+flake veya `--no-update-lock-file` ile patlardı.
+
+- `home-manager_2` node'u kaldırıldı, `impermanence.inputs.home-manager`
+  artık kök `home-manager`'ı takip ediyor.
+
+## 🟠 Fixed — `install.sh` git deposunu yerinde değiştiriyordu
+
+`vm-xml/win10.xml` `sed`/python ile **değiştiriliyor**, sonra değişiklik
+`git update-index --skip-worktree` ile saklanıyordu. Bu "repo = değişmez
+şablon" değişmezini bozuyor, sonraki `git pull`'da merge conflict üretiyor
+ve `git status` yalan söylüyordu. `hooks/qemu` için de aynı desen vardı.
+
+- Patch'lenmiş XML artık doğrudan `/var/lib/libvirt/win10.xml` altına
+  yazılıyor; **kaynak repo dosyasına dokunulmuyor.**
+- Tüm `git update-index` çağrıları kaldırıldı.
+
+## 🟠 Fixed — 3+ PCI passthrough'ta XML senkronu sessizce atlanıyordu
+
+`counter[0] != 2` ise python `sys.exit(1)` veriyordu — **kullanıcıya hiçbir
+uyarı gitmeden**. 2 GPU + NIC geçiren bir kurulumda hook yeni PCI adresine
+bind olup libvirt eski adresi arıyor, yani "device not found" — ve sebebi
+görünmüyordu.
+
+- 0 hostdev → gerçek hata, çıkılıyor.
+- 3+ hostdev → ilk 2'si yazılıyor, **kaç tanesinin elle düzenleneceği
+  `stderr`'e basılıyor** ve doğrulama komutu gösteriliyor.
+
+## 🟡 Fixed — Ollama isteminde literal `\n`
+
+`jq --arg pr "EN: $text\nTR:"` — jq `--arg` C kaçışlarını yorumlamaz, model
+tek satırda `EN: …\nTR:` görüyordu. Artık `printf 'EN: %s\nTR:'` ile gerçek
+satır sonu üretiliyor.
+
+## 🟡 Fixed — `SUPER+SHIFT+T` çevirisi ilk satırda kesiliyordu
+
+`| { read -r _t; notify-send … "$_t"; }` — `read -r` yalnızca ilk satırı
+okur, çok satırlı çevirinin tamamı kayboluyordu. Artık tüm çıktı
+değişkende toplanıyor.
+
+## 🟡 Fixed — Canlı duvar kağıdı sessizce hiç açılmıyordu
+
+`mpvpaper.service` `ConditionPathExists = ${wallpaperVideo}` taşıyor. Dosya
+yoksa systemd unit'i **sessizce** atlar — ne hata ne duvar kağıdı.
+`install.sh` yalnızca yol soruyor, videoyu indirmiyordu.
+
+- Oturum açılışında görünür `notify-send -u critical` kontrolü eklendi.
+
+## 🟡 Fixed — `wuwa-auto.sh` hiç dinlenmiyordu
+
+Kalıcı `while true` döngüsü 3 saniyede bir 2× `grim` + 2× `mogrify` +
+2× `tesseract` çalıştırıyordu — tüm gün, oyun oynanırken bile. Tesseract
+ağır bir CPU yükü.
+
+- Hiçbir bölgede değişiklik yoksa bekleme 3s → 30s'e kademeli çıkıyor,
+  ilk değişiklikte anında 3s'ye dönüyor.
+
+## 🟡 Fixed — Waybar'da boşaltılmış Nerd Font ikonları
+
+`pulseaudio` (`headphone`, `phone`, `portable`, `car`) ve `mpris`
+(`spotify`, `chromium`) için glyph'ler boş string'e düşmüştü; komşular
+duruyordu. Kulaklık/Spotify ikonu hiç çizilmiyordu. Dolduruldu.
+
+## 🔧 Removed / Moved
+
+- **Kök `shell.nix` silindi.** İkinci bir geliştirme ortamıydı: `<nixpkgs>`
+  channel + `nixpkgs-fmt`, `flake.nix`'teki `devShells` ile (`nixfmt-rfc-style`)
+  çelişiyordu. Artık tek yol: `nix develop ./nixos`.
+- **`ANALIZ-2026-10-05.md` → `docs/archive/`** (zip (3) @ `97a1665` için
+  yazılmıştı, bu kod `0d35833` — en "güncel" görünen belge en eski kodu
+  anlatıyordu).
+- **`nixos-hyprland-vfio-analiz.md` → `docs/archive/`** (v2 raporu).
+- **`F-¦X-MAN-¦FEST.md` → `FIX-MANIFEST.md`.** Zip Windows'ta yapıldığı
+  için Türkçe büyük noktalı İ (U+0130) CP1252'ye çevrilip `¦` (0xA6)
+  olmuş. Ayrıca byte-byte aynı olan `FIX-MANIFEST-OLD.md` silindi.
+
+## 📝 Doğrulanan doğrular (dokunulmadı)
+
+- `virtualisation.libvirtd.hooks.qemu.vfio` gerçek bir option; `libvirtd.nix:517`
+  → `ln -s --force … /var/lib/libvirt/hooks/qemu.d/vfio`. Yorumdaki
+  "libvirt `/etc/libvirt/hooks`'i okumaz" tespiti **doğru**.
+- `security.pam.loginLimits` value'su string olabilir (`oneOf [ str int ]`).
+- hyprlock 0.9.6 `$TIME` / `$USER`'ı destekliyor (`IWidget::formatString`,
+  `IWidget.cpp:200,208`) ve otomatik tazeliyor. `assets/example.conf:79`
+  da `text = $TIME` kullanıyor.
+- `hyprland.conf` kullanılıyor, yok sayılmıyor. `Jeremy::getMainConfigPath()`
+  önce `.lua` arıyor ama `Hyprutils::Path::findConfig` yalnızca
+  `XDG_CONFIG_HOME` / `XDG_CONFIG_DIRS` / `/etc/xdg` altına bakıyor;
+  NixOS'un `pathsToLink = [ "/share/hypr" ]` ile koyduğu stub
+  `/run/current-system/sw/share/hypr/hyprland.lua` bu dizinlerde **değil**.
+- Gömülü script extractor çalışıyor (7 script çıkarılıyor).
+
+## ⚠️ Hâlâ açık / doğrulanamadı
+
+- `low_latency_layer` `sha256`'ı hiç test edilmemiş ve CI ona dokunmuyor.
+  Bu paket cachix'te yok → ilk kurulumda kaynaktan derlenir; build
+  başarısız olursa `environment.systemPackages` yüzünden **tüm sistem
+  build'i** düşer. Elle doğrulanamadı (build çalıştırılamadı).
+- `hyprlandMonitorLine` default'u hâlâ `monitor = ,preferred,auto,1`
+  (boş ad). Tek monitörde zararsız, çok monitörde anlamsız. Sadece
+  `install.sh` dolduruyor.
+- Aynı anda 3 Vulkan implicit layer aktif (`lsfg-vk` + `low_latency_layer`
+  + `vkbasalt`). Test edilmemiş kombinasyon, default olarak açık.
+- `power-profiles-daemon` ↔ `ananicy-cpp` ↔ `gamemode` üçlüsü CPU
+  önceliğinde birbirine yazıyor; sıra garantisi yok. Kasıtlı bırakıldı,
+  `configuration.nix`'te yorumlandı.
+- `mpvpaper-watchdog` + gamemode `custom.start/end` çift yönetimi sürüyor.
+
+---
+
 # [1.2.2] - 2026-10-04
 
 ## 🔴 Fixed — CI gerçekten doğrulamıyordu

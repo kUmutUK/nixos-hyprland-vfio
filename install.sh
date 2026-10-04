@@ -204,12 +204,9 @@ if [ -d "$REPO_DIR/nixos/hooks" ]; then
         -e "s|^GPU_AUDIO=\".*\"|GPU_AUDIO=\"${gpu_audio}\"|" \
         "$NIXOS_FLAKE_DIR/hooks/qemu" && log "Hook script'teki GPU PCI adresleri de güncellendi."
 
-    git -C "$NIXOS_FLAKE_DIR" update-index --no-skip-worktree hooks/qemu 2>/dev/null || true
-    if git -C "$NIXOS_FLAKE_DIR" rev-parse --git-dir >/dev/null 2>&1; then
-        git -C "$NIXOS_FLAKE_DIR" update-index --skip-worktree hooks/qemu 2>/dev/null \
-            && log "hooks/qemu git'te skip-worktree olarak işaretlendi." \
-            || warn "hooks/qemu için skip-worktree uygulanamadı."
-    fi
+    # DÜZELTME (2026-10-05): buradaki `git update-index --skip-worktree`
+    # kaldırıldı. /etc/nixos/nixos genelde bir git deposu DEĞİLDİR ve
+    # olduğunda da skip-worktree, sonraki pull'da merge conflict çıkarır.
 else
     error "nixos/hooks/ directory not found — configuration.nix will fail to evaluate without it."
 fi
@@ -226,10 +223,18 @@ if [ ! -f "$REPO_DIR/vm-xml/win10.xml" ]; then
 elif ! command -v python3 >/dev/null 2>&1; then
   warn "python3 yok — vm-xml/win10.xml'i elle düzenle (bus/slot/function)."
 else
-  if python3 - "$gpu_pci" "$gpu_audio" "$REPO_DIR/vm-xml/win10.xml" <<'PYEOF'
+  # DÜZELTME (2026-10-05): script daha önce $REPO_DIR/vm-xml/win10.xml dosyasını
+  # YERİNDE değiştirip değişikliği `git update-index --skip-worktree` ile
+  # saklıyordu. Bu, "repo = değişmez şablon" değişmezini bozuyordu: sonraki
+  # `git pull`'da skip-worktree merge conflict üretir, `git status` yalan söyler,
+  # ve kurulum ikinci kez çalıştırılırsa aynı dosya tekrar yazılır.
+  # Artık kaynak dosya SALT-OKUNUR kalıyor; patch'lenmiş XML doğrudan
+  # libvirt'in kendi dizinine yazılıyor.
+  PATCHED_XML="/var/lib/libvirt/win10.xml"
+  if sudo mkdir -p /var/lib/libvirt && python3 - "$gpu_pci" "$gpu_audio" "$REPO_DIR/vm-xml/win10.xml" "$PATCHED_XML" <<'PYEOF'
 import re, sys
 
-gpu, aud, path = sys.argv[1], sys.argv[2], sys.argv[3]
+gpu, aud, src, dst = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
 
 def xml_attrs(addr):
     m = re.match(r'^([0-9a-fA-F]{4}):([0-9a-fA-F]{2}):([0-9a-fA-F]{2})\.([0-9a-fA-F])$', addr)
@@ -238,7 +243,7 @@ def xml_attrs(addr):
     d, b, s, f = m.groups()
     return f'domain="0x{d}" bus="0x{b}" slot="0x{s}" function="0x{f}"'
 
-data = open(path).read()
+data = open(src, encoding="utf-8").read()
 pattern = re.compile(
     r'(<hostdev\b[^>]*>\s*<source>\s*<address\s+)([^/]+)(/>)',
     re.DOTALL)
@@ -252,20 +257,33 @@ def repl(m):
     return m.group(1) + (addrs[i] if i < len(addrs) else m.group(2)) + m.group(3)
 
 new = pattern.sub(repl, data)
-if counter[0] != 2:
-    sys.exit(f"UYARI: XML'de {counter[0]} hostdev bulundu, 2 bekleniyordu. Dosya değiştirilmedi.")
-open(path, 'w').write(new)
+
+# DÜZELTME (2026-10-05): 0 veya 3+ hostdev durumunda eski kod sessizce
+# sys.exit(1) veriyordu. 2 GPU + NIC geçiren bir kurulumda bu, hook'un yeni
+# PCI adresine bind olup libvirt'ın eski adresi aradığı ("device not found")
+# tam olarak felaket senaryosuydu — ama kullanıcı UYARI bile görmüyordu.
+# Artık: 0 hostdev = gerçek hata (çık); 3+ = UYAR ve İLK 2'yi yaz
+# (kalanları elle düzenlemesi için adreslerini stdout'a bas).
+n = counter[0]
+if n == 0:
+    sys.exit("HATA: XML'de PCI hostdev bulunamadı (0 eşleşme). Dosya yazılmadı.")
+if n != 2:
+    print(f"UYARI: XML'de {n} PCI hostdev bulundu, 2 bekleniyordu.", file=sys.stderr)
+    print(f"UYARI: SADECE ilk 2'si yazıldı (GPU={gpu}, Audio={aud}).", file=sys.stderr)
+    print(f"UYARI: {n-2} hostdev elle düzenilmeli — her birinin <source><address>",
+          file=sys.stderr)
+    print("UYARI: satırı aşağıdaki komutla doğrula:", file=sys.stderr)
+    print(f"  grep -n -A3 '<hostdev' {dst}", file=sys.stderr)
+
+open(dst, "w", encoding="utf-8").write(new)
+print(f"OK: {n} hostdev bulundu, {min(n,2)} tanesi güncellendi -> {dst}")
 PYEOF
   then
-    log "vm-xml/win10.xml → GPU=${gpu_pci}, Audio=${gpu_audio}"
-    if git -C "$REPO_DIR" rev-parse --git-dir >/dev/null 2>&1; then
-      git -C "$REPO_DIR" update-index --no-skip-worktree vm-xml/win10.xml 2>/dev/null || true
-      git -C "$REPO_DIR" update-index --skip-worktree vm-xml/win10.xml 2>/dev/null \
-        && log "vm-xml/win10.xml git'te skip-worktree olarak işaretlendi." \
-        || warn "vm-xml/win10.xml için skip-worktree uygulanamadı."
-    fi
+    log "vm-xml/win10.xml -> ${PATCHED_XML} (GPU=${gpu_pci}, Audio=${gpu_audio})"
+    log "Kaynak repo dosyası DEĞİŞTİRİLMEDİ."
+    echo -e "     ${CYAN}sudo virsh define ${PATCHED_XML}${NC}"
   else
-    warn "XML güncellenemedi — vm-xml/win10.xml'i elle düzenle."
+    warn "XML güncellenemedi — win10.xml'i elle düzenle."
   fi
 fi
 
@@ -391,9 +409,10 @@ echo -e "${step_num}. ${CYAN}VM'yi libvirt'e tanıt:${NC}"
 echo -e "   ${CYAN}sudo mkdir -p /var/lib/libvirt/images${NC}"
 echo -e "   ${CYAN}sudo qemu-img create -f qcow2 /var/lib/libvirt/images/win10new.qcow2 120G${NC}"
 echo -e "   ${YELLOW}ISO dosyalarını /var/lib/libvirt/images/ altına kopyalayın${NC}"
-echo -e "   ${CYAN}sudo cp ${REPO_DIR}/vm-xml/win10.xml /var/lib/libvirt/ && sudo virsh define /var/lib/libvirt/win10.xml${NC}"
+echo -e "   ${CYAN}sudo virsh define /var/lib/libvirt/win10.xml${NC}"
 echo -e "   ${CYAN}virsh list --all${NC}   ${YELLOW}→ 'win10' shut off olarak görünmeli${NC}"
-echo -e "   ${YELLOW}Not: PCI adresleri installer tarafından senkronize edildi.${NC}"
+echo -e "   ${CYAN}(XML yukarıdaki adımda zaten /var/lib/libvirt/win10.xml'e yazıldı;${NC}"
+echo -e "    ${CYAN}3+ hostdev varsa UYARI'ya dikkat et — fazlasını elle düzenle.)${NC}"
 ((step_num++))
 
 echo ""
