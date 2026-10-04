@@ -36,7 +36,7 @@ let
     # varsayılan olarak etkindir, sadece disable_environment ile kapatılır.
     installPhase = ''
       runHook preInstall
-      cmake --install .
+      cmake --install build
       runHook postInstall
     '';
 
@@ -398,7 +398,7 @@ in
     networkmanagerapplet brightnessctl playerctl
     pavucontrol cliphist libmtp android-file-transfer
     ntfs3g exfat gparted crow-translate tesseract translate-shell libnotify
-    steam gamemode gamescope mangohud vkbasalt winetricks
+    steam gamemode gamescope mangohud vkbasalt winetricks procps
     heroic protonup-qt wine nodejs
     virt-manager looking-glass-client capitaine-cursors
     btop nvtopPackages.amd fastfetch
