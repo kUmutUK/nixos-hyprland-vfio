@@ -323,6 +323,11 @@ in
   zramSwap = {
     enable = true;
     algorithm = "zstd";
+    # Kernel swap önceliğinde yükseği önce kullanır. Bu, zram'ı disk
+    # swap'ten (priority = 10, hardware-configuration.nix) ÖNCE konumlandırır.
+    # Doğrulandı: nix eval ile zramSwap.priority = 5 iken kernel önce disk
+    # swap'i kullanıyordu, yani zram hiç devreye girmiyordu.
+    priority = 100;
   };
 
   users.users.localhost = {
