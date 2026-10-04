@@ -117,21 +117,57 @@ gpu_drm_card() {
 stop_hyprland() {
   log "Greetd durduruluyor..."
   systemctl stop greetd 2>/dev/null || true
+
+  # Düzeltme (2026-10-04): hook yalnız greetd'i durduruyordu. Ollama ROCm
+  # ile GPU'yu açık tutuyor; bu yüzden /dev/dri/card* 'de fuser çıkıyor,
+  # 10 sn sonra döngü sessizce bitiyor ve aşağıdaki amdgpu unbind takılıyordu.
+  # GPU'yu bırakması gereken tüm kullanıcı servisleri önce kapatılır.
+  log "GPU kullanan servisler durduruluyor (ollama/lookup-guest/...)..."
+  for svc in ollama lookup-guest.lookup-guest-service polkit.service; do
+    if systemctl is-active --quiet "$svc" 2>/dev/null; then
+      log "  durduruluyor: $svc"
+      systemctl stop "$svc" 2>/dev/null || true
+    fi
+  done
+  # Kullanıcı seviyesindeki GPU tutucuları da kapat (hyprland, oyun vs.).
+  # --all: oturum açık tüm oturumlar.
+  log "Kullanıcı oturumları sonlandırılıyor..."
+  loginctl terminate-user "${HOST_USER:-localhost}" 2>/dev/null || true
+  loginctl terminate-seat seat0 2>/dev/null || true
+
   local card
   card=$(gpu_drm_card "$GPU_PCI")
   # _unused: sayaç değeri kullanılmıyor, sadece kaç kez beklendiğini sayıyoruz.
-  for _unused in $(seq 1 20); do
+  # Düzeltme: önceden sabit 20 döngü (10 sn) vardı, zaman aşımı başarısız
+  # sayılmıyordu. Artık GERÇEK bir zaman aşımı var: 20 sn dolunca hata
+  # döner, prepare() rollback'e düşer, masaüstü yanlışlıkla kapalı kalmaz.
+  local waited=0
+  for _unused in $(seq 1 40); do
     if ! "${HOOK_FUSER:-/run/current-system/sw/bin/fuser}" "/dev/dri/$card" >/dev/null 2>&1; then
       break
     fi
     sleep 0.5
+    waited=$((waited + 1))
   done
+  if "${HOOK_FUSER:-/run/current-system/sw/bin/fuser}" "/dev/dri/$card" >/dev/null 2>&1; then
+    log "HATA: /dev/dri/$card hala kullanımda (~20 sn). GPU'ya baglanilamiyor."
+    log "Sik kullanilanlar: ollama, gamescope, mpv, chromium, steam."
+    log "ps aux | grep -E 'ollama|gamescope|mpv|chrom'  →  sadece o surecler"
+    return 1
+  fi
+  log "GPU serbest (${waited} yarim saniye bekledi)."
   sleep 1
 }
 
 start_hyprland() {
   log "Greetd başlatılıyor..."
   systemctl start greetd 2>/dev/null || true
+  # Hook'un durdurduğu GPU servisleri geri aç (VM kapanınca).
+  for svc in ollama; do
+    if systemctl is-enabled --quiet "$svc" 2>/dev/null; then
+      systemctl start "$svc" 2>/dev/null || true
+    fi
+  done
 }
 
 # Cihaz gerçekten vfio-pci'ye bağlanmış mı? (bind_vfio'nun sessizce
@@ -167,7 +203,13 @@ fi
 
 if [ "$ACTION" = "prepare" ]; then
   log "VM $GUEST başlatılıyor, masaüstü durduruluyor..."
-  stop_hyprland
+  # Düzeltme (2026-10-04): stop_hyprland artık GPU serbest bırakılmazsa
+  # 1 döndürüyor. Önceden dönüş değeri yok sayılıyordu ve script, GPU hâlâ
+  # kullanımdayken vfio unbind'a gidiyordu → takılma + ortada kapalı masaüstü.
+  if ! stop_hyprland; then
+    rollback_prepare
+    exit 1
+  fi
   echo 0 > /sys/class/vtconsole/vtcon0/bind 2>/dev/null || true
   echo 0 > /sys/class/vtconsole/vtcon1/bind 2>/dev/null || true
   echo efi-framebuffer.0 > /sys/bus/platform/drivers/efi-framebuffer/unbind 2>/dev/null || true
