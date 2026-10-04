@@ -330,8 +330,7 @@ let
     bind = $mainMod SHIFT, 0, movetoworkspace, 10
 
     bind = $mainMod, G, togglegroup
-    bind = $mainMod, Tab, changegroupactive
-
+    
     bind = $mainMod, Tab, workspace, previous
 
     binde = , XF86AudioRaiseVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+
