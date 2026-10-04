@@ -157,10 +157,13 @@ read -rp "Wallpaper video path [${wallpaper_video}]: " input_video
 [[ -n "$input_video" ]] && wallpaper_video="$input_video"
 
 echo ""
-read -rp "Git user name [Umpug]: " git_name
-git_name="${git_name:-Umpug}"
-read -rp "Git email [141457520+kUmutUK@users.noreply.github.com]: " git_email
-git_email="${git_email:-141457520+kUmutUK@users.noreply.github.com}"
+# DÜZELTME: varsayılanlar bakımcının gerçek kimliğiydi ("Umpug" /
+# 141457520+kUmutUK@...). Enter'a basılırsa tüm commit'ler BAŞKA BİRİYE
+# atfediliyordu. Varsayılan artık home.nix ile aynı: changeme / you@example.com
+read -rp "Git user name [changeme]: " git_name
+git_name="${git_name:-changeme}"
+read -rp "Git email [you@example.com]: " git_email
+git_email="${git_email:-you@example.com}"
 
 # ─── Backup ──────────────────────────────────────────────
 step "Backing up current configurations"
@@ -336,6 +339,11 @@ apply_var() {
   fi
 }
 
+if [ "$git_name" = "changeme" ] || [ "$git_email" = "you@example.com" ]; then
+  warn "Git kimliği 'changeme'/'you@example.com' olarak kaldı — commit'ler"
+  warn "bu sahte kimlikle etiketlenecek. Kendi bilgilerini girmek için"
+  warn "home.nix içindeki gitName / gitEmail değerlerini elle değiştir."
+fi
 apply_var "gitName" "$git_name"
 apply_var "gitEmail" "$git_email"
 apply_var "monitorOutput" "$monitor_output"
