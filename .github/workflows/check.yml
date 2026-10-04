@@ -20,6 +20,21 @@ jobs:
 
       # ---- GATE STEPS (must pass) ----
 
+      - name: shellcheck
+        # install.sh ve VFIO hook'u tarar. 2026-10-04'te gate'e alındı.
+        # Önceden "REPORT STEPS" altında continue-on-error: true ile çalışıyordu,
+        # yani bir regresyon CI'yi kırmıyordu. Gate'e çevirilmeden önce hook'taki
+        # iki uyarı giderildi: kullanılmayan VFIO_PATH değişkeni (SC2034) ve
+        # kullanılmayan döngü sayacı (SC2034).
+        run: |
+          if ! command -v shellcheck >/dev/null 2>&1; then
+            echo "shellcheck not preinstalled, installing…"
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq shellcheck
+          fi
+          shellcheck -S warning install.sh nixos/hooks/qemu
+          echo "  shellcheck OK"
+
       - name: Nix syntax check
         run: |
           cd nixos
@@ -55,9 +70,16 @@ jobs:
           echo "  flake output structure OK"
 
       - name: Flake path consistency
+        # install.sh artık komutları ${NIXOS_FLAKE_DIR} ile basıyor, yani
+        # güncel `/etc/nixos/nixos#nixos` metni yalnızca yorumlarda geçiyor.
+        # Eski grep bu yüzden sadece yoruma bakıyor ve gerçek bir şey
+        # doğrulamıyordu. Artık asıl invaryantı kontrol ediyoruz: flake dizini
+        # /etc/nixos/nixos olmalı ve dokümanlar aynı yolu vermeli.
         run: |
+          grep -qE '^NIXOS_FLAKE_DIR="\$NIXOS_DIR/nixos"$' install.sh \
+            || { echo "::error file=install.sh::NIXOS_FLAKE_DIR must be \$NIXOS_DIR/nixos"; exit 1; }
           expected="/etc/nixos/nixos#nixos"
-          for f in install.sh KURULUM.md README.md nixos/home.nix; do
+          for f in KURULUM.md README.md nixos/home.nix; do
             grep -q -- "$expected" "$f" || { echo "::error file=$f::$expected missing"; exit 1; }
           done
           echo "  flake path consistent: $expected"
@@ -75,9 +97,3 @@ jobs:
         run: |
           cd nixos
           nix run nixpkgs#deadnix -- . || echo "::warning::deadnix warnings present"
-
-      - name: shellcheck (info)
-        continue-on-error: true
-        run: |
-          shellcheck -S warning install.sh nixos/hooks/qemu \
-            || echo "::warning::shellcheck warnings present"
