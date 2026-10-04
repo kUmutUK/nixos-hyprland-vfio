@@ -139,27 +139,34 @@ stop_hyprland() {
   loginctl terminate-user "${HOST_USER:-localhost}" 2>/dev/null || true
   loginctl terminate-seat seat0 2>/dev/null || true
 
-  local card
+  local card nodes
   card=$(gpu_drm_card "$GPU_PCI")
+  # cardN yaninda renderD* de kontrol edilmeli: ROCm/Ollama yalnizca
+  # render node'u acabiliyor, cardN bos gorunuyor.
+  nodes=$(ls -d /sys/bus/pci/devices/"$GPU_PCI"/drm/renderD* 2>/dev/null |
+         sed 's|.*/||' | sed 's|^|/dev/dri/|')
+  nodes="/dev/dri/$card ${nodes:-}"
   # _unused: sayaç değeri kullanılmıyor, sadece kaç kez beklendiğini sayıyoruz.
   # Düzeltme: önceden sabit 20 döngü (10 sn) vardı, zaman aşımı başarısız
   # sayılmıyordu. Artık GERÇEK bir zaman aşımı var: 20 sn dolunca hata
   # döner, prepare() rollback'e düşer, masaüstü yanlışlıkla kapalı kalmaz.
   local waited=0
   for _unused in $(seq 1 40); do
-    if ! "${HOOK_FUSER:-/run/current-system/sw/bin/fuser}" "/dev/dri/$card" >/dev/null 2>&1; then
+    # shellcheck disable=SC2086
+    if ! "${HOOK_FUSER:-/run/current-system/sw/bin/fuser}" $nodes >/dev/null 2>&1; then
       break
     fi
     sleep 0.5
     waited=$((waited + 1))
   done
-  if "${HOOK_FUSER:-/run/current-system/sw/bin/fuser}" "/dev/dri/$card" >/dev/null 2>&1; then
+  # shellcheck disable=SC2086
+  if "${HOOK_FUSER:-/run/current-system/sw/bin/fuser}" $nodes >/dev/null 2>&1; then
     log "HATA: /dev/dri/$card hala kullanımda (~20 sn). GPU'ya baglanilamiyor."
     log "Sik kullanilanlar: ollama, gamescope, mpv, chromium, steam."
     log "ps aux | grep -E 'ollama|gamescope|mpv|chrom'  →  sadece o surecler"
     return 1
   fi
-  log "GPU serbest (${waited} yarim saniye bekledi)."
+  log "GPU serbest ($nodes kontrol edildi, ${waited} yarim saniye bekledi)."
   sleep 1
 }
 
