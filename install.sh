@@ -17,11 +17,6 @@ step()  { echo -e "\n${BOLD}${CYAN}▶ $1${NC}"; }
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKUP_DIR="$HOME/.nixos-config-backup-$(date +%Y%m%d-%H%M%S)"
 NIXOS_DIR="/etc/nixos"
-# Flake nixos/ altında olduğu için dosyalar da /etc/nixos/nixos/ altına
-# gider. Bu, KURULUM.md'deki tam disk kurulum yoluyla AYNI sonucu verir:
-# tek bir flake yolu kalır → /etc/nixos/nixos#nixos
-# (Daha önce dosyalar düz /etc/nixos/'a kopyalanıp rebuild komutu
-#  /etc/nixos/nixos#nixos'i gösteriyordu; o yol hiç oluşmuyordu.)
 NIXOS_FLAKE_DIR="$NIXOS_DIR/nixos"
 
 echo ""
@@ -89,14 +84,10 @@ if [[ "$CPU_VENDOR" != "amd" || "$GPU_VENDOR" != "amd" ]]; then
     echo "  - Remove 'amd_pstate=active' kernel parameter"
   fi
   if [[ "$GPU_VENDOR" == "nvidia" ]]; then
-    # DÜZELTME (2026-10-04): bu config'te `videoDrivers` option'ı hiç
-    # tanımlı değil (NVIDIA yolu hiç yazılmamış) — kullanıcı var olmayan
-    # bir yeri düzenlemeye yönlendiriyordu. Gerçek gerekenler:
     echo "  - Bu repo NVIDIA'yı desteklemiyor; amdgpu varsayılan."
     echo "  - Remove AMD_VULKAN_ICD, RADV_PERFTEST variables"
     echo "  - Switch ollama package to ollama-cuda"
   elif [[ "$GPU_VENDOR" == "intel" ]]; then
-    # DÜZELTME (2026-10-04): yine `videoDrivers` yok; gerçek değişecek yerler:
     echo "  - Remove AMD-specific env vars and amdgpu.ppfeaturemask"
     echo "  - Switch ollama to pkgs.ollama (CPU only)"
   fi
@@ -115,10 +106,6 @@ read -rp "Enter GPU VGA PCI address (e.g. 0000:0b:00.0): " gpu_pci
 read -rp "Enter GPU Audio PCI address (e.g. 0000:0b:00.1): " gpu_audio
 
 # ─── IOMMU group preflight ─────────────────────────────────
-# Single-GPU VFIO passthrough çalışması için GPU'nun ve ses fonksiyonunun
-# bulunduğu IOMMU grubunda başka, passthrough'a dahil edilmeyen bir
-# cihaz olmaması gerekir. Bu kontrol olmadan installer, gerçekte izole
-# olmayan bir GPU için de "kurulum tamam" der.
 step "IOMMU group check"
 short_pci() { echo "$1" | sed -E 's/^0000://'; }
 gpu_short="$(short_pci "$gpu_pci")"
@@ -143,13 +130,11 @@ else
 fi
 
 echo ""
-# Monitör tespiti (hem Hyprland hem de DRM üzerinden)
 monitor_output="DP-3"
 if command -v hyprctl &>/dev/null 2>&1 && hyprctl activeworkspace &>/dev/null 2>&1; then
   monitor_output=$(hyprctl monitors | grep -oPm1 '^Monitor \K\S+')
   log "Active Hyprland monitor: $monitor_output"
 elif [ -d /sys/class/drm ]; then
-  # DRM üzerinden bağlı monitörleri listele
   for card in /sys/class/drm/card*-*; do
     status=$(cat "$card/status" 2>/dev/null)
     if [ "$status" = "connected" ]; then
@@ -167,9 +152,6 @@ read -rp "Hyprland monitor line (e.g. monitor = ,2560x1440@170,auto,1) [monitor 
 hypr_mon_line="${hypr_mon_line:-monitor = ,preferred,auto,1}"
 
 echo ""
-# Duvar kağıdı video yolu
-# Bu varsayılan home.nix içindeki mpvpaper.service ile AYNI olmalı, aksi halde
-# servis var olmayan bir dosyayı açmaya çalışıp her 3 saniyede yeniden başlar.
 wallpaper_video="/home/localhost/Downloads/arthur-leywin-the-beginning-after-the-end.3840x2160.mp4"
 read -rp "Wallpaper video path [${wallpaper_video}]: " input_video
 [[ -n "$input_video" ]] && wallpaper_video="$input_video"
@@ -199,9 +181,6 @@ step "Copying configuration files"
 [[ ! -d "$REPO_DIR/nixos" ]] && error "nixos/ directory not found in repository."
 
 sudo mkdir -p "$NIXOS_FLAKE_DIR"
-# low_latency_layer.json.in ARTIK GEREKMİYOR: configuration.nix artık elle
-# yazılmış manifest kullanmıyor, upstream'in (cmake'in) kurduğu doğru manifesti
-# kullanıyor. Dosya repodan da silindi.
 for f in configuration.nix home.nix flake.nix flake.lock; do
     if [ -f "$REPO_DIR/nixos/$f" ]; then
         sudo cp "$REPO_DIR/nixos/$f" "$NIXOS_FLAKE_DIR/$f"
@@ -212,23 +191,11 @@ for f in configuration.nix home.nix flake.nix flake.lock; do
 done
 
 if [ -d "$REPO_DIR/nixos/hooks" ]; then
-    # rm -rf: ikinci çalıştırmada "hooks/hooks" diye iç içe dizin oluşuyordu
     sudo rm -rf "$NIXOS_FLAKE_DIR/hooks"
     sudo cp -r "$REPO_DIR/nixos/hooks" "$NIXOS_FLAKE_DIR/hooks"
     sudo chmod 0755 "$NIXOS_FLAKE_DIR/hooks/qemu"
-    log "Copied hooks/ (configuration.nix references ./hooks/qemu as a relative path — without this, nixos-rebuild fails with 'path does not exist')."
+    log "Copied hooks/ (configuration.nix references ./hooks/qemu as a relative path)."
 
-    # configuration.nix'teki gpuPCI/gpuAudio değişkenleri hiçbir yerde
-    # kullanılmıyor (yalnızca bu script'in sed ile hedeflediği ölü
-    # değişkenler) — asıl VFIO davranışını belirleyen, hooks/qemu
-    # içindeki GPU_PCI/GPU_AUDIO sabitleri. Onları güncellemezsek,
-    # kullanıcı burada farklı bir PCI adresi girse bile gerçek hook
-    # hep 0000:0b:00.0 / .1'i kullanmaya devam ederdi.
-    # sed yalnızca KOPYALANAN dosyaya ($NIXOS_FLAKE_DIR) uygulanır, repodaki
-    # orijinale değil — ama $NIXOS_FLAKE_DIR git deposunun içindeyse
-    # (örn. /etc/nixos/nixos) sonraki `git pull` conflict verir. Bu yüzden
-    # değişikliği git'e "yok say" diye işaretliyoruz; repodaki dosya
-    # temiz kalıyor, `git pull` sorunsuz çalışıyor.
     sudo sed -i \
         -e "s|^GPU_PCI=\".*\"|GPU_PCI=\"${gpu_pci}\"|" \
         -e "s|^GPU_AUDIO=\".*\"|GPU_AUDIO=\"${gpu_audio}\"|" \
@@ -237,11 +204,66 @@ if [ -d "$REPO_DIR/nixos/hooks" ]; then
     git -C "$NIXOS_FLAKE_DIR" update-index --no-skip-worktree hooks/qemu 2>/dev/null || true
     if git -C "$NIXOS_FLAKE_DIR" rev-parse --git-dir >/dev/null 2>&1; then
         git -C "$NIXOS_FLAKE_DIR" update-index --skip-worktree hooks/qemu 2>/dev/null \
-            && log "hooks/qemu git'te skip-worktree olarak işaretlendi (git pull çakışmayacak)." \
-            || warn "hooks/qemu için skip-worktree uygulanamadı; sonraki 'git pull'da conflict çıkabilir."
+            && log "hooks/qemu git'te skip-worktree olarak işaretlendi." \
+            || warn "hooks/qemu için skip-worktree uygulanamadı."
     fi
 else
     error "nixos/hooks/ directory not found — configuration.nix will fail to evaluate without it."
+fi
+
+# ─── VM XML PCI senkronizasyonu (yeni) ──────────────────
+# Installer eskiden sadece hooks/qemu içindeki GPU_PCI/GPU_AUDIO'yu
+# güncelliyordu; win10.xml'deki <hostdev> <source> <address> blokları
+# ise sabit kalıyordu. Sonuç: hook yeni PCI adresini vfio-pci'ye bind
+# ediyor ama libvirt hâlâ eski adresi aradığı için VM "device not found"
+# ile başlamıyordu.
+step "VM XML PCI senkronizasyonu"
+if [ ! -f "$REPO_DIR/vm-xml/win10.xml" ]; then
+  warn "vm-xml/win10.xml bulunamadı — XML'i elle düzenle."
+elif ! command -v python3 >/dev/null 2>&1; then
+  warn "python3 yok — vm-xml/win10.xml'i elle düzenle (bus/slot/function)."
+else
+  if python3 - "$gpu_pci" "$gpu_audio" "$REPO_DIR/vm-xml/win10.xml" <<'PYEOF'
+import re, sys
+
+gpu, aud, path = sys.argv[1], sys.argv[2], sys.argv[3]
+
+def xml_attrs(addr):
+    m = re.match(r'^([0-9a-fA-F]{4}):([0-9a-fA-F]{2}):([0-9a-fA-F]{2})\.([0-9a-fA-F])$', addr)
+    if not m:
+        sys.exit(f"geçersiz PCI adresi: {addr}")
+    d, b, s, f = m.groups()
+    return f'domain="0x{d}" bus="0x{b}" slot="0x{s}" function="0x{f}"'
+
+data = open(path).read()
+pattern = re.compile(
+    r'(<hostdev\b[^>]*>\s*<source>\s*<address\s+)([^/]+)(/>)',
+    re.DOTALL)
+
+addrs = [xml_attrs(gpu), xml_attrs(aud)]
+counter = [0]
+
+def repl(m):
+    i = counter[0]
+    counter[0] += 1
+    return m.group(1) + (addrs[i] if i < len(addrs) else m.group(2)) + m.group(3)
+
+new = pattern.sub(repl, data)
+if counter[0] != 2:
+    sys.exit(f"UYARI: XML'de {counter[0]} hostdev bulundu, 2 bekleniyordu. Dosya değiştirilmedi.")
+open(path, 'w').write(new)
+PYEOF
+  then
+    log "vm-xml/win10.xml → GPU=${gpu_pci}, Audio=${gpu_audio}"
+    if git -C "$REPO_DIR" rev-parse --git-dir >/dev/null 2>&1; then
+      git -C "$REPO_DIR" update-index --no-skip-worktree vm-xml/win10.xml 2>/dev/null || true
+      git -C "$REPO_DIR" update-index --skip-worktree vm-xml/win10.xml 2>/dev/null \
+        && log "vm-xml/win10.xml git'te skip-worktree olarak işaretlendi." \
+        || warn "vm-xml/win10.xml için skip-worktree uygulanamadı."
+    fi
+  else
+    warn "XML güncellenemedi — vm-xml/win10.xml'i elle düzenle."
+  fi
 fi
 
 warn "hardware-configuration.nix was NOT copied (machine-specific — UUID'ler size özel)."
@@ -251,34 +273,14 @@ echo ""
 echo "   Mevcut sistemde zaten varsa:"
 echo -e "     ${CYAN}sudo cp ${NIXOS_DIR}/hardware-configuration.nix ${NIXOS_FLAKE_DIR}/${NC}"
 echo ""
-echo "   Yeni kurulumda (önce nixos-generate-config çalıştırdıysanız):"
+echo "   Yeni kurulumda:"
 echo -e "     ${CYAN}sudo cp /mnt/etc/nixos/hardware-configuration.nix ${NIXOS_FLAKE_DIR}/${NC}"
 echo ""
 echo "   Ya da elle oluşturun:"
 echo -e "     ${CYAN}sudo nixos-generate-config --root /mnt${NC}"
 echo -e "     ${CYAN}lsblk -f${NC}  # UUID'leri kontrol edin"
 
-# ─── P0: /home/.snapshots alt hacmi ────────────────────────
-# services.snapper.configs.home (SUBVOLUME = "/home") için NixOS snapper
-# modülü her SUBVOLUME'ün içinde ".snapshots" alt hacmi istiyor
-# (nixos/modules/services/misc/snapper.nix). hardware-configuration.nix bu
-# hacmi "subvol=@home/.snapshots" olarak MOUNT ediyor ve neededForBoot = true.
-#
-# Alt hacim diskte YOKSA mount birimi başarısız olur → root filesystem'i de
-# "/home" bekler olduğu için acil kipine (emergency mode) düşersiniz.
-# Bu yüzden rebuild'dan ÖNCE oluşturulmalı; bu adım daha önce hiçbir yerde
-# yoktu, yani tek P0 blocker installer'da karşılanmıyordu.
-step "VM disk image"
-sudo mkdir -p /var/lib/libvirt/images /var/lib/libvirt/qemu
-if [ ! -f /var/lib/libvirt/images/win10new.qcow2 ]; then
-  warn "VM diski yok — 120G qcow2 oluşturuluyor."
-  sudo qemu-img create -f qcow2 /var/lib/libvirt/images/win10new.qcow2 120G
-fi
-echo "  ISO dosyalarını /var/lib/libvirt/images/ altına kopyalayın:"
-echo "    Win10_22H2_English_x64v1.iso"
-echo "    virtio-win-0.1.285.iso"
-echo ""
-
+# ─── Btrfs snapshot subvolume ───────────────────────────
 step "Btrfs snapshot subvolume"
 if findmnt -no FSTYPE /home 2>/dev/null | grep -qi btrfs; then
   if [ -d /home/.snapshots ]; then
@@ -293,12 +295,19 @@ else
 fi
 echo ""
 
-# ─── P1: /nix/persist/home ───────────────────────────────
-# home.nix'te `home.persistence."/nix/persist/home"` tanımlı (lsfg-vk shader
-# önbelleği). impermanence bu dizini kalıcı depolama kökü olarak kullanır;
-# dizin yoksa Home Manager activation bind-mount'u sessizce başarısız olur
-# ve ~/.config/lsfg-vk oluşmaz. /nix bir btrfs alt hacmi (nodatacow) olduğu
-# için diskte kalıcıdır; tmpfiles kuralı da her boot'ta idempotent çalışır.
+# ─── VM disk image ──────────────────────────────────────
+step "VM disk image"
+sudo mkdir -p /var/lib/libvirt/images /var/lib/libvirt/qemu
+if [ ! -f /var/lib/libvirt/images/win10new.qcow2 ]; then
+  warn "VM diski yok — 120G qcow2 oluşturuluyor."
+  sudo qemu-img create -f qcow2 /var/lib/libvirt/images/win10new.qcow2 120G
+fi
+echo "  ISO dosyalarını /var/lib/libvirt/images/ altına kopyalayın:"
+echo "    Win10_22H2_English_x64v1.iso"
+echo "    virtio-win-0.1.285.iso"
+echo ""
+
+# ─── /nix/persist/home ──────────────────────────────────
 step "Persistent storage directory"
 if [ -d /nix/persist/home ]; then
   log "/nix/persist/home already exists."
@@ -315,19 +324,15 @@ step "Applying safe variable substitutions"
 HOME_NIX="$NIXOS_FLAKE_DIR/home.nix"
 apply_var() {
   local var_name="$1" new_value="$2"
-  # [[:space:]]* yerine sabit boşluk sayısına güvenmiyoruz: home.nix'teki
-  # hizalama boşlukları script'in beklediğinden farklıysa literal sed
-  # deseni hiçbir şeyi değiştirmeden sessizce başarılı döner.
   if ! grep -qE "^[[:space:]]*${var_name}[[:space:]]*=" "$HOME_NIX"; then
-    warn "Variable '${var_name}' not found in home.nix — skipped, please set it manually."
+    warn "Variable '${var_name}' not found in home.nix — skipped."
     return
   fi
   sudo sed -i -E "s|^([[:space:]]*${var_name}[[:space:]]*=).*;|\1 \"${new_value}\";|" "$HOME_NIX"
-  # Doğrula: satır gerçekten yeni değeri içeriyor mu?
   if grep -qF "\"${new_value}\";" "$HOME_NIX"; then
     log "Set ${var_name}."
   else
-    warn "Failed to verify substitution for '${var_name}' — check home.nix manually."
+    warn "Failed to verify substitution for '${var_name}'."
   fi
 }
 
@@ -369,21 +374,18 @@ fi
 echo ""
 echo -e "${step_num}. Create the hashed password file:"
 echo -e "   ${CYAN}mkpasswd --method yescrypt | sudo tee /etc/nixos/hashedPassword${NC}"
-echo -e "   ${CYAN}sudo chmod 600 /etc/nixos/hashedPassword${NC}   ${YELLOW}(tee 644 acar; hash okunur kalmasin)${NC}"
-echo -e "   ${YELLOW}(mkpasswd, whois paketiyle gelir; sistemde yoksa: nix-shell -p whois)${NC}"
-echo -e "   ${YELLOW}Sıfırlama:  sudo rm /etc/nixos/hashedPassword${NC}"
+echo -e "   ${CYAN}sudo chmod 600 /etc/nixos/hashedPassword${NC}   ${YELLOW}(tee 644 acar)${NC}"
+echo -e "   ${YELLOW}(mkpasswd, whois paketiyle gelir)${NC}"
 ((step_num++))
 
 echo ""
-echo -e "${step_num}. ${CYAN}VM'yi libvirt'e tanıt (ATLAMA):${NC}"
-echo -e "   ${YELLOW}Bu adım hiçbir dokümanda yoktu; atlanırsa domain tanımsız${NC}"
-echo -e "   ${YELLOW}kalır, hook'un \$GUEST=\"win10\" filtresi eşleşmez ve VFIO${NC}"
-echo -e "   ${YELLOW}hiç devreye girmez.${NC}"
-echo -e "   ${CYAN}sudo mkdir -p /var/lib/libvirt/images && sudo qemu-img create -f qcow2 /var/lib/libvirt/images/win10new.qcow2 120G${NC}"
-echo "   ${YELLOW}ISO dosyalarını /var/lib/libvirt/images/ altına kopyalayın${NC}"
+echo -e "${step_num}. ${CYAN}VM'yi libvirt'e tanıt:${NC}"
+echo -e "   ${CYAN}sudo mkdir -p /var/lib/libvirt/images${NC}"
+echo -e "   ${CYAN}sudo qemu-img create -f qcow2 /var/lib/libvirt/images/win10new.qcow2 120G${NC}"
+echo -e "   ${YELLOW}ISO dosyalarını /var/lib/libvirt/images/ altına kopyalayın${NC}"
 echo -e "   ${CYAN}sudo cp ${REPO_DIR}/vm-xml/win10.xml /var/lib/libvirt/ && sudo virsh define /var/lib/libvirt/win10.xml${NC}"
-echo -e "   ${CYAN}virsh list --all${NC}   ${YELLOW}→ 'win10' running değil ama 'shut off' olarak görünmeli${NC}"
-echo -e "   ${YELLOW}Not: disk/NVRAM yolları XML'de sabit; kendi diskine göre düzenle.${NC}"
+echo -e "   ${CYAN}virsh list --all${NC}   ${YELLOW}→ 'win10' shut off olarak görünmeli${NC}"
+echo -e "   ${YELLOW}Not: PCI adresleri installer tarafından senkronize edildi.${NC}"
 ((step_num++))
 
 echo ""
@@ -391,13 +393,10 @@ echo -e "${step_num}. Rebuild, then REBOOT:"
 echo -e "   ${CYAN}sudo nixos-rebuild dry-activate --flake ${NIXOS_FLAKE_DIR}#nixos${NC}"
 echo -e "   ${CYAN}sudo nixos-rebuild switch     --flake ${NIXOS_FLAKE_DIR}#nixos${NC}"
 echo -e "   ${CYAN}sudo reboot${NC}"
-echo -e "   ${YELLOW}REBOOT ZORUNLU:${NC} iommu=pt, amd_iommu=on, amdgpu.ppfeaturemask"
-echo -e "   ${YELLOW}gibi kernel parametreleri yalnızca yeniden başlatınca etkin olur.${NC}"
-echo -e "   ${YELLOW}Reboot OLMADAN VFIO testi yapılırsa IOMMU açık değildir ve${NC}"
-echo -e "   ${YELLOW}GPU'yu vfio-pci'ye bağlamak mümkün olmaz.${NC}"
+echo -e "   ${YELLOW}REBOOT ZORUNLU: iommu=pt, amd_iommu=on, amdgpu.ppfeaturemask${NC}"
 ((step_num++))
 
 echo ""
 echo -e "${RED}  DO NOT rebuild until disk UUIDs are correct!${NC}"
 echo ""
-log "Setup complete. Follow the manual steps above and enjoy your system!"
+log "Setup complete."
