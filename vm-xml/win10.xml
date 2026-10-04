@@ -8,8 +8,6 @@
   </metadata>
   <memory unit="KiB">16777216</memory>
   <currentMemory unit="KiB">16777216</currentMemory>
-  <!-- current="6" eklendi: hypervisor tarafından anlık etkin vCPU sayısı.
-       topology aşağıda <cpu> bloğunda tanımlı. -->
   <vcpu placement="static" current="6">6</vcpu>
   <os firmware="efi">
     <type arch="x86_64" machine="pc-q35-10.1">hvm</type>
@@ -43,12 +41,6 @@
     </kvm>
     <vmport state="off"/>
   </features>
-  <!-- topology <cpu> ALTINDA tanımlanır (libvirt >= 0.7.5, docs/formatdomain.rst).
-       Önceden <vcpu> içine konulması gerektiği düşünülüyordu; bu ESKİ biçimdir.
-       Burada olmaması halinde libvirt -smp'ye topology yazmıyor, topoloji
-       varsayılana düşüyordu. Windows 10 Pro'nun soket sınırı nedeniyle bu
-       belirsizlik istemiyoruz: 1 soket × 6 çekirdek × 1 iş parçacığı.
-       (dies/clusters varsayılan 1 → 1×1×1×6×1 = 6 vCPU, <vcpu> ile tutarlı.) -->
   <cpu mode="host-passthrough" check="none" migratable="on">
     <topology sockets="1" cores="6" threads="1"/>
   </cpu>
@@ -198,40 +190,12 @@
     <video>
       <model type="none"/>
     </video>
-    <!-- USB geçişi: bu üç cihaz KİŞİYE ÖZELDİ (2a7a:8a47 = klavye,
-         05ac:024f = Apple Magic Keyboard, 1532:0098 = Razer cihaz).
-         Farklı bir makinede libvirt bu cihazları bulamaz ve VM BAŞLAMAZ.
-         Kendi cihazlarınızın vendor/product kodlarını lspci -nn veya
-         lsusb ile bulup buraya yazın ya da bu blokları yorumda bırakın. -->
     <!--
     <hostdev mode="subsystem" type="usb" managed="yes">
-      <source>
-        <vendor id="0x2a7a"/>
-        <product id="0x8a47"/>
-      </source>
+      <source><vendor id="0x2a7a"/><product id="0x8a47"/></source>
       <address type="usb" bus="0" port="1"/>
     </hostdev>
-    <hostdev mode="subsystem" type="usb" managed="yes">
-      <source>
-        <vendor id="0x05ac"/>
-        <product id="0x024f"/>
-      </source>
-      <address type="usb" bus="0" port="2"/>
-    </hostdev>
-    <hostdev mode="subsystem" type="usb" managed="yes">
-      <source>
-        <vendor id="0x1532"/>
-        <product id="0x0098"/>
-      </source>
-      <address type="usb" bus="0" port="3"/>
-    </hostdev>
     -->
-    <!-- managed="no": nixos/hooks/qemu script'i prepare/release
-         aşamalarında bu cihazların host sürücüsünü (amdgpu/snd_hda_intel
-         <-> vfio-pci) zaten tam olarak yönetiyor. managed="yes" bırakılırsa
-         libvirt de kendi otomatik detach/reattach mantığını devreye sokar
-         ve hook'un yaptığı driver_override/bind işlemleriyle aynı anda
-         çalışarak öngörülemez bir durum (race condition) oluşturabilir. -->
     <hostdev mode="subsystem" type="pci" managed="no">
       <source>
         <address domain="0x0000" bus="0x0b" slot="0x00" function="0x0"/>
