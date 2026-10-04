@@ -232,16 +232,16 @@ nixos-install --flake /mnt/etc/nixos/nixos#nixos --accept-flake-config
 > VFIO sistemi sessizce hiç çalışmaz.
 
 ```bash
-cp -r /mnt/etc/nixos/vm-xml /mnt/etc/nixos/nixos/   # zaten klonlandıysa gerekmez
-sudo mkdir -p /var/lib/libvirt
+# vm-xml zaten §7'de repodan /mnt/etc/nixos/vm-xml olarak kopyalandı.
+sudo mkdir -p /var/lib/libvirt/images /var/lib/libvirt/qemu
 sudo cp /mnt/etc/nixos/vm-xml/win10.xml /var/lib/libvirt/
 sudo virsh define /var/lib/libvirt/win10.xml
 virsh list --all     # 'win10' → "shut off" olarak görünmeli
+```
 
 > ⚠️ **ISO dosyaları:** `virsh start win10` için iki ISO gerekir:
 > `Win10_22H2_English_x64v1.iso` ve `virtio-win-*.iso` →
 > `sudo cp <iso> /var/lib/libvirt/images/`
-```
 
 > ⚠️ XML'deki disk/NVRAM yolları sabit geliyor. Kendi diskine göre
 > düzenlemezsen `virsh start win10` "disk bulunamadı" ile başarısız olur.
@@ -249,6 +249,11 @@ virsh list --all     # 'win10' → "shut off" olarak görünmeli
 > Doğrulama: `sudo virsh dominfo win10` → ad, UUID ve PCI hostdev'ler görünmeli.
 > Hook'un çalıştığını `sudo journalctl -u libvirtd -f` ve
 > `sudo tail -f /var/log/libvirt/qemu/win10.log` ile izleyebilirsin.
+>
+> ⚠️ **Hook logu:** `sudo cat /var/log/libvirt/vfio.log` — GPU'nun gerçekten
+> `vfio-pci`'ye bağlandığını, reset durumunu ve (Navi2x'te mümkünse)
+> kurtarma adımını burada görürsün. `HOST_USER` değişkenini de dışarıdan
+> vermek istersen: `HOST_USER=kullanici sudo virsh start win10`.
 
 ---
 
