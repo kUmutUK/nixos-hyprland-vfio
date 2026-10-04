@@ -68,7 +68,15 @@ let
   # yolları aşağıda HOOK_* değişkenleri olarak enjekte ediliyor; hook bu
   # değişkenleri kullanıyor, tanımlı değillerse /run/current-system/sw/bin'e düşüyor.
   vfioHook = pkgs.writeShellScript "libvirt-vfio-hook" ''
-    export PATH="${lib.makeBinPath [ pkgs.coreutils pkgs.systemd ]}:$PATH"
+    # DÜZELTME: burada yalnızca coreutils + systemd enjekte ediliyordu.
+    # libvirtd'in PATH'i qemu+netcat+swtpm (nixpkgs virtualisation/libvirtd.nix)
+    # ve NixOS `path` listesi PATH'i DEĞİŞTİRİR (Environment="PATH=...").
+    # Hook iki komutu da çağırıyordu ve ikisi de eksikti:
+    #   ls  -> GNU findutils'te (coreutils DEĞİL)
+    #   sed -> GNU sed'de (coreutils DEĞİL)
+    # 2>/dev/null "command not found" hatasını yuttuğu için gpu_drm_card() her
+    # seferinde sessizce card0'a düşüyor ve renderD* taraması hiç yapılmıyordu.
+    export PATH="${lib.makeBinPath [ pkgs.coreutils pkgs.systemd pkgs.findutils pkgs.gnused ]}:$PATH"
     export HOOK_SETPCI="${lib.getExe' pkgs.pciutils "setpci"}"
     export HOOK_FUSER="${lib.getExe' pkgs.psmisc "fuser"}"
     export HOOK_RTCWAKE="${lib.getExe' pkgs.util-linux "rtcwake"}"
