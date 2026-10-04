@@ -8,6 +8,114 @@ This project follows:
 
 ---
 
+# [1.2.1] - 2026-10-04
+
+## 🐛 Fixed — sessiz hatalar (kaynakla doğrulandı)
+
+- **`LOW_LATENCY_LAYER = "1"` sessiz bir no-op'tu.** Pinned rev (`948a561`)
+  yalnızca şu üç değişkeni okuyor: `LOW_LATENCY_LAYER_REFLEX`,
+  `LOW_LATENCY_LAYER_SPOOF_NVIDIA`, `LOW_LATENCY_LAYER_FORCE_DECOUPLED`
+  (`src/layer_context.hh:52-61`). `LOW_LATENCY_LAYER` diye bir değişken
+  **yok**. Bu satır 1.2.0'da eklenmişti ve hiçbir işe yaramıyordu — 1.2.0'ın
+  düzelttiği `ENABLE_LOW_LATENCY_LAYER` hatasının aynı sınıfı.
+  → Satır kaldırıldı, nedeni yorumda belgelendi.
+  (`LOW_LATENCY_LAYER_REFLEX = "1"` kaldı ve DOĞRU; o gerçekten okunuyor.)
+
+- **Tekerlek binding'leri hiç çalışmıyordu — 1.2.0 yorumu ters yöne bakıyordu.**
+  1.2.0 bunu "dwindle uyumu belirsiz, runtime'da doğrulanmadı" diye kaydetmişti.
+  Hyprland v0.55.0 kaynağı bunu kesinleştiriyor:
+  - `scroll:down` / `scroll:up` **hiç üretilmiyor**.
+    `KeybindManager::onAxisEvent` (`src/managers/KeybindManager.cpp:407-434`)
+    tekerleği EKSEN olayı olarak alıp `e.delta<0` için `"mouse_down"`,
+    `e.delta>0` için `"mouse_up"` ismiyle `handleKeybinds()` çağırıyor.
+  - `layoutmsg` komutları yanlıştı: dwindle'in kabul ettiği alt komutlar
+    yalnızca `togglesplit` / `swapsplit` / `rotatesplit` / `movetoroot` /
+    `preselect` / `splitratio` (`src/layout/algorithm/tiled/dwindle/DwindleAlgorithm.cpp:640-733`).
+  - `cycleprev` **hiçbir dispatcher değil**; v0.55.0 listesinde yalnız
+    `cyclenext` var (`src/managers/KeybindManager.cpp:37-105`).
+  → `bind = $mainMod, mouse_down, cyclenext` /
+    `bind = $mainMod, mouse_up, cyclenext prev`.
+
+- **`$mainMod + M` (monocle) hatası veriyordu.** `layoutmsg set monocle`
+  dwindle'da "Unknown dwindle layoutmsg" döndürür. v0.55.0'in legacy
+  dispatcher listesinde çalışma zamanında layout değiştiren **hiçbir komut
+  yok**. Monocle yalnızca `workspace = N, layout:monocle` kuralıyla ya da
+  `hyprwm-community/workspacelayout` plugin'iyle seçilebilir.
+  → Tuş bilinçli olarak bağlı bırakıldı, seçenekler yorumda.
+
+- **`bindm = $mainMod, mouse:272/273` bozuk DEĞİLDİ — yanlış şüphelenmişti.**
+  272/273 = `BTN_LEFT` / `BTN_RIGHT` (0x110 / 0x111, `input-event-codes.h`),
+  yani gerçek buton kodları; `onMouseEvent` onları `"mouse:<code>"` adıyla
+  tetikliyor. SUPER+sol/sürükle = movewindow, SUPER+sağ/sürükle = resizewindow
+  çalışıyor. Tekerlek binding'leriyle karışmıyor (anahtar adları farklı).
+  → Dokunulmadı, yalnızca neden çalıştığı yorumlandı.
+
+- **pyprland config yolu yanlış dosyadaydı ve yorumu da ters yazılmıştı.**
+  pyprland 3.4.4 (`src/constants.py:45-47`):
+  `CONFIG_FILE = ~/.config/pypr/config.toml` (kanonik) ·
+  `LEGACY_CONFIG_FILE = ~/.config/hypr/pyprland.toml` (eski) ·
+  `OLD_CONFIG_FILE = ~/.config/hypr/pyprland.json` (çok eski).
+  1.2.0 kanonik yola yazmış, üstelik "pypr/config.toml pyprland tarafından
+  okunmaz" diye ters yönde açıklama eklemişti. Legacy dosya okunmaya
+  devam ediyor ama her açılışta "Config at legacy location" uyarısı ve
+  ekran bildirimi basıyor (`src/config_loader.py:173-185`).
+  → `pypr/config.toml` + doğru açıklama.
+
+- **`install.sh` artık yalan söylüyordu.** `gpuPCI` / `gpuAudio`
+  değişkenleri 1.2.0'da silinmişti, ama script hâlâ onları
+  `configuration.nix`'te sed'lemeye çalışıp `"GPU PCI addresses set."`
+  logluyordu — sed hiçbir şeyi değiştirmiyor, kullanıcı ise doğru
+  yaptığını sanıyor. → Ölü blok kaldırıldı (gerçek hedef zaten
+  `hooks/qemu`'daki `GPU_PCI`/`GPU_AUDIO`).
+
+- **`install.sh` tek P0 blocker'ı karşılamıyordu.**
+  `fileSystems."/home/.snapshots"` `neededForBoot = true` olduğu için alt
+  hacim diskte yoksa boot acil kipine düşüyor, ama installer bu adımı hiç
+  yapmıyordu. → `btrfs subvolume create /home/.snapshots` installer'a eklendi
+  (zaten varsa atlar, `/home` btrfs değilse uyarır).
+
+- **CI'daki shellcheck adımı hiçbir şey yakalamıyordu.** Adım `REPORT
+  STEPS` altında `continue-on-error: true` ile çalışıyordu. Ayrıca
+  gate'e alınmadan önce hook'ta iki uyarı vardı (`VFIO_PATH` kullanılmıyor,
+  döngü sayacı kullanılmıyor — SC2034), yani "sıfır riskli" değildi.
+  → Uyarılar giderildi, adım `GATE STEPS`'e taşındı ve shellcheck
+  kurulu değilse kendini kuracak şekilde yazıldı.
+
+- **Reboot adımı hiçbir yerde yoktu.** `iommu=pt`, `amd_iommu=on`,
+  `amdgpu.ppfeaturemask` kernel parametreleri `switch` ile uygulanmaz.
+  Reboot olmadan yapılacak VFIO testi IOMMU'suz olur.
+  → `install.sh` son checklist'ine `dry-activate → switch → reboot` eklendi.
+
+## 📝 Corrected — 1.2.0'ın yanlış kaydettiği iki madde
+
+- `argos-translate` **eklenmedi, kaldırıldı.** 1.2.0 "hiçbir `.nix`
+  dosyasında tanımlı değildi → eklendi" diyor; oysa nixpkgs'ta yok ve
+  `environment.systemPackages`'ten çıkarıldı. `wuwa-auto.sh` hâlâ
+  `argos-translate` çağırıyor, paket olmadığı için `translate_fast()`
+  her zaman sessizce başarısız oluyor ve her çeviri Ollama'ya düşüyor.
+  (README §183 doğruydu, CHANGELOG yanlıştı.)
+- README'nin repo ağacında `gemma-modelfile` / `wuwa-modelfile` listeleniyordu;
+  ikisi de 1.2.0'da silinmişti. → Ağaç güncellendi.
+
+## 🧹 Removed — ölü değişken
+
+- `hooks/qemu`: `VFIO_PATH` tanımlıydı ama hiç okunmuyordu (shellcheck
+  SC2034). Kaldırıldı.
+
+## ⚠️ Hâlâ runtime'da doğrulanmamış
+
+- `nixos-rebuild switch` hiç çalıştırılmadı.
+- Hook'un gerçekten çağrıldığı ve GPU'yu vfio-pci'ye bağladığı görülmedi.
+- RX 6700 XT ikinci VM başlatma testi yapılmadı (Navi 22 `gnif/vendor-reset`
+  destek listesinde değil).
+- `low-latency-layer` derivation'ının `sha256`'ı **hiç test edilmemiş**: CI'daki
+  `nix flake show` hiçbir şey build etmiyor, `nix-instantiate --parse` yalnız
+  syntax kontrol ediyor. Hash yanlışsa ilk gerçek derlemede (yani ilk
+  rebuild'da) patlar.
+- `rtcwake -m mem` gerçek S3 mü, BIOS'a bağlı.
+
+---
+
 # [1.2.0] - 2026-10-03
 
 ## 🔴 Fixed — çalışmayan çekirdek işlevler
