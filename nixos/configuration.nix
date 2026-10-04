@@ -58,10 +58,20 @@ let
   #
   # Shebang de ayrı bir sorundu: libvirtd.service'in PATH'i yalnızca
   # qemu + netcat + swtpm içeriyor, bash yok. Bu yüzden bash ve coreutils
-  # store yolundan garanti ediliyor; hook'un kendi /run/current-system/sw/bin
-  # mutlak çağrıları (setpci, fuser, rtcwake) zaten sorun değil.
+  # store yolundan garanti ediliyor.
+  #
+  # psmisc/pciutils/util-linux de PATH'e ekleniyor: hook'ta üç ayrı araç
+  # çağrılıyor ve bunları /run/current-system/sw/bin üzerinden çağırmak,
+  # yani environment.systemPackages'a bağımlı kılmak kırılgan idi —
+  # systemPackages'tan biri düşerse (ör. psmisc) hook sessizce fuser'ı
+  # bulamaz ve stop_hyprland() bekleme döngüsü anında çöker. Artık store
+  # yolları aşağıda HOOK_* değişkenleri olarak enjekte ediliyor; hook bu
+  # değişkenleri kullanıyor, tanımlı değillerse /run/current-system/sw/bin'e düşüyor.
   vfioHook = pkgs.writeShellScript "libvirt-vfio-hook" ''
     export PATH="${lib.makeBinPath [ pkgs.coreutils pkgs.systemd ]}:$PATH"
+    export HOOK_SETPCI="${lib.getExe' pkgs.pciutils "setpci"}"
+    export HOOK_FUSER="${lib.getExe' pkgs.psmisc "fuser"}"
+    export HOOK_RTCWAKE="${lib.getExe' pkgs.util-linux "rtcwake"}"
     ${builtins.readFile ./hooks/qemu}
   '';
 
@@ -332,8 +342,14 @@ in
       # Kendi anahtarınızı ekleyin:
       #   ssh-keygen -t ed25519
       #   cat ~/.ssh/id_ed25519.pub
-      # ardından aşağıya yapıştırın. SSH kullanmayacaksanız bu listeyi
-      # boş bırakıp services.openssh'i kapatabilirsiniz.
+      # ardından aşağıya yapıştırın.
+      #
+      # ⚠️ DİKKAT: liste BOŞ olduğu için (PasswordAuthentication = false,
+      #    PermitRootLogin = "no" ile birlikte) uzaktan giriş TAMAMEN
+      #    kapalıdır. Config'i güncelledikten sonra ssh ile bağlanmayı
+      #    denemeden önce bir anahtar ekleyin. SSH kullanmayacaksanız
+      #    services.openssh.enable = false yapmak daha temiz.
+      # "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... sizin@makine"
     ];
   };
 
@@ -360,7 +376,7 @@ in
       vscodeExtensions = with vscode-extensions; [ continue.continue ];
     })
     brave telegram-desktop discord proton-vpn fzf input-remapper yt-dlp ffmpeg cloudflare-warp
-    qbittorrent flatpak gnome-software xorg.xev wev pcmanfm
+    qbittorrent flatpak gnome-software wev pcmanfm
     imagemagick
     btrfs-progs compsize snapper
     mpvpaper flatpak-builder psmisc
@@ -390,19 +406,50 @@ in
         amd_performance_level = "high";
       };
       custom = {
+        # NOT: mpvpaper.service'i hem burada hem de home.nix içindeki
+        # mpvpaper-watchdog yönetiyor. İkisi de systemctl start/stop
+        # kullandığı için idempotent, ama oyun sırasında watchdog bir "start"
+        # atarsa duvar kağıdı oyun bitmeden geri gelebilir. Tek kaynak
+        # isterseniz aşağıdaki iki satırı silip yalnızca watchdog'u bırakın.
         start = "${pkgs.systemd}/bin/systemctl --user stop mpvpaper.service";
         end   = "${pkgs.systemd}/bin/systemctl --user start mpvpaper.service";
       };
     };
   };
 
+  # qemu.runAsRoot = false iken libvirt, disk/NVRAM dosyalarını
+  # `qemu-libvirtd` kullanıcısıyla açmak zorunda. NixOS'un kendi uyarısı:
+  # "Changing this option to false may cause file permission issues for
+  # existing guests." Daha önce root iken oluşturulmuş dosyalar root'a ait
+  # kalırsa `virsh start win10` "Permission denied" ile başlamaz.
+  # Aşağıdaki oneshot, libvirtd'den ÖNCE sahipliği düzeltir.
+  systemd.services.libvirtd-qemu-ownership = {
+    description = "Fix ownership of libvirt images/NVRAM for qemu-libvirtd";
+    wantedBy = [ "multi-user.target" ];
+    before = [ "libvirtd.service" ];
+    serviceConfig = { Type = "oneshot"; RemainAfterExit = true; };
+    # qemu-libvirtd kullanıcı/grubu libvirtd modülü tarafından oluşturulur;
+    # activation sırasında henüz yoksa chown hata vermesin diye `|| true`.
+    script = ''
+      for d in /var/lib/libvirt/images /var/lib/libvirt/qemu; do
+        if [ -d "$d" ]; then
+          chown -R qemu-libvirtd:qemu-libvirtd "$d" || true
+        fi
+      done
+    '';
+  };
+
   programs.steam.enable = true;
   services.flatpak.enable = true;
-  services.cloudflare-warp.enable = true; #reference:9
+  services.cloudflare-warp.enable = true;
 
   virtualisation.libvirtd = {
     enable = true;
     qemu.swtpm.enable = true;
+    # ⚠️ runAsRoot = false → libvirt qemu'yu `qemu-libvirtd` kullanıcısıyla
+    # çalıştırır. Daha önce root iken oluşturulmuş disk/NVRAM dosyaları
+    # root'a ait kalırsa `virsh start win10` "Permission denied" ile başlamaz.
+    # Aşağıdaki oneshot servisi her boot'ta sahipliği düzeltir.
     qemu.runAsRoot = false;
 
     # libvirt'in gerçekten taradığı yer: /var/lib/libvirt/hooks/qemu.d/vfio
@@ -485,11 +532,31 @@ in
   rulesProvider = pkgs.ananicy-rules-cachyos;
 };
 
+  # ─── Impermanence ───────────────────────────────────────────────────
+  # flake.nix impermanence modülünü import ediyor ama environment.persistence
+  # burada TANIMLANMIYOR; bu yüzden her nixos-rebuild'de şu uyarı basılıyor:
+  #   "environment.persistence: Neither /var/lib/nixos nor any of its parents
+  #    are persisted. The following users are missing a uid: ... "
+  #
+  # ⚠️ Burada environment.persistence."/var/lib/nixos" tanımı EKLEMEK
+  # denendi ve İKİ SEBEPLE GERİ ALINDI (gerçek `nix eval` ile ölçüldü):
+  #   1) Uyarıyı SESSİZE ÇEVRİRMİYOR — tanım eklenmiş halde de aynı uyarı
+  #      basılmaya devam ediyor.
+  #   2) Impermanence'in güncel sürümünde `method` option'ı kaldırılmış
+  #      durumda; persistence alt modülü zorlanınca
+  #      "The option `method` can no longer be used since it's been removed"
+  #      hatası veriyor. Yani uyarıyı susturmanın bedeli daha ağır.
+  #
+  # Gerçek etki düşük: `update-users-groups.pl` UID'leri /etc/passwd'deki
+  # ilk boş slottan (allocId) seçtiği için pratikte her boot'ta aynı kalır.
+  # Bu bir GÜRÜLTÜ uyarısıdır, hata değildir — build'i etkilemez.
+  # Gerçekten susturmak isterseniz tek yol impermanence modülünü tamamen
+  # kaldırmaktır (flake.nix + bu yorum + home.nix'deki home.persistence).
+  #
   # /etc/vulkan/implicit_layer.d, environment.etc ile yazılıyor (Vulkan
-  # manifesti salt-okunur bir store dosyası). Eskiden environment.persistence
-  # ile de aynı dizin impermanence bind-mount'una veriliyordu; persist
-  # dizini ilk açılışta boş olduğu için etc dosyasını gölgeliyordu.
-  # Kalıcılık bu yol için bir şey kazandırmıyor → kaldırıldı.
+  # manifesti salt-okunur bir store dosyası). Bu dizin bilinçli olarak
+  # impermanence bind-mount'una VERİLMİYOR: persist dizini ilk açılışta
+  # boş olduğu için etc dosyasını gölgeler ve Vulkan katmanı kaybolurdu.
   # home.persistence (home.nix) tarafındaki .config/lsfg-vk ise ayrı ve geçerli.
 
   # ─── DNS ────────────────────────────────────────────────────────────

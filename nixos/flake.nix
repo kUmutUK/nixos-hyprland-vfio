@@ -7,7 +7,15 @@
     cachyos-kernel.url = "github:xddxdd/nix-cachyos-kernel";
     home-manager.url = "github:nix-community/home-manager";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
-    hyprland.url = "github:hyprwm/Hyprland/v0.55.0";
+    # ⚠️ Hyprland overlay'i KALDIRILDI.
+    # Önceden `hyprland.url = "github:hyprwm/Hyprland/v0.55.0"` ile Hyprland
+    # 0.55.0 zorlanıyordu. Nixpkgs (nixos-unstable) ise 0.54.3 veriyordu —
+    # yani compositor 1 minor İLERİDE, hyprlock 0.9.5 / hypridle 0.1.7 /
+    # hyprpicker 0.4.6 / hyprpolkitagent 0.1.3 / xdg-desktop-portal-hyprland
+    # 1.3.12 ise 0.54.3'e derlenmişti: 0.54-ABI'lı istemciler 0.55
+    # compositor'a konuşuyordu (özellikle portal sessizce hiçbir şey sunmayabilir).
+    # Artık tüm Hyprland ailesi tek nixpkgs'ten geliyor → ABI tutarlı.
+    # (Geri almak isterseniz: aşağıdaki overlay bloğunu geri açın.)
     lsfg-vk-flake.url = "github:pabloaul/lsfg-vk-flake/main";
     lsfg-vk-flake.inputs.nixpkgs.follows = "nixpkgs";
     
@@ -16,7 +24,7 @@
     impermanence.inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs = { self, nixpkgs, cachyos-kernel, home-manager, hyprland, lsfg-vk-flake, impermanence, ... }:
+  outputs = { self, nixpkgs, cachyos-kernel, home-manager, lsfg-vk-flake, impermanence, ... }:
   let
     system = "x86_64-linux";
   in
@@ -34,11 +42,10 @@
           nixpkgs.config.allowUnfree = true;
           nixpkgs.overlays = [
             cachyos-kernel.overlays.default
-            (final: prev: {
-              hyprland = hyprland.packages.${system}.hyprland;
-            })
           ];
           boot.kernelPackages = pkgs.cachyosKernels.linuxPackages-cachyos-bore;
+          # hyprland, hyprlock, hypridle, hyprpicker, hyprpolkitagent ve
+          # xdg-desktop-portal-hyprland hepsi aynı nixpkgs rev'inden gelir.
           programs.hyprland.package = pkgs.hyprland;
           environment.systemPackages = [ pkgs.pyprland ];
           # home.persistence (home.nix) çalışması için ekstra bir şey

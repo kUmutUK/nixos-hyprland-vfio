@@ -5,7 +5,7 @@ let
   gitEmail           = "141457520+kUmutUK@users.noreply.github.com";
   monitorOutput      = "DP-3";
   hyprlandMonitorLine = "monitor = ,preferred,auto,1";
-  wallpaperVideo     = "/home/localhost/Downloads/arthur-leywin-the-beginning-after-the-end.3840x2160.mp4";
+  wallpaperVideo     = "${config.home.homeDirectory}/Downloads/arthur-leywin-the-beginning-after-the-end.3840x2160.mp4";
 
   gamemodeNotifyScript = pkgs.writeShellScriptBin "gamemode-notify" ''
     NOTIFY_SEND="${pkgs.libnotify}/bin/notify-send"
@@ -580,7 +580,7 @@ let
     };
 
     "custom/temperature" = {
-      exec = "/home/localhost/.local/bin/waybar-temperature.sh";
+      exec = "${config.home.homeDirectory}/.local/bin/waybar-temperature.sh";
       return-type = "json";
       interval = 5;
       on-click = "kitty -e btop";
@@ -844,7 +844,7 @@ in
     # pyprland kurulu ama config'i yoktu; hyprland.conf'taki
     # "pypr toggle term/music/filemanager" bağlantıları tanımsızdı.
     #
-    # pyprland 3.4.4 (nixpkgs 3b4545497180) üç yol tanıyor
+    # pyprland 3.4.4 (kök nixpkgs rev'i 7a0f122f5090) üç yol tanıyor
     # (src/constants.py:45-47):
     #   CONFIG_FILE        = ~/.config/pypr/config.toml     ← KANONİK
     #   LEGACY_CONFIG_FILE = ~/.config/hypr/pyprland.toml  ← ESKİ
@@ -1149,6 +1149,15 @@ done
     '';
   };
 
+  # home.persistence anahtarı DOĞRUDAN kalıcı depolama kök yoludur:
+  # impermanence HM modülünde persistentStoragePath'in varsayılanı anahtarın
+  # kendisidir, yani "/nix/persist/home" gerçek köktür. $HOME'a GÖRE yorumlanmaz.
+  # (Anahtarın mutlak yol olmak zorunda olmasının nedeni modülün tip
+  #  kısıtıdır — göreli yol verilirse eval "not of type 'absolute path'"
+  #  hatasıyla düşüyor; gerçek eval ile doğrulandı.)
+  # ⚠️ Burada yalnızca lsfg-vk shader önbelleği korunuyor. /nix/persist'in
+  # kendisi bu tanımla yönetilmez (impermanence'in "nix" manager'ı bu modül
+  # NixOS tarafında, home.persistence tanımı ona dokunmaz).
   home.persistence."/nix/persist/home" = {
     directories = [ ".config/lsfg-vk" ];
   };
@@ -1393,7 +1402,7 @@ systemd.user.services = {
     Service = {
       Type = "simple";
       Environment = "PATH=${lib.makeBinPath [ pkgs.hyprland pkgs.jq pkgs.socat pkgs.systemd pkgs.gawk ]}";
-      ExecStart = "${pkgs.bash}/bin/bash /home/localhost/.local/bin/mpvpaper-watchdog";
+      ExecStart = "${pkgs.bash}/bin/bash ${config.home.homeDirectory}/.local/bin/mpvpaper-watchdog";
       Restart = "on-failure";
       RestartSec = 3;
     };
