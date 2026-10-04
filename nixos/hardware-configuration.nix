@@ -34,13 +34,13 @@ in
   fileSystems."/nix" = {
     device  = rootDev;
     fsType  = "btrfs";
-    options = [ "noatime" "nodatacow" "ssd" "space_cache=v2" "discard=async" "subvol=@nix" ];
+    options = [ "noatime" "nodatacow" "ssd" "discard=async" "subvol=@nix" ];
   };
 
   fileSystems."/var/log" = {
     device  = rootDev;
     fsType  = "btrfs";
-    options = [ "noatime" "ssd" "space_cache=v2" "discard=async" "subvol=@log" ];
+    options = [ "noatime" "ssd" "discard=async" "subvol=@log" ];
   };
 
   fileSystems."/.snapshots" = {

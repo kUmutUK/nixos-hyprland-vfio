@@ -114,7 +114,7 @@ in
   ];
 
   boot.initrd.availableKernelModules = lib.mkAfter [ "amdgpu" ];
-  boot.initrd.kernelModules = [ "dm-crypt" "amdgpu" ];
+  boot.initrd.kernelModules = [ "dm-crypt" ];
   # ⚠️ "ashmem_linux" BURADAN KALDIRILDI. ashmem Linux 5.18'de tamamen
   # kaldırıldı; CachyOS BORE 6.18'de modprobe ashmem_linux her boot'ta
   # "FATAL: Module not found" veriyor. Waydroid 5.18+ ashmem yerine memfd
@@ -185,7 +185,7 @@ in
   };
 
   services.power-profiles-daemon.enable = true;
-  networking.hostName = "nixos";
+  networking.hostName = "nixos-workstation";
   networking.networkmanager.enable = true;
   time.timeZone = "Europe/Istanbul";
   i18n.supportedLocales = [ "en_US.UTF-8/UTF-8" "tr_TR.UTF-8/UTF-8" ];
@@ -401,7 +401,7 @@ in
     ntfs3g exfat gparted crow-translate tesseract translate-shell libnotify
     steam gamemode gamescope mangohud vkbasalt winetricks procps
     heroic protonup-qt wine nodejs
-    virt-manager looking-glass-client capitaine-cursors
+    virt-manager capitaine-cursors
     btop nvtopPackages.amd fastfetch
     git zip unzip usbutils pciutils p7zip android-tools
     (vscode-with-extensions.override {
