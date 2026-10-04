@@ -8,6 +8,128 @@ This project follows:
 
 ---
 
+# [1.2.2] - 2026-10-04
+
+## 🔴 Fixed — CI gerçekten doğrulamıyordu
+
+- **CI'ın "Flake structure check" adımı boştu.** `nix flake show`
+  modül sistemini **değerlendirmez**. Kanıtlandı: `configuration.nix`'e
+  `services.tamam-boyle-bir-option.enable = true;` eklendi →
+  `nix flake show` exit 0 (geçti), `nix eval …toplevel.drvPath` exit 1
+  ("option does not exist"). Yani yanlış/silinmiş option, yanlış tip,
+  Home Manager modül hatası ve assert ihlali CI'dan **geçiyordu**.
+  4bc1258d'de `flake check` → `flake show` değişikliği `--no-build`
+  sorununu çözdü ama kazara tüm eval kapsamını sildi.
+  → Adım gerçek değerlendirmeye çevrildi:
+  `nix eval .#nixosConfigurations.nixos.config.system.build.toplevel.drvPath`
+  (build çalıştırmadan ~2.5 dk). `README.md` / `CONTRIBUTING.md` de aynı
+  komuta hizalandı — üçü artık birbiriyle tutarlı.
+
+## 🟠 Fixed — sıfırdan kurulumu kilitleyen hata
+
+- **KURULUM.md, kurulumu bitiren kullanıcıyı kilitli bırakıyordu.**
+  `configuration.nix:321` → `hashedPasswordFile = "/etc/nixos/hashedPassword"`.
+  Bu dosya repoda tutulmuyor (`.gitignore`) ve `nixos-install` sırasında
+  **hata vermiyor** — sadece activation'da
+  `warning: password file … does not exist` basıp `/etc/shadow`'a
+  `localhost:!:1:::::` yazıyor, yani tuigreet ile masaüstüne giriş
+  imkânsız, kullanıcı root konsoluna düşüyor.
+  (`update-users-groups.pl` bu yolda `die` değil `warn` kullanıyor.)
+  → KURULUM.md §8'e `mkpasswd --method yescrypt` komutu + açıklama eklendi.
+  Aynı bölümde SSH'in varsayılan olarak kapalı olduğu da vurgulandı.
+
+## 🟠 Fixed — `qemu.runAsRoot = false` sahiplik sorunu
+
+- **`virsh start win10` "Permission denied" ile başlayabilirdi.**
+  `qemu.runAsRoot = false` iken libvirt disk/NVRAM dosyalarını
+  `qemu-libvirtd` ile açıyor; `runAsRoot = true` döneminden kalma dosyalar
+  root'a ait kalırsa açılamıyor. NixOS'un kendi option açıklaması da
+  bunu söylüyor. Bu kontrol runtime listesinde hiç yoktu.
+  → `systemd.services.libvirtd-qemu-ownership` oneshot servisi eklendi
+  (`before = [ "libvirtd.service" ]`), her boot'ta
+  `/var/lib/libvirt/{images,qemu}` sahipliğini düzeltir.
+
+## 🟠 Fixed — Hyprland ABI karışıklığı (yön ters kaydedilmişti)
+
+- **CHANGELOG "Hyprland 0.55.0 nixpkgs'tan ~4.5 ay geride" diyordu;
+  gerçek tablo ters.** Nixpkgs (nixos-unstable, `7a0f122`) Hyprland
+  **0.54.3** veriyor; overlay ile compositor 0.55.0'a zorlanıyordu.
+  Gerçek risk: `hyprlock 0.9.5`, `hypridle 0.1.7`, `hyprpicker 0.4.6`,
+  `hyprpolkitagent 0.1.3`, `xdg-desktop-portal-hyprland 1.3.12` hepsi
+  0.54.3'e derlenmiş — 0.54-ABI'lı istemciler 0.55 compositor'a
+  konuşuyordu. Portal sessizce hiçbir şey sunmazsa hiçbir hata da
+  görünmez.
+  → `hyprland` flake input'u ve overlay kaldırıldı; tüm Hyprland ailesi
+  tek nixpkgs rev'inden geliyor. Geri almak için flake.nix'deki not.
+
+## 🟡 Fixed — eval uyarıları ve küçük yanlışlar
+
+- **`environment.persistence` uyarısı — denendi, işe yaramadı, geri alındı.**
+  Her `nixos-rebuild`'de "Neither /var/lib/nixos nor any of its parents are
+  persisted / users are missing a uid" uyarısı basılıyor. Rapor bunu
+  `environment.persistence."/var/lib/nixos"` tanımıyla çözmek öneriyordu;
+  **gerçek `nix eval` ile denendi ve yanlış olduğu kanıtlandı:**
+  1) Tanım eklendiği hâlde uyarı **yine basılıyor** (sessizleşmiyor).
+  2) Impermanence'in güncel sürümünde `method` option'ı kaldırılmış;
+     persistence alt modülü zorlanınca
+     `The option 'method' can no longer be used since it's been removed`
+     hatası veriyor — yani susturmanın bedeli daha ağır.
+  → Tanım **eklenmedi**; durum `configuration.nix` içinde nedeniyle
+  birlikte belgelendi. Gerçek etkisi düşük: UID'ler `update-users-groups.pl`
+  tarafından `/etc/passwd`'deki ilk boş slottan seçildiği için pratikte
+  sabit kalıyor. Bu bir gürültü uyarısı, build'i etkilemiyor. Sessizleştirmenin
+  tek yolu impermanence modülünü tamamen kaldırmak.
+- **`xorg.xev` deprecated** → `xorg.xev` kaldırıldı (`wev` zaten vardı ve
+  aynı paket). Eval uyarısı gitti.
+- **`home.nix` yanlış nixpkgs rev'i atıyordu** (`3b4545497180` = cachyos
+  kernel'in kendi nixpkgs'i). Kök rev `7a0f122f5090` olarak düzeltildi.
+- **`install.sh` git çalışma ağacını kirletiyordu.** `sed` ile
+  `hooks/qemu` değiştiriliyor, sonraki `git pull` conflict veriyordu.
+  → Değişiklikten sonra `git update-index --skip-worktree hooks/qemu`
+  uygulanıyor (başarısız olursa uyarı basılıyor).
+- **`home.persistence."/nix/persist/home"` yanıltıcı görünüyordu.**
+  İlk okumada bu anahtarın `/nix/persist`'le çakıştığı ve
+  `/home/localhost/nix/persist/home` olduğu düşünüldü. Gerçek eval ile
+  test edildi: anahtar `$HOME`'a göre yorumlanıyor **ve mutlak yol
+  olmak zorunda** — göreli yola çevirmek denemesi
+  `not of type 'absolute path'` hatasıyla eval'i düşürdü, yani
+  **orijinal değer doğruymuş**. Kod değiştirilmedi, sadece yanlış
+  anlaşılmayı önleyen bir yorum eklendi (`/nix/persist` ile ilgisi
+  yoktur; impermanence'in kendi "nix" manager'ı onu yönetir).
+- **Hardcoded `/home/localhost/...` yolları** (waybar sıcaklık scripti,
+  `mpvpaper-watchdog` ExecStart, mpvpaper video yolu)
+  → `${config.home.homeDirectory}` ile değiştirildi.
+- **`#reference:9` anlamsız yorumu** kaldırıldı.
+- **CI kapısının gücü gerçek eval ile kanıtlandı:** yeni `nix eval` adımı
+  bu depoda gerçekten çalışıyor. Bu sırada `home.persistence` anahtarını
+  yeniden adlandırmayı denedim; modül `not of type 'absolute path'`
+  hatasıyla **değerlendirmeyi düşürdü** → orijinal değer doğruymuş,
+  değişiklik geri alındı. Aynı hata `nix flake show` ile **geçiyordu**,
+  yani kapının düzeltilmesi kanıtlanmış oldu.
+- **Sonuç: tüm değişikliklerden sonra flake gerçekten eval edildi ve
+  `toplevel.drvPath` üretildi.** `xorg.xev` uyarısı da bu sırada kayboldu.
+- **`hardware-configuration.nix` kendi kendisiyle çelişiyordu:**
+  "⚠️ @snapshots'ı BURAYA mount ETMEYİN" yazıp hemen altında mount
+  ediyordu. Yorum netleştirildi (kastedilen: `/home/.snapshots` için
+  `subvol=@snapshots` **yazmayın**, gömülü `@home/.snapshots` kullanın).
+- **README "`install.sh` dosyaları düz `/etc/nixos/`'a kopyalıyor"**
+  diyordu; artık `${NIXOS_DIR}/nixos` altına kopyalıyor. Düzeltildi.
+- **mpvpaper'ı iki yöneten var** (`programs.gamemode.custom` ve
+  `mpvpaper-watchdog`). İkisi de `systemctl start/stop` kullandığı için
+  idempotent, ama oyun sırasında watchdog bir "start" atarsa duvar kağıdı
+  erken geri gelebilir. Çakışma yorumda belgelendi, tek kaynak isteyenler
+  için hangi satırların silineceği yazıldı.
+
+## 📝 Not
+
+`authorizedKeys.keys` boş bırakıldı (bakımcı anahtarı kaldırılmaya devam
+etti) ama bu artık "kişisel tercih" değil, gerçek bir **P1**: config'i
+güncelleyen kişinin en olası acil erişim kanalı SSH ve `switch` sonrası
+o kanal kapanıyor. `configuration.nix` ve README'ye uyarı eklendi; anahtar
+kullanıcının kendi public key'i olduğu için koda gömülemedi.
+
+---
+
 # [1.2.1] - 2026-10-04
 
 ## 🐛 Fixed — sessiz hatalar (kaynakla doğrulandı)

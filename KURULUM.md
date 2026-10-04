@@ -152,11 +152,34 @@ cp -r /tmp/repo/. /mnt/etc/nixos/
 
 ---
 
-# 🔑 8. Root Şifre
+# 🔑 8. Şifreler (root + localhost)
 
 ```bash
 nixos-enter --root /mnt -c 'passwd root'
 ```
+
+> ⚠️ **`hashedPassword` dosyasını da oluşturun.** `configuration.nix`
+> `localhost` kullanıcısını `hashedPasswordFile = "/etc/nixos/hashedPassword"`
+> ile tanımlıyor. Bu dosya `.gitignore`'da (bilinçli olarak) tutulmuyor ve
+> `nixos-install` sırasında **yoksa hata da vermiyor** — sadece activation'da
+> `warning: password file ... does not exist` basıp `/etc/shadow`'a
+> `localhost:!:1:::::` yazıyor, yani masaüstü hesabı kilitleniyor ve
+> tuigreet ile giriş yapılamıyor. Aşağıdaki komutla oluşturun:
+>
+> ```bash
+> nixos-enter --root /mnt -c 'mkdir -p /mnt/etc/nixos && mkpasswd --method yescrypt > /mnt/etc/nixos/hashedPassword && chmod 600 /mnt/etc/nixos/hashedPassword'
+> ```
+>
+> `localhost` kullanıcısının şifresiyle (greetd/tuigreet) masaüstüne
+> gireceksiniz. Root şifresi ayrıdır ve konsol/acil kip için gereklidir.
+
+> 🔑 **SSH erişimi:** `configuration.nix` `PasswordAuthentication = false`
+> ve `authorizedKeys.keys` boş bırakılmış durumda — yani kurulumdan sonra
+> uzaktan giriş **kapalıdır**. Siz SSH kullanacaksanız:
+> `ssh-keygen -t ed25519 && cat ~/.ssh/id_ed25519.pub` çıktısını
+> `configuration.nix` içindeki `users.users.localhost.openssh.authorizedKeys.keys`
+> listesine ekleyin, `nixos-rebuild switch` çalıştırın. Kullanmayacaksanız
+> `services.openssh.enable = false` yapmak daha temiz.
 
 ---
 
