@@ -383,6 +383,11 @@ conf.toml                         MangoHud.conf
   reboot en güvenlisi. (README "Known Limitations" bkz.)
 - Hyprland 0.55.0 (2026-05-09) nixpkgs'e (2026-09-28) göre ~4.5 ay geride;
   ecosystem uyumsuzluk riski nedeniyle yükseltilmedi.
+  > **Düzeltildi (1.2.2):** yön tersti. nixpkgs `nixos-unstable` (2026-09-28)
+  > **0.54.3** veriyor; Hyprland 0.55.0 nixpkgs'tan İLERİDE, geride değil.
+  > Gerçek sorun farklıydı: overlay 0.55'e zorlarken `hyprlock` / `hypridle` /
+  > `xdg-desktop-portal-hyprland` 0.54.3'e karşı derlenmişti. Overlay kaldırıldı,
+  > tüm aile tek nixpkgs rev'inden geliyor.
 - flake.lock'ta üç ayrı nixpkgs kopyası var (`nixpkgs_3` kök, `nixpkgs`
   cachyos-kernel, `nixpkgs_2` hyprland). Sadeleştirme flake mimarisini
   değiştirir.

@@ -125,7 +125,7 @@ Vulkan frame generation support.
 
 # 🖥️ Hyprland Desktop
 
-- Hyprland 0.55+
+- Hyprland (nixpkgs `nixos-unstable`, 0.54.3)
 - Wayland-only environment
 - greetd + tuigreet
 - Waybar

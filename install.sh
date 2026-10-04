@@ -276,6 +276,22 @@ else
 fi
 echo ""
 
+# ─── P1: /nix/persist/home ───────────────────────────────
+# home.nix'te `home.persistence."/nix/persist/home"` tanımlı (lsfg-vk shader
+# önbelleği). impermanence bu dizini kalıcı depolama kökü olarak kullanır;
+# dizin yoksa Home Manager activation bind-mount'u sessizce başarısız olur
+# ve ~/.config/lsfg-vk oluşmaz. /nix bir btrfs alt hacmi (nodatacow) olduğu
+# için diskte kalıcıdır; tmpfiles kuralı da her boot'ta idempotent çalışır.
+step "Persistent storage directory"
+if [ -d /nix/persist/home ]; then
+  log "/nix/persist/home already exists."
+else
+  warn "/nix/persist/home is MISSING — home.persistence bind-mount would fail."
+  sudo mkdir -p /nix/persist/home
+  log "Created /nix/persist/home."
+fi
+echo ""
+
 # ─── Variable substitution ──────────────────────────────
 step "Applying safe variable substitutions"
 

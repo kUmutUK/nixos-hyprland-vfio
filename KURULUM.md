@@ -117,6 +117,13 @@ mount -o subvol=@snapshots,noatime,compress=zstd:1,ssd,discard=async /dev/mapper
 mount /dev/nvme0n1p1 /mnt/boot
 
 swapon /dev/nvme0n1p2
+
+# home.nix'teki `home.persistence."/nix/persist/home"` (lsfg-vk shader
+# önbelleği) bu dizini kalıcı depolama kökü olarak kullanıyor; yoksa Home
+# Manager activation bind-mount'u sessizce başarısız olur. @nix alt hacmi
+# mount edildikten sonra oluştur (nodatacow, diskte kalıcı).
+mkdir -p /mnt/nix/persist/home
+chown localhost:users /mnt/nix/persist/home
 ```
 
 ---
