@@ -28,6 +28,12 @@ nix eval .#nixosConfigurations.nixos.config.system.build.toplevel.drvPath
 sudo nixos-rebuild dry-activate --flake .#nixos
 ```
 
+**CI aynısını otomatik yapıyor.** `.github/workflows/check.yml` artık
+`nix flake check --no-build` çalıştırıyor — yani bir option adı yanlış yazılırsa
+(`xwaylan.enable`, `services.lsfg-vk`, impermanence modülü…) PR merge olmadan
+kırılıyor. Bu adım 2026-10-05'te eklendi; o tarihten önce CI'de **hiç Nix
+çalışmıyordu**, sadece shellcheck vardı.
+
 ---
 
 # 🎨 Style Guidelines
@@ -35,11 +41,16 @@ sudo nixos-rebuild dry-activate --flake .#nixos
 ## Nix
 
 - 2-space indentation
-- Use `nixpkgs-fmt`
+- Use `nixfmt-rfc-style` (devShell'de `nixfmt` olarak gelir)
 
 ```bash
-nixpkgs-fmt .
+nix develop ./nixos
+nixfmt .
 ```
+
+> `nixpkgs-fmt` **kullanmayın** — RFC-166 stiliyle biçimlendirir ve aynı dosyayı
+> iki kişi farklı biçimde kaydedebilir. Kökteki `shell.nix` tam olarak bu
+> belirsizliği yaratıyordu; 2026-10-05'te silindi.
 
 ## Shell
 
@@ -47,8 +58,17 @@ nixpkgs-fmt .
 - Validate with shellcheck
 
 ```bash
-shellcheck install.sh
+shellcheck install.sh nixos/hooks/qemu
 ```
+
+> `home.nix` içine gömülü script'ler doğrudan taranamaz. Onları çıkarmak için:
+>
+> ```bash
+> python3 scripts/extract-embedded-scripts.py /tmp/emb | xargs -0 -n1 -- shellcheck -S warning
+> ```
+>
+> CI bunu otomatik yapıyor. Manuel değişiklikten sonra çalıştırmazsan
+> CI yakalar — ama iki tur beklemek istemiyorsan elle de koş.
 
 ---
 

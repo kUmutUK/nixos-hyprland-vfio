@@ -303,13 +303,31 @@ sudo reboot   # ZORUNLU (iommu=pt, amd_iommu=on)
 ├── vm-xml/win10.xml
 ├── assets/                      # ekran görüntüleri (wall-.png, kitty-.png)
 ├── install.sh
-├── shell.nix
+├── scripts/
+│   └── extract-embedded-scripts.py   # CI için home.nix'teki bash script'lerini çıkarır
+├── .github/workflows/check.yml  # CI: shellcheck + nix flake check (eval)
+├── docs/archive/                # ESKİ analiz belgeleri — güncel kodla eşleşmez
+│   ├── ANALIZ-2026-10-05-ZIP3-SUPERSEDED.md
+│   ├── nixos-hyprland-vfio-analiz-v2-SUPERSEDED.md
+│   └── README.md
 ├── CHANGELOG.md
 ├── CONTRIBUTING.md
+├── FIXES-2026-10-05.md
+├── FIX-MANIFEST.md
 ├── KURULUM.md
 ├── LICENSE
 └── README.md
 ```
+
+> **`scripts/extract-embedded-scripts.py` CI için zorunludur.** `home.nix` içine
+> 7 bash script'i gömülü; CI onları diske çıkarıp shellcheck'ten geçiriyor.
+> Bu dosya olmadan `.github/workflows/check.yml` çalışmaz.
+
+> **`shell.nix` silindi (2026-10-05).** Kökte ikinci bir geliştirme ortamı
+> vardı: `<nixpkgs>` channel + `nixpkgs-fmt`. `flake.nix` içindeki `devShells`
+> zaten `nixfmt-rfc-style` ile aynı işi yapıyordu, iki farklı formatter iki
+> farklı sonuç veriyordu. Tek doğruluk kaynağı flake oldu:
+> `nix develop ./nixos`
 
 > **Düzelten (2026-10-03):** `.config/`, `waybar/`, `gtk/`, kökteki
 > `conf.toml` / `MangoHud.conf` / `*.json` kopyaları **silindi**. Bunlar
