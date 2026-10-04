@@ -122,8 +122,8 @@ stop_hyprland() {
   # ile GPU'yu açık tutuyor; bu yüzden /dev/dri/card* 'de fuser çıkıyor,
   # 10 sn sonra döngü sessizce bitiyor ve aşağıdaki amdgpu unbind takılıyordu.
   # GPU'yu bırakması gereken tüm kullanıcı servisleri önce kapatılır.
-  log "GPU kullanan servisler durduruluyor (ollama/lookup-guest/...)..."
-  for svc in ollama lookup-guest.lookup-guest-service polkit.service; do
+  log "GPU kullanan servisler durduruluyor (ollama/polkit/...)..."
+  for svc in ollama polkit.service; do
     if systemctl is-active --quiet "$svc" 2>/dev/null; then
       log "  durduruluyor: $svc"
       # DÜZELTME (2026-10-04): stop sessizce yutuluyordu; başarısızlık
