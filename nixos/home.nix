@@ -371,7 +371,7 @@ let
 
     # SUPER + sol/sağ tuşla sürükleme. 272/273 = BTN_LEFT / BTN_RIGHT
     # (0x110 / 0x111) — bunlar GERÇEK buton kodlarıdır, tekerlek ekseni
-    # değil; onMouseEvent() (KeybindManager.cpp:438-448) onları
+    # değil; onMouseEvent() (KeybindManager.cpp:477-488) onları
     # "mouse:<code>" adıyla tetikliyor. Bu iki satır ÇALIŞIYOR ve yukarıdaki
     # tekerlek binding'leriyle karışmıyor, çünkü anahtar adları farklı
     # ("mouse:272" ≠ "mouse_down") ve handleKeybinds m_keybinds'i ortak
@@ -405,8 +405,7 @@ let
     # systemd 3 saniyede bir yeniden başlatıyordu → duvar kağıdı hiç açılmıyor.
     # AYRICA bu satır mpvpaper-watchdog'u BAŞLATAN satırın ALTINDAYDI;
     # import önce, başlatma sonra olacak şekilde sıralandı.
-    exec-once = systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE HYPRLAND_INSTANCE_SIGNATURE HYPRLAND_DISPLAY
-    exec-once = systemctl --user start mpvpaper-watchdog gamemode-notify
+    exec-once = ${pkgs.coreutils}/bin/sh -c 'systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE HYPRLAND_INSTANCE_SIGNATURE HYPRLAND_DISPLAY; systemctl --user start mpvpaper-watchdog gamemode-notify'
   '';
 
   hyprlockConf = ''
@@ -443,39 +442,32 @@ let
     }
     label {
         position = 0, 150; halign = center; valign = center;
-        text =  {H:M}; font_family = JetBrainsMono Nerd Font; font_size = 80;
+        text =  $TIME; font_family = JetBrainsMono Nerd Font; font_size = 80;
         font_color = rgba(255, 255, 255, 1.0); shadow_passes = 0;
     }
     label {
         position = 0, 60; halign = center; valign = center;
-        text = cmd[update:60000, LC_TIME=tr_TR.UTF-8 date +"%d %B %Y"];
+        text = cmd[update:60000, LC_TIME=tr_TR.UTF-8 ${pkgs.coreutils}/bin/date +"%d %B %Y"];
         font_family = JetBrainsMono Nerd Font; font_size = 20;
         font_color = rgba(255, 255, 255, 0.6); shadow_passes = 0;
     }
     label {
         position = 0, 10; halign = center; valign = center;
-        text =  {user}; font_family = JetBrainsMono Nerd Font; font_size = 15;
+        text =  $USER; font_family = JetBrainsMono Nerd Font; font_size = 15;
         font_color = rgba(255, 255, 255, 0.4); shadow_passes = 0;
     }
     label {
         position = 20, 20; halign = left; valign = top;
-        text = cmd[update:2000, wpctl get-volume @DEFAULT_AUDIO_SINK@ | awk '{printf "%.0f%%", $2*100}'];
+        text = cmd[update:2000, ${pkgs.wireplumber}/bin/wpctl get-volume @DEFAULT_AUDIO_SINK@ | ${pkgs.gawk}/bin/awk '{printf "%.0f%%", $2*100}'];
         font_family = JetBrainsMono Nerd Font; font_size = 15;
         font_color = rgba(249, 226, 175, 1.0); shadow_passes = 0;
     }
     label {
         position = 20, 20; halign = right; valign = top;
-        text = cmd[update:5000, nmcli -t -f NAME,TYPE,STATE con show --active 2>/dev/null | grep -v loopback | head -1 | cut -d: -f1 | xargs -I{} echo " {}" || echo " Bağlı Değil"];
+        text = cmd[update:5000, ${pkgs.networkmanager}/bin/nmcli -t -f NAME,TYPE,STATE con show --active 2>/dev/null | grep -v loopback | head -1 | cut -d: -f1 | xargs -I{} echo " {}" || echo " Bağlı Değil"];
         font_family = JetBrainsMono Nerd Font; font_size = 15;
         font_color = rgba(148, 226, 213, 1.0); shadow_passes = 0;
     }
-    # DÜZELTME: burada iki `button { ... on_click = wlogout / systemctl suspend }`
-    # bloğu vardı. hyprlock 0.9.6'da `button` WIDGET'I TAMAMEN KALDIRILMIŞ
-    # (addSpecialCategory listesinde yalnızca background/shape/image/input-field/label
-    # var) -> iki buton hiç render edilmiyordu; sadece "Proceeding ignoring faulty
-    # entries" logu basılıyordu. Karşılık gelen kısayol zaten var:
-    #   SUPER+SHIFT+E -> hyprctl exit   (hyprland.conf:342)
-    # Butonları geri istiyorsan hyprlock'u 0.9.x'ten eski bir sürüme sabitle.
     label {
         position = 0, -260; halign = center; valign = center;
         text = oturumu kapatmak icin: SUPER + SHIFT + E
@@ -487,14 +479,8 @@ let
     # (addSpecialCategory listesinde yalnızca background/shape/image/input-field/label
     # var) -> iki buton hiç render edilmiyordu; sadece "Proceeding ignoring faulty
     # entries" logu basılıyordu. Karşılık gelen kısayol zaten var:
-    #   SUPER+SHIFT+E -> hyprctl exit   (hyprland.conf:342)
+    #   SUPER+SHIFT+E -> hyprctl exit   (hyprland.conf:351)
     # Butonları geri istiyorsan hyprlock'u 0.9.x'ten eski bir sürüme sabitle.
-    label {
-        position = 0, -260; halign = center; valign = center;
-        text = oturumu kapatmak icin: SUPER + SHIFT + E
-        font_family = JetBrainsMono Nerd Font; font_size = 14;
-        font_color = rgba(255, 255, 255, 0.35); shadow_passes = 0;
-    }
   '';
 
   waybarStyle = ''

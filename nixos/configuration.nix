@@ -388,9 +388,15 @@ in
   # NOT (2026-10-04): `backend = "pam_unix.so"` CI'da
   # "The option `security.pam.services.hyprlock.backend' does not exist"
   # hatası verdi — bu nixpkgs rev'inde PAM submodule'ında böyle bir option yok.
-  # Boş attrset bırakılıyor: systemd.services.hyprlock bunu okuyup
-  # /etc/pam.d/hyprlock'u üretir, varsayılan PAM stack'i (pam_unix) kullanılır.
-  # Doğrula: ls /etc/pam.d/hyprlock
+  # Mekanizma düzeltmesi (2026-10-05): /etc/pam.d/hyprlock dosyasını
+  # security.pam modülü üretir (nixos/modules/security/pam.nix) — hyprlock'un
+  # systemd servisi DEĞİL. Bu config'te programs.hyprlock enable edilmediği
+  # için systemd.services.hyprlock diye bir şey zaten yok.
+  # Varsayılan stack, pam alt modülünün useDefaultRules=true + unixAuth=true
+  # varsayılanlarından gelir (ikisi de default); "{}" yazmanın özel bir
+  # "doldurma" anlamı yoktur. hyprlock 0.9.6'da auth:pam:module varsayılanı
+  # zaten "hyprlock" (ConfigManager.cpp:252) — yani tam olarak bu dosya okunur.
+  # Doğrula: ls -l /etc/pam.d/hyprlock && grep -c pam_unix /etc/pam.d/hyprlock
   security.pam.services.hyprlock = { };
 
   environment.systemPackages = with pkgs; [
@@ -488,7 +494,7 @@ in
     # qemu-libvirtd kullanıcı/grubu libvirtd modülü tarafından oluşturulur;
     # activation sırasında henüz yoksa chown hata vermesin diye `|| true`.
     script = ''
-      for d in /var/lib/libvirt/images /var/lib/libvirt/qemu; do
+      for d in /var/lib/libvirt/images /var/lib/libvirt/qemu /var/lib/libvirt/swtpm; do
         if [ -d "$d" ]; then
           chown -R qemu-libvirtd:qemu-libvirtd "$d" || true
         fi

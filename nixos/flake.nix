@@ -43,6 +43,13 @@
     # ⭐ Bu girdiyi ekle:
     impermanence.url = "github:nix-community/impermanence";
     impermanence.inputs.nixpkgs.follows = "nixpkgs";
+    # DÜZELTME (2026-10-05): follows tanımlı değilken impermanence KENDİ
+    # home-manager rev'ini (c47b2cc64a62) getiriyordu, root ise 7b4c5ec4beda
+    # kullanıyordu — iki HM sürümü aynı anda modül sistemine giriyordu.
+    # imperative modülün HM modülü HM@A için yazılmış, home.persistence'u ise
+    # HM@B değerlendiriyordu. Bu klasik "option does not exist" sınıfı sessiz
+    # kırılmalar üretir.
+    impermanence.inputs.home-manager.follows = "home-manager";
   };
 
   outputs = { self, nixpkgs, cachyos-kernel, home-manager, lsfg-vk-flake, impermanence, ... }:
