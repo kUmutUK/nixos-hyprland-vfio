@@ -247,8 +247,17 @@ let
     bind = $mainMod CTRL, S, exec, pypr toggle filemanager
 
     # ── Tekerlekle oda değiştirme ───────────────────────────────────
-    # Hyprland v0.55.0'te tekerlek artık tuş değil EKSEN (axis) olayı
-    # üretiyor. KeybindManager::onAxisEvent (KeybindManager.cpp:407-434)
+    # DÜZELTME (2026-10-05): yorumlarda v0.55.0 ve 407-434 satırları yazıyordu;
+    # kilitli nixpkgs Hyprland 0.56.2 veriyor. Mekanizma AYNI, satırlar KAYDI:
+    # KeybindManager::onAxisEvent artık KeybindManager.cpp:446-470.
+    # ⚠️ SINIRLAMA: onAxisEvent yalnızca
+    #   e.source == WL_POINTER_AXIS_SOURCE_WHEEL && axis == VERTICAL
+    # için ateşlenir (KeybindManager.cpp:459). Yani bu iki binding SADECE
+    # faresel tekerlekte çalışır; dokunmatik panelde (touchpad) SUPER+tekerlek
+    # hiçbir şey yapmaz.
+    #
+    # Eski not (v0.55.0): tekerlek artık tuş değil EKSEN (axis) olayı
+    # üretiyor. KeybindManager::onAxisEvent
     # dikey eksende e.delta<0 için "mouse_down", e.delta>0 için "mouse_up"
     # ismiyle handleKeybinds() çağırıyor. "scroll:down" / "scroll:up" isimleri
     # HİÇ üretilmiyor → eski satırlar config yüklenirken hatasız geçiyor,
@@ -401,67 +410,90 @@ let
   '';
 
   hyprlockConf = ''
+    # DÜZELTME: `general { grace = 0; disable_loading_bar = false; }` buradaydı.
+    # hyprlock 0.9.6'da NE grace NE disable_loading_bar kayıtlı option değil
+    # (grace artık `--grace` CLI bayrağı, loading bar tamamen kaldırıldı) ->
+    # "Proceeding ignoring faulty entries" ile sessizce yok sayılıyordu.
+    # 0 zaten varsayılan olduğu için davranış değişmiyor, hata gürültüsü gider.
     general {
-        grace = 0
-        disable_loading_bar = false
+        hide_cursor = 0
     }
     background { color = rgba(0, 0, 0, 1.0) }
     label {
-        position = 0, -65; size = 250, 50; halign = center; valign = center;
+        position = 0, -65; halign = center; valign = center;
         text = ; font_family = JetBrainsMono Nerd Font; font_size = 15;
         color = rgba(203, 166, 247, 1.0); shadow_passes = 0;
     }
     input-field {
         position = 0, -120; size = 300, 50; halign = center; valign = center;
-        placeholder_text =  Şifre...; font_family = JetBrainsMono Nerd Font; font_size = 20;
-        dots_size = 0.55; dots_spacing = 0.15; check_symbol = ;
-        placeholder_color = rgba(255, 255, 255, 0.4); font_color = rgba(255, 255, 255, 1.0);
+        # DÜZELTME (hyprlock 0.9.6 şeması): font_size, check_symbol,
+        # placeholder_color ve fail_transition artık KAYITLI DEĞİL -> hepsi
+        # sessizce yok sayılıyordu. Karşılıkları:
+        #   check_symbol      -> check_text (0.9.6'da bu, onay işareti)
+        #   font_size         -> yok; alan yüksekliğinden otomatik hesaplanır
+        #   placeholder_color -> yok; placeholder font_color'dan türetilir
+        #   fail_transition   -> yok; fade_on_empty / fade_timeout var
+        placeholder_text = Şifre...; font_family = JetBrainsMono Nerd Font;
+        dots_size = 0.55; dots_spacing = 0.15; check_text = ✓;
+        font_color = rgba(255, 255, 255, 1.0);
         check_color = rgba(166, 227, 161, 1.0); fail_color = rgba(243, 139, 168, 1.0);
-        fail_transition = 300; hide_input = false; rounding = 10;
+        hide_input = false; rounding = 10;
         outline_thickness = 2; outer_color = rgba(255, 255, 255, 0.1);
         inner_color = rgba(0, 0, 0, 0.9); shadow_passes = 0;
     }
     label {
-        position = 0, 150; size = 500, 100; halign = center; valign = center;
+        position = 0, 150; halign = center; valign = center;
         text =  {H:M}; font_family = JetBrainsMono Nerd Font; font_size = 80;
         font_color = rgba(255, 255, 255, 1.0); shadow_passes = 0;
     }
     label {
-        position = 0, 60; size = 500, 50; halign = center; valign = center;
+        position = 0, 60; halign = center; valign = center;
         text = cmd[update:60000, LC_TIME=tr_TR.UTF-8 date +"%d %B %Y"];
         font_family = JetBrainsMono Nerd Font; font_size = 20;
         font_color = rgba(255, 255, 255, 0.6); shadow_passes = 0;
     }
     label {
-        position = 0, 10; size = 500, 50; halign = center; valign = center;
+        position = 0, 10; halign = center; valign = center;
         text =  {user}; font_family = JetBrainsMono Nerd Font; font_size = 15;
         font_color = rgba(255, 255, 255, 0.4); shadow_passes = 0;
     }
     label {
-        position = 20, 20; size = 200, 50; halign = left; valign = top;
+        position = 20, 20; halign = left; valign = top;
         text = cmd[update:2000, wpctl get-volume @DEFAULT_AUDIO_SINK@ | awk '{printf "%.0f%%", $2*100}'];
         font_family = JetBrainsMono Nerd Font; font_size = 15;
         font_color = rgba(249, 226, 175, 1.0); shadow_passes = 0;
     }
     label {
-        position = 20, 20; size = 200, 50; halign = right; valign = top;
+        position = 20, 20; halign = right; valign = top;
         text = cmd[update:5000, nmcli -t -f NAME,TYPE,STATE con show --active 2>/dev/null | grep -v loopback | head -1 | cut -d: -f1 | xargs -I{} echo " {}" || echo " Bağlı Değil"];
         font_family = JetBrainsMono Nerd Font; font_size = 15;
         font_color = rgba(148, 226, 213, 1.0); shadow_passes = 0;
     }
-    button {
-        position = -20, -20; size = 50, 50; halign = right; valign = bottom;
-        font_family = JetBrainsMono Nerd Font; font_size = 20;
-        text = ⏻; on_click = wlogout;
-        font_color = rgba(243, 139, 168, 1.0); rounding = 10;
-        outline_thickness = 2; outer_color = rgba(243, 139, 168, 0.3);
+    # DÜZELTME: burada iki `button { ... on_click = wlogout / systemctl suspend }`
+    # bloğu vardı. hyprlock 0.9.6'da `button` WIDGET'I TAMAMEN KALDIRILMIŞ
+    # (addSpecialCategory listesinde yalnızca background/shape/image/input-field/label
+    # var) -> iki buton hiç render edilmiyordu; sadece "Proceeding ignoring faulty
+    # entries" logu basılıyordu. Karşılık gelen kısayol zaten var:
+    #   SUPER+SHIFT+E -> hyprctl exit   (hyprland.conf:342)
+    # Butonları geri istiyorsan hyprlock'u 0.9.x'ten eski bir sürüme sabitle.
+    label {
+        position = 0, -260; halign = center; valign = center;
+        text = oturumu kapatmak icin: SUPER + SHIFT + E
+        font_family = JetBrainsMono Nerd Font; font_size = 14;
+        font_color = rgba(255, 255, 255, 0.35); shadow_passes = 0;
     }
-    button {
-        position = -80, -20; size = 50, 50; halign = right; valign = bottom;
-        font_family = JetBrainsMono Nerd Font; font_size = 20;
-        text = 💤; on_click = systemctl suspend;
-        font_color = rgba(255, 255, 255, 0.8); rounding = 10;
-        outline_thickness = 2; outer_color = rgba(255, 255, 255, 0.2);
+    # DÜZELTME: burada iki `button { ... on_click = wlogout / systemctl suspend }`
+    # bloğu vardı. hyprlock 0.9.6'da `button` WIDGET'I TAMAMEN KALDIRILMIŞ
+    # (addSpecialCategory listesinde yalnızca background/shape/image/input-field/label
+    # var) -> iki buton hiç render edilmiyordu; sadece "Proceeding ignoring faulty
+    # entries" logu basılıyordu. Karşılık gelen kısayol zaten var:
+    #   SUPER+SHIFT+E -> hyprctl exit   (hyprland.conf:342)
+    # Butonları geri istiyorsan hyprlock'u 0.9.x'ten eski bir sürüme sabitle.
+    label {
+        position = 0, -260; halign = center; valign = center;
+        text = oturumu kapatmak icin: SUPER + SHIFT + E
+        font_family = JetBrainsMono Nerd Font; font_size = 14;
+        font_color = rgba(255, 255, 255, 0.35); shadow_passes = 0;
     }
   '';
 
@@ -907,6 +939,10 @@ in
       executable = true;
       text = ''
 #!${pkgs.bash}/bin/bash
+# shellcheck disable=SC2155
+# SC2155 (local x=$(cmd) return değerini maskeler) bu dosyada kasıtlı:
+# dört `local`'da da atamanın return değeri zaten kullanılmıyor, `||`/set -e
+# yolu yok. 2026-10-05'te CI'a gömülü script taraması eklenince bu kapıya girdi.
 
 # ─── Yeni bölge tanımları (Senin jilet gibi hassas koordinatların) ───
 GEOMETRY_MAIN="0,971 2560x438"
@@ -989,7 +1025,14 @@ while true; do
             "$IMAGE_MAIN" 2>/dev/null
 
     RAW_MAIN=$(tesseract "$IMAGE_MAIN" stdout -l eng --psm 6 --tessdata-dir "$TESSDATA_DIR" 2>/dev/null)
-    TEXT_MAIN=$(echo "$RAW_MAIN" | tr -d '\f' | sed 's/[^a-zA-Z0-9.,!? ]//g' | xargs)
+    # DÜZELTME: burada `tr -d '\f'` vardı ve Nix kaçışı yüzünden `tr -d 'f'`
+    # haline geliyordu -> tesseract çıktısındaki TÜM "f" harfleri siliniyordu
+    # ("The final" -> "The inal"). Nix'in unescapeStr'ı yalnız \n \r \t tanır;
+    # \f için backslash'i sessizce düşürür. `tr -d '\014'` de DOĞRU DEĞİL:
+    # aynı sebepten '014' olur ve 0/1/4 rakamlarını silmeye başlar.
+    # Doğrusu: form-feed zaten bir sonraki sed tarafından siliniyor
+    # ([^a-zA-Z0-9.,!? ] negated class'ı FF'yi de eler) — tr'e gerek yok.
+    TEXT_MAIN=$(echo "$RAW_MAIN" | sed 's/[^a-zA-Z0-9.,!? ]//g' | xargs)
 
     if [ ''${#TEXT_MAIN} -gt 5 ]; then
         if [ "$TEXT_MAIN" != "$LAST_MAIN" ]; then
@@ -1013,7 +1056,8 @@ while true; do
             "$IMAGE_CHOICE" 2>/dev/null
 
     RAW_CHOICE=$(tesseract "$IMAGE_CHOICE" stdout -l eng --psm 6 --tessdata-dir "$TESSDATA_DIR" 2>/dev/null)
-    TEXT_CHOICE=$(echo "$RAW_CHOICE" | tr -d '\f' | sed 's/[^a-zA-Z0-9.,!? ]//g' | xargs)
+    # DÜZELTME: yukarıdaki nedenle tr -d '\f' kaldırıldı (sed FF'yi zaten eler).
+    TEXT_CHOICE=$(echo "$RAW_CHOICE" | sed 's/[^a-zA-Z0-9.,!? ]//g' | xargs)
 
     if [ ''${#TEXT_CHOICE} -gt 5 ]; then
         if [ "$TEXT_CHOICE" != "$LAST_CHOICE" ]; then
@@ -1196,7 +1240,13 @@ done
         gm-status = "gamemoded -s";
       };
       interactiveShellInit = ''
-        set -gx MANPAGER 'sh -c "col -bx | bat -l man -p --paging=always"'
+        # DÜZELTME: burada MANPAGER + `sh -c "..."` sarmalayıcısı vardı ve ikisi
+        # de yanlıştı. (1) Git MANPAGER'ı OKUMAZ — sırası belgelidir:
+        # $GIT_PAGER -> core.pager -> $PAGER -> derleme varsayılanı (less).
+        # (2) sh -c sarmalayıcısı dosya adını $0'a düşürürdü.
+        # Doğrusu: doğrudan PAGER + pipeline (git dosyayı son komuta ekler,
+        # böylece bat dosyayı argüman olarak alır).
+        set -gx PAGER 'col -bx | bat -l man -p --paging=always'
       '';
       shellInit = ''
         set -gx fish_greeting ""

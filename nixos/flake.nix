@@ -23,15 +23,20 @@
     cachyos-kernel.url = "github:xddxdd/nix-cachyos-kernel";
     home-manager.url = "github:nix-community/home-manager";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
-    # ⚠️ Hyprland overlay'i KALDIRILDI.
-    # Önceden `hyprland.url = "github:hyprwm/Hyprland/v0.55.0"` ile Hyprland
-    # 0.55.0 zorlanıyordu. Nixpkgs (nixos-unstable) ise 0.54.3 veriyordu —
-    # yani compositor 1 minor İLERİDE, hyprlock 0.9.5 / hypridle 0.1.7 /
-    # hyprpicker 0.4.6 / hyprpolkitagent 0.1.3 / xdg-desktop-portal-hyprland
-    # 1.3.12 ise 0.54.3'e derlenmişti: 0.54-ABI'lı istemciler 0.55
-    # compositor'a konuşuyordu (özellikle portal sessizce hiçbir şey sunmayabilir).
-    # Artık tüm Hyprland ailesi tek nixpkgs'ten geliyor → ABI tutarlı.
-    # (Geri almak isterseniz: aşağıdaki overlay bloğunu geri açın.)
+    # ⚠️ Hyprland overlay'i KALDIRILDI (karar hâlâ doğru, GEREKÇE bayat).
+    # Kararın eski gerekçesi: nixpkgs 0.54.3 veriyordu, overlay 0.55.0'a
+    # zorluyordu, istemciler 0.54 ABI ile derlenmişti -> ABI karışıklığı.
+    #
+    # DÜZELTME (2026-10-05): kilitli nixpkgs rev'i 7a0f122'de Hyprland
+    # 0.56.2'dir, yani artık nixpkgs overlay'in sürümünden YENİ. Buna rağmen
+    # overlay'in kaldırılmış olması DOĞRU KARARDIR: tek nixpkgs rev'i her
+    # zaman ABI tutarlılığı garantisi verir, sabitlenmiş bir sürüm ise
+    # istemcileri geride bırakabilir. Sadece yukarıdaki gerekçe artık
+    # geçerli değil.
+    #
+    # Doğrulanan sürümler (kilitli rev 7a0f122f5090):
+    #   hyprland 0.56.2 · hyprlock 0.9.6 · hypridle 0.1.8 · hyprpicker 0.4.7
+    #   hyprpolkitagent 0.1.3
     lsfg-vk-flake.url = "github:pabloaul/lsfg-vk-flake/main";
     lsfg-vk-flake.inputs.nixpkgs.follows = "nixpkgs";
     
