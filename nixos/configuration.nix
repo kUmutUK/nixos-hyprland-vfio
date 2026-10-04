@@ -387,6 +387,16 @@ in
     # her çeviri Ollama'ya düşüyordu. translate-shell (`trans`) bunun yerine geçmez.
   ];
 
+  # home.nix'teki `home.persistence."/nix/persist/home"` tanımı bu dizini
+  # kalıcı depolama kökü olarak kullanıyor. Dizin yoksa Home Manager
+  # activation bind-mount'u sessizce başarısız oluyor ve ~/.config/lsfg-vk
+  # oluşmuyor. tmpfiles kuralı boot başında idempotent çalışıp dizini
+  # (gerekirse doğru sahiplikle) yeniden oluşturuyor; /nix bir btrfs alt
+  # hacmi (nodatacow) olduğu için içerik diskte kalıcı.
+  systemd.tmpfiles.rules = [
+    "d /nix/persist/home 0755 localhost users -"
+  ];
+
   environment.etc."vulkan/implicit_layer.d/low_latency_layer.json".source =
     "${low-latency-layer}/share/vulkan/implicit_layer.d/low_latency_layer.json";
 
@@ -527,10 +537,10 @@ in
   programs.nix-ld.enable = true;
 
   services.ananicy = {
-  enable = true;
-  package = pkgs.ananicy-cpp;
-  rulesProvider = pkgs.ananicy-rules-cachyos;
-};
+    enable = true;
+    package = pkgs.ananicy-cpp;
+    rulesProvider = pkgs.ananicy-rules-cachyos;
+  };
 
   # ─── Impermanence ───────────────────────────────────────────────────
   # flake.nix impermanence modülünü import ediyor ama environment.persistence
