@@ -246,6 +246,18 @@ virsh list --all     # 'win10' → "shut off" olarak görünmeli
 > ⚠️ XML'deki disk/NVRAM yolları sabit geliyor. Kendi diskine göre
 > düzenlemezsen `virsh start win10` "disk bulunamadı" ile başarısız olur.
 >
+> ⚠️ **VM'i masaüstü oturumundan başlatmayın.** `hooks/qemu`, GPU'yu bırakmak için
+> `loginctl terminate-user <kullanıcı>` çalıştırıyor — yani `virsh start` komutunu
+> verdiğiniz oturumun **kendisi** kapanıyor (istemci sonucu gösteremeden ölüyor;
+> libvirtd tarafındaki iş devam ediyor). İki güvenli yol:
+> ```bash
+> # 1) ayrı TTY'den (Ctrl+Alt+F3)
+> virsh start win10
+>
+> # 2) oturumdan bağımsız transient unit
+> systemd-run --scope --unit=vmstart virsh start win10
+> ```
+>
 > Doğrulama: `sudo virsh dominfo win10` → ad, UUID ve PCI hostdev'ler görünmeli.
 > Hook'un çalıştığını `sudo journalctl -u libvirtd -f` ve
 > `sudo tail -f /var/log/libvirt/qemu/win10.log` ile izleyebilirsin.
