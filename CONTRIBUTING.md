@@ -24,7 +24,7 @@ Before submitting changes:
 ```bash
 # flake nixos/ altında — cd nixos'tan sonra yol ".#nixos" olur
 cd nixos
-nix flake check
+nix eval .#nixosConfigurations.nixos.config.system.build.toplevel.drvPath
 sudo nixos-rebuild dry-activate --flake .#nixos
 ```
 

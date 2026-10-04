@@ -247,8 +247,9 @@ sudo nixos-rebuild switch --flake /etc/nixos/nixos#nixos
 
 > **Düzelten (2026-10-03):** README bu yolu `/etc/nixos#nixos` gösteriyordu,
 > `KURULUM.md` ise `/etc/nixos/nixos#nixos` diyordu — ikisi çelişiyordu.
-> `install.sh` dosyaları düz `/etc/nixos/` altına kopyalıyor, flake ise
-> `nixos/` altında; doğru yol **her iki dokümanda da** `/etc/nixos/nixos#nixos`.
+> `install.sh` dosyaları artık **düz `/etc/nixos/` altına değil**,
+> `${NIXOS_DIR}/nixos` (= `/etc/nixos/nixos`) altına kopyalıyor; flake de
+> orada. Doğru yol **her iki dokümanda da** `/etc/nixos/nixos#nixos`.
 
 ---
 
@@ -315,15 +316,25 @@ nix-shell
 
 # VEYA: kökte flake.niz yok, bu yüzden `nix develop` yerine:
 nix-shell -p nixpkgs-fmt statix shellcheck
-cd nixos && nix flake check
+cd nixos && nix eval .#nixosConfigurations.nixos.config.system.build.toplevel.drvPath
 ```
+
+> Not: `nix flake check` CI'da **kullanılmıyor** — Hyprland türetmesi
+> `--no-build` modunda kendi `VERSION` dosyasını `readFile` ile okuyup
+> patlıyor. Yerelde de `nix flake check` yerine yukarıdaki `nix eval`
+> komutunu kullanın: CI ile birebir aynı kontrolü yapar (modül sistemini
+> gerçekten değerlendirir, build çalıştırmaz) ve `nix flake show`'un
+> aksine bozuk option'ları yakalar.
 
 ---
 
 # ✅ Validation
 
 ```bash
-nix flake check
+# 1) CI ile aynı kontrol (modül sistemini gerçekten değerlendirir)
+cd nixos && nix eval .#nixosConfigurations.nixos.config.system.build.toplevel.drvPath
+
+# 2) Gerçek aktivasyon denemesi
 sudo nixos-rebuild dry-activate --flake .#nixos
 ```
 
@@ -334,6 +345,24 @@ sudo nixos-rebuild dry-activate --flake .#nixos
 - hardware-configuration.nix machine-specific
 - GPU PCI IDs must be updated
 - VFIO disables host display temporarily
+- **Sıfırdan kurulumda `localhost` hesabının şifre dosyası gerekir.**
+  `configuration.nix` → `hashedPasswordFile = "/etc/nixos/hashedPassword"`.
+  Dosya `.gitignore`'da tutulmuyor ve `nixos-install` yokluğunda hata
+  vermiyor; activation'da sadece uyarı basıp hesabı `!` (kilitli) bırakıyor.
+  `KURULUM.md` §8'e gerekli `mkpasswd` komutu eklendi.
+- **SSH varsayılan olarak kapalıdır.** `PasswordAuthentication = false` +
+  boş `authorizedKeys.keys` → uzaktan giriş yok. Reboot öncesi kendi
+  `ssh-ed25519` anahtarınızı `configuration.nix`'teki listeye ekleyin
+  (aksi halde SSH ile geri dönüş yolunuz yok).
+- **Hyprland ABI tutarlılığı:** Hyprland ailesi (compositor, hyprlock,
+  hypridle, hyprpicker, hyprpolkitagent, xdg-desktop-portal-hyprland)
+  artık **tek bir nixpkgs rev'inden** geliyor. 1.2.1'de compositor overlay
+  ile 0.55.0'a zorlanırken istemciler 0.54.3'e derlenmişti (0.54 ABI →
+  0.55 compositor); bu sürümde overlay kaldırıldı.
+- **`qemu.runAsRoot = false`** olduğu için `libvirtd-qemu-ownership`
+  oneshot servisi her boot'ta `/var/lib/libvirt/{images,qemu}` sahipliğini
+  `qemu-libvirtd:qemu-libvirtd` yapar. Bu olmazsa `virsh start win10`
+  "Permission denied" ile başlamaz.
 - SSH uses key authentication. `configuration.nix` ships with an **empty**
   `authorizedKeys.keys` — add your own (`ssh-ed25519 …`). Earlier versions
   shipped the maintainer's public key, which granted remote access to anyone

@@ -219,10 +219,21 @@ if [ -d "$REPO_DIR/nixos/hooks" ]; then
     # içindeki GPU_PCI/GPU_AUDIO sabitleri. Onları güncellemezsek,
     # kullanıcı burada farklı bir PCI adresi girse bile gerçek hook
     # hep 0000:0b:00.0 / .1'i kullanmaya devam ederdi.
+    # sed yalnızca KOPYALANAN dosyaya ($NIXOS_FLAKE_DIR) uygulanır, repodaki
+    # orijinale değil — ama $NIXOS_FLAKE_DIR git deposunun içindeyse
+    # (örn. /etc/nixos/nixos) sonraki `git pull` conflict verir. Bu yüzden
+    # değişikliği git'e "yok say" diye işaretliyoruz; repodaki dosya
+    # temiz kalıyor, `git pull` sorunsuz çalışıyor.
     sudo sed -i \
         -e "s|^GPU_PCI=\".*\"|GPU_PCI=\"${gpu_pci}\"|" \
         -e "s|^GPU_AUDIO=\".*\"|GPU_AUDIO=\"${gpu_audio}\"|" \
         "$NIXOS_FLAKE_DIR/hooks/qemu" && log "Hook script'teki GPU PCI adresleri de güncellendi."
+
+    if git -C "$NIXOS_FLAKE_DIR" rev-parse --git-dir >/dev/null 2>&1; then
+        git -C "$NIXOS_FLAKE_DIR" update-index --skip-worktree hooks/qemu 2>/dev/null \
+            && log "hooks/qemu git'te skip-worktree olarak işaretlendi (git pull çakışmayacak)." \
+            || warn "hooks/qemu için skip-worktree uygulanamadı; sonraki 'git pull'da conflict çıkabilir."
+    fi
 else
     error "nixos/hooks/ directory not found — configuration.nix will fail to evaluate without it."
 fi
