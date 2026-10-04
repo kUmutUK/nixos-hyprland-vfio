@@ -10,7 +10,7 @@ Bu rehber AMD sistemler için optimize edilmiş **NixOS + LUKS2 + Btrfs + Hyprla
 - UEFI sistem
 - AMD Ryzen CPU
 - AMD Radeon RX 6000/7000 GPU
-- En az 800 GB boş disk (aşağıdaki bölümlendirme 800 GB kullanıyor)
+- En az 810 GB boş disk (aşağıdaki bölümlendirme 800 GB kullanıyor)
 
 ---
 
@@ -34,7 +34,7 @@ loadkeys trq
 
 | Bölüm | Açıklama |
 |------|----------|
-| EFI | 512MB FAT32 |
+| EFI | 1G FAT32 |
 | SWAP | 8GB (opsiyonel) |
 | LUKS | Ana sistem |
 
@@ -217,7 +217,8 @@ flake.nix repo kökünde değil, `nixos/` alt dizininde olduğu için `#nixos`
 öncesindeki yol da buna göre verilmeli:
 
 ```bash
-nixos-install --flake /mnt/etc/nixos/nixos#nixos
+# ilk çalıştırmada substituters onayı ister: "y" deyin
+nixos-install --flake /mnt/etc/nixos/nixos#nixos --accept-flake-config
 ```
 
 ---
@@ -236,6 +237,10 @@ sudo mkdir -p /var/lib/libvirt
 sudo cp /mnt/etc/nixos/vm-xml/win10.xml /var/lib/libvirt/
 sudo virsh define /var/lib/libvirt/win10.xml
 virsh list --all     # 'win10' → "shut off" olarak görünmeli
+
+> ⚠️ **ISO dosyaları:** `virsh start win10` için iki ISO gerekir:
+> `Win10_22H2_English_x64v1.iso` ve `virtio-win-*.iso` →
+> `sudo cp <iso> /var/lib/libvirt/images/`
 ```
 
 > ⚠️ XML'deki disk/NVRAM yolları sabit geliyor. Kendi diskine göre
