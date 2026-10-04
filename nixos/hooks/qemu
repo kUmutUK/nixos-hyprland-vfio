@@ -146,6 +146,10 @@ stop_hyprland() {
   nodes=$(ls -d /sys/bus/pci/devices/"$GPU_PCI"/drm/renderD* 2>/dev/null |
          sed 's|.*/||' | sed 's|^|/dev/dri/|')
   nodes="/dev/dri/$card ${nodes:-}"
+  # ROCm/compute süreçleri /dev/kfd'yi açık tutabilir; cardN ve renderD*
+# boş görünse bile bu düğüm GPU'yu kilitler. Ollama stop edilse de
+# başka bir ROCm süreci açık bırakmış olabilir.
+[ -e /dev/kfd ] && nodes="$nodes /dev/kfd"
   # _unused: sayaç değeri kullanılmıyor, sadece kaç kez beklendiğini sayıyoruz.
   # Düzeltme: önceden sabit 20 döngü (10 sn) vardı, zaman aşımı başarısız
   # sayılmıyordu. Artık GERÇEK bir zaman aşımı var: 20 sn dolunca hata
