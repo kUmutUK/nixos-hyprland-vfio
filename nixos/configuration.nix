@@ -426,7 +426,13 @@ in
   # (gerekirse doğru sahiplikle) yeniden oluşturuyor; /nix bir btrfs alt
   # hacmi (nodatacow) olduğu için içerik diskte kalıcı.
   systemd.tmpfiles.rules = [
-    "d /nix/persist/home 0755 localhost users -"
+    # DÜZELTME (2026-10-04): grup "users" idi. NixOS'ta isNormalUser
+    # kullanıcıların BİRİNCİL grubu kendi adıdır; "users" grubu extraGroups
+    # listesinde de yok. Bu yüzden dizin yanlış gruba sahip oluyordu ve
+    # Home Manager bind-mount'u kullanıcının kendi grubuyla uyuşmuyordu.
+    # Kullanıcı adı "localhost" → birincil grup da "localhost".
+    # Doğrula: id localhost   →  uid=... gid=... groups=...(localhost)
+    "d /nix/persist/home 0755 localhost localhost -"
   ];
 
   environment.etc."vulkan/implicit_layer.d/low_latency_layer.json".source =
