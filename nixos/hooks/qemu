@@ -272,9 +272,28 @@ if [ "$ACTION" = "release" ]; then
     fi
   fi
 
+  # DÜZELTME: GPU kurtarma sonrası hâlâ sürücüsüzse (Navi2x reset bug) bu
+  # satırlar yalnızca bir "UYARI" loglayıp masaüstünü açıyordu -> kullanıcı
+  # siyah ekrana bakar ve ne yapacağını bilemiyordu. Artık durum tty1'e de
+  # yazılıyor ve ne yapılması gerektiği açıkça söyleniyor.
+  if ! device_has_real_driver "$GPU_PCI"; then
+    log "KRİTİK: $GPU_PCI hâlâ sürücüsüz. Ekranda GÖRÜNTÜ YOKTUR (bu normal:"
+    log "Navi2x reset bug). Kurtarma için açılışta BOOT MENÜSÜ'ne gir veya"
+    log "konsola geç (Ctrl+Alt+F2) ve 'systemctl reboot' çalıştır."
+    log "Önce kurtarma denemeleri: 'sudo modprobe -r amdgpu && sudo modprobe amdgpu'"
+    for tty in /dev/tty1 /dev/tty2; do
+      [ -w "$tty" ] && printf '%s\n' "GPU sürücüsü yok - siyah ekran normal. Kurtarma: systemctl reboot" > "$tty" 2>/dev/null || true
+    done
+  else
+    log "GPU host'a geri verildi, masaüstü başlatılıyor."
+  fi
+
   echo 1 > /sys/class/vtconsole/vtcon0/bind 2>/dev/null || true
   echo 1 > /sys/class/vtconsole/vtcon1/bind 2>/dev/null || true
   echo efi-framebuffer.0 > /sys/bus/platform/drivers/efi-framebuffer/bind 2>/dev/null || true
+  # NOT: burada bilinçli olarak exit 1 YOK. start_hyprland'ı atlamak greetd'yi
+  # kapalı bırakır ve kullanıcının grafik oturumu açma şansını da keser; oysa
+  # metot zaten denendi ve GPU sürücüsüz. Doğru davranış: yönlendirme mesajını
+  # olabildiğince görünür kılmak, yoksa sistemi yarı açık bırakmamak.
   start_hyprland
-  log "GPU host'a geri verildi (bkz. yukarıdaki loglar), masaüstü başlatıldı."
 fi
