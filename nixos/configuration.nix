@@ -383,6 +383,10 @@ in
 
   environment.systemPackages = with pkgs; [
     kitty waybar rofi dunst grim slurp wl-clipboard
+    # DÜZELTME (2026-10-04): wuwa-auto.sh (home.nix) hızlı çeviri için
+    # `argos-translate` çağırıyordu ama paket hiçbir yerde kurulu değildi →
+    # hızlı çeviri her zaman sessizce başarısız olup Ollama'ya düşüyordu.
+    argos-translate
     hyprlock hypridle wlogout hyprpicker
     hyprpolkitagent pyprland waypaper
     networkmanagerapplet brightnessctl playerctl

@@ -996,7 +996,7 @@ while true; do
             [ -n "$TRANSLATION_MAIN" ] && notify-send -r 9999 "💬 Wuwa AI (Altyazı)" "$TRANSLATION_MAIN"
         fi
     else
-        [ -n "$LAST_MAIN" ] && { LAST_MAIN=""; pkill -f "notify-send -r 9999"; }
+        [ -n "$LAST_MAIN" ] && { LAST_MAIN=""; dunstctl close 9999 2>/dev/null || true; }
     fi
     rm -f "$IMAGE_MAIN" 2>/dev/null
 
@@ -1020,7 +1020,7 @@ while true; do
             [ -n "$TRANSLATION_CHOICE" ] && notify-send -r 9998 "💡 Wuwa AI (Seçenekler)" "$TRANSLATION_CHOICE"
         fi
     else
-        [ -n "$LAST_CHOICE" ] && { LAST_CHOICE=""; pkill -f "notify-send -r 9998"; }
+        [ -n "$LAST_CHOICE" ] && { LAST_CHOICE=""; dunstctl close 9998 2>/dev/null || true; }
     fi
     rm -f "$IMAGE_CHOICE" 2>/dev/null
 
