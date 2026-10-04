@@ -123,7 +123,11 @@ swapon /dev/nvme0n1p2
 # Manager activation bind-mount'u sessizce başarısız olur. @nix alt hacmi
 # mount edildikten sonra oluştur (nodatacow, diskte kalıcı).
 mkdir -p /mnt/nix/persist/home
-chown localhost:users /mnt/nix/persist/home
+# DÜZELTME (2026-10-04): canlı ISO'da `localhost` kullanıcısı yoktur,
+# `chown localhost:users` burada hata veriyordu. Kullanıcı ancak
+# nixos-install sonrası oluşur; tmpfiles.d kuralları zaten yaratıyor.
+# Yalnızca /nix/persist'in doğru sahibi gerekiyorsa:
+chown "$(id -un)": /mnt/nix/persist/home 2>/dev/null || true
 ```
 
 ---
@@ -174,8 +178,25 @@ nixos-enter --root /mnt -c 'passwd root'
 > tuigreet ile giriş yapılamıyor. Aşağıdaki komutla oluşturun:
 >
 > ```bash
-> nixos-enter --root /mnt -c 'mkdir -p /mnt/etc/nixos && mkpasswd --method yescrypt > /mnt/etc/nixos/hashedPassword && chmod 600 /mnt/etc/nixos/hashedPassword'
+> # DÜZELTME (2026-10-04): bu komut /mnt içinde çalıştırıldığı için
+> # hedef yol /mnt/etc/nixos DEĞİL, /etc/nixos olmalı. Eski hâliyle
+> # hashedPassword hiç oluşmuyor, localhost hesabı kilitli kalıyordu.
+> nixos-enter --root /mnt -c 'umask 077; mkdir -p /etc/nixos && mkpasswd --method yescrypt > /etc/nixos/hashedPassword'
 > ```
+>
+> `nixos-enter` `nixos-install` öncesinde genelde "NixOS kurulumu değil" diye
+> reddedebilir. O durumda dosyayı ISO tarafından doğrudan yaz:
+>
+> ```bash
+> # 2. adımda mkpasswd çalıştırıp çıktıyı bir değişkene al:
+> HASH=$(mkpasswd --method yescrypt)
+> # sonra hedefe yaz ve izinleri 600 yap:
+> install -d -m 755 /mnt/etc/nixos
+> printf '%s\n' "$HASH" | sudo tee /mnt/etc/nixos/hashedPassword >/dev/null
+> chmod 600 /mnt/etc/nixos/hashedPassword
+> ```
+>
+> `tee` tek başına 644 açtığı için `chmod 600` adımı atlanmamalı.
 >
 > `localhost` kullanıcısının şifresiyle (greetd/tuigreet) masaüstüne
 > gireceksiniz. Root şifresi ayrıdır ve konsol/acil kip için gereklidir.

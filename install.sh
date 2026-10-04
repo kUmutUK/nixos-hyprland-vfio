@@ -352,19 +352,20 @@ fi
 echo ""
 echo -e "${step_num}. Create the hashed password file:"
 echo -e "   ${CYAN}mkpasswd --method yescrypt | sudo tee /etc/nixos/hashedPassword${NC}"
+echo -e "   ${CYAN}sudo chmod 600 /etc/nixos/hashedPassword${NC}   ${YELLOW}(tee 644 acar; hash okunur kalmasin)${NC}"
 echo -e "   ${YELLOW}(mkpasswd, whois paketiyle gelir; sistemde yoksa: nix-shell -p whois)${NC}"
 echo -e "   ${YELLOW}Sıfırlama:  sudo rm /etc/nixos/hashedPassword${NC}"
 ((step_num++))
 
 echo ""
 echo -e "${step_num}. Rebuild, then REBOOT:"
-echo "   ${CYAN}sudo nixos-rebuild dry-activate --flake ${NIXOS_FLAKE_DIR}#nixos${NC}"
-echo "   ${CYAN}sudo nixos-rebuild switch     --flake ${NIXOS_FLAKE_DIR}#nixos${NC}"
-echo "   ${CYAN}sudo reboot${NC}"
-echo "   ${YELLOW}REBOOT ZORUNLU:${NC} iommu=pt, amd_iommu=on, amdgpu.ppfeaturemask"
-echo "   ${YELLOW}gibi kernel parametreleri yalnızca yeniden başlatınca etkin olur.${NC}"
-echo "   ${YELLOW}Reboot OLMADAN VFIO testi yapılırsa IOMMU açık değildir ve${NC}"
-echo "   ${YELLOW}GPU'yu vfio-pci'ye bağlamak mümkün olmaz.${NC}"
+echo -e "   ${CYAN}sudo nixos-rebuild dry-activate --flake ${NIXOS_FLAKE_DIR}#nixos${NC}"
+echo -e "   ${CYAN}sudo nixos-rebuild switch     --flake ${NIXOS_FLAKE_DIR}#nixos${NC}"
+echo -e "   ${CYAN}sudo reboot${NC}"
+echo -e "   ${YELLOW}REBOOT ZORUNLU:${NC} iommu=pt, amd_iommu=on, amdgpu.ppfeaturemask"
+echo -e "   ${YELLOW}gibi kernel parametreleri yalnızca yeniden başlatınca etkin olur.${NC}"
+echo -e "   ${YELLOW}Reboot OLMADAN VFIO testi yapılırsa IOMMU açık değildir ve${NC}"
+echo -e "   ${YELLOW}GPU'yu vfio-pci'ye bağlamak mümkün olmaz.${NC}"
 ((step_num++))
 
 echo ""
