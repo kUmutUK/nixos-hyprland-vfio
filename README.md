@@ -78,6 +78,13 @@ Hardware-agnostic Vulkan latency layer:
 LOW_LATENCY_LAYER_REFLEX=1
 ```
 
+> **Düzelten (2026-10-04):** Upstream'in okuduğu değişkenler tam olarak üç
+> tanedir (`src/layer_context.hh:52-61`): `LOW_LATENCY_LAYER_REFLEX`,
+> `LOW_LATENCY_LAYER_SPOOF_NVIDIA`, `LOW_LATENCY_LAYER_FORCE_DECOUPLED`.
+> **`LOW_LATENCY_LAYER` diye bir değişken yoktur** — 1.2.0'da
+> `configuration.nix`'e eklenen `LOW_LATENCY_LAYER = "1"` satırı hiçbir kod
+> tarafından okunmuyordu, sessiz bir no-op'tu. Kaldırıldı.
+
 > **Düzelten (2026-10-03):** Bu katman `948a561` rev'ine sabitlenmiş ve
 > upstream manifestinde `enable_environment` **yoktur** — yani varsayılan olarak
 > **açıktır**. Repodaki özel manifest `ENABLE_LOW_LATENCY_LAYER` ekliyordu;
@@ -258,8 +265,6 @@ sudo nixos-rebuild switch --flake /etc/nixos/nixos#nixos
 │   └── hooks/qemu               # VFIO hook
 ├── vm-xml/win10.xml
 ├── assets/                      # ekran görüntüleri (wall-.png, kitty-.png)
-├── gemma-modelfile
-├── wuwa-modelfile
 ├── install.sh
 ├── shell.nix
 ├── CHANGELOG.md

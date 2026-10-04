@@ -184,8 +184,24 @@ reboot
 ## Sistem güncelle
 
 ```bash
+sudo nixos-rebuild dry-activate --flake /etc/nixos/nixos#nixos
+```
+
+```bash
 sudo nixos-rebuild switch --flake /etc/nixos/nixos#nixos
 ```
+
+## Yeniden başlat
+
+```bash
+sudo reboot
+```
+
+> ⚠️ **Reboot zorunludur.** `iommu=pt`, `amd_iommu=on`, `amdgpu.ppfeaturemask`
+> gibi kernel parametreleri `switch` ile uygulanmaz; yalnızca yeniden
+> başlatınca etkin olur. **Reboot olmadan VFIO testi yapılırsa IOMMU açık
+> değildir ve GPU'yu `vfio-pci`'ye bağlamak mümkün olmaz.** Buna karşılık
+> hook'un çalıştığını `switch`'ten hemen sonra da doğrulayabilirsiniz.
 
 ## Log kontrol
 

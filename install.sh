@@ -241,13 +241,32 @@ echo "   Ya da elle oluşturun:"
 echo -e "     ${CYAN}sudo nixos-generate-config --root /mnt${NC}"
 echo -e "     ${CYAN}lsblk -f${NC}  # UUID'leri kontrol edin"
 
+# ─── P0: /home/.snapshots alt hacmi ────────────────────────
+# services.snapper.configs.home (SUBVOLUME = "/home") için NixOS snapper
+# modülü her SUBVOLUME'ün içinde ".snapshots" alt hacmi istiyor
+# (nixos/modules/services/misc/snapper.nix). hardware-configuration.nix bu
+# hacmi "subvol=@home/.snapshots" olarak MOUNT ediyor ve neededForBoot = true.
+#
+# Alt hacim diskte YOKSA mount birimi başarısız olur → root filesystem'i de
+# "/home" bekler olduğu için acil kipine (emergency mode) düşersiniz.
+# Bu yüzden rebuild'dan ÖNCE oluşturulmalı; bu adım daha önce hiçbir yerde
+# yoktu, yani tek P0 blocker installer'da karşılanmıyordu.
+step "Btrfs snapshot subvolume"
+if findmnt -no FSTYPE /home 2>/dev/null | grep -qi btrfs; then
+  if [ -d /home/.snapshots ]; then
+    log "/home/.snapshots already exists."
+  else
+    warn "/home/.snapshots is MISSING — snapper 'home' config and boot would both fail."
+    sudo btrfs subvolume create /home/.snapshots
+    log "Created /home/.snapshots."
+  fi
+else
+  warn "/home is not a btrfs mount — skipping (snapper home config will not work)."
+fi
+echo ""
+
 # ─── Variable substitution ──────────────────────────────
 step "Applying safe variable substitutions"
-
-sudo sed -i \
-    -e "s|gpuPCI   = .*;|gpuPCI   = \"${gpu_pci}\";|" \
-    -e "s|gpuAudio = .*;|gpuAudio = \"${gpu_audio}\";|" \
-    "$NIXOS_FLAKE_DIR/configuration.nix" && log "GPU PCI addresses set."
 
 HOME_NIX="$NIXOS_FLAKE_DIR/home.nix"
 apply_var() {
@@ -311,8 +330,16 @@ echo -e "   ${YELLOW}Sıfırlama:  sudo rm /etc/nixos/hashedPassword${NC}"
 ((step_num++))
 
 echo ""
-echo -e "${step_num}. When ready, rebuild:"
-echo "   sudo nixos-rebuild switch --flake /etc/nixos/nixos#nixos"
+echo -e "${step_num}. Rebuild, then REBOOT:"
+echo "   ${CYAN}sudo nixos-rebuild dry-activate --flake ${NIXOS_FLAKE_DIR}#nixos${NC}"
+echo "   ${CYAN}sudo nixos-rebuild switch     --flake ${NIXOS_FLAKE_DIR}#nixos${NC}"
+echo "   ${CYAN}sudo reboot${NC}"
+echo "   ${YELLOW}REBOOT ZORUNLU:${NC} iommu=pt, amd_iommu=on, amdgpu.ppfeaturemask"
+echo "   ${YELLOW}gibi kernel parametreleri yalnızca yeniden başlatınca etkin olur.${NC}"
+echo "   ${YELLOW}Reboot OLMADAN VFIO testi yapılırsa IOMMU açık değildir ve${NC}"
+echo "   ${YELLOW}GPU'yu vfio-pci'ye bağlamak mümkün olmaz.${NC}"
+((step_num++))
+
 echo ""
 echo -e "${RED}  DO NOT rebuild until disk UUIDs are correct!${NC}"
 echo ""
