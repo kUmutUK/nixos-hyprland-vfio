@@ -333,7 +333,7 @@ let
     bind = $mainMod SHIFT, 0, movetoworkspace, 10
 
     bind = $mainMod, G, togglegroup
-    bind = $mainMod, TAB, changegroupactive
+    bind = $mainMod, Tab, changegroupactive
 
     bind = $mainMod, Tab, workspace, previous
 
@@ -664,9 +664,9 @@ let
     "custom/power" = {
       format = "⏻";
       tooltip = true;
-      tooltip-format = "Güç Menüsü\nSol: wlogout\nSağ: Kapat";
+      tooltip-format = "Güç Menüsü (wlogout)";
       on-click = "wlogout";
-      on-click-right = "systemctl poweroff";
+      on-click-right = "wlogout";
     };
   };
 in
@@ -1171,7 +1171,7 @@ done
   # kendisi bu tanımla yönetilmez (impermanence'in "nix" manager'ı bu modül
   # NixOS tarafında, home.persistence tanımı ona dokunmaz).
   home.persistence."/nix/persist/home" = {
-    directories = [ ".config/lsfg-vk" ];
+    files = [ ".config/lsfg-vk/conf.toml" ];
   };
 
   programs = {
@@ -1402,6 +1402,7 @@ systemd.user.services = {
     };
     Service = {
       Type = "simple";
+      ConditionPathExists = "${wallpaperVideo}";
       Environment = "PATH=${lib.makeBinPath [ pkgs.mpvpaper pkgs.mpv ]}";
       ExecStart = "${pkgs.mpvpaper}/bin/mpvpaper -p --mpv-options \"loop=inf\" ${monitorOutput} ${wallpaperVideo}";
       Restart = "on-failure";
