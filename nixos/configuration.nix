@@ -193,6 +193,16 @@ in
   };
 
   services.power-profiles-daemon.enable = true;
+  # ⚠️ CPU önceliğinde ÜÇ yazıcı var ve aralarında sıra garantisi yok:
+  #   • power-profiles-daemon → CPU governor (performance/balanced/...)
+  #   • ananicy-cpp          → nice + ioprio (CVE kuralları)
+  #   • gamemode             → renice -10 (oyun başlarken)
+  # ppd yalnızca governor'a dokunmalı, ananicy scheduler otoritesi olmalı. Gamemode
+  # oyun sırasında ikisini de eziyor; bu kasıtlı. ppd'nin "performance"
+  # profilini oyun dışında "balanced"a çekmen önerilir — aksi halde masaüstü
+  # de masaüstü olmayan bir güç profilinde çalışır.
+  # Alternatif: ananicy'yi kaldırıp sadece gamemode + ppd bırakmak.
+  # Karar: ikisi de kalsın, çakışma kabul ediliyor.
   networking.hostName = "nixos-workstation";
   networking.networkmanager.enable = true;
   time.timeZone = "Europe/Istanbul";
@@ -385,17 +395,17 @@ in
 
   # Düzeltme (2026-10-04): hyprlock yalnızca systemPackages'ta vardı, PAM
   # servisi tanımlı değildi → kilit ekranı parolayı kabul etmeyebiliyordu.
-  # NOT (2026-10-04): `backend = "pam_unix.so"` CI'da
-  # "The option `security.pam.services.hyprlock.backend' does not exist"
-  # hatası verdi — bu nixpkgs rev'inde PAM submodule'ında böyle bir option yok.
-  # Mekanizma düzeltmesi (2026-10-05): /etc/pam.d/hyprlock dosyasını
-  # security.pam modülü üretir (nixos/modules/security/pam.nix) — hyprlock'un
-  # systemd servisi DEĞİL. Bu config'te programs.hyprlock enable edilmediği
-  # için systemd.services.hyprlock diye bir şey zaten yok.
+  #
+  # Boş attrset'in sebebi: /etc/pam.d/hyprlock dosyasını `security.pam` modülü
+  # üretir, hyprlock'un systemd servisi DEĞİL (ve bu config'te
+  # programs.hyprlock enable edilmediği için systemd.services.hyprlock diye
+  # bir şey de yok). hyprlock 0.9.6'da auth:pam:module varsayılanı zaten
+  # "hyprlock" (ConfigManager.cpp:252) — yani tam olarak bu dosya okunur.
   # Varsayılan stack, pam alt modülünün useDefaultRules=true + unixAuth=true
-  # varsayılanlarından gelir (ikisi de default); "{}" yazmanın özel bir
-  # "doldurma" anlamı yoktur. hyprlock 0.9.6'da auth:pam:module varsayılanı
-  # zaten "hyprlock" (ConfigManager.cpp:252) — yani tam olarak bu dosya okunur.
+  # varsayılanlarından gelir; "{}" yazmanın "doldurma" anlamı yoktur, sadece
+  # modülün çalışmasını tetikler.
+  # Daha önce denenmiş: backend = "pam_unix.so" → CI'da "The option
+  # `security.pam.services.hyprlock.backend' does not exist" hatası.
   # Doğrula: ls -l /etc/pam.d/hyprlock && grep -c pam_unix /etc/pam.d/hyprlock
   security.pam.services.hyprlock = { };
 
