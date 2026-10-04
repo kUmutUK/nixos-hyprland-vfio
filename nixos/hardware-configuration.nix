@@ -58,9 +58,11 @@ in
   #    kipine (emergency mode) düşersiniz):
   #      sudo btrfs subvolume create /home/.snapshots
   #
-  # ⚠️ @snapshots'ı BURAYA mount ETMEYİN: root ve home snapper config'i aynı
-  #    dizine yazmaya çalışır, çakışır. Bu yüzden @home içine gömülü
-  #    ayrı bir alt hacim kullanıyoruz.
+  # ⚠️ @snapshots'ı /home/.snapshots OLARAK mount ETMEYİN: /home altındaki
+  #    home snapper config'i ile kökteki root snapper config'i aynı dizine
+  #    yazmaya çalışır, çakışır. Bu yüzden @home içine gömülü AYRI bir alt
+  #    hacim (@home/.snapshots) kullanıyoruz — aşağıdaki mount zaten bunu
+  #    yapıyor, yukarıdaki not yalnızca "subvol=@snapshots" yazmayın diye.
   fileSystems."/home/.snapshots" = {
     device  = rootDev;
     fsType  = "btrfs";
