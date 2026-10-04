@@ -222,6 +222,31 @@ nixos-install --flake /mnt/etc/nixos/nixos#nixos
 
 ---
 
+# 🖥️ 9b. VM'yi libvirt'e tanıt (ATLANMA)
+
+> **DÜZELTME (2026-10-04):** bu adım hiçbir dokümanda yoktu. Atlanırsa
+> domain tanımsız kalır; `nixos/hooks/qemu` içindeki
+> `if [ "$GUEST" != "$TARGET_VM" ]; then exit 0` filtresi (`TARGET_VM="win10"`)
+> hiç eşleşmez ve GPU **hiçbir zaman** `vfio-pci`'ye bağlanmaz. Yani tüm
+> VFIO sistemi sessizce hiç çalışmaz.
+
+```bash
+cp -r /mnt/etc/nixos/vm-xml /mnt/etc/nixos/nixos/   # zaten klonlandıysa gerekmez
+sudo mkdir -p /var/lib/libvirt
+sudo cp /mnt/etc/nixos/vm-xml/win10.xml /var/lib/libvirt/
+sudo virsh define /var/lib/libvirt/win10.xml
+virsh list --all     # 'win10' → "shut off" olarak görünmeli
+```
+
+> ⚠️ XML'deki disk/NVRAM yolları sabit geliyor. Kendi diskine göre
+> düzenlemezsen `virsh start win10` "disk bulunamadı" ile başarısız olur.
+>
+> Doğrulama: `sudo virsh dominfo win10` → ad, UUID ve PCI hostdev'ler görünmeli.
+> Hook'un çalıştığını `sudo journalctl -u libvirtd -f` ve
+> `sudo tail -f /var/log/libvirt/qemu/win10.log` ile izleyebilirsin.
+
+---
+
 # 🔄 10. Reboot
 
 ```bash
