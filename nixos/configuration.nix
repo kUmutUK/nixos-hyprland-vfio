@@ -145,8 +145,21 @@ in
     #     disk mi olacağını değil, ne kadar agresif swap'e gidileceğini
     #     ayarlar.
     # Önceki yorum swappiness'nin öncelik seçtiğini söylüyordu; bu yanlıştı.
-    # Buradaki 180, RAM baskınken de agresif temizlemeye izin verir.
-    "vm.swappiness" = 180;
+    #
+    # DÜZELTME (2026-10-05): 180 değeri LEGAL ve zaten zram önceliğini
+    # zaten ayrıca "priority" ile çözüyoruz. Yani 180'ı düşürmek zram'ın
+    # kullanılmasını ETKİLEMEZ — sadece "anonim sayfaları ne kadar agresif
+    # swap'e gönderelim" parametresini değiştirir.
+    #
+    # 180 ÇOK agresiftir: kernel, RAM bolken bile sayfaları zram'a taşıyıp
+    # sık sık geri alır (thrash). Bu, oyun/gaming workload'unda frame-time
+    # jitter'ı ve gereksiz güç tüketimi yaratır; kazanç ölçülmemiştir.
+    # 60'ın üzeri zaten agresif sayılır, 100 kernel varsayılanıdır.
+    # Buradaki değer BİLEREK 100'de tutuldu: zram önceliği zaten ayrı
+    # ayarlanmış durumda, bu yüzden varsayılanın üstüne çıkmak için bir
+    # gerekçe yok. Daha agresif davranmak isterseniz 150-180 aralığını
+    # ÖLÇEREK deneyin (ör. `vmstat 1`, oyun içi 1% low takibi).
+    "vm.swappiness" = 100;
     "kernel.sched_autogroup_enabled" = 0;
     "kernel.split_lock_mitigate" = 0;
     "kernel.perf_event_paranoid" = 1;
@@ -538,8 +551,20 @@ in
   };
   programs.virt-manager.enable = true;
 
+  # DÜZELTME (2026-10-05): openssh `enable = true` idi ama
+  # `authorizedKeys.keys = [ ]` — yani kimse girebiliyordu. Sonuç: port 22
+  # dinleniyor, sshd çalışıyor, saldırı yüzeyi var, fayda yok.
+  # NixOS'ta openssh zaten varsayılan KAPALI'dır; açık tutmanın tek geçerli
+  # sebebi authorizedKeys dolu olmasıdır.
+  #
+  #   • Bu makine için: anahtar eklemek istiyorsan
+  #       services.openssh = { enable = true; authorizedKeys.keys = [ "ssh-ed25519 AAAA..." ]; };
+  #   • SSH kullanmayacaksanız: aşağıdaki `enable = false` satırı yeterli,
+  #     geri kalan `settings` bloğu pasif kod olarak dursun.
   services.openssh = {
-    enable = true;
+    # SSH kullanımı YOKSA bu false kalmalı. Anahtar ekleyecekseniz true yapın
+    # VE authorizedKeys.keys'i doldurun — aksi halde port 22 açık kalır.
+    enable = false;
     settings = {
       PasswordAuthentication = false;
       KbdInteractiveAuthentication = false;
