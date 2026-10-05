@@ -240,7 +240,8 @@ Single-GPU passthrough setup:
 - AppArmor
 - Firewall enabled
 - Fail2ban
-- SSH key-only auth (only if you enable it — see Notes)
+- SSH key-only auth
+- Root login disabled
 
 ---
 
@@ -299,12 +300,12 @@ sudo reboot   # ZORUNLU (iommu=pt, amd_iommu=on)
 │   ├── flake.nix
 │   ├── flake.lock
 │   └── hooks/qemu               # VFIO hook
-├── vm-xml/win11.xml
+├── vm-xml/win10.xml
 ├── assets/                      # ekran görüntüleri (wall-.png, kitty-.png)
 ├── install.sh
 ├── scripts/
 │   └── extract-embedded-scripts.py   # CI için home.nix'teki bash script'lerini çıkarır
-├── .github/workflows/check.yml  # CI: shellcheck + `nix flake check --no-build` (eval) + gömülü scriptler
+├── .github/workflows/check.yml  # CI: shellcheck + nix flake check (eval)
 ├── docs/archive/                # ESKİ analiz belgeleri — güncel kodla eşleşmez
 │   ├── ANALIZ-2026-10-05-ZIP3-SUPERSEDED.md
 │   ├── nixos-hyprland-vfio-analiz-v2-SUPERSEDED.md
@@ -317,7 +318,7 @@ sudo reboot   # ZORUNLU (iommu=pt, amd_iommu=on)
 ```
 
 > **`scripts/extract-embedded-scripts.py` CI için zorunludur.** `home.nix` içine
-> 8 bash script'i gömülü; CI onları diske çıkarıp shellcheck'ten geçiriyor.
+> 7 bash script'i gömülü; CI onları diske çıkarıp shellcheck'ten geçiriyor.
 > Bu dosya olmadan `.github/workflows/check.yml` çalışmaz.
 
 > **`shell.nix` silindi (2026-10-05).** Kökte ikinci bir geliştirme ortamı
@@ -361,8 +362,9 @@ virt-manager
 # 🛠️ Development
 
 ```bash
-# flake'e `devShells.x86_64-linux.default` tanımlı. (Kökteki legacy
-# `shell.nix` 2026-10-05'te silindi — artık ikinci bir ortam yok.)
+# DÜZELTME (2026-10-04): flake'e gerçek `devShells.x86_64-linux.default`
+# eklendi; README'deki `nix develop` artık boşa çalışmıyor. Kökteki
+# `shell.nix` legacy <nixpkgs> channel import ettiği için NIX_PATH gerektiriyor.
 cd nixos && nix develop
 
 # NixOS config'ini değerlendir (ağır, kernel derlemesi yapabilir):
@@ -371,23 +373,22 @@ cd nixos && nix eval .#nixosConfigurations.nixos.config.system.build.toplevel.dr
 
 ### 🖥️ VM'yi tanıt
 
-`vm-xml/win11.xml` repoda duruyor ama **otomatik kurulmuyor** — atlanırsa
-domain tanımsız kalır, VFIO hook'unun `$GUEST = "win11"` filtresi hiç
+`vm-xml/win10.xml` repoda duruyor ama **otomatik kurulmuyor** — atlanırsa
+domain tanımsız kalır, VFIO hook'unun `$GUEST = "win10"` filtresi hiç
 eşleşmez ve GPU hiçbir zaman `vfio-pci`'ye geçmez:
 
 ```bash
-sudo cp vm-xml/win11.xml /var/lib/libvirt/
-sudo virsh define /var/lib/libvirt/win11.xml
-virsh list --all        # 'win11' → "shut off" olarak görünmeli
+sudo cp vm-xml/win10.xml /var/lib/libvirt/
+sudo virsh define /var/lib/libvirt/win10.xml
+virsh list --all        # 'win10' → "shut off" olarak görünmeli
 ```
 
-> Not: CI, `nixos/` dizininde `nix flake check --no-build` çalıştırır —
-> yani modül sistemi **gerçekten değerlendirilir**, build yapılmaz. Bu,
-> `nix flake show`'un aksine bozuk option'ları ve değerlendirme hatalarını
-> yakalar. `--no-build` yüzünden **derleme test edilmez**: CachyOS kernel
-> build'i ve `low_latency_layer` türetmesi CI'da derlenmez.
-> Tam derleme doğrulaması istiyorsanız `nix build .#nixosConfigurations.nixos.config.system.build.toplevel`
-> (ağır, kernel'i derler).
+> Not: `nix flake check` CI'da **kullanılmıyor** — Hyprland türetmesi
+> `--no-build` modunda kendi `VERSION` dosyasını `readFile` ile okuyup
+> patlıyor. Yerelde de `nix flake check` yerine yukarıdaki `nix eval`
+> komutunu kullanın: CI ile birebir aynı kontrolü yapar (modül sistemini
+> gerçekten değerlendirir, build çalıştırmaz) ve `nix flake show`'un
+> aksine bozuk option'ları yakalar.
 
 ---
 
@@ -424,7 +425,7 @@ sudo nixos-rebuild dry-activate --flake .#nixos
   0.55 compositor); bu sürümde overlay kaldırıldı.
 - **`qemu.runAsRoot = false`** olduğu için `libvirtd-qemu-ownership`
   oneshot servisi her boot'ta `/var/lib/libvirt/{images,qemu}` sahipliğini
-  `qemu-libvirtd:qemu-libvirtd` yapar. Bu olmazsa `virsh start win11`
+  `qemu-libvirtd:qemu-libvirtd` yapar. Bu olmazsa `virsh start win10`
   "Permission denied" ile başlamaz.
 - SSH uses key authentication. `configuration.nix` ships with an **empty**
   `authorizedKeys.keys` — add your own (`ssh-ed25519 …`). Earlier versions

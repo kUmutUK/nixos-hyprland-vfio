@@ -19,23 +19,6 @@ BACKUP_DIR="$HOME/.nixos-config-backup-$(date +%Y%m%d-%H%M%S)"
 NIXOS_DIR="/etc/nixos"
 NIXOS_FLAKE_DIR="$NIXOS_DIR/nixos"
 
-# --force yalnızca IOMMU gate'ini aşar. Normalde izole olmayan bir grup
-# kurulumu durdurur; --force bunu bilinçli bir kullanıcı kararı yapar.
-FORCE=0
-for arg in "$@"; do
-  case "$arg" in
-    --force|-f) FORCE=1 ;;
-    -h|--help)
-      echo "Usage: ./install.sh [--force]"
-      echo "  --force   IOMMU group beklenmedik cihaz içeriyorsa da devam et."
-      echo "            Yalnızca ACS override gibi önlemler biliyorsanız kullanın."
-      exit 0 ;;
-    *)
-      echo "Unknown option: $arg (see --help)" >&2
-      exit 2 ;;
-  esac
-done
-
 echo ""
 echo -e "${CYAN}==============================================================${NC}"
 echo -e "${CYAN}   NixOS Hyprland Gaming + VFIO — Safe Setup Script${NC}"
@@ -74,53 +57,21 @@ else
 fi
 log "CPU: $CPU_VENDOR"
 
-# DÜZELTME (2026-10-05): `| head -1` erken kapanınca grep'e SIGPIPE (141)
+# DÜZELTME (2026-10-04): `| head -1` erken kapanınca grep'e SIGPIPE (141)
 # gönderiyor; `set -o pipefail` yüzünden betik burada sessizce ölüyordu.
 # `grep -m1` aynı işi yapıp hattı düzgün kapatır.
-#
-# DÜZELTME (2026-10-05, P2-7): TÜM VGA/3D/display satırları toplanıyor,
-# artık yalnızca İLKİ alınmıyordu. Ryzen çiplerde "VGA compatible
-# controller" (iGPU) genelde dizinde FARKLI bir bus'ta ve listede EN ÜSTTE
-# çıkar; `grep -m1` ile iGPU seçiliyor ve kullanıcı "Enter GPU VGA PCI
-# address" istemine yanlış varsayılanla başlıyordu. Aynı hatalı varsayılan
-# aşağıdaki GPU_VENDOR tespitine de sızıyordu.
-mapfile -t gpu_lines < <(lspci | grep -iE "vga|3d|display" || true)
-# Vendor tespiti TÜM satırlara bakar: geçici harici GPU, ikinci kart ya da
-# iGPU varken "ilk satır" her zaman doğru cevap değildir.
-# (Eski `gpu_line` değişkeni silindi — atanıyordu ama hiç okunmuyordu;
-#  linter bunu "assigned but never used" olarak bildiriyordu.)
-# ⚠️ Bu yorum bloğunu kısaltırken dikkat: kelimeleri birleştirip yorumu
-# "# shellcheck …" ile BAŞLATMA. Linter satırın ilk token'ını directive
-# sanar ve SC1073 parse hatası verir (bkz. nixos/hooks/qemu içindeki
-# aynı uyarı).
-if [ "${#gpu_lines[@]}" -gt 0 ]; then
-  gpu_all="$(printf '%s\n' "${gpu_lines[@]}")"
-else
-  gpu_all=""
-fi
-if printf '%s' "$gpu_all" | grep -qi "AMD\|ATI\|Radeon"; then
+gpu_line=$(lspci | grep -im1 -E "vga|3d|display" || true)
+if echo "$gpu_line" | grep -qi "AMD\|ATI\|Radeon"; then
   GPU_VENDOR="amd"
-elif printf '%s' "$gpu_all" | grep -qi "NVIDIA\|GeForce"; then
+elif echo "$gpu_line" | grep -qi "NVIDIA\|GeForce"; then
   GPU_VENDOR="nvidia"
-elif printf '%s' "$gpu_all" | grep -qi "Intel"; then
+elif echo "$gpu_line" | grep -qi "Intel"; then
   GPU_VENDOR="intel"
 else
   GPU_VENDOR="unknown"
 fi
 log "GPU: $GPU_VENDOR"
-if [ "${#gpu_lines[@]}" -gt 0 ]; then
-  printf '%s\n' "${gpu_lines[@]}" | sed "s/^/  ${CYAN}/;s/$/${NC}/"
-else
-  warn "VGA/3D/display cihazı bulunamadı — lspci çıktısını kontrol edin."
-fi
-# Birden fazla GPU görüldüyse seçimin neden önemli olduğunu söyle —
-# kullanıcı aşağıdaki isteme elle doğru adresi yazmalı.
-if [ "${#gpu_lines[@]}" -gt 1 ]; then
-  echo ""
-  warn "Birden fazla görüntü cihazı algılandı (${#gpu_lines[@]})."
-  warn "iGPU + harici GPU sistemlerinde aşağıdaki adresi ELLE yazın —"
-  warn "geçici GPU'yu (dizinde en üstte olan) seçmek VFIO'yu bozar."
-fi
+echo -e "  ${CYAN}$gpu_line${NC}"
 echo ""
 
 if [[ "$CPU_VENDOR" != "amd" || "$GPU_VENDOR" != "amd" ]]; then
@@ -151,84 +102,28 @@ step "Configuration inputs"
 echo "Detected VGA devices:"
 lspci -nn | grep -iE "vga|3d|display" | sed 's/^/  /'
 echo ""
-# DÜZELTME (2026-10-05): boş giriş kabul ediliyordu; sonraki
-# IOMMU kontrolünde "/sys/bus/pci/devices/0000:/iommu_group" gibi
-# bozuk bir yol üretip "IOMMU group bilgisi okunamadı" uyarısı
-# veriyor, sonra da regex doğrulaması kurulumu durduruyordu — yani
-# kullanıcı hatayı IOMMU problemi sanıyordu. Artık boş giriş
-# reddediliyor ve hangi satırlardan seçileceği hatırlatılıyor.
-while :; do
-  read -rp "Enter GPU VGA PCI address (e.g. 0000:0b:00.0): " gpu_pci
-  if printf '%s\n' "$gpu_pci" | grep -qE '^[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}\.[0-9a-fA-F]$'; then
-    break
-  fi
-  error "PCI adresi biçimi geçersiz: '0000:0b:00.0' biçiminde olmalı. Yukarıdaki 'Detected VGA devices' listesine bakın."
-done
-while :; do
-  read -rp "Enter GPU Audio PCI address (e.g. 0000:0b:00.1, yoksa boş bırakın): " gpu_audio
-  if [ -z "$gpu_audio" ] || printf '%s\n' "$gpu_audio" | grep -qE '^[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}\.[0-9a-fA-F]$'; then
-    break
-  fi
-  error "PCI adresi biçimi geçersiz: '0000:0b:00.1' biçiminde olmalı, ya da ses yoksa boş bırakın."
-done
+read -rp "Enter GPU VGA PCI address (e.g. 0000:0b:00.0): " gpu_pci
+read -rp "Enter GPU Audio PCI address (e.g. 0000:0b:00.1): " gpu_audio
 
 # ─── IOMMU group preflight ─────────────────────────────────
 step "IOMMU group check"
 short_pci() { echo "$1" | sed -E 's/^0000://'; }
-# Kullanıcı "0b:00.0" / "0000:0b:00.0" / "00000b:00.0" yazabiliyor; sysfs
-# daima tam "0000:bb:dd.f" biçiminde. Karşılaştırma yapılmadan önce
-# hepsini tek biçime indiriyoruz, yoksa "temiz grup" kontrolü yanlış negatif
-# üretir.
-norm_pci() {
-  local p="${1,,}"
-  p="${p#0000:}"
-  printf '0000:%s' "$p"
-}
 gpu_short="$(short_pci "$gpu_pci")"
 iommu_dir="/sys/bus/pci/devices/0000:${gpu_short}/iommu_group"
 if [ -e "$iommu_dir" ]; then
   group_num="$(basename "$(readlink -f "$iommu_dir")")"
   info "GPU (0000:${gpu_short}) IOMMU group: ${group_num}"
   echo "Bu gruptaki tüm PCI cihazları:"
-  unexpected=()
   for dev in /sys/kernel/iommu_groups/"${group_num}"/devices/*; do
-    [ -e "$dev" ] || continue
     dev_addr="$(basename "$dev")"
     lspci -nns "${dev_addr#0000:}" | sed 's/^/    /'
-    case "$(norm_pci "$dev_addr")" in
-      "$(norm_pci "$gpu_pci")"|"$(norm_pci "$gpu_audio")") ;;
-      *) unexpected+=("$dev_addr") ;;
-    esac
   done
   echo ""
-  if [ "${#unexpected[@]}" -eq 0 ]; then
-    log "IOMMU group temiz — yalnızca GPU ve GPU ses fonksiyonu var."
-  elif [ "$FORCE" -eq 1 ]; then
-    warn "IOMMU group izole DEĞİL: ${#unexpected[@]} beklenmedik cihaz."
-    for u in "${unexpected[@]}"; do
-      warn "    $u  $(lspci -nns "${u#0000:}" 2>/dev/null | cut -d' ' -f2-)"
-    done
-    warn "--force verildiği için devam ediliyor. İzolasyon garantisi yok."
-  else
-    error "IOMMU group izole DEĞİL — kurulum durduruldu."
-    echo -e "  ${RED}Beklenmedik ${#unexpected[@]} cihaz:${NC}"
-    for u in "${unexpected[@]}"; do
-      echo "    $u  $(lspci -nns "${u#0000:}" 2>/dev/null | cut -d' ' -f2-)"
-    done
-    echo ""
-    warn "GPU + ses dışındaki cihazlar da VM'e verilmeden tek GPU'yu"
-    warn "ayıramazsınız: VFIO bind ya başarısız olur ya da beklenmedik"
-    warn "cihazlar host tarafında erişilemez hale gelir (boot sonrası sürpriz)."
-    echo ""
-    info "Düzeltme yolları:"
-    echo "    1. BIOS/UEFI'de IOMMU'yu (AMD-Vi / Intel VT-d) açın; yeni anakart"
-    echo "       anakartlar genelde IOMMU'yu varsayılan AÇIK gelir."
-    echo "    2. 'lspci -nnk' ile beklenmedik cihazları tanıyın. Bunlar ayrı bir"
-    echo "       PCIe root porta bağlıysa fiziksel olarak taşımak genelde tek"
-    echo "       gerçek çözümdür."
-    echo "    3. Bu adımı bilinçli olarak atlamak istiyorsanız: ./install.sh --force"
-    exit 1
-  fi
+  warn "Yukarıdaki listede GPU (${gpu_pci}) ve ses fonksiyonu (${gpu_audio})"
+  warn "DIŞINDA bir cihaz varsa, o cihaz da VM'e verilmeden GPU'yu tek"
+  warn "başına ayıramazsınız (ACS override gibi ek önlemler gerekir)."
+  read -rp "Devam etmek istiyor musunuz? (yes/no): " iommu_confirm
+  [[ "$iommu_confirm" != "yes" ]] && { info "Aborted."; exit 0; }
 else
   warn "IOMMU group bilgisi okunamadı (${iommu_dir} yok)."
   warn "IOMMU'nun BIOS'ta etkin olduğundan emin olun; kontrol atlanıyor."
@@ -304,32 +199,10 @@ if [ -d "$REPO_DIR/nixos/hooks" ]; then
     sudo chmod 0755 "$NIXOS_FLAKE_DIR/hooks/qemu"
     log "Copied hooks/ (configuration.nix references ./hooks/qemu as a relative path)."
 
-    # DÜZELTME (2026-10-05): buradaki `sed -i` ile değişkenler
-    # kaçırılmadan konuşturuluyordu. sed replacement metninde `\`, `&` ve
-    # `|` karakterleri ÖZEL anlam taşır; kullanıcı bunları içeren bir PCI
-    # adresi (ya da beklenmedik bir karakter) yazarsa hook sessizce bozulur.
-    # PCI adresi zaten regex ile doğrulanabilir olduğu için: önce formatı
-    # doğrula, sonra Python ile hedefli ve kaçırılabilir bir yaz.
-    if ! printf '%s\n%s\n' "$gpu_pci" "$gpu_audio" | grep -qEv '^[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}\.[0-9a-fA-F]$'; then
-      error "PCI adresi biçimi geçersiz: beklenen '0000:0b:00.0'."
-    fi
-    if sudo python3 - "$gpu_pci" "$gpu_audio" "$NIXOS_FLAKE_DIR/hooks/qemu" <<'PYEOF2'
-import re, sys
-gpu, aud, path = sys.argv[1], sys.argv[2], sys.argv[3]
-data = open(path, encoding="utf-8").read()
-for var, val in (("GPU_PCI", gpu), ("GPU_AUDIO", aud)):
-    pat = re.compile(r'^(%s=)(")[^"]*(")' % var, re.M)
-    data, n = pat.subn(lambda m: m.group(1) + m.group(2) + val + m.group(3), data)
-    if n != 1:
-        sys.exit(f"beklenen tek {var}= satırı bulunamadı ({n} eşleşme)")
-open(path, "w", encoding="utf-8").write(data)
-print("OK")
-PYEOF2
-    then
-      log "Hook script'teki GPU PCI adresleri de güncellendi."
-    else
-      error "hooks/qemu patch başarısız — dosya bozulmadı, elle düzeltin."
-    fi
+    sudo sed -i \
+        -e "s|^GPU_PCI=\".*\"|GPU_PCI=\"${gpu_pci}\"|" \
+        -e "s|^GPU_AUDIO=\".*\"|GPU_AUDIO=\"${gpu_audio}\"|" \
+        "$NIXOS_FLAKE_DIR/hooks/qemu" && log "Hook script'teki GPU PCI adresleri de güncellendi."
 
     # DÜZELTME (2026-10-05): buradaki `git update-index --skip-worktree`
     # kaldırıldı. /etc/nixos/nixos genelde bir git deposu DEĞİLDİR ve
@@ -340,25 +213,25 @@ fi
 
 # ─── VM XML PCI senkronizasyonu (yeni) ──────────────────
 # Installer eskiden sadece hooks/qemu içindeki GPU_PCI/GPU_AUDIO'yu
-# güncelliyordu; win11.xml'deki <hostdev> <source> <address> blokları
+# güncelliyordu; win10.xml'deki <hostdev> <source> <address> blokları
 # ise sabit kalıyordu. Sonuç: hook yeni PCI adresini vfio-pci'ye bind
 # ediyor ama libvirt hâlâ eski adresi aradığı için VM "device not found"
 # ile başlamıyordu.
 step "VM XML PCI senkronizasyonu"
-if [ ! -f "$REPO_DIR/vm-xml/win11.xml" ]; then
-  warn "vm-xml/win11.xml bulunamadı — XML'i elle düzenle."
+if [ ! -f "$REPO_DIR/vm-xml/win10.xml" ]; then
+  warn "vm-xml/win10.xml bulunamadı — XML'i elle düzenle."
 elif ! command -v python3 >/dev/null 2>&1; then
-  warn "python3 yok — vm-xml/win11.xml'i elle düzenle (bus/slot/function)."
+  warn "python3 yok — vm-xml/win10.xml'i elle düzenle (bus/slot/function)."
 else
-  # DÜZELTME (2026-10-05): script daha önce $REPO_DIR/vm-xml/win11.xml dosyasını
+  # DÜZELTME (2026-10-05): script daha önce $REPO_DIR/vm-xml/win10.xml dosyasını
   # YERİNDE değiştirip değişikliği `git update-index --skip-worktree` ile
   # saklıyordu. Bu, "repo = değişmez şablon" değişmezini bozuyordu: sonraki
   # `git pull`'da skip-worktree merge conflict üretir, `git status` yalan söyler,
   # ve kurulum ikinci kez çalıştırılırsa aynı dosya tekrar yazılır.
   # Artık kaynak dosya SALT-OKUNUR kalıyor; patch'lenmiş XML doğrudan
   # libvirt'in kendi dizinine yazılıyor.
-  PATCHED_XML="/var/lib/libvirt/win11.xml"
-  if sudo mkdir -p /var/lib/libvirt && sudo python3 - "$gpu_pci" "$gpu_audio" "$REPO_DIR/vm-xml/win11.xml" "$PATCHED_XML" <<'PYEOF'
+  PATCHED_XML="/var/lib/libvirt/win10.xml"
+  if sudo mkdir -p /var/lib/libvirt && python3 - "$gpu_pci" "$gpu_audio" "$REPO_DIR/vm-xml/win10.xml" "$PATCHED_XML" <<'PYEOF'
 import re, sys
 
 gpu, aud, src, dst = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
@@ -371,55 +244,19 @@ def xml_attrs(addr):
     return f'domain="0x{d}" bus="0x{b}" slot="0x{s}" function="0x{f}"'
 
 data = open(src, encoding="utf-8").read()
+pattern = re.compile(
+    r'(<hostdev\b[^>]*>\s*<source>\s*<address\s+)([^/]+)(/>)',
+    re.DOTALL)
 
-# DÜZELTME (2026-10-05) — placeholder tabanlı eşleştirme.
-# Önceden "ilk iki PCI <hostdev>" varsayımı vardı. Bu, XML'e ileride bir
-# NIC/USBTL PCI hostdev ya da ikinci bir GPU eklenmesi HEMEN yanlış cihazı
-# hedeflerdi (sessizce). Artık XML'de `GPU_PCI_PLACEHOLDER` ve
-# `GPU_AUDIO_PCI_PLACEHOLDER` yorum işaretçileri var; eşleştirme yalnızca
-# bunun hemen ardından gelen hostdev bloğuna yapılır, yani sıra önemsiz.
-#
-# Geriye dönük uyum: işaretçi yoksa eski sıra-tabanlı davranışa düşülür
-# (kullanıcının elde ettiği eski bir XML'i yine de işleyebilmek için).
-# DİKKAT: re.search(...)[start:] üzerinde çalışan match nesnesinin
-# .start()/.end() ofsetleri O ALT DİZE GÖRELİDİR. Doğrudan new[...] içinde
-# kullanılırsa dosyanın yanlış bir yerine yazılır ve XML parçalanır. Bu yüzden
-# mutlak ofset: marker_sonu + match.start(2).
-def hostdev_after(marker):
-    m = re.search(r'<!--\s*' + marker + r'.*?-->', data, re.DOTALL)
-    if not m:
-        return None
-    h = re.search(
-        r'(<hostdev\b[^>]*>\s*<source>\s*<address\s+)([^/]+?)(/>)',
-        data[m.end():], re.DOTALL)
-    if not h:
-        return None
-    return (m.end() + h.start(2), m.end() + h.end(2))
-
-targets = [("GPU_PCI_PLACEHOLDER", gpu), ("GPU_AUDIO_PCI_PLACEHOLDER", aud)]
-new = data
+addrs = [xml_attrs(gpu), xml_attrs(aud)]
 counter = [0]
-used_fallback = False
-for marker, addr in targets:
-    span = hostdev_after(marker)
-    if span:
-        a, b = span
-        new = new[:a] + xml_attrs(addr) + new[b:]
-        counter[0] += 1
 
-if counter[0] == 0:
-    # Eski XML şeması: işaretçi yok, sıra-tabanlı fallback.
-    used_fallback = True
-    pattern = re.compile(
-        r'(<hostdev\b[^>]*>\s*<source>\s*<address\s+)([^/]+?)(/>)',
-        re.DOTALL)
-    addrs = [xml_attrs(gpu), xml_attrs(aud)]
-    c = [0]
-    def repl(m):
-        i = c[0]; c[0] += 1
-        return m.group(1) + (addrs[i] if i < len(addrs) else m.group(2)) + m.group(3)
-    new = pattern.sub(repl, data)
-    counter[0] = c[0]
+def repl(m):
+    i = counter[0]
+    counter[0] += 1
+    return m.group(1) + (addrs[i] if i < len(addrs) else m.group(2)) + m.group(3)
+
+new = pattern.sub(repl, data)
 
 # DÜZELTME (2026-10-05): 0 veya 3+ hostdev durumunda eski kod sessizce
 # sys.exit(1) veriyordu. 2 GPU + NIC geçiren bir kurulumda bu, hook'un yeni
@@ -429,30 +266,24 @@ if counter[0] == 0:
 # (kalanları elle düzenlemesi için adreslerini stdout'a bas).
 n = counter[0]
 if n == 0:
-    sys.exit("HATA: XML'de GPU/GPU-audio PCI hostdev bulunamadı. Dosya yazılmadı.")
-if used_fallback:
-    print("UYARI: XML'de GPU_PCI_PLACEHOLDER işaretçisi yok — eski şema olduğu",
+    sys.exit("HATA: XML'de PCI hostdev bulunamadı (0 eşleşme). Dosya yazılmadı.")
+if n != 2:
+    print(f"UYARI: XML'de {n} PCI hostdev bulundu, 2 bekleniyordu.", file=sys.stderr)
+    print(f"UYARI: SADECE ilk 2'si yazıldı (GPU={gpu}, Audio={aud}).", file=sys.stderr)
+    print(f"UYARI: {n-2} hostdev elle düzenilmeli — her birinin <source><address>",
           file=sys.stderr)
-    print("UYARI: için sıra-tabanlı (ilk 2 hostdev) eşleştirme kullanıldı.",
-          file=sys.stderr)
-    print("UYARI: İleride NIC/USB PCI hostdev eklersen bu yanlış cihazı",
-          file=sys.stderr)
-    print("UYARI: hedefler. vm-xml/win11.xml'i yeni şemaya geçirin.", file=sys.stderr)
-    if n > 2:
-        print(f"UYARI: {n} PCI hostdev bulundu; SADECE ilk 2'si yazıldı.",
-              file=sys.stderr)
-        print(f"UYARI: Kalan {n-2} tanesini elle doğrulayın:", file=sys.stderr)
-        print(f"  grep -n -A3 '<hostdev' {dst}", file=sys.stderr)
+    print("UYARI: satırı aşağıdaki komutla doğrula:", file=sys.stderr)
+    print(f"  grep -n -A3 '<hostdev' {dst}", file=sys.stderr)
 
 open(dst, "w", encoding="utf-8").write(new)
 print(f"OK: {n} hostdev bulundu, {min(n,2)} tanesi güncellendi -> {dst}")
 PYEOF
   then
-    log "vm-xml/win11.xml -> ${PATCHED_XML} (GPU=${gpu_pci}, Audio=${gpu_audio})"
+    log "vm-xml/win10.xml -> ${PATCHED_XML} (GPU=${gpu_pci}, Audio=${gpu_audio})"
     log "Kaynak repo dosyası DEĞİŞTİRİLMEDİ."
     echo -e "     ${CYAN}sudo virsh define ${PATCHED_XML}${NC}"
   else
-    error "XML güncellenemedi — GPU PCI adresi libvirt'e yazılamadı. Bu adımı atlayamazsınız: elle düzenleyin ya da betiği sudo yetkisiyle çalıştırın."
+    warn "XML güncellenemedi — win10.xml'i elle düzenle."
   fi
 fi
 
@@ -473,30 +304,8 @@ echo -e "     ${CYAN}lsblk -f${NC}  # UUID'leri kontrol edin"
 # ─── Btrfs snapshot subvolume ───────────────────────────
 step "Btrfs snapshot subvolume"
 if findmnt -no FSTYPE /home 2>/dev/null | grep -qi btrfs; then
-  if ! command -v btrfs &>/dev/null; then
-    warn "btrfs-progs yok — /home/.snapshots doğrulanamıyor."
-    warn "Kurulumdan sonra elle kontrol edin: btrfs subvolume show /home/.snapshots"
-  elif [ -d /home/.snapshots ]; then
-    # DÜZELTME: `-d /home/.snapshots` yalnızca "dizin var" der. Snapper'ın
-    # ve `neededForBoot = true` olan mount'un gerçekten çalışması için
-    # orada bir BTRFS SUBVOLUME olması şart; düz bir dizin snapshot üretmez
-    # ve boot sırasında "not a btrfs subvolume" hatası verir. Bu yüzden
-    # btrfs'in kendisine soruyoruz.
-    if sudo btrfs subvolume show /home/.snapshots >/dev/null 2>&1; then
-      log "/home/.snapshots mevcut ve gerçek bir Btrfs subvolume."
-    elif [ -n "$(ls -A /home/.snapshots 2>/dev/null)" ]; then
-      error "/home/.snapshots bir Btrfs subvolume DEĞİL ve içi boş değil."
-      echo -e "  ${RED}Bu dizin normal bir klasör; içinde veri var, silinmedi.${NC}"
-      echo "    • İçeriği yedekleyip kaldırın, sonra kurulumu tekrar çalıştırın:"
-      echo "        sudo mv /home/.snapshots /home/.snapshots.bak"
-      echo "    • Ya da mevcut kurulumun subvolume şemasını elle oluşturun:"
-      echo "        sudo btrfs subvolume create /home/.snapshots"
-    else
-      warn "/home/.snapshots boş bir dizin, subvolume değil — düzeltiliyor."
-      sudo rmdir /home/.snapshots
-      sudo btrfs subvolume create /home/.snapshots
-      log "Created /home/.snapshots as a real subvolume."
-    fi
+  if [ -d /home/.snapshots ]; then
+    log "/home/.snapshots already exists."
   else
     warn "/home/.snapshots is MISSING — snapper 'home' config and boot would both fail."
     sudo btrfs subvolume create /home/.snapshots
@@ -510,37 +319,9 @@ echo ""
 # ─── VM disk image ──────────────────────────────────────
 step "VM disk image"
 sudo mkdir -p /var/lib/libvirt/images /var/lib/libvirt/qemu
-# DÜZELTME (2026-10-05): disk adı SABİT KODLUYDU ve yalnızca win11'i
-# kapsıyordu. vm-xml/ altındaki HER domain'in <source file=...> değeri
-# artık kaynak olarak okunuyor — böylece XML ile installer birbirinden
-# ayrışamıyor (P0-3'ün kalıcı koruması: ileride XML'de ad değişirse
-# installer da onu okur, tutarsız disk oluşturmaz).
-#
-# win10.xml de repo içinde olduğu için win10new.qcow2 de üretilir; iki
-# domain artık aynı diski kullanmıyor (P2-5).
-disk_count=0
-for xml in "$REPO_DIR"/vm-xml/*.xml; do
-  [ -f "$xml" ] || continue
-  vm_name=$(basename "$xml" .xml)
-  # <source file="..."/> — ilk boot diski (ISO'lar <readonly/> taşır
-  # ama yine de source file taşır; bu yüzden readonly olmayan İLK disk
-  # okunur; pratikte ilk source her zaman ana disktir).
-  disk_path=$(sed -n 's|.*<source file="\(/var/lib/libvirt/images/[^"]*\.qcow2\)".*|\1|p' "$xml" | head -1)
-  if [ -z "$disk_path" ]; then
-    warn "$vm_name: XML'de qcow2 diski bulunamadı — elle kontrol et."
-    continue
-  fi
-  if [ -f "$disk_path" ]; then
-    log "$vm_name diski mevcut: $disk_path"
-  else
-    warn "$vm_name diski yok — 120G qcow2 oluşturuluyor: $disk_path"
-    sudo qemu-img create -f qcow2 "$disk_path" 120G
-    log "Created: $disk_path"
-  fi
-  disk_count=$((disk_count + 1))
-done
-if [ "$disk_count" -eq 0 ]; then
-  error "vm-xml/ altında hiçbir domain XML'i bulunamadı — VM kurulumu yapılamaz."
+if [ ! -f /var/lib/libvirt/images/win10new.qcow2 ]; then
+  warn "VM diski yok — 120G qcow2 oluşturuluyor."
+  sudo qemu-img create -f qcow2 /var/lib/libvirt/images/win10new.qcow2 120G
 fi
 echo "  ISO dosyalarını /var/lib/libvirt/images/ altına kopyalayın:"
 echo "    Win10_22H2_English_x64v1.iso"
@@ -626,11 +407,11 @@ echo -e "   ${YELLOW}(mkpasswd, whois paketiyle gelir)${NC}"
 echo ""
 echo -e "${step_num}. ${CYAN}VM'yi libvirt'e tanıt:${NC}"
 echo -e "   ${CYAN}sudo mkdir -p /var/lib/libvirt/images${NC}"
-echo -e "   ${CYAN}sudo qemu-img create -f qcow2 /var/lib/libvirt/images/win11new.qcow2 120G${NC}"
+echo -e "   ${CYAN}sudo qemu-img create -f qcow2 /var/lib/libvirt/images/win10new.qcow2 120G${NC}"
 echo -e "   ${YELLOW}ISO dosyalarını /var/lib/libvirt/images/ altına kopyalayın${NC}"
-echo -e "   ${CYAN}sudo virsh define /var/lib/libvirt/win11.xml${NC}"
-echo -e "   ${CYAN}virsh list --all${NC}   ${YELLOW}→ 'win11' shut off olarak görünmeli${NC}"
-echo -e "   ${CYAN}(XML yukarıdaki adımda zaten /var/lib/libvirt/win11.xml'e yazıldı;${NC}"
+echo -e "   ${CYAN}sudo virsh define /var/lib/libvirt/win10.xml${NC}"
+echo -e "   ${CYAN}virsh list --all${NC}   ${YELLOW}→ 'win10' shut off olarak görünmeli${NC}"
+echo -e "   ${CYAN}(XML yukarıdaki adımda zaten /var/lib/libvirt/win10.xml'e yazıldı;${NC}"
 echo -e "    ${CYAN}3+ hostdev varsa UYARI'ya dikkat et — fazlasını elle düzenle.)${NC}"
 ((step_num++))
 
