@@ -229,12 +229,33 @@ rollback_prepare() {
 
 GUEST="$1"
 ACTION="$2"
-TARGET_VM="win11"
+# DÜZELTME (2026-10-05): sabit tek VM yerine boşlukla ayrılmış liste.
+# Repoda hem win11.xml hem win10.xml var; `TARGET_VM="win11"` ikisinden
+# yalnızca birini kapsıyordu ve diğeri ölü dosyaydı (P2-5). Liste,
+# yeni bir VM eklemek için satır düzenlemeyi de gereksiz kılıyor.
+# ⚠️ Bu liste vm-xml/*.xml ile eşleşmeli. Yeni VM eklerken buraya da adını yaz.
+TARGET_VMS="win11 win10"
 
-# Bu script libvirt tarafından TÜM VM'ler için çağrılır (sadece $TARGET_VM
+# Bu script libvirt tarafından TÜM VM'ler için çağrılır (sadece $TARGET_VMS
 # için değil). Filtre olmadan ileride eklenecek herhangi bir VM de host
 # GPU'sunu vfio-pci'ye alıp masaüstünü kapatır.
-if [ "$GUEST" != "$TARGET_VM" ]; then
+# DÜZELTME (2026-10-05): tam string eşleşmesi yerine liste üyeliği.
+# case/eşleştirme yerine basit "kelime listesi" üyeliği kullanılıyor ki
+# libvirt'ın ileride ekleyeceği ek parametreler (begin/end/migrate gibi
+# $1'de görünebilir) eşleşmeyi bozmasın.
+is_target_vm() {
+  local candidate vm
+  # $1'de "win11" ya da "win11 begin" gibi birden çok sözcük olabilir.
+  # TÜM sözcükler taranır: liste üyelerinden BİRİ geçiyorsa eşleşmiştir.
+  for candidate in $1; do
+    for vm in $TARGET_VMS; do
+      [ "$candidate" = "$vm" ] && return 0
+    done
+  done
+  return 1
+}
+
+if ! is_target_vm "$GUEST"; then
   exit 0
 fi
 
