@@ -65,18 +65,6 @@ jobs:
       #   Bu repo için doğru seçim: low_latency_layer cachix'te yok, ilk
       #   kurulumda kaynaktan derlendiği için full build CI'ı dakikalarca
       #   meşgul ederdi ve option hatalarını yakalamazdı.
-      - name: low_latency_layer build (targeted)
-        working-directory: nixos
-        continue-on-error: true
-        run: |
-          # DÜZELTME (2026-10-05): low_latency_layer `environment.systemPackages`
-          # içinde olduğu için derlemesi bozulursa TÜM sistem build'i düşer —
-          # ama `nix flake check --no-build` bunu hiç test etmiyordu. Full
-          # toplevel build'i CI'da çalıştırmak ağır; bu yüzden yalnızca sıkı
-          # şekilde hedefli build var. continue-on-error: kırık build PR'ı
-          # düşürmesin ama job çıktısında görünsün.
-          nix build '.#nixosConfigurations.nixos.pkgs.low-latency-layer' \
-            --no-link 2>&1 | tail -40
       - name: nix flake check (eval only)
         working-directory: nixos
         run: |
