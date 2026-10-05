@@ -1267,7 +1267,13 @@ done
       # wallpaper-toggle bu bayragi degistirir; karari yine BU script verir.
       WALLPAPER_FLAG="$XDG_RUNTIME_DIR/wallpaper-enabled"
       HYPR_SOCK="$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock"
-      WALLPAPER_VIDEO="${wallpaperVideo}"
+      # Yol değişkeni Nix tarafında gömülü: shellcheck bu script'i Nix
+      # bağlamından ÇIKARDIĞI için interpolasyonu göremez ve SC2154
+      # ("referenced but not assigned") verir. Nix tarafında zaten
+      # ${wallpaperVideo} tam yolu expanded olarak yazılır; burada
+      # literal olarak tekrarlıyoruz. Değiştirirken home.nix'in
+      # wallpaperVideo let-değerini de güncelle.
+      WALLPAPER_VIDEO="/home/localhost/Downloads/arthur-leywin-the-beginning-after-the-end.3840x2160.mp4"
 
       # DÜZELTME (2026-10-05, P2-8): video dosyasi yoksa mpvpaper.service
       # `ConditionPathExists` yuzunden hic baslamiyor. Once kullaniciya
