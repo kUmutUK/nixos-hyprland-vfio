@@ -1,6 +1,6 @@
 # Uygulanan Düzeltmeler
 
-Tarih: 2026-10-05 · Baz: commit `602f217`
+Tarih: 2026-10-05 · Baz: commit `0137b38` (belgede geçen `602f217` bu repoda yok)
 
 ## ÖNCEKİ RAPORDAKİ P0-1 GERÇEKTEN SAHTE POZİTİFTİ — DÜZELTİLDİ
 Raporda "`low_latency_layer` .so'su yüklenemiyor" denmişti. Bu **yanlıştır**
