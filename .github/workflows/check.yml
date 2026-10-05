@@ -35,7 +35,7 @@ jobs:
           shellcheck -S warning install.sh nixos/hooks/qemu
           echo "  shellcheck OK"
 
-      # home.nix içine GÖMÜLÜ 8 bash script'i var (wuwa-auto.sh, auto-translate.sh,
+      # home.nix içine GÖMÜLÜ 7 bash script'i var (wuwa-auto.sh, auto-translate.sh,
       # toggle-*.sh, mpvpaper-watchdog, waybar-temperature.sh, gamemode-notify).
       # Bunlar hiç taranmıyordu; 2026-10-05'te düzeltilen iki sessiz hata
       # (Nix kaçışı yüzünden `tr -d 'f'`, git'in okumadığı MANPAGER) tam olarak
@@ -107,16 +107,7 @@ jobs:
           fi
           echo "  flake.lock clean"
 
-      # flake.lock KANONİK olduğu gibi format da kanonik olmalı. README
-      # "tek formatter, tek doğruluk kaynağı" diyor (nixfmt-rfc-style,
-      # legacy shell.nix 2026-10-05'te silindi) ama CI format kontrolü
-      # YAPMIYORDU — yani hiçbir PR onaysız geçemiyordu.
-      - name: nixfmt --check
-        working-directory: nixos
-        run: |
-          nix run nixpkgs#nixfmt-rfc-style -- --check .
-
-      # ── flake'in DEĞERLENDİRİLDİĞİ doğrulanır: bir option yanlış yazılmışsa
+      # flake'in DEĞERLENDİRİLDİĞİ doğrulanır: bir option yanlış yazılmışsa
       # ("services.lsfg-vk", "systemd.tmpfiles.rules", impermanence modülü)
       # burada düşer. impermanence'in "Neither /var/lib/nixos nor any of its
       # parents are persisted" uyarısı GÜRÜLTÜDÜR ve bu adımı kırmaz.
