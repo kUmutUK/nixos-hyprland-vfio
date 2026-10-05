@@ -57,7 +57,7 @@
     "home-manager": {
       "inputs": {
         "nixpkgs": [
-          "nixpkgs"
+          "nixpkgs_2"
         ]
       },
       "locked": {
@@ -80,7 +80,7 @@
           "home-manager"
         ],
         "nixpkgs": [
-          "nixpkgs"
+          "nixpkgs_2"
         ]
       },
       "locked": {
@@ -100,7 +100,7 @@
     "lsfg-vk-flake": {
       "inputs": {
         "nixpkgs": [
-          "nixpkgs"
+          "nixpkgs_2"
         ]
       },
       "locked": {
