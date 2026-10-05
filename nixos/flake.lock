@@ -1,14 +1,5 @@
 {
   "nodes": {
-    "root": {
-      "inputs": {
-        "cachyos-kernel": "cachyos-kernel",
-        "home-manager": "home-manager",
-        "impermanence": "impermanence",
-        "lsfg-vk-flake": "lsfg-vk-flake",
-        "nixpkgs": "nixpkgs_3"
-      }
-    },
     "cachyos-kernel": {
       "inputs": {
         "flake-compat": "flake-compat",
@@ -85,7 +76,9 @@
     },
     "impermanence": {
       "inputs": {
-        "home-manager": "home-manager",
+        "home-manager": [
+          "home-manager"
+        ],
         "nixpkgs": [
           "nixpkgs"
         ]
@@ -156,7 +149,7 @@
         "type": "github"
       }
     },
-    "nixpkgs_3": {
+    "nixpkgs_2": {
       "locked": {
         "lastModified": 1790578696,
         "narHash": "sha256-ZoxIApko70jCdbH3l20HWXOBaT2HZd87orzd2yJ9dVE=",
@@ -170,6 +163,15 @@
         "ref": "nixos-unstable",
         "repo": "nixpkgs",
         "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "cachyos-kernel": "cachyos-kernel",
+        "home-manager": "home-manager",
+        "impermanence": "impermanence",
+        "lsfg-vk-flake": "lsfg-vk-flake",
+        "nixpkgs": "nixpkgs_2"
       }
     }
   },
