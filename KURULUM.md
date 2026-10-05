@@ -158,8 +158,51 @@ cp -r /tmp/repo/. /mnt/etc/nixos/
 > beklediğinizle örtüşmüyorsa kontrol edin.
 >
 > Repo yapısı korunarak kopyalandığı için flake `/mnt/etc/nixos/nixos` altında
-> durur → kurulum komutunda `#nixos` öncesi bu dizini göstermelisiniz
+> durur → kurulum komutunda `#nixos` öncesindeki yol bu dizini göstermelisiniz
 > (bir sonraki adıma bakın).
+
+---
+
+# ⚠️ 7b. Elle Değiştirilmesi Gereken 5 Değer (ATLANMA)
+
+Bu rehberdeki yol **değerleri sormadan** kurar: `nixos/` klasörü olduğu gibi
+kopyalanır. `install.sh`'ı çalıştırmadığınız için `home.nix` içindeki şu değerler
+**yer tutucu olarak kalır** ve kurulumdan sonra elle değiştirilmelidir:
+
+| Değer | Varsayılan | Sonucu |
+|-------|-----------|--------|
+| `hyprlandMonitorLine` | `"monitor = ,preferred,auto,1"` | **Monitör tanımı boş** → `hyprland.conf` ilk satırı hatalı, masaüstü açılmayabilir |
+| `monitorOutput` | `"DP-3"` | Yanlış çıktıysa `mpvpaper` duvar kağıdı çalışmaz |
+| `gitName` / `gitEmail` | `"changeme"` / `"you@example.com"` | Commit'ler sahte kimlikle etiketlenir |
+| `wallpaperVideo` | `~/Downloads/arthur-leywin-….mp4` | Dosya yoksa `mpvpaper.service` sessizce atlanır |
+
+Mevcut NixOS'u güncelliyorsanız bunların hepsini `install.sh` sizin yerinize
+doldurur (monitörü `hyprctl`/`/sys/class/drm`'den okur). Yeni kurulumda elle
+yazın:
+
+```bash
+# Monitör adını öğrenin
+hyprctl monitors | grep -oPm1 '^Monitor \K\S+'
+# ya da DRM'den
+for c in /sys/class/drm/card*-*; do
+  [ "$(cat $c/status 2>/dev/null)" = connected ] && basename $c | sed 's/card[0-9]*-//'
+done
+```
+
+Ardından `/etc/nixos/nixos/home.nix` dosyasının en üstündeki `let` bloğunu
+düzenleyin (satır ~4-12):
+
+```nix
+  gitName            = "Adınız";
+  gitEmail           = "siz@ornek.com";
+  monitorOutput      = "DP-1";                              # yukarıdan bulduğunuz
+  hyprlandMonitorLine = "monitor = DP-1,preferred,auto,1";  # boş monitör ADI olmasın
+  wallpaperVideo     = "${config.home.homeDirectory}/Downloads/duvar-kagidi.mp4";
+```
+
+> `hyprlandMonitorLine`'daki monitör **adı boş bırakılırsa** tüm monitörler
+> workspace 1'e aynalanır — tek monitörde zararsız, çok monitörde kurulumu
+> bozar. Bu yüzden yukarıda `DP-1` gibi gerçek bir ad yazılıyor.
 
 ---
 
