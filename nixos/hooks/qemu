@@ -229,7 +229,7 @@ rollback_prepare() {
 
 GUEST="$1"
 ACTION="$2"
-TARGET_VM="win10"
+TARGET_VM="win11"
 
 # Bu script libvirt tarafından TÜM VM'ler için çağrılır (sadece $TARGET_VM
 # için değil). Filtre olmadan ileride eklenecek herhangi bir VM de host
