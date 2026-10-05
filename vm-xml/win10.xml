@@ -196,18 +196,12 @@
       <address type="usb" bus="0" port="1"/>
     </hostdev>
     -->
-    <!-- GPU_PCI_PLACEHOLDER: installer bu işaretçinin source.address satırını
-         gerçek GPU PCI adresiyle değiştirir. Elle değiştirmek isterseniz
-         yalnızca <source> içindeki address'i düzenleyin; aşağıdaki guest-side
-         <address> (bus/slot) DEĞİŞMEZ — o libvirt tarafından atanır. -->
     <hostdev mode="subsystem" type="pci" managed="no">
       <source>
         <address domain="0x0000" bus="0x0b" slot="0x00" function="0x0"/>
       </source>
       <address type="pci" domain="0x0000" bus="0x06" slot="0x00" function="0x0"/>
     </hostdev>
-    <!-- GPU_AUDIO_PCI_PLACEHOLDER: GPU'nun HDMI/DP ses fonksiyonu.
-         Bu olmadan VM'de ses yoktur; GPU'yla birlikte bind edilmelidir. -->
     <hostdev mode="subsystem" type="pci" managed="no">
       <source>
         <address domain="0x0000" bus="0x0b" slot="0x00" function="0x1"/>
