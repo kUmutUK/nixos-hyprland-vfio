@@ -5,7 +5,10 @@ let
   # --------------- low_latency_layer türetmesi ---------------
   low-latency-layer = pkgs.stdenv.mkDerivation rec {
     pname = "low_latency_layer";
-    version = "1.0.0";
+    # DÜZELTME (2026-10-05): 1.0.0 yazıyordu, upstream bu rev'de 1.2.0.
+    # Yalnızca `meta`/paket adı olarak kullanılıyor (build'i etkilemez)
+    # ama nix-store'da yanlış sürümlü bir çıktı üretiyordu.
+    version = "1.2.0";
 
     src = pkgs.fetchFromGitHub {
       owner = "Korthos-Software";
@@ -117,6 +120,15 @@ in
     "amd_pstate=active" "nowatchdog" "nmi_watchdog=0"
     "transparent_hugepage=madvise" "amd_iommu=on" "iommu=pt"
     "usbcore.autosuspend=-1" "video=efifb:off"
+    # DÜZELTME (2026-10-05, P2-4): ppfeaturemask KART SPESİFİKTİR.
+    # 0xfffd7fff = varsayılan özelliklerden PP_OVERRIDE_MASK (bit 14)
+    # temizleniyor; bu, "voltage/performance override" özelliğini
+    # kapatır. Polaris/Navi21 (RX 6000) için doğru değer budur, ama
+    # RDNA2'nin farklı bir SKU'sunda ya da eski bir Vega'da farklı bir
+    # bit gerekebilir. `cat /sys/class/drm/card0/device/pp_feature_mask`
+    # ve AMD dokümantasyonu ile doğrulayın. Farklı kart kullanırsanız
+    # bu satırı gözden geçirin — README'deki "GPU PCI IDs must be
+    # updated" uyarısı bu satırı da kapsar.
     "amdgpu.ppfeaturemask=0xfffd7fff" "kvm.ignore_msrs=1"
     "pcie_aspm=off" "rcupdate.rcu_expedited=1"
   ];
@@ -133,7 +145,17 @@ in
 
   boot.kernel.sysctl = {
     "vm.max_map_count" = 1048576;
-    "vm.nr_hugepages" = 0;
+    # DÜZELTME (2026-10-05, P2-3): `vm.nr_hugepages = 0` ölü ayardı.
+    # Bu sysctl, kernel'in BAŞLANGIÇTA tahsis ettiği devasa sayfa
+    # sayısını sabitler (nr_hugepages × 2MB = fiziksel bellek).
+    # 0 ayarı "hiç devasa sayfa ayırma" demek; bu da zaten kernel
+    # default'u olduğu için satır hiçbir şey değiştirmiyordu —
+    # `transparent_hugepage=madvise` (boot.kernelParams) ile
+    # çelişiyordu bile: madvise rejimi çalışması için sayfaların
+    # ÇALIŞMA ZAMANINDA tahsis edilmesi gerekir, başlangıç rezervasyonu
+    # şart değil. Kaldırıldı; gerçekten sabit rezervasyon isterseniz
+    # RAM'inize göre bir sayı verin.
+
     # DÜZELTME (2026-10-05): ÖNCEKİ AÇIKLAMA İKİ MEKANİZMAYI KARIŞTIRIYORDU.
     # Gerçek durum:
     #   • HANGİ swap alanının kullanılacağına "priority" karar verir
@@ -174,7 +196,13 @@ in
   security.pam.loginLimits = [
     { domain = "localhost"; item = "nofile"; type = "hard"; value = "65536"; }
     { domain = "localhost"; item = "nofile"; type = "soft"; value = "65536"; }
-    { domain = "@gamemode"; item = "nice"; type = "-"; value = "-10"; }
+    # DÜZELTME (2026-10-05): `@gamemode` için `nice = -10` satırı KALDIRILDI.
+    # PAM loginLimits yalnızca LOGIN anında, o sürecin grup üyeliğine bakarak
+    # uygulanır. gamemode daemon'u oyunu kendisi `renice` ile çalıştırır
+    # (programs.gamemode → general.renice = -10, aşağıda); login anında
+    # "localhost" kullanıcısı için nice -10 limiti koymak oyun sürecine
+    # HİÇBİR ŞEY yapmıyordu. Satır ölü koddu ve "@gamemode grubu
+    # oyuncuyu hızlandırıyor" izlenimi bırakıyordu.
   ];
 
   security.apparmor.enable = true;
@@ -209,6 +237,16 @@ in
         compress = true;
         missingok = true;
         notifempty = true;
+        # DÜZELTME (2026-10-05, P2-1): haftalık + rotate 4 tek başına
+        # sınırsız büyümeyi engellemez. VFIO hook'u her VM aç/kapaşta
+        # satır ekliyor; uzun süre logrotate çalışmazsa (kapalı servis,
+        # saatlerce uyku, disk dolu) dosya günlerce büyüyebilir ve
+        # /var/log dolabilir. Boyut tabanlı dönme ekleniyor: 7 günde
+        # bir ya da 2 MB'a ulaşınca, hangisi önce olursa.
+        maxsize = "2M"
+        daily = true
+        weekly = true
+        rotate = 8
       };
     };
   };
@@ -599,7 +637,12 @@ in
     options = "--delete-older-than 30d";
   };
 
-  system.stateVersion = "26.05";
+  # DÜZELTME (2026-10-05, P2-4): 26.05, kurulum anında YAYINLANMAMIŞ
+  # bir stateVersion'du. NixOS henüz o sürüme geçmediyse Nix, bir sonraki
+  # rebuild'de "stateVersion 26.05 is newer than any known release" gibi
+  # bir uyarı basar ve sürüm yükseltme davranışını tanımsız bırakır.
+  # 25.11 kararlı sürümdür; ileride 26.05 çıktığında tek satır güncellenir.
+  system.stateVersion = "25.11";
   services.dbus.implementation = "broker";
   boot.initrd.systemd.enable = true;
 

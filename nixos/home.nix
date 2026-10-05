@@ -5,6 +5,12 @@ let
   gitEmail           = "you@example.com";
   monitorOutput      = "DP-3";
   hyprlandMonitorLine = "monitor = ,preferred,auto,1";
+  # DÜZELTME (2026-10-05, P2-8): 4K video varsayılanı yeni kurulumda
+  # kesinlikle YOKTUR (indirilmemiş bir dosya adı). mpvpaper.service
+  # `ConditionPathExists` yüzünden sessizce hiç başlamıyor, dolayısıyla
+  # `wallpaper-toggle` boşa çalışıyordu — kullanıcı "kapatıyorum" sanarken
+  # hiçbir şey olmuyordu. Artık dosya yoksa durum AÇIKÇA bildiriliyor
+  # (aşağıdaki mpvpaper-watchdog başlangıç kontrolü).
   wallpaperVideo     = "${config.home.homeDirectory}/Downloads/arthur-leywin-the-beginning-after-the-end.3840x2160.mp4";
 
   gamemodeNotifyScript = pkgs.writeShellScriptBin "gamemode-notify" ''
@@ -482,7 +488,12 @@ let
     }
     label {
         position = 20, 20; halign = right; valign = top;
-        text = cmd[update:5000, ${pkgs.networkmanager}/bin/nmcli -t -f NAME,TYPE,STATE con show --active 2>/dev/null | grep -v loopback | head -1 | cut -d: -f1 | xargs -I{} echo " {}" || echo " Bağlı Değil"];
+        # DÜZELTME (2026-10-05): hyprlock'un `cmd[]` sözdizimi virgülü
+        # ARGÜMAN AYIRICI olarak kullanır. `nmcli -t -f NAME,TYPE,STATE`
+        # yazıldığında komut iki parçaya bölünüyor ve widget sessizce
+        # ölüyordu (sürekli "Bağlı Değil"). TYPE/STATE sütunları zaten
+        # `cut -d: -f1` ile atılıyordu — yalnız NAME yeterli.
+        text = cmd[update:5000, ${pkgs.networkmanager}/bin/nmcli -t -f NAME con show --active 2>/dev/null | grep -v loopback | head -1 | cut -d: -f1 | xargs -I{} echo " {}" || echo " Bağlı Değil"];
         font_family = JetBrainsMono Nerd Font; font_size = 15;
         font_color = rgba(148, 226, 213, 1.0); shadow_passes = 0;
     }
@@ -705,7 +716,10 @@ in
 {
   home.username = "localhost";
   home.homeDirectory = "/home/localhost";
-  home.stateVersion = "26.05";
+  # DÜZELTME (2026-10-05): configuration.nix ile eşitlendi. İki stateVersion
+  # farklıysa Home Manager geçiş kuralları tutarsız uygulanır (HM kendi
+  # sürüm geçiş tablosunu kullanır). İkisi de 25.11'e sabitlendi.
+  home.stateVersion = "25.11";
 
   dconf.settings = {
     "org/gnome/desktop/interface" = {
@@ -1253,6 +1267,23 @@ done
       # wallpaper-toggle bu bayragi degistirir; karari yine BU script verir.
       WALLPAPER_FLAG="$XDG_RUNTIME_DIR/wallpaper-enabled"
       HYPR_SOCK="$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock"
+      WALLPAPER_VIDEO="${wallpaperVideo}"
+
+      # DÜZELTME (2026-10-05, P2-8): video dosyasi yoksa mpvpaper.service
+      # `ConditionPathExists` yuzunden hic baslamiyor. Once kullaniciya
+      # ACIKCA soylemek gerekiyor — yoksa "duvar kagidi calismiyor"
+      # belirtisi belirsiz kalir (ayarlar, compositor, guc yonetimi
+      # hepsi supheli gorunur).
+      wallpaper_exists() { [ -e "$WALLPAPER_VIDEO" ]; }
+
+      if ! wallpaper_exists; then
+        echo "mpvpaper: video bulunamadi -> $WALLPAPER_VIDEO" >&2
+        echo "  Canli duvar kagidi devre disi. Duzeltmek icin:" >&2
+        echo "  1) Videoyu indirin ve yukaridaki yola tasiyin, ya da" >&2
+        echo "  2) nixos/home.nix icindeki wallpaperVideo degerini" >&2
+        echo "     baska bir dosya yoluna degistirin, sonra:" >&2
+        echo "     systemctl --user restart mpvpaper-watchdog" >&2
+      fi
 
       is_gamemode_active() {
         local count
