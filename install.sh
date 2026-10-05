@@ -85,10 +85,15 @@ log "CPU: $CPU_VENDOR"
 # address" istemine yanlış varsayılanla başlıyordu. Aynı hatalı varsayılan
 # aşağıdaki GPU_VENDOR tespitine de sızıyordu.
 mapfile -t gpu_lines < <(lspci | grep -iE "vga|3d|display" || true)
-gpu_line="${gpu_lines[0]:-}"
 # Vendor tespiti TÜM satırlara bakar: geçici harici GPU, ikinci kart ya da
 # iGPU varken "ilk satır" her zaman doğru cevap değildir.
-gpu_all="$(printf '%s\n' "${gpu_lines[@]:-}")"
+# (Eski `gpu_line` değişkeni silindi — atanıyordu ama hiç okunmuyordu,
+#  shellcheck SC2034 "appears unused" diye kırıyordu.)
+if [ "${#gpu_lines[@]}" -gt 0 ]; then
+  gpu_all="$(printf '%s\n' "${gpu_lines[@]}")"
+else
+  gpu_all=""
+fi
 if printf '%s' "$gpu_all" | grep -qi "AMD\|ATI\|Radeon"; then
   GPU_VENDOR="amd"
 elif printf '%s' "$gpu_all" | grep -qi "NVIDIA\|GeForce"; then
@@ -99,7 +104,11 @@ else
   GPU_VENDOR="unknown"
 fi
 log "GPU: $GPU_VENDOR"
-printf '%s\n' "${gpu_lines[@]:-}" | sed 's/^/  /' | sed "s/^/  ${CYAN}/;s/$/${NC}/"
+if [ "${#gpu_lines[@]}" -gt 0 ]; then
+  printf '%s\n' "${gpu_lines[@]}" | sed "s/^/  ${CYAN}/;s/$/${NC}/"
+else
+  warn "VGA/3D/display cihazı bulunamadı — lspci çıktısını kontrol edin."
+fi
 # Birden fazla GPU görüldüyse seçimin neden önemli olduğunu söyle —
 # kullanıcı aşağıdaki isteme elle doğru adresi yazmalı.
 if [ "${#gpu_lines[@]}" -gt 1 ]; then
