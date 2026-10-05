@@ -960,6 +960,15 @@ TESSDATA_DIR="$HOME/.local/share/tessdata"
 CACHE_FILE="/tmp/wuwa_translate_cache"
 touch "$CACHE_FILE"
 
+# Önbelleğe tek satırlık, newline-safe kayıt yazar.
+# Anahtar ve değer base64 kodlanır → kayıt ne zaman tek satır kalmalı.
+# (TAB ayracı çok satırlı OCR metninde kayıt bölerdi.)
+cache_put() {
+    printf '%s %s\n' \
+        "$(printf '%s' "$1" | base64 -w0)" \
+        "$(printf '%s' "$2" | base64 -w0)" >> "$CACHE_FILE"
+}
+
 # ─── Hızlı çeviri (Argos Translate) ───
 translate_fast() {
     # DÜZELTME (2026-10-04): nixpkgs'te `argos-translate` paketi yok
@@ -989,7 +998,14 @@ translate_llm() {
                          --arg pr "EN: ''${text}"$'\n'"TR:" \
                          '{model: $mod, prompt: $pr, stream: false, options: {temperature: 0.0, num_predict: 80}}')
 
-    curl -s http://localhost:11434/api/generate -d "$json_payload" | jq -r '.response' 2>/dev/null | xargs
+    # DÜZELTME (2026-10-05): `curl -s` zaman aşımı içermiyordu. Ollama
+    # ayakta ama yanıt vermiyorsa (model yüklenirken, GPU yokken, OOM'da)
+    # curl sonsuza kadar bekliyordu; bu da WuWa'nın OCR döngüsünü kilitliyor
+    # ve geri bildirim hiç gelmiyordu. --fail ayrıca HTTP hatalarını da
+    # yakalar; --max-time Ollama'nın gerçekçi bir yanıt süresini aşar.
+    curl -fsS --connect-timeout 2 --max-time 20 \
+         http://localhost:11434/api/generate -d "$json_payload" \
+        | jq -r '.response' 2>/dev/null | xargs
 }
 
 # ─── Genel çeviri (önbellek + Argos → Ollama) ───
@@ -999,13 +1015,28 @@ translate() {
     [ "$letter_count" -lt 5 ] && { echo ""; return; }
 
     # Önbellek kontrolü
-    local cached=$(grep -F -m1 -- "$raw" "$CACHE_FILE" 2>/dev/null | head -n 1 | cut -d'\t' -f2)
-    [ -n "$cached" ] && { echo "$cached"; return; }
+    #
+    # DÜZELTME (2026-10-05): cache "raw<TAB>ceviri" diye DÜZ SATIRLI yazılıyordu
+    # ve `grep -F | cut -d'\t'` ile okunuyordu. Ama tesseract çok satırlı metin
+    # üretebilir; bu durumda bir kayıt birden fazla satıra bölünüyor ve
+    # `cut -f2` yalnızca ilk satırı alıyor. Sonuç: cache'dE KAYITLI OLAN
+    # çevriler BULUNAMIYOR (sürekli yeniden çeviri) ya da yarım/karışık
+    # metin dönüyor. Ayrıca grep -F, metinde geçen herhangi bir regex/pipe
+    # için de sorun çıkarabiliyor.
+    # Çözüm: TAB ayracı yerine base64(url-safe olmayan standart) kullanıyoruz.
+    # base64 çıktısı tanım gereği satır sonu İÇERMEZ, dolayısıyla kayıt
+    # bütünlüğü korunur; grep -F ile güvenle eşleşir.
+    local key val
+    key=$(printf '%s' "$raw" | base64 -w0)
+    val=$(grep -F -m1 -- "$key" "$CACHE_FILE" 2>/dev/null | head -n 1 | cut -d' ' -f2-)
+    if [ -n "$val" ]; then
+        printf '%s' "$val" | base64 -d 2>/dev/null && return
+    fi
 
     # Hızlı çeviriyi dene
     local fast=$(translate_fast "$raw")
     if [ -n "$fast" ] && [ "''${#fast}" -gt 2 ]; then
-        printf '%s\t%s\n' "$raw" "$fast" >> "$CACHE_FILE"
+        cache_put "$raw" "$fast"
         echo "$fast"
         return
     fi
@@ -1013,7 +1044,7 @@ translate() {
     # Yedek olarak LLM'ye (Aya/Gemma) sor
     local llm=$(translate_llm "$raw")
     if [ -n "$llm" ]; then
-        printf '%s\t%s\n' "$raw" "$llm" >> "$CACHE_FILE"
+        cache_put "$raw" "$llm"
         echo "$llm"
         return
     fi
