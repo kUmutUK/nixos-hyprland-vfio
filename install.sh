@@ -87,8 +87,12 @@ log "CPU: $CPU_VENDOR"
 mapfile -t gpu_lines < <(lspci | grep -iE "vga|3d|display" || true)
 # Vendor tespiti TÜM satırlara bakar: geçici harici GPU, ikinci kart ya da
 # iGPU varken "ilk satır" her zaman doğru cevap değildir.
-# (Eski `gpu_line` değişkeni silindi — atanıyordu ama hiç okunmuyordu,
-#  shellcheck SC2034 "appears unused" diye kırıyordu.)
+# (Eski `gpu_line` değişkeni silindi — atanıyordu ama hiç okunmuyordu;
+#  linter bunu "assigned but never used" olarak bildiriyordu.)
+# ⚠️ Bu yorum bloğunu kısaltırken dikkat: kelimeleri birleştirip yorumu
+# "# shellcheck …" ile BAŞLATMA. Linter satırın ilk token'ını directive
+# sanar ve SC1073 parse hatası verir (bkz. nixos/hooks/qemu içindeki
+# aynı uyarı).
 if [ "${#gpu_lines[@]}" -gt 0 ]; then
   gpu_all="$(printf '%s\n' "${gpu_lines[@]}")"
 else
