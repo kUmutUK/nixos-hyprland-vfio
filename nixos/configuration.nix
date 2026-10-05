@@ -24,21 +24,37 @@ let
 
     cmakeFlags = [ "-DCMAKE_BUILD_TYPE=Release" ];
 
-    # Upstream'in kendi install kuralı kullanılıyor. CMakeLists.txt hem .so'yu
-    # $out/lib altına, hem de DOĞRU manifesti $out/share/vulkan/implicit_layer.d/
-    # altına kopyalıyor. Daha önce elle yazılmış bir manifest
-    # (low_latency_layer.json.in) kullanılıyordu; o dosyada hem yanlış katman
-    # adı/api sürümü vardı hem de "functions" eşlemesi yoktu. En kötüsü:
-    # enable_environment: ENABLE_LOW_LATENCY_LAYER eklenmişti, ama o değişken
-    # hiçbir yerde set edilmiyordu — Vulkan loader katmanı bu yüzden
-    # SESSİZCE atlıyor ve Reflex/Anti-Lag hiç çalışmıyordu.
-    # Upstream manifestinde enable_environment YOKTUR: bu rev'de katman
-    # varsayılan olarak etkindir, sadece disable_environment ile kapatılır.
-    installPhase = ''
-      runHook preInstall
-      cmake --install build
-      runHook postInstall
-    '';
+    # ⚠️ DÜZELTME (2026-10-05, gerçek `nix build` ile doğrulandı):
+    #
+    # Burada ASLA özel `installPhase` tanımlanmamalı. nixpkgs'in cmake setup
+    # hook'u zaten `cmake --build build --target install` çalıştırıyor ve
+    # installPhase başladığında cwd = <source>/build'dir. Özel installPhase
+    # `cmake --install build` dediği için <source>/build/build arıyor ve
+    # build ŞU HATAYLA ÖLÜYOR:
+    #     CMake Error: Not a file: .../source/build/build/cmake_install.cmake
+    #
+    # Bu paket environment.systemPackages'te olduğu için hata TEK BAŞINA
+    # TÜM `nixos-rebuild`i düşürüyordu (aşağıdaki doğrulama notu).
+    # Kaldırıldı; stdenv'in varsayılan davranışı upstream install kurallarını
+    # zaten tam olarak uyguluyor.
+    #
+    # Upstream'in kendi install kuralları DOĞRU çalışıyor:
+    #   • .so        -> $out/lib/libVkLayer_KORTHOS_LowLatency.so
+    #   • manifest   -> $out/share/vulkan/implicit_layer.d/low_latency_layer.json
+    # CMakeLists.txt: install(TARGETS ... DESTINATION ${CMAKE_INSTALL_LIBDIR})
+    #                 install(FILES ... DESTINATION ${CMAKE_INSTALL_DATADIR}/vulkan/implicit_layer.d/)
+    # nixpkgs cmake hook'u CMAKE_INSTALL_LIBDIR'ı mutlak store yoluna çözüyor;
+    # DATADIR ise göreli kalıyor ("share") — yani yol tam olarak yukarıdaki gibi.
+    # Manifest içindeki library_path mutlak store yoludur, RPATH'li .so da
+    # libvulkan'ı kendi çözer; symlinkJoin/runtimePath'e gerek yoktur.
+    #
+    # Doğrulama (pinned nixpkgs 7a0f122 + bu rev):
+    #   • sha256 doğrulandı: iUdcNnmY4NqaEnhoJUn7KEKTFQrlqo4tYOkLwEhmL+s= ✔
+    #   • installPhase'li hâli: derleme %100, installPhase'de PATLADI ✘
+    #   • installPhase'siz hâli: başarılı, manifest üretilen tam yolda ✔
+    #   • manifest'te enable_environment YOK, disable_environment VAR ✔
+    #     (yani katman varsayılan olarak etkin — configuration.nix'teki
+    #      LOW_LATENCY_LAYER_REFLEX=1 yeterli, ayrıca ENABLE_* gerekmiyor)
 
     meta = with lib; {
       description = "Vulkan layer for hardware agnostic input latency reduction (Reflex/Anti-Lag)";
@@ -161,7 +177,6 @@ in
   security.pam.loginLimits = [
     { domain = "localhost"; item = "nofile"; type = "hard"; value = "65536"; }
     { domain = "localhost"; item = "nofile"; type = "soft"; value = "65536"; }
-    { domain = "@gamemode"; item = "nice"; type = "-"; value = "-10"; }
   ];
 
   security.apparmor.enable = true;
@@ -431,7 +446,7 @@ in
     networkmanagerapplet brightnessctl playerctl
     pavucontrol cliphist libmtp android-file-transfer
     ntfs3g exfat gparted crow-translate tesseract translate-shell libnotify
-    steam gamemode gamescope mangohud vkbasalt winetricks procps
+    steam gamemode gamescope mangohud winetricks procps
     heroic protonup-qt wine nodejs
     virt-manager capitaine-cursors
     btop nvtopPackages.amd fastfetch
@@ -447,6 +462,11 @@ in
     mpvpaper flatpak-builder psmisc
     apparmor-utils stdenv.cc.cc.lib kdePackages.konsole kdePackages.dolphin
     low-latency-layer vulkan-tools
+    # P1-1 (2026-10-05): install.sh'ın win10.xml PCI senkronizasyonu
+    # `command -v python3` ile korunuyor; python3 kurulu değilken XML
+    # senkronu HER ZAMAN "python3 yok" uyarısına düşüyor, yani hook yeni
+    # PCI adresine bind olup libvirt eski adresi arıyordu (device not found).
+    python3
     # wuwa-auto.sh "argos-translate" çağırıyordu ama paket hiçbir yerde
     # tanımlı değildi → translate_fast() her zaman sessizce başarısız oluyor,
     # her çeviri Ollama'ya düşüyordu. translate-shell (`trans`) bunun yerine geçmez.

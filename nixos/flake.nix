@@ -95,7 +95,8 @@
     devShells.${system}.default = pkgs.mkShell {
       name = "nixos-hyprland-vfio";
       packages = with pkgs; [
-            nixfmt-rfc-style
+            # P2-2: nixfmt-rfc-style artık deprecated ("same as pkgs.nixfmt")
+            nixfmt
             statix
             deadnix
             shellcheck
@@ -108,7 +109,7 @@
             libxml2
           ];
       shellHook = ''
-        echo "nixos-hyprland-vfio dev shell — nixfmt-rfc-style, statix, deadnix hazir"
+        echo "nixos-hyprland-vfio dev shell — nixfmt, statix, deadnix hazir"
       '';
     };
   };

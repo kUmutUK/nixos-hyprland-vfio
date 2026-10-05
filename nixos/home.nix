@@ -4,6 +4,10 @@ let
   gitName            = "changeme";
   gitEmail           = "you@example.com";
   monitorOutput      = "DP-3";
+  # P2-1 (2026-10-05): boş monitör adı pratikte "tüm monitörleri workspace 1'e
+  # aynala" demekti (13. alan preferred, 14. mirror, 15. workspace). Tek
+  # monitörde zararsız, çok monitörde kurulumu bozuyordu. install.sh artık
+  # gerçek çıktıyı yazıyor; buradaki değer yalnızca manuel klonlayanları korur.
   hyprlandMonitorLine = "monitor = ,preferred,auto,1";
   wallpaperVideo     = "${config.home.homeDirectory}/Downloads/arthur-leywin-the-beginning-after-the-end.3840x2160.mp4";
 
@@ -1535,8 +1539,13 @@ systemd.user.services = {
 };
 
 home.packages = with pkgs; [
+  # P1-2 (2026-10-05): pypr müzik scratchpad'ı `mpv` çağırıyordu ama mpv ne
+  # systemPackages'ta ne home.packages'ta vardı (yorum "kurulu" diyordu).
+  # mpvpaper kendi unit PATH'inde mpv taşıdığı için duvar kağıdı çalışıyor,
+  # SUPER+SHIFT+S ise sessizce boş dönüyordu.
+  mpv
   fd ripgrep jq wget curl file tree
-  playerctl pamixer hyprpicker wev
+  playerctl pamixer wev
   nano satty socat libnotify
  ];
 }
