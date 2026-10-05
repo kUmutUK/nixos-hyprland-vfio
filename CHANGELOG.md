@@ -107,6 +107,27 @@ kazancı ölçülmemişti. ZRAM önceliği zaten `priority` ile ayrı çözüld�
 için yüksek swappiness'in ek faydası yok. 100'e çekildi; daha agresif
 davranmak isteyenler için nasıl ölçecekleri yorumda anlatıldı.
 
+## 🟢 Fixed — canlı duvar kağıdı: mpvpaper tek doğruluk kaynağı
+
+Sistemde **iki** wallpaper yöneticisi vardı: `SUPER+W` → waypaper, ve
+`mpvpaper.service` + `mpvpaper-watchdog`. İkisi de "duvar kağıdı açık mı"
+diye kendi cevabını üretiyordu; kullanıcı waypaper'ı kapatınca watchdog
+mpvpaper'ı yeniden başlatıyordu. Ayrıca GameMode oyun başlattığında
+watchdog wallpaper'ı kapatıyor, oyun bitince geri açıyordu — bu yol da
+kullanıcının SUPER+W tercihiyle yarışıyordu.
+
+- **waypaper tamamen kaldırıldı.** `SUPER+W` artık
+  `~/.local/bin/wallpaper-toggle` çalıştırıyor.
+- Toggle mpvpaper.service'e **dokunmuyor**; yalnızca
+  `$XDG_RUNTIME_DIR/wallpaper-enabled` bayrağını değiştiriyor.
+- Kararı veren tek yer: `mpvpaper-watchdog` içindeki `update_wallpaper()`.
+  Kullanıcı bayrağı, GameMode ve pencere durumu **aynı fonksiyondan** geçiyor
+  → iki taraf birbirini ezmiyor, oyun bitince kullanıcı tercihi geri geliyor.
+- Bayrak değişimi arka plan döngüsüyle ~1 sn içinde uygulanıyor.
+  (İlk deneme SIGUSR1 ile anında bildirim yapıyordu; bu yanlıştı — watchdog'un
+  ana döngüsü `socat | while` içinde bir alt kabukta çalıştığı için bash trap'i
+  tetiklenmiyordu. Bayrak izleme ile değiştirildi.)
+
 ## Doğrulama
 
 - `bash -n` + `shellcheck -S warning` (CI gate seviyesi): `install.sh`,
