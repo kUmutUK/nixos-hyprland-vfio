@@ -21,6 +21,11 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     cachyos-kernel.url = "github:xddxdd/nix-cachyos-kernel";
+    # DÜZELTME (2026-10-05): cachyos-kernel kendi pinlenmiş nixpkgs'ini
+    # kullanıyordu → flake.lock'ta İKİ ayrı nixpkgs hattı (nixos-unstable-small
+    # + nixos-unstable). Upstream destekliyorsa ana hattı takip etmek tek
+    # ve tekrarlanabilir bir build zinciri verir.
+    cachyos-kernel.inputs.nixpkgs.follows = "nixpkgs";
     home-manager.url = "github:nix-community/home-manager";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
     # ⚠️ Hyprland overlay'i KALDIRILDI (karar hâlâ doğru, GEREKÇE bayat).
