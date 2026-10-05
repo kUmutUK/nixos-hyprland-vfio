@@ -35,12 +35,6 @@ jobs:
           shellcheck -S warning install.sh nixos/hooks/qemu
           echo "  shellcheck OK"
 
-      # home.nix içine GÖMÜLÜ 7 bash script'i var (wuwa-auto.sh, auto-translate.sh,
-      # toggle-*.sh, mpvpaper-watchdog, waybar-temperature.sh, gamemode-notify).
-      # Bunlar hiç taranmıyordu; 2026-10-05'te düzeltilen iki sessiz hata
-      # (Nix kaçışı yüzünden `tr -d 'f'`, git'in okumadığı MANPAGER) tam olarak
-      # bu boşluktan geçti. Aşağıdaki adım Nix indented-string'lerini çözup
-      # betiği diske yazar, sonra shellcheck üzerinden geçirir.
       - name: Embedded home.nix scripts (shellcheck)
         # home.nix içine GÖMÜLÜ bash script'leri var (wuwa-auto.sh, auto-translate.sh,
         # toggle-*.sh, mpvpaper-watchdog, waybar-temperature.sh, gamemode-notify).
@@ -113,5 +107,12 @@ jobs:
       # parents are persisted" uyarısı GÜRÜLTÜDÜR ve bu adımı kırmaz.
       - name: statix / deadnix (repo kökü .nix dosyaları)
         run: |
-          nix run nixpkgs#statix -- check . || echo "::warning::statix bulguları var (gate değil)"
-          nix run nixpkgs#deadnix -- .        || echo "::warning::deadnix bulguları var (gate değil)"
+          # P3: önceki hâli KİLİTLENMEMİŞ nixpkgs çekiyordu (nixpkgs#statix),
+          # yani aynı commit'te farklı sonuç verebilirdi. Artık flake'in kendi
+          # devShell'inden, kilitli rev ile çalışıyor.
+          nix --extra-experimental-features "nix-command flakes" \
+            develop ./nixos --command statix check . \
+            || echo "::warning::statix bulguları var (gate değil)"
+          nix --extra-experimental-features "nix-command flakes" \
+            develop ./nixos --command deadnix . \
+            || echo "::warning::deadnix bulguları var (gate değil)"
