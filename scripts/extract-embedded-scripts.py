@@ -70,8 +70,18 @@ def extract(lines, index, direct=False):
     # satırın başında olduğu için sadece yolu değiştiriyoruz.
     text = text.replace("${pkgs.bash}/bin/bash", "/usr/bin/env bash", 1)
     text = text.replace("${config.home.homeDirectory}", "/home/localhost")
+    # DÜZELTME: eski desen `\$\{pkgs\.([\w.-]+)\}/bin/` yalnızca paket adını
+    # yakalıyor, `/bin/` ve binary adını düşürüyordu:
+    #     ${pkgs.libnotify}/bin/notify-send  ->  "libnotifynotify-send"
+    #     ${pkgs.dbus}/bin/dbus-monitor      ->  "dbusdbus-monitor"
+    #     ${pkgs.systemd}/bin/busctl         ->  "systemdbusctl"
+    # Bunlar geçerli komut adları olmadığı için shellcheck bunları hiç
+    # denetlemiyordu; yani CI yeşil görünürken gerçekte hiçbir şey
+    # kontrol edilmiyordu. İkinci grup eklenerek binary adı korunur:
+    #     ${pkgs.libnotify}/bin/notify-send  ->  notify-send
+    # Böylece çıkarılan betik gerçekten çalıştırılabilir bir kabuk betiğidir.
     text = re.sub(
-        r"\$\{pkgs\.([\w.-]+)\}/bin/",
+        r"\$\{pkgs\.[\w.-]+\}/bin/([\w.+-]+)",
         lambda m: m.group(1),
         text,
     )
