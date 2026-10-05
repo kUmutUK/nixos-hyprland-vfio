@@ -107,9 +107,14 @@ def main():
         os.chmod(path, 0o755)
         sys.stdout.write(path + "\0")
 
-    for line in lines:
+    # DÜZELTME (2026-10-05): `lines.index(line)` İLK eşleşmeyi döndürür.
+    # Aynı marker satırı home.nix içinde iki kez geçerse ikinci betik yanlış
+    # bloğu (ilkini) çıkarıyor ya da hiç çıkmıyordu — sessiz ve yanlış.
+    # enumerate() gerçek konumu verir; ayrıca aynı satır içeriğinin ikinci
+    # kez geçtiği durumda artık doğru bloğu işleriz.
+    for index, line in enumerate(lines):
         if DIRECT_MARKER.match(line):
-            text = extract(lines, lines.index(line), direct=True)
+            text = extract(lines, index, direct=True)
             if text:
                 emit(text)
             continue
@@ -117,7 +122,6 @@ def main():
         for marker in MARKERS:
             if not marker.match(line):
                 continue
-            index = lines.index(line)
             text = extract(lines, index)
             # Gerçek bash betiği mi? Hepsi shebang ile başlar. MangoHud.conf /
             # lsfg-vk conf.toml gibi yapılandırma dosyaları böyle elenir.
