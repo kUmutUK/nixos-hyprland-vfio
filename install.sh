@@ -343,18 +343,71 @@ echo ""
 step "Applying safe variable substitutions"
 
 HOME_NIX="$NIXOS_FLAKE_DIR/home.nix"
+
+# DÜZELTME (2026-10-05): bu fonksiyon kullanıcı girdisini doğrudan `sed -E`
+# ifadesine gömerdi. Gerçek test sonuçları:
+#   git name "DP-3 & HDMI" -> home.nix'in içine eşleşen satır KOPYALANIYOR
+#                             (& sed'de "eşleşen metin" anlamına gelir) ve
+#                             geçersiz Nix metni oluşuyor.
+#   herhangi bir "|"      -> `sed: unknown option to 's'` ve set -e yüzünden
+#                             script tam da bu adımda ÖLÜYOR.
+#   "C:\path"             -> sessizce "C:path" oluyor, backslash yutuluyor.
+# Üstelik sed bozuk dosyayı YAZMIŞ olduğu için sondaki "Failed to verify"
+# uyarısı sadece haber veriyor; bozuk home.nix diskte kalıyor.
+#
+# Yerine python3: satır bazlı regex değiştirme yapıyor, shell meta karakterleri
+# değer olarak işleniyor, yazma atomik. python3 artık
+# environment.systemPackages'ta olduğu için (XML senkronu düzeltmesiyle)
+# bu sistemde garanti edilebilir.
+if ! command -v python3 >/dev/null 2>&1; then
+    error "python3 gerekli ama PATH'te yok — home.nix güvenle güncellenemez."
+fi
+
 apply_var() {
   local var_name="$1" new_value="$2"
   if ! grep -qE "^[[:space:]]*${var_name}[[:space:]]*=" "$HOME_NIX"; then
     warn "Variable '${var_name}' not found in home.nix — skipped."
-    return
+    return 0
   fi
-  sudo sed -i -E "s|^([[:space:]]*${var_name}[[:space:]]*=).*;|\1 \"${new_value}\";|" "$HOME_NIX"
-  if grep -qF "\"${new_value}\";" "$HOME_NIX"; then
-    log "Set ${var_name}."
-  else
-    warn "Failed to verify substitution for '${var_name}'."
+  if ! sudo python3 - "$HOME_NIX" "$var_name" "$new_value" <<'PYEOF'
+import re, sys, os, tempfile
+
+path, var, value = sys.argv[1], sys.argv[2], sys.argv[3]
+
+with open(path, encoding="utf-8") as fh:
+    text = fh.read()
+
+escaped = value.replace("\\", "\\\\").replace('"', '\\"')
+
+pattern = re.compile(
+    r'^(?P<indent>[ \t]*)' + re.escape(var) + r'[ \t]*=[ \t]*.*$', re.MULTILINE
+)
+new_text, n = pattern.subn(
+    lambda m: '{0}{1} = "{2}";'.format(m.group("indent"), var, escaped), text
+)
+
+if n == 0:
+    sys.exit(1)
+
+directory = os.path.dirname(path) or "."
+fd, tmp = tempfile.mkstemp(dir=directory, suffix=".applyvar.tmp")
+try:
+    with os.fdopen(fd, "w", encoding="utf-8") as fh:
+        fh.write(new_text)
+    os.chmod(tmp, os.stat(path).st_mode)
+    os.replace(tmp, path)
+except BaseException:
+    try:
+        os.unlink(tmp)
+    except OSError:
+        pass
+    raise
+PYEOF
+  then
+    warn "Failed to substitute '${var_name}' — home.nix DEĞİŞTİRİLMEDİ."
+    return 1
   fi
+  log "Set ${var_name}."
 }
 
 if [ "$git_name" = "changeme" ] || [ "$git_email" = "you@example.com" ]; then
