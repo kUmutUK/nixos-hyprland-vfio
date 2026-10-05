@@ -6,7 +6,7 @@ koda bakarak doğrulanmamalıdır.
 ## `ANALIZ-2026-10-05-ZIP3-SUPERSEDED.md`
 
 `nixos-hyprland-vfio(3).zip` @ commit `97a1665` için yazıldı.
-Bu depodaki kod commit `0d35833` ("Add files into upload", zip (4)).
+Bu depodaki kod commit `0137b38` ("Add files via upload", zip (4)).
 
 Yani belgedeki satır numaraları ve iki P1 bulgusu **bugün geçerli değil**:
 
