@@ -642,7 +642,7 @@ in
   # rebuild'de "stateVersion 26.05 is newer than any known release" gibi
   # bir uyarı basar ve sürüm yükseltme davranışını tanımsız bırakır.
   # 25.11 kararlı sürümdür; ileride 26.05 çıktığında tek satır güncellenir.
-  system.stateVersion = "25.11";
+  system.stateVersion = "26.05";
   services.dbus.implementation = "broker";
   boot.initrd.systemd.enable = true;
 
