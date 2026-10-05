@@ -42,7 +42,14 @@ loadkeys trq
 
 ## Disk oluşturma
 
+> ⚠️ **DİKKAT — Aşağıdaki komutlar hedef diski TAMAMEN SİLER.**
+> `sgdisk -Z` (zero) diskin tüm partition tablosunu ve verisini yok eder.
+> `/dev/nvme0n1` sizin makinenizde FARKLI bir isimse (`/dev/sda`,
+> `/dev/nvme1n1` …) önce `lsblk` ile doğrulayın. Yanlış diske yazarsanız
+> geri dönüşü yoktur.
+
 ```bash
+lsblk -d -o NAME,SIZE,MODEL     # ← önce hedef diski doğrula
 sudo sgdisk -Z /dev/nvme0n1
 
 sudo sgdisk -n 1:0:+1G  -t 1:ef00 -c 1:EFI  /dev/nvme0n1
@@ -227,24 +234,24 @@ nixos-install --flake /mnt/etc/nixos/nixos#nixos --accept-flake-config
 
 > **DÜZELTME (2026-10-04):** bu adım hiçbir dokümanda yoktu. Atlanırsa
 > domain tanımsız kalır; `nixos/hooks/qemu` içindeki
-> `if [ "$GUEST" != "$TARGET_VM" ]; then exit 0` filtresi (`TARGET_VM="win10"`)
+> `if [ "$GUEST" != "$TARGET_VM" ]; then exit 0` filtresi (`TARGET_VM="win11"`)
 > hiç eşleşmez ve GPU **hiçbir zaman** `vfio-pci`'ye bağlanmaz. Yani tüm
 > VFIO sistemi sessizce hiç çalışmaz.
 
 ```bash
 # vm-xml zaten §7'de repodan /mnt/etc/nixos/vm-xml olarak kopyalandı.
 sudo mkdir -p /var/lib/libvirt/images /var/lib/libvirt/qemu
-sudo cp /mnt/etc/nixos/vm-xml/win10.xml /var/lib/libvirt/
-sudo virsh define /var/lib/libvirt/win10.xml
-virsh list --all     # 'win10' → "shut off" olarak görünmeli
+sudo cp /mnt/etc/nixos/vm-xml/win11.xml /var/lib/libvirt/
+sudo virsh define /var/lib/libvirt/win11.xml
+virsh list --all     # 'win11' → "shut off" olarak görünmeli
 ```
 
-> ⚠️ **ISO dosyaları:** `virsh start win10` için iki ISO gerekir:
+> ⚠️ **ISO dosyaları:** `virsh start win11` için iki ISO gerekir:
 > `Win10_22H2_English_x64v1.iso` ve `virtio-win-*.iso` →
 > `sudo cp <iso> /var/lib/libvirt/images/`
 
 > ⚠️ XML'deki disk/NVRAM yolları sabit geliyor. Kendi diskine göre
-> düzenlemezsen `virsh start win10` "disk bulunamadı" ile başarısız olur.
+> düzenlemezsen `virsh start win11` "disk bulunamadı" ile başarısız olur.
 >
 > ⚠️ **VM'i masaüstü oturumundan başlatmayın.** `hooks/qemu`, GPU'yu bırakmak için
 > `loginctl terminate-user <kullanıcı>` çalıştırıyor — yani `virsh start` komutunu
@@ -252,20 +259,20 @@ virsh list --all     # 'win10' → "shut off" olarak görünmeli
 > libvirtd tarafındaki iş devam ediyor). İki güvenli yol:
 > ```bash
 > # 1) ayrı TTY'den (Ctrl+Alt+F3)
-> virsh start win10
+> virsh start win11
 >
 > # 2) oturumdan bağımsız transient unit
-> systemd-run --scope --unit=vmstart virsh start win10
+> systemd-run --scope --unit=vmstart virsh start win11
 > ```
 >
-> Doğrulama: `sudo virsh dominfo win10` → ad, UUID ve PCI hostdev'ler görünmeli.
+> Doğrulama: `sudo virsh dominfo win11` → ad, UUID ve PCI hostdev'ler görünmeli.
 > Hook'un çalıştığını `sudo journalctl -u libvirtd -f` ve
-> `sudo tail -f /var/log/libvirt/qemu/win10.log` ile izleyebilirsin.
+> `sudo tail -f /var/log/libvirt/qemu/win11.log` ile izleyebilirsin.
 >
 > ⚠️ **Hook logu:** `sudo cat /var/log/libvirt/vfio.log` — GPU'nun gerçekten
 > `vfio-pci`'ye bağlandığını, reset durumunu ve (Navi2x'te mümkünse)
 > kurtarma adımını burada görürsün. `HOST_USER` değişkenini de dışarıdan
-> vermek istersen: `HOST_USER=kullanici sudo virsh start win10`.
+> vermek istersen: `HOST_USER=kullanici sudo virsh start win11`.
 
 ---
 
