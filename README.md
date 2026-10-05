@@ -240,8 +240,7 @@ Single-GPU passthrough setup:
 - AppArmor
 - Firewall enabled
 - Fail2ban
-- SSH key-only auth
-- Root login disabled
+- SSH key-only auth (only if you enable it — see Notes)
 
 ---
 
@@ -318,7 +317,7 @@ sudo reboot   # ZORUNLU (iommu=pt, amd_iommu=on)
 ```
 
 > **`scripts/extract-embedded-scripts.py` CI için zorunludur.** `home.nix` içine
-> 7 bash script'i gömülü; CI onları diske çıkarıp shellcheck'ten geçiriyor.
+> 8 bash script'i gömülü; CI onları diske çıkarıp shellcheck'ten geçiriyor.
 > Bu dosya olmadan `.github/workflows/check.yml` çalışmaz.
 
 > **`shell.nix` silindi (2026-10-05).** Kökte ikinci bir geliştirme ortamı
