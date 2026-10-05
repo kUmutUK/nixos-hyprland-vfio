@@ -68,9 +68,44 @@ jobs:
       - name: nix flake check (eval only)
         working-directory: nixos
         run: |
-          nix flake check --no-build --accept-flake-config --show-trace \
+          # DÜZELTME: burada `--accept-flake-config` vardı. O bayrak, flake'in
+          # nixConfig.extra-substituters / extra-trusted-public-keys ayarlarını
+          # uygularken LOCK DOSYASINI DA yeniden yazıyordu. Gözlemlenen yan etki:
+          #   • Updated input 'impermanence/home-manager' → follows 'home-manager'
+          #   node isimleri kayıyor (nixpkgs_3 → nixpkgs_2)
+          #   gösterim biçimi değişiyor ("home-manager": "home-manager"
+          #     → ["home-manager"])
+          # `--option warn-dirty false` bunu sessizce bastırdığı için kimse
+          # fark etmiyordu — CI her çalışmada repo'yu kirli bırakıyordu.
+          #
+          # ⚠️ `--accept-flake-config` KALDIRILMASI TEK BAŞINA YETMEZ.
+          # Asıl kök neden: commit'lenmiş flake.lock KANONİK DEĞİLDİ.
+          # impermanence.inputs içinde aynı kayıt iki FARKLI biçimde yazılmıştı:
+          #     "nixpkgs":     ["nixpkgs"]   ← follows formu (doğru)
+          #     "home-manager": "home-manager" ← string formu (yanlış)
+          # Nix her değerlendirmede lock'u kanonikleştirdiği için, yeni bir
+          # `nix flake check` ÇALIŞTIRILDIĞI AN dosya değişiyordu.
+          # Kalıcı çözüm: lock'u kanonik hale getirip commit'lemek (aşağıdaki
+          # commit'te yapıldı). Aşağıdaki guard step, ileride tekrar bozulursa
+          # sessizce kaymasını yakalar.
+          #
+          # substituters/trusted-keys BURAYA gerekmez: --no-build yalnızca
+          # EVAL eder, indirme yapmaz. (Ayrıca --accept-flake-config olmadan
+          # flake'in nixConfig'i zaten "untrusted" sayılıp yok sayılıyor.)
+          nix flake check --no-build --show-trace \
             --option warn-dirty false
           echo "  flake evaluates OK"
+
+      # KİLİT SÜRÜKLENMESİNİ KALICI OLARAK YAKALA
+      - name: flake.lock unchanged
+        working-directory: nixos
+        run: |
+          if ! git diff --quiet -- flake.lock; then
+            echo "::error::flake.lock CI çalışması sırasında değişti — lock kanonik değil. 'nix flake lock' çalıştırıp commit'leyin."
+            git --no-pager diff -- flake.lock
+            exit 1
+          fi
+          echo "  flake.lock clean"
 
       # flake'in DEĞERLENDİRİLDİĞİ doğrulanır: bir option yanlış yazılmışsa
       # ("services.lsfg-vk", "systemd.tmpfiles.rules", impermanence modülü)
