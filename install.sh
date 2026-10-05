@@ -231,7 +231,15 @@ else
   # Artık kaynak dosya SALT-OKUNUR kalıyor; patch'lenmiş XML doğrudan
   # libvirt'in kendi dizinine yazılıyor.
   PATCHED_XML="/var/lib/libvirt/win10.xml"
-  if sudo mkdir -p /var/lib/libvirt && python3 - "$gpu_pci" "$gpu_audio" "$REPO_DIR/vm-xml/win10.xml" "$PATCHED_XML" <<'PYEOF'
+  # DÜZELTME: burada `sudo` yalnızca mkdir'de vardı; python3 normal kullanıcı
+  # olarak çalışıp root'a ait /var/lib/libvirt/win10.xml'e yazmaya çalışıyordu
+  # ve PermissionError alıyordu. Betik `if ... then` yapısı olduğu için hata
+  # yutuluyor, kullanıcı yalnızca "XML güncellenemedi" uyarısı görüp
+  # akıllıca elle düzenlemeye yöneliyordu — ama tam olarak bu sessiz hatanın
+  # ürettiği felaket senaryosunda (hook yeni PCI adresine bind oluyor, libvirt
+  # eski adresi arıyor → "device not found") kalıyorsun.
+  # apply_var() zaten `sudo python3` kullanıyor; aynı desen buraya da uygulanır.
+  if sudo mkdir -p /var/lib/libvirt && sudo python3 - "$gpu_pci" "$gpu_audio" "$REPO_DIR/vm-xml/win10.xml" "$PATCHED_XML" <<'PYEOF'
 import re, sys
 
 gpu, aud, src, dst = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
