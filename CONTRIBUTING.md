@@ -41,7 +41,7 @@ kırılıyor. Bu adım 2026-10-05'te eklendi; o tarihten önce CI'de **hiç Nix
 ## Nix
 
 - 2-space indentation
-- Use `nixfmt-rfc-style` (devShell'de `nixfmt` olarak gelir)
+- Use `nixfmt` (devShell'de `pkgs.nixfmt` olarak gelir)
 
 ```bash
 nix develop ./nixos
@@ -58,7 +58,7 @@ nixfmt .
 - Validate with shellcheck
 
 ```bash
-shellcheck install.sh nixos/hooks/qemu
+shellcheck -S warning install.sh nixos/hooks/qemu
 ```
 
 > `home.nix` içine gömülü script'ler doğrudan taranamaz. Onları çıkarmak için:

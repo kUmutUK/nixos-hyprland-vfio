@@ -11,7 +11,7 @@ This project follows:
 # [1.3.0] - 2026-10-05
 
 Bağımsız kod & yapılandırma denetimi. Kaynak: `nixos-hyprland-vfio(4).zip`
-@ `0d35833`. Tüm iddialar **kilitli upstream kaynaklarına** karşı doğrulandı
+@ `0137b38` (gerçek HEAD; belgelerde geçen `0d35833`/`602f217` hash'leri bu repoda hiçbir commit'e karşılık gelmiyordu). Tüm iddialar **kilitli upstream kaynaklarına** karşı doğrulandı
 (nixpkgs `7a0f122`, Hyprland `v0.56.2`, hyprlock `v0.9.6`, hyprutils).
 
 ## 🔴 Fixed — CI gerçekten doğrulamıyordu
@@ -101,7 +101,7 @@ duruyordu. Kulaklık/Spotify ikonu hiç çizilmiyordu. Dolduruldu.
   channel + `nixpkgs-fmt`, `flake.nix`'teki `devShells` ile (`nixfmt-rfc-style`)
   çelişiyordu. Artık tek yol: `nix develop ./nixos`.
 - **`ANALIZ-2026-10-05.md` → `docs/archive/`** (zip (3) @ `97a1665` için
-  yazılmıştı, bu kod `0d35833` — en "güncel" görünen belge en eski kodu
+  yazılmıştı, bu kod `0137b38` — en "güncel" görünen belge en eski kodu
   anlatıyordu).
 - **`nixos-hyprland-vfio-analiz.md` → `docs/archive/`** (v2 raporu).
 - **Bu iki dosya (`FIXES-2026-10-05.md`, `FIX-MANIFEST.md`) repoda YOK.**
@@ -137,8 +137,17 @@ duruyordu. Kulaklık/Spotify ikonu hiç çizilmiyordu. Dolduruldu.
 - `hyprlandMonitorLine` default'u hâlâ `monitor = ,preferred,auto,1`
   (boş ad). Tek monitörde zararsız, çok monitörde anlamsız. Sadece
   `install.sh` dolduruyor.
-- Aynı anda 3 Vulkan implicit layer aktif (`lsfg-vk` + `low_latency_layer`
-  + `vkbasalt`). Test edilmemiş kombinasyon, default olarak açık.
+- ~~Aynı anda 3 Vulkan implicit layer aktif (`lsfg-vk` + `low_latency_layer`
+  + `vkbasalt`).~~ **DÜZELTİLDİ (2026-10-05): iddia yanlıştı, 2 katman
+  aktiftir.** `nix eval` ile `environment.etc` listelendi: yalnızca
+  `vulkan/implicit_layer.d/VkLayer_LS_frame_generation.json` ve
+  `vulkan/implicit_layer.d/low_latency_layer.json` yazılıyor. `vkbasalt`
+  `systemPackages`'ta vardı ama nixpkgs onun manifest'ini `$out/share/...`
+  altına koyar, `/etc/vulkan`'a bağlayan hiçbir şey yoktu ve
+  `VK_INSTANCE_LAYERS`/`VK_LOADER_LAYERS`/`VK_LAYER_PATH` hiçbir yerde
+  ayarlanmıyordu → **katman hiç yüklenmiyordu**. Paket listeden kaldırıldı.
+  Kalan 2 katmanın (`lsfg-vk` + `low_latency_layer`) kombinasyonu hâlâ
+  test edilmemiş ve default olarak açık.
 - `power-profiles-daemon` ↔ `ananicy-cpp` ↔ `gamemode` üçlüsü CPU
   önceliğinde birbirine yazıyor; sıra garantisi yok. Kasıtlı bırakıldı,
   `configuration.nix`'te yorumlandı.
@@ -657,3 +666,89 @@ conf.toml                         MangoHud.conf
 
 
 
+
+---
+
+# [1.3.1] - 2026-10-05
+
+Bağımsız analiz turu bulguları. Her madde ya gerçek `nix build` / `nix flake
+check` çalıştırılarak ya da upstream kaynak okunarak doğrulandı.
+
+## 🔴 Fixed — TÜM SİSTEM BUILD'İ DÜŞÜRÜYORDU
+
+- **`low_latency_layer` türetmesi derlenmiyordu.** `installPhase` içindeki
+  `cmake --install build`, nixpkgs'in cmake setup hook'u `buildPhase` içinde
+  cwd'yi `<source>/build`'e düşürdüğü için `<source>/build/build` arıyordu:
+  `CMake Error: Not a file: .../source/build/build/cmake_install.cmake`.
+  Paket `environment.systemPackages`'te olduğu için bu tek hata
+  `nixos-rebuild switch`'i tek başına düşürüyordu.
+  → Özel `installPhase` kaldırıldı. Doğrulama: installPhase'li hâl
+  **patladı** (%100 derlendi, installPhase'de öldü), installPhase'siz hâl
+  **başarılı** ve manifest tam olarak
+  `$out/share/vulkan/implicit_layer.d/low_latency_layer.json` yolunda üretildi.
+- **`sha256` DOĞRU çıktı.** Gerçek `nix-prefetch-url --unpack` ile hesaplanan
+  NAR hash'i `iUdcNnmY4NqaEnhoJUn7KEKTFQrlqo4tYOkLwEhmL+s=` — birebir aynı.
+  CHANGELOG'un "hiç test edilmemiş" kaydı artık geçersiz.
+- Üretilen manifest doğrulandı: `library_path` mutlak store yolu (RPATH'li .so
+  `libvulkan`'ı kendi çözer, `symlinkJoin` gerekmiyor) ve **`enable_environment`
+  yok**, `disable_environment` var → katman varsayılan etkin, README'nin
+  Reflex iddiası doğru.
+
+## 🟠 Fixed
+
+- **`polkit.service` geri açılmıyordu.** `stop_hyprland()` hem `ollama` hem
+  `polkit.service` durduruyor, `start_hyprland()` yalnızca `ollama`'yı geri
+  açıyordu. VM kapandıktan sonra polkit otoritesi kalıcı olarak kayboluyor,
+  yetkilendirme diyalogları (disk bağlama, ağ değişikliği) hiç açılmıyordu.
+  → Geri açılış döngüsü iki servisi de kapsıyor.
+- **`install.sh`'ın VM XML senkronizasyonu hiç çalışmıyordu.** `command -v
+  python3` kontrolü var, python3 sistemde yok → her kurulumda "python3 yok"
+  uyarısı ve `win10.xml`'deki eski PCI adresi kalıyordu. Sonuç: hook yeni
+  adrese `vfio-pci` bind ediyor, libvirt eski adresi arıyor → *device not
+  found*, sebebi görünmüyor. → `python3` `environment.systemPackages`'a eklendi.
+- **`SUPER+SHIFT+S` sessizce boş dönüyordu.** pypr müzik scratchpad'ı `mpv`
+  çağırıyor ve yorum "mpv, zaten kurulu" diyordu — kurulu değildi. `mpvpaper`
+  kendi unit PATH'inde mpv taşıdığı için duvar kağıdı çalışır, scratchpad
+  çalışmazdı. → `home.packages`'a `mpv` eklendi.
+- **`vendor_reset` yanlış sırada çalışıyordu.** `bind_vfio`'dan SONRA
+  çağrılıyordu; `vfio-pci` bind sırasında zaten reset yapıyor, bind sonrası
+  FLR gereksiz ve Navi2x reset bug'ının en çok konuşulan tetikleyicisiydi.
+  → Sıra ters çevrildi: reset artık bind'den önce.
+
+## 🟡 Fixed
+
+- **`rtcwake -m mem` kalıcı kilitlenme riski.** Kurtarma fallback'i host'u
+  otomatik askıya alıyor; RTC alarmı BIOS'ta kapalıysa bir daha dönmez. Artık
+  askıdan önce tty1/tty2'ye görünür uyarı basılıyor.
+- **`nixfmt-rfc-style` deprecated.** Gerçek eval uyarısı:
+  *"nixfmt-rfc-style is now the same as pkgs.nixfmt"*. → `pkgs.nixfmt`.
+- **CI kilitsiz nixpkgs çekiyordu.** `nix run nixpkgs#statix` aynı commit'te
+  farklı sonuç verebilirdi. → flake'in kendi devShell'inden çalışıyor.
+- **Extractor'da `lines.index()` tuzağı.** Dosyada İLK eşleşen satırı
+  döndürüyor; aynı isimli ikinci script eklenirse yanlış blok çıkarılırdı.
+  → `enumerate` + indeks.
+- **`security.pam.loginLimits`'taki `@gamemode` kuralı ölüydü** (gamemode
+  modülü PAM grubu oluşturmuyor, `renice`'i daemon yapıyor). → Kaldırıldı.
+- **`vkbasalt` hiç yüklenmiyordu.** `nix eval` ile `environment.etc`
+  listelendi: `/etc/vulkan/implicit_layer.d` altında yalnızca 2 manifest var
+  (`VkLayer_LS_frame_generation.json`, `low_latency_layer.json`).
+  `vkbasalt`'ın manifest'i `/etc`'ye bağlanmıyor, `VK_INSTANCE_LAYERS` /
+  `VK_LOADER_LAYERS` / `VK_LAYER_PATH` da hiçbir yerde ayarlanmıyor.
+  → Paket listeden kaldırıldı. **CHANGELOG'daki "3 katman aktif" iddiası
+  yanlıştı, 2'dir.**
+- **Paket tekrarları** (`hyprpicker`, `playerctl`, `wev` hem systemPackages'ta
+  hem home.packages'ta; `pyprland` hem configuration.nix hem flake.nix) → temizlendi.
+- **CONTRIBUTING ile CI uyumsuzluğu.** Doküman `shellcheck` (varsayılan `style`)
+  diyordu, CI `-S warning` kullanıyor. → Hızalandı.
+- **check.yml'de tekrar eden yorum bloğu** → kaldırıldı.
+- **Dokümanlardaki commit hash'leri gerçekle uyuşmuyordu** (`0d35833`,
+  `602f217`; gerçek HEAD `0137b38`) → hizalandı.
+
+## ⚠️ Bilerek dokunulmadı
+
+- `hyprlandMonitorLine` boş monitör adı — tek monitörde zararsız, `install.sh`
+  gerçek çıktıyı yazıyor; yorum artık tuzağı açıkça anlatıyor.
+- `fuser` tabanlı GPU-serbest yargısı — `2>/dev/null` yüzünden "dosya yok" ile
+  "kimse kullanmıyor" ayrımı yok. Etkisi gerçek ama kapsam dışı.
+- `home.persistence` + `xdg.configFile` çakışması — gerçek rebuild gerektiriyor.
+- Navi2x reset bug'ı — donanıma özgü, yazılımla garanti edilemez.
