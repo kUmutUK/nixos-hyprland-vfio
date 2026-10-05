@@ -246,7 +246,6 @@ in
         maxsize = "2M";
         daily = true;
         weekly = true;
-        rotate = 8;
       };
     };
   };
