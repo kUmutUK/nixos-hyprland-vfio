@@ -290,25 +290,25 @@ fi
 
 # ─── VM XML PCI senkronizasyonu (yeni) ──────────────────
 # Installer eskiden sadece hooks/qemu içindeki GPU_PCI/GPU_AUDIO'yu
-# güncelliyordu; win10.xml'deki <hostdev> <source> <address> blokları
+# güncelliyordu; win11.xml'deki <hostdev> <source> <address> blokları
 # ise sabit kalıyordu. Sonuç: hook yeni PCI adresini vfio-pci'ye bind
 # ediyor ama libvirt hâlâ eski adresi aradığı için VM "device not found"
 # ile başlamıyordu.
 step "VM XML PCI senkronizasyonu"
-if [ ! -f "$REPO_DIR/vm-xml/win10.xml" ]; then
-  warn "vm-xml/win10.xml bulunamadı — XML'i elle düzenle."
+if [ ! -f "$REPO_DIR/vm-xml/win11.xml" ]; then
+  warn "vm-xml/win11.xml bulunamadı — XML'i elle düzenle."
 elif ! command -v python3 >/dev/null 2>&1; then
-  warn "python3 yok — vm-xml/win10.xml'i elle düzenle (bus/slot/function)."
+  warn "python3 yok — vm-xml/win11.xml'i elle düzenle (bus/slot/function)."
 else
-  # DÜZELTME (2026-10-05): script daha önce $REPO_DIR/vm-xml/win10.xml dosyasını
+  # DÜZELTME (2026-10-05): script daha önce $REPO_DIR/vm-xml/win11.xml dosyasını
   # YERİNDE değiştirip değişikliği `git update-index --skip-worktree` ile
   # saklıyordu. Bu, "repo = değişmez şablon" değişmezini bozuyordu: sonraki
   # `git pull`'da skip-worktree merge conflict üretir, `git status` yalan söyler,
   # ve kurulum ikinci kez çalıştırılırsa aynı dosya tekrar yazılır.
   # Artık kaynak dosya SALT-OKUNUR kalıyor; patch'lenmiş XML doğrudan
   # libvirt'in kendi dizinine yazılıyor.
-  PATCHED_XML="/var/lib/libvirt/win10.xml"
-  if sudo mkdir -p /var/lib/libvirt && python3 - "$gpu_pci" "$gpu_audio" "$REPO_DIR/vm-xml/win10.xml" "$PATCHED_XML" <<'PYEOF'
+  PATCHED_XML="/var/lib/libvirt/win11.xml"
+  if sudo mkdir -p /var/lib/libvirt && python3 - "$gpu_pci" "$gpu_audio" "$REPO_DIR/vm-xml/win11.xml" "$PATCHED_XML" <<'PYEOF'
 import re, sys
 
 gpu, aud, src, dst = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
@@ -387,7 +387,7 @@ if used_fallback:
           file=sys.stderr)
     print("UYARI: İleride NIC/USB PCI hostdev eklersen bu yanlış cihazı",
           file=sys.stderr)
-    print("UYARI: hedefler. vm-xml/win10.xml'i yeni şemaya geçirin.", file=sys.stderr)
+    print("UYARI: hedefler. vm-xml/win11.xml'i yeni şemaya geçirin.", file=sys.stderr)
     if n > 2:
         print(f"UYARI: {n} PCI hostdev bulundu; SADECE ilk 2'si yazıldı.",
               file=sys.stderr)
@@ -398,11 +398,11 @@ open(dst, "w", encoding="utf-8").write(new)
 print(f"OK: {n} hostdev bulundu, {min(n,2)} tanesi güncellendi -> {dst}")
 PYEOF
   then
-    log "vm-xml/win10.xml -> ${PATCHED_XML} (GPU=${gpu_pci}, Audio=${gpu_audio})"
+    log "vm-xml/win11.xml -> ${PATCHED_XML} (GPU=${gpu_pci}, Audio=${gpu_audio})"
     log "Kaynak repo dosyası DEĞİŞTİRİLMEDİ."
     echo -e "     ${CYAN}sudo virsh define ${PATCHED_XML}${NC}"
   else
-    warn "XML güncellenemedi — win10.xml'i elle düzenle."
+    warn "XML güncellenemedi — win11.xml'i elle düzenle."
   fi
 fi
 
@@ -460,9 +460,9 @@ echo ""
 # ─── VM disk image ──────────────────────────────────────
 step "VM disk image"
 sudo mkdir -p /var/lib/libvirt/images /var/lib/libvirt/qemu
-if [ ! -f /var/lib/libvirt/images/win10new.qcow2 ]; then
+if [ ! -f /var/lib/libvirt/images/win11new.qcow2 ]; then
   warn "VM diski yok — 120G qcow2 oluşturuluyor."
-  sudo qemu-img create -f qcow2 /var/lib/libvirt/images/win10new.qcow2 120G
+  sudo qemu-img create -f qcow2 /var/lib/libvirt/images/win11new.qcow2 120G
 fi
 echo "  ISO dosyalarını /var/lib/libvirt/images/ altına kopyalayın:"
 echo "    Win10_22H2_English_x64v1.iso"
@@ -548,11 +548,11 @@ echo -e "   ${YELLOW}(mkpasswd, whois paketiyle gelir)${NC}"
 echo ""
 echo -e "${step_num}. ${CYAN}VM'yi libvirt'e tanıt:${NC}"
 echo -e "   ${CYAN}sudo mkdir -p /var/lib/libvirt/images${NC}"
-echo -e "   ${CYAN}sudo qemu-img create -f qcow2 /var/lib/libvirt/images/win10new.qcow2 120G${NC}"
+echo -e "   ${CYAN}sudo qemu-img create -f qcow2 /var/lib/libvirt/images/win11new.qcow2 120G${NC}"
 echo -e "   ${YELLOW}ISO dosyalarını /var/lib/libvirt/images/ altına kopyalayın${NC}"
-echo -e "   ${CYAN}sudo virsh define /var/lib/libvirt/win10.xml${NC}"
-echo -e "   ${CYAN}virsh list --all${NC}   ${YELLOW}→ 'win10' shut off olarak görünmeli${NC}"
-echo -e "   ${CYAN}(XML yukarıdaki adımda zaten /var/lib/libvirt/win10.xml'e yazıldı;${NC}"
+echo -e "   ${CYAN}sudo virsh define /var/lib/libvirt/win11.xml${NC}"
+echo -e "   ${CYAN}virsh list --all${NC}   ${YELLOW}→ 'win11' shut off olarak görünmeli${NC}"
+echo -e "   ${CYAN}(XML yukarıdaki adımda zaten /var/lib/libvirt/win11.xml'e yazıldı;${NC}"
 echo -e "    ${CYAN}3+ hostdev varsa UYARI'ya dikkat et — fazlasını elle düzenle.)${NC}"
 ((step_num++))
 
