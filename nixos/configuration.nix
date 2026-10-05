@@ -243,7 +243,7 @@ in
         # saatlerce uyku, disk dolu) dosya günlerce büyüyebilir ve
         # /var/log dolabilir. Boyut tabanlı dönme ekleniyor: 7 günde
         # bir ya da 2 MB'a ulaşınca, hangisi önce olursa.
-        maxsize = "2M"
+        maxsize = "2M";
         daily = true
         weekly = true
         rotate = 8
