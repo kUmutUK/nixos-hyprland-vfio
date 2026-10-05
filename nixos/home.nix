@@ -240,15 +240,15 @@ let
     bind = $mainMod, P, exec, grim -g "$(slurp)" - | wl-copy
     bind = $mainMod SHIFT, P, exec, grim -g "$(slurp)" - | satty -f - | wl-copy
     bind = $mainMod, Escape, exec, ${pkgs.hyprlock}/bin/hyprlock          # ← hyprlock yeni tuş
-    # DÜZELTME (2026-10-05) — waypaper vs mpvpaper çakışması:
-    # Bu binding mpvpaper'ı DEĞİL waypaper'ı çağırıyor, ama aynı sistemde
-    # mpvpaper + mpvpaper-watchdog da var. İki ayrı wallpaper yönetimi
-    # paradoksu: SUPER+W waypaper'ın state'ini değiştirirken watchdog
-    # mpvpaper'ın state'ini izliyor. İkisi de aynı anda "aktif" sanılıyor.
-    # Not: bu bir BUG değil, bilinen bir tasarım çakışması. Tek lifecycle'a
-    # indirmek davranış değiştirir (waypaper'ı kaldırmak gerekir), bu yüzden
-    # bilinçli olarak değiştirilmedi — kullanılmayan tarafı seçin.
-    bind = $mainMod, W, exec, ${pkgs.waypaper}/bin/waypaper
+    # DÜZELTME (2026-10-05) — waypaper KALDIRILDI, canlı duvar kağıdı (mpvpaper)
+    # tek doğruluk kaynağı yapıldı. Önceden bu binding waypaper'ı çağırıyordu ve
+    # aynı sistemde mpvpaper + mpvpaper-watchdog da çalışıyordu: iki ayrı
+    # wallpaper yöneticisi, "duvar kağıdı açık mı" sorusunun iki cevabı.
+    #
+    # Bu toggle da mpvpaper.service'e DOĞRUDAN dokunmaz; yalnızca watchdog'un
+    # okuduğu bayrağı değiştirir. Böylece kullanıcı tercihi ile GameMode
+    # olayları aynı karar fonksiyonundan geçer, birbirini ezmez.
+    bind = $mainMod, W, exec, ${pkgs.bash}/bin/bash ${config.home.homeDirectory}/.local/bin/wallpaper-toggle
 
     bind = $mainMod, S, exec, pypr toggle term
     bind = $mainMod SHIFT, S, exec, pypr toggle music
@@ -1218,12 +1218,40 @@ done
     '';
   };
 
+  # Duvar kağıdı aç/kapat (SUPER+W). waypaper kaldırıldığı için bu artık
+  # mpvpaper'ı kontrol ediyor. ÖNEMLİ: servis doğrudan start/stop EDİLMEZ —
+  # yalnızca aşağıdaki bayrak değişir. Kararı mpvpaper-watchdog verir (tek
+  # doğruluk kaynağı); böylece oyun başlattığında kullanıcı tercihi korunur.
+  home.file.".local/bin/wallpaper-toggle" = {
+    executable = true;
+    text = ''
+      #!${pkgs.bash}/bin/bash
+      FLAG="$XDG_RUNTIME_DIR/wallpaper-enabled"
+      if [ -e "$FLAG" ]; then
+        rm -f "$FLAG"
+        ${pkgs.coreutils}/bin/printf 'Canli duvar kagidi: KAPALI\n'
+      else
+        : > "$FLAG"
+        ${pkgs.coreutils}/bin/printf 'Canli duvar kagidi: ACIK\n'
+      fi
+      # Watchdog'u uyandir ki bayrak hemen uygulansin.
+      # DÜZELTME (2026-10-05): burada eskiden SIGUSR1 gonderiliyordu ama
+      # watchdog'un ana döngüsü bir alt kabukta çalıştığı için sinyal
+      # tetiklenmiyordu. Şimdi watchdog bayrağı kendisi izliyor (bkz.
+      # mpvpaper-watchdog içindeki arka plan döngüsü), yalnızca dosya
+      # durumu değişti. Ek bir sinyal göndermeye gerek yok.
+      :
+    '';
+  };
+
   # mpvpaper watchdog (BindsTo kaldırıldı)
   home.file.".local/bin/mpvpaper-watchdog" = {
     executable = true;
     text = ''
       #!${pkgs.bash}/bin/bash
       MONITORED_CLASSES="brave-browser"
+      # wallpaper-toggle bu bayragi degistirir; karari yine BU script verir.
+      WALLPAPER_FLAG="$XDG_RUNTIME_DIR/wallpaper-enabled"
       HYPR_SOCK="$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock"
 
       is_gamemode_active() {
@@ -1239,19 +1267,51 @@ done
           '[.[].class | select(. != null)] | map(select(. as $c | $classes | split(",") | index($c))) | length'
       }
 
+      # DÜZELTME (2026-10-05) — TEK DOĞRULUK KAYNAĞI.
+      # Bu fonksiyon artık mpvpaper'ın AÇIK/KAPALI kararının TEK yeridir.
+      # Önceden iki ayrı kontrolcü vardı (waypaper binding + bu watchdog) ve
+      # ayrıca oyun durumunu kontrol eden ikinci bir yol daha vardı. Artık:
+      #   • Kullanıcı SUPER+W'ye basınca YALNIZCA bayrak değişir (servise
+      #     dokunulmaz) — kullanıcının tercihi oyun sırasında ezilmez.
+      #   • GameMode/pencereler de YALNIZCA buraya girer.
+      # Böylece iki taraf birbirini ezmiyor; ikisi de aynı kararı veriyor.
+      user_enabled() {
+        # Bayrak yoksa = kullanıcı wallpaper'ı kapatmamış (varsayılan AÇIK).
+        [ ! -e "$WALLPAPER_FLAG" ]
+      }
+
       update_wallpaper() {
-        if [ "$(count_monitored)" -gt 0 ]; then
+        if ! user_enabled; then
+          systemctl --user stop mpvpaper.service 2>/dev/null
+        elif [ "$(count_monitored)" -gt 0 ]; then
+          systemctl --user stop mpvpaper.service 2>/dev/null
+        elif is_gamemode_active; then
           systemctl --user stop mpvpaper.service 2>/dev/null
         else
-          if is_gamemode_active; then
-            systemctl --user stop mpvpaper.service 2>/dev/null
-          else
-            systemctl --user start mpvpaper.service 2>/dev/null
-          fi
+          systemctl --user start mpvpaper.service 2>/dev/null
         fi
       }
 
       update_wallpaper
+
+      # DÜZELTME (2026-10-05): eski fikir SIGUSR1 ile anında yenilemeydi.
+      # Bu yanlıştı: asagidaki socat|while YAPISI bir alt kabuk (subshell)
+      # icinde donuyor, ana surec ise boru hattini bekliyor. Bash, calisan
+      # on planli komut bitmeden trap'i isLEMEZ; yani SIGUSR1 tusunmazdi.
+      # Bunun yerine ucuz bir bayrak izleyici: yalnizca bayragin VARLIK
+      # durumu degistiginde update_wallpaper cagrilir. Boylece her saniyede
+      # hyprctl/jq calismaz, sadece tek bir dosya testi yapilir.
+      (
+        last=""
+        while true; do
+          if [ -e "$WALLPAPER_FLAG" ]; then cur="off"; else cur="on"; fi
+          if [ "$cur" != "$last" ]; then
+            last="$cur"
+            update_wallpaper
+          fi
+          sleep 1
+        done
+      ) &
 
       if [ -S "$HYPR_SOCK" ]; then
         socat -u "UNIX-CONNECT:$HYPR_SOCK" - | while read -r line; do
