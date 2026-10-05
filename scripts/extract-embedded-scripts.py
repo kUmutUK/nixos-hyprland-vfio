@@ -107,9 +107,11 @@ def main():
         os.chmod(path, 0o755)
         sys.stdout.write(path + "\0")
 
-    for line in lines:
+    for idx, line in enumerate(lines):
         if DIRECT_MARKER.match(line):
-            text = extract(lines, lines.index(line), direct=True)
+            # P3: lines.index() dosyada İLK eşleşen satırı döndürür; aynı
+            # isimli ikinci bir script eklenirse yanlış blok çıkarılırdı.
+            text = extract(lines, idx, direct=True)
             if text:
                 emit(text)
             continue
@@ -117,8 +119,7 @@ def main():
         for marker in MARKERS:
             if not marker.match(line):
                 continue
-            index = lines.index(line)
-            text = extract(lines, index)
+            text = extract(lines, idx)
             # Gerçek bash betiği mi? Hepsi shebang ile başlar. MangoHud.conf /
             # lsfg-vk conf.toml gibi yapılandırma dosyaları böyle elenir.
             if text and text.lstrip().startswith("#!"):
