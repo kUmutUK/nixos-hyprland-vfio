@@ -74,21 +74,40 @@ else
 fi
 log "CPU: $CPU_VENDOR"
 
-# DÜZELTME (2026-10-04): `| head -1` erken kapanınca grep'e SIGPIPE (141)
+# DÜZELTME (2026-10-05): `| head -1` erken kapanınca grep'e SIGPIPE (141)
 # gönderiyor; `set -o pipefail` yüzünden betik burada sessizce ölüyordu.
 # `grep -m1` aynı işi yapıp hattı düzgün kapatır.
-gpu_line=$(lspci | grep -im1 -E "vga|3d|display" || true)
-if echo "$gpu_line" | grep -qi "AMD\|ATI\|Radeon"; then
+#
+# DÜZELTME (2026-10-05, P2-7): TÜM VGA/3D/display satırları toplanıyor,
+# artık yalnızca İLKİ alınmıyordu. Ryzen çiplerde "VGA compatible
+# controller" (iGPU) genelde dizinde FARKLI bir bus'ta ve listede EN ÜSTTE
+# çıkar; `grep -m1` ile iGPU seçiliyor ve kullanıcı "Enter GPU VGA PCI
+# address" istemine yanlış varsayılanla başlıyordu. Aynı hatalı varsayılan
+# aşağıdaki GPU_VENDOR tespitine de sızıyordu.
+mapfile -t gpu_lines < <(lspci | grep -iE "vga|3d|display" || true)
+gpu_line="${gpu_lines[0]:-}"
+# Vendor tespiti TÜM satırlara bakar: geçici harici GPU, ikinci kart ya da
+# iGPU varken "ilk satır" her zaman doğru cevap değildir.
+gpu_all="$(printf '%s\n' "${gpu_lines[@]:-}")"
+if printf '%s' "$gpu_all" | grep -qi "AMD\|ATI\|Radeon"; then
   GPU_VENDOR="amd"
-elif echo "$gpu_line" | grep -qi "NVIDIA\|GeForce"; then
+elif printf '%s' "$gpu_all" | grep -qi "NVIDIA\|GeForce"; then
   GPU_VENDOR="nvidia"
-elif echo "$gpu_line" | grep -qi "Intel"; then
+elif printf '%s' "$gpu_all" | grep -qi "Intel"; then
   GPU_VENDOR="intel"
 else
   GPU_VENDOR="unknown"
 fi
 log "GPU: $GPU_VENDOR"
-echo -e "  ${CYAN}$gpu_line${NC}"
+printf '%s\n' "${gpu_lines[@]:-}" | sed 's/^/  /' | sed "s/^/  ${CYAN}/;s/$/${NC}/"
+# Birden fazla GPU görüldüyse seçimin neden önemli olduğunu söyle —
+# kullanıcı aşağıdaki isteme elle doğru adresi yazmalı.
+if [ "${#gpu_lines[@]}" -gt 1 ]; then
+  echo ""
+  warn "Birden fazla görüntü cihazı algılandı (${#gpu_lines[@]})."
+  warn "iGPU + harici GPU sistemlerinde aşağıdaki adresi ELLE yazın —"
+  warn "geçici GPU'yu (dizinde en üstte olan) seçmek VFIO'yu bozar."
+fi
 echo ""
 
 if [[ "$CPU_VENDOR" != "amd" || "$GPU_VENDOR" != "amd" ]]; then
@@ -119,8 +138,26 @@ step "Configuration inputs"
 echo "Detected VGA devices:"
 lspci -nn | grep -iE "vga|3d|display" | sed 's/^/  /'
 echo ""
-read -rp "Enter GPU VGA PCI address (e.g. 0000:0b:00.0): " gpu_pci
-read -rp "Enter GPU Audio PCI address (e.g. 0000:0b:00.1): " gpu_audio
+# DÜZELTME (2026-10-05): boş giriş kabul ediliyordu; sonraki
+# IOMMU kontrolünde "/sys/bus/pci/devices/0000:/iommu_group" gibi
+# bozuk bir yol üretip "IOMMU group bilgisi okunamadı" uyarısı
+# veriyor, sonra da regex doğrulaması kurulumu durduruyordu — yani
+# kullanıcı hatayı IOMMU problemi sanıyordu. Artık boş giriş
+# reddediliyor ve hangi satırlardan seçileceği hatırlatılıyor.
+while :; do
+  read -rp "Enter GPU VGA PCI address (e.g. 0000:0b:00.0): " gpu_pci
+  if printf '%s\n' "$gpu_pci" | grep -qE '^[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}\.[0-9a-fA-F]$'; then
+    break
+  fi
+  error "PCI adresi biçimi geçersiz: '0000:0b:00.0' biçiminde olmalı. Yukarıdaki 'Detected VGA devices' listesine bakın."
+done
+while :; do
+  read -rp "Enter GPU Audio PCI address (e.g. 0000:0b:00.1, yoksa boş bırakın): " gpu_audio
+  if [ -z "$gpu_audio" ] || printf '%s\n' "$gpu_audio" | grep -qE '^[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}\.[0-9a-fA-F]$'; then
+    break
+  fi
+  error "PCI adresi biçimi geçersiz: '0000:0b:00.1' biçiminde olmalı, ya da ses yoksa boş bırakın."
+done
 
 # ─── IOMMU group preflight ─────────────────────────────────
 step "IOMMU group check"
@@ -263,7 +300,7 @@ if [ -d "$REPO_DIR/nixos/hooks" ]; then
     if ! printf '%s\n%s\n' "$gpu_pci" "$gpu_audio" | grep -qEv '^[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}\.[0-9a-fA-F]$'; then
       error "PCI adresi biçimi geçersiz: beklenen '0000:0b:00.0'."
     fi
-    if python3 - "$gpu_pci" "$gpu_audio" "$NIXOS_FLAKE_DIR/hooks/qemu" <<'PYEOF2'
+    if sudo python3 - "$gpu_pci" "$gpu_audio" "$NIXOS_FLAKE_DIR/hooks/qemu" <<'PYEOF2'
 import re, sys
 gpu, aud, path = sys.argv[1], sys.argv[2], sys.argv[3]
 data = open(path, encoding="utf-8").read()
@@ -308,7 +345,7 @@ else
   # Artık kaynak dosya SALT-OKUNUR kalıyor; patch'lenmiş XML doğrudan
   # libvirt'in kendi dizinine yazılıyor.
   PATCHED_XML="/var/lib/libvirt/win11.xml"
-  if sudo mkdir -p /var/lib/libvirt && python3 - "$gpu_pci" "$gpu_audio" "$REPO_DIR/vm-xml/win11.xml" "$PATCHED_XML" <<'PYEOF'
+  if sudo mkdir -p /var/lib/libvirt && sudo python3 - "$gpu_pci" "$gpu_audio" "$REPO_DIR/vm-xml/win11.xml" "$PATCHED_XML" <<'PYEOF'
 import re, sys
 
 gpu, aud, src, dst = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
@@ -402,7 +439,7 @@ PYEOF
     log "Kaynak repo dosyası DEĞİŞTİRİLMEDİ."
     echo -e "     ${CYAN}sudo virsh define ${PATCHED_XML}${NC}"
   else
-    warn "XML güncellenemedi — win11.xml'i elle düzenle."
+    error "XML güncellenemedi — GPU PCI adresi libvirt'e yazılamadı. Bu adımı atlayamazsınız: elle düzenleyin ya da betiği sudo yetkisiyle çalıştırın."
   fi
 fi
 
@@ -460,9 +497,37 @@ echo ""
 # ─── VM disk image ──────────────────────────────────────
 step "VM disk image"
 sudo mkdir -p /var/lib/libvirt/images /var/lib/libvirt/qemu
-if [ ! -f /var/lib/libvirt/images/win11new.qcow2 ]; then
-  warn "VM diski yok — 120G qcow2 oluşturuluyor."
-  sudo qemu-img create -f qcow2 /var/lib/libvirt/images/win11new.qcow2 120G
+# DÜZELTME (2026-10-05): disk adı SABİT KODLUYDU ve yalnızca win11'i
+# kapsıyordu. vm-xml/ altındaki HER domain'in <source file=...> değeri
+# artık kaynak olarak okunuyor — böylece XML ile installer birbirinden
+# ayrışamıyor (P0-3'ün kalıcı koruması: ileride XML'de ad değişirse
+# installer da onu okur, tutarsız disk oluşturmaz).
+#
+# win10.xml de repo içinde olduğu için win10new.qcow2 de üretilir; iki
+# domain artık aynı diski kullanmıyor (P2-5).
+disk_count=0
+for xml in "$REPO_DIR"/vm-xml/*.xml; do
+  [ -f "$xml" ] || continue
+  vm_name=$(basename "$xml" .xml)
+  # <source file="..."/> — ilk boot diski (ISO'lar <readonly/> taşır
+  # ama yine de source file taşır; bu yüzden readonly olmayan İLK disk
+  # okunur; pratikte ilk source her zaman ana disktir).
+  disk_path=$(sed -n 's|.*<source file="\(/var/lib/libvirt/images/[^"]*\.qcow2\)".*|\1|p' "$xml" | head -1)
+  if [ -z "$disk_path" ]; then
+    warn "$vm_name: XML'de qcow2 diski bulunamadı — elle kontrol et."
+    continue
+  fi
+  if [ -f "$disk_path" ]; then
+    log "$vm_name diski mevcut: $disk_path"
+  else
+    warn "$vm_name diski yok — 120G qcow2 oluşturuluyor: $disk_path"
+    sudo qemu-img create -f qcow2 "$disk_path" 120G
+    log "Created: $disk_path"
+  fi
+  disk_count=$((disk_count + 1))
+done
+if [ "$disk_count" -eq 0 ]; then
+  error "vm-xml/ altında hiçbir domain XML'i bulunamadı — VM kurulumu yapılamaz."
 fi
 echo "  ISO dosyalarını /var/lib/libvirt/images/ altına kopyalayın:"
 echo "    Win10_22H2_English_x64v1.iso"
