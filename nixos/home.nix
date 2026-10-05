@@ -1243,7 +1243,21 @@ done
   };
 
   programs = {
-    home-manager.enable = true;
+    # ⚠️ `programs.home-manager.enable = true;` KALDIRILDI.
+    # Bu satır option olarak VAR (modules/programs/home-manager.nix) ve ayrı
+    # (standalone) HM kurulumunda "HM kendini yönetsin" anlamına gelir —
+    # yani NixOS modülü üzerinden değil, HM'yi kullanıcı profili paketi
+    # olarak kurmak için. Burada HM zaten NixOS modülü olarak import edildi
+    # (flake.nix → home-manager.nixosModules.home-manager) ve kullanıcı
+    # home.nix modülü içinden geçiyor; o modülün kendi satırı tam olarak
+    # şunu koşulluyor:
+    #     config = lib.mkIf (cfg.enable && !config.submoduleSupport.enable)
+    # Yani NixOS modülü üzerinden çalışırken bu enable BİLEREK etkisizdir
+    # (submoduleSupport.enable = true). Hata vermez, sessizce hiçbir şey
+    # yapmaz. Zararsızdı; yanıltıcı olduğu için silindi.
+    #
+    # HM'i standalone kullanırsanız (bu modülü NixOS'a değil doğrudan
+    # HM çalıştırırsanız) satırı geri getirmeniz gerekir.
 
     fish = {
       enable = true;
