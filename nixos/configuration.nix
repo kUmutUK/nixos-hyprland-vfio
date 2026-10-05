@@ -134,10 +134,18 @@ in
   boot.kernel.sysctl = {
     "vm.max_map_count" = 1048576;
     "vm.nr_hugepages" = 0;
-    # Düzeltme (2026-10-04): 10 idi, ama zramSwap.priority = 100 ve disk
-    # swap priority = 10 iken kernel zram'ı hiç seçmiyordu (ölçülen: ~8 MiB).
-    # zram'ın kullanılabilmesi için swappiness yüksek olmalı; 180 = zram
-    # tercih edilir, disk swap yine son çare.
+    # DÜZELTME (2026-10-05): ÖNCEKİ AÇIKLAMA İKİ MEKANİZMAYI KARIŞTIRIYORDU.
+    # Gerçek durum:
+    #   • HANGİ swap alanının kullanılacağına "priority" karar verir
+    #     (yüksek priority = önce o). zramSwap.priority = 100 (aşağıda)
+    #     > disk swap priority = 10 (hardware-configuration.nix) olduğu için
+    #     kernel önce zram'ı tercih eder. ESKİ DEĞER 10 İDİ, TAM DA BU
+    #     YÜZDEN ZRAM KULLANILMIYORDU (~8 MiB ölçüldü) — düzeltme doğru.
+    #   • vm.swappiness ise "swap'e YAZMA eğilimini" belirler; zram mı
+    #     disk mi olacağını değil, ne kadar agresif swap'e gidileceğini
+    #     ayarlar.
+    # Önceki yorum swappiness'nin öncelik seçtiğini söylüyordu; bu yanlıştı.
+    # Buradaki 180, RAM baskınken de agresif temizlemeye izin verir.
     "vm.swappiness" = 180;
     "kernel.sched_autogroup_enabled" = 0;
     "kernel.split_lock_mitigate" = 0;
