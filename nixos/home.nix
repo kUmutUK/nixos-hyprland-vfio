@@ -240,6 +240,14 @@ let
     bind = $mainMod, P, exec, grim -g "$(slurp)" - | wl-copy
     bind = $mainMod SHIFT, P, exec, grim -g "$(slurp)" - | satty -f - | wl-copy
     bind = $mainMod, Escape, exec, ${pkgs.hyprlock}/bin/hyprlock          # ← hyprlock yeni tuş
+    # DÜZELTME (2026-10-05) — waypaper vs mpvpaper çakışması:
+    # Bu binding mpvpaper'ı DEĞİL waypaper'ı çağırıyor, ama aynı sistemde
+    # mpvpaper + mpvpaper-watchdog da var. İki ayrı wallpaper yönetimi
+    # paradoksu: SUPER+W waypaper'ın state'ini değiştirirken watchdog
+    # mpvpaper'ın state'ini izliyor. İkisi de aynı anda "aktif" sanılıyor.
+    # Not: bu bir BUG değil, bilinen bir tasarım çakışması. Tek lifecycle'a
+    # indirmek davranış değiştirir (waypaper'ı kaldırmak gerekir), bu yüzden
+    # bilinçli olarak değiştirilmedi — kullanılmayan tarafı seçin.
     bind = $mainMod, W, exec, ${pkgs.waypaper}/bin/waypaper
 
     bind = $mainMod, S, exec, pypr toggle term
@@ -1523,7 +1531,18 @@ systemd.user.services = {
       Type = "simple";
       ConditionPathExists = "${wallpaperVideo}";
       Environment = "PATH=${lib.makeBinPath [ pkgs.mpvpaper pkgs.mpv ]}";
-      ExecStart = "${pkgs.mpvpaper}/bin/mpvpaper -p --mpv-options \"loop=inf\" ${monitorOutput} ${wallpaperVideo}";
+      # DÜZELTME (2026-10-05): yollar önceden çıplak unit komutuna
+      # gömülüyordu. systemd ExecStart'ta '%' özel karakterdir (%i/%n/%p
+      # specifier) ve boşluk içeren bir path argümanı ikiye bölünürdü.
+      # lib.escapeShellArg her iki durumu da kapatır: yol tek argüman kalır,
+      # '%' kaçırılır.
+      ExecStart = lib.escapeShellArgs [
+        "${pkgs.mpvpaper}/bin/mpvpaper"
+        "-p"
+        "--mpv-options" "loop=inf"
+        monitorOutput
+        wallpaperVideo
+      ];
       Restart = "on-failure";
       RestartSec = 3;
     };
