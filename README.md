@@ -312,8 +312,6 @@ sudo reboot   # ZORUNLU (iommu=pt, amd_iommu=on)
 │   └── README.md
 ├── CHANGELOG.md
 ├── CONTRIBUTING.md
-├── FIXES-2026-10-05.md
-├── FIX-MANIFEST.md
 ├── KURULUM.md
 ├── LICENSE
 └── README.md

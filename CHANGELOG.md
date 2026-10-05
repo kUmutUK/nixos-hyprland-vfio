@@ -104,9 +104,13 @@ duruyordu. Kulaklık/Spotify ikonu hiç çizilmiyordu. Dolduruldu.
   yazılmıştı, bu kod `0d35833` — en "güncel" görünen belge en eski kodu
   anlatıyordu).
 - **`nixos-hyprland-vfio-analiz.md` → `docs/archive/`** (v2 raporu).
-- **`F-¦X-MAN-¦FEST.md` → `FIX-MANIFEST.md`.** Zip Windows'ta yapıldığı
-  için Türkçe büyük noktalı İ (U+0130) CP1252'ye çevrilip `¦` (0xA6)
-  olmuş. Ayrıca byte-byte aynı olan `FIX-MANIFEST-OLD.md` silindi.
+- **Bu iki dosya (`FIXES-2026-10-05.md`, `FIX-MANIFEST.md`) repoda YOK.**
+  CHANGELOG, `README.md` ve `docs/archive/README.md` onları "güncel kaynak"
+  olarak gösteriyordu ama ne commit'te ne de zip içinde bulunuyorlar.
+  (Kök neden: `F-İX-MAN-İFEST.md` adındaki dosya Windows'ta yapılan zip'te
+  Türkçe büyük noktalı İ (U+0130) CP1252'ye çevrilip `¦` (0xA6) olmuş,
+  ASCII adıyla eşleşmemişti.) Üç referans da artık mevcut olmayan dosyayı
+  göstermiyor; düzeltme kaydı burada tutuluyor.
 
 ## 📝 Doğrulanan doğrular (dokunulmadı)
 
