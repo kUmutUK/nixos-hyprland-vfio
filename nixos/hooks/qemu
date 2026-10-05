@@ -122,14 +122,23 @@ stop_hyprland() {
   # ile GPU'yu açık tutuyor; bu yüzden /dev/dri/card* 'de fuser çıkıyor,
   # 10 sn sonra döngü sessizce bitiyor ve aşağıdaki amdgpu unbind takılıyordu.
   # GPU'yu bırakması gereken tüm kullanıcı servisleri önce kapatılır.
-  log "GPU kullanan servisler durduruluyor (ollama/polkit/...)..."
-  for svc in ollama polkit.service; do
+  #
+  # DÜZELTME (2026-10-05) — WAYDROID: loop yalnız ollama + polkit'i
+  # kapatıyordu. Waydroid yapılandırması açık (configuration.nix:
+  # virtualisation.waydroid.enable = true) ve waydroid-container host GPU'yu
+  # EGL/GLES üzerinden /dev/dri/renderD* üzerinden açık tutuyor. Bu durumda
+  # prepare akışı: ollama durdur → Waydroid hâlâ GPU'da → fuser 20 sn
+  # timeout → "GPU'ya bağlanılamıyor" → rollback_prepare. Kullanıcı da
+  # sebebi Waydroid olduğunu görmüyor. Servis eklenerek bu zincir kırıldı.
+  log "GPU kullanan servisler durduruluyor (ollama/polkit/waydroid)..."
+  for svc in ollama polkit.service waydroid-container.service; do
     if systemctl is-active --quiet "$svc" 2>/dev/null; then
       log "  durduruluyor: $svc"
       # DÜZELTME (2026-10-04): stop sessizce yutuluyordu; başarısızlık
       # ancak 20 sn sonra fuser zaman aşımı olarak ortaya çıkıyordu.
       if ! systemctl stop "$svc" 2>/dev/null; then
-        log "  UYARI: $svc durdurulamadi — /dev/kfd hala acik olabilir."
+        log "  UYARI: $svc durdurulamadi — GPU'yu birakmis olabilir."
+        log "         Elle dene: sudo systemctl stop $svc"
       fi
     fi
   done
@@ -166,8 +175,8 @@ stop_hyprland() {
   # shellcheck disable=SC2086
   if "${HOOK_FUSER:-/run/current-system/sw/bin/fuser}" $nodes >/dev/null 2>&1; then
     log "HATA: /dev/dri/$card hala kullanımda (~20 sn). GPU'ya baglanilamiyor."
-    log "Sik kullanilanlar: ollama, gamescope, mpv, chromium, steam."
-    log "ps aux | grep -E 'ollama|gamescope|mpv|chrom'  →  sadece o surecler"
+    log "Sik kullanilanlar: ollama, waydroid, gamescope, mpv, chromium, steam."
+    log "ps aux | grep -E 'ollama|waydroid|gamescope|mpv|chrom'  →  sadece o surecler"
     return 1
   fi
   log "GPU serbest ($nodes kontrol edildi, ${waited} yarim saniye bekledi)."
@@ -180,18 +189,22 @@ start_hyprland() {
   # Hook'un durdurduğu GPU servisleri geri aç (VM kapanınca).
   # DÜZELTME (2026-10-04): burada tek elemanlı bir servis döngüsü vardı ve
   # SC2043 (useless loop) uyarısı veriyordu; CI gate'i -S warning
-  # olduğu için kırılıyordu. Tek servis olduğu için döngü tamamen kaldırıldı,
-  # doğrudan if yazıldı. NOT: bu açıklamada "shellcheck" kelimesi satır
+  # olduğu için kırılıyordu. Tek servis olduğu için döngü tamamen kaldırıldı.
+  # DÜZELTME (2026-10-05): waydroid-container.service de eklendiğinde döngü
+  # artık meşru (iki servis), SC2043 bir daha oluşmaz.
+  # NOT: bu açıklamada "shellcheck" kelimesi satır
   # başına yazılmaz — yorum satırı "# shellcheck" ile başlarsa linter onu
   # directive sanıp SC1073 atar ve dosya parse edilemez. Yalnızca gerçek
   # yönlendirmeler (# shellcheck disable=SCxxxx biçiminde) bu öneki kullanır.
-  if systemctl is-enabled --quiet ollama 2>/dev/null; then
-    if systemctl start ollama 2>/dev/null; then
-      log "  ollama yeniden baslatildi."
-    else
-      log "  UYARI: ollama yeniden baslatilamadi (GPU'ya erisim gecikmeli)."
+  for svc in ollama waydroid-container.service; do
+    if systemctl is-enabled --quiet "$svc" 2>/dev/null; then
+      if systemctl start "$svc" 2>/dev/null; then
+        log "  $svc yeniden baslatildi."
+      else
+        log "  UYARI: $svc yeniden baslatilamadi (GPU'ya erisim gecikmeli)."
+      fi
     fi
-  fi
+  done
 }
 
 # Cihaz gerçekten vfio-pci'ye bağlanmış mı? (bind_vfio'nun sessizce
