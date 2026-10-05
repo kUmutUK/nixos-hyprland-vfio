@@ -5,12 +5,6 @@ let
   gitEmail           = "you@example.com";
   monitorOutput      = "DP-3";
   hyprlandMonitorLine = "monitor = ,preferred,auto,1";
-  # DÜZELTME (2026-10-05, P2-8): 4K video varsayılanı yeni kurulumda
-  # kesinlikle YOKTUR (indirilmemiş bir dosya adı). mpvpaper.service
-  # `ConditionPathExists` yüzünden sessizce hiç başlamıyor, dolayısıyla
-  # `wallpaper-toggle` boşa çalışıyordu — kullanıcı "kapatıyorum" sanarken
-  # hiçbir şey olmuyordu. Artık dosya yoksa durum AÇIKÇA bildiriliyor
-  # (aşağıdaki mpvpaper-watchdog başlangıç kontrolü).
   wallpaperVideo     = "${config.home.homeDirectory}/Downloads/arthur-leywin-the-beginning-after-the-end.3840x2160.mp4";
 
   gamemodeNotifyScript = pkgs.writeShellScriptBin "gamemode-notify" ''
@@ -246,15 +240,7 @@ let
     bind = $mainMod, P, exec, grim -g "$(slurp)" - | wl-copy
     bind = $mainMod SHIFT, P, exec, grim -g "$(slurp)" - | satty -f - | wl-copy
     bind = $mainMod, Escape, exec, ${pkgs.hyprlock}/bin/hyprlock          # ← hyprlock yeni tuş
-    # DÜZELTME (2026-10-05) — waypaper KALDIRILDI, canlı duvar kağıdı (mpvpaper)
-    # tek doğruluk kaynağı yapıldı. Önceden bu binding waypaper'ı çağırıyordu ve
-    # aynı sistemde mpvpaper + mpvpaper-watchdog da çalışıyordu: iki ayrı
-    # wallpaper yöneticisi, "duvar kağıdı açık mı" sorusunun iki cevabı.
-    #
-    # Bu toggle da mpvpaper.service'e DOĞRUDAN dokunmaz; yalnızca watchdog'un
-    # okuduğu bayrağı değiştirir. Böylece kullanıcı tercihi ile GameMode
-    # olayları aynı karar fonksiyonundan geçer, birbirini ezmez.
-    bind = $mainMod, W, exec, ${pkgs.bash}/bin/bash ${config.home.homeDirectory}/.local/bin/wallpaper-toggle
+    bind = $mainMod, W, exec, ${pkgs.waypaper}/bin/waypaper
 
     bind = $mainMod, S, exec, pypr toggle term
     bind = $mainMod SHIFT, S, exec, pypr toggle music
@@ -488,12 +474,7 @@ let
     }
     label {
         position = 20, 20; halign = right; valign = top;
-        # DÜZELTME (2026-10-05): hyprlock'un `cmd[]` sözdizimi virgülü
-        # ARGÜMAN AYIRICI olarak kullanır. `nmcli -t -f NAME,TYPE,STATE`
-        # yazıldığında komut iki parçaya bölünüyor ve widget sessizce
-        # ölüyordu (sürekli "Bağlı Değil"). TYPE/STATE sütunları zaten
-        # `cut -d: -f1` ile atılıyordu — yalnız NAME yeterli.
-        text = cmd[update:5000, ${pkgs.networkmanager}/bin/nmcli -t -f NAME con show --active 2>/dev/null | grep -v loopback | head -1 | cut -d: -f1 | xargs -I{} echo " {}" || echo " Bağlı Değil"];
+        text = cmd[update:5000, ${pkgs.networkmanager}/bin/nmcli -t -f NAME,TYPE,STATE con show --active 2>/dev/null | grep -v loopback | head -1 | cut -d: -f1 | xargs -I{} echo " {}" || echo " Bağlı Değil"];
         font_family = JetBrainsMono Nerd Font; font_size = 15;
         font_color = rgba(148, 226, 213, 1.0); shadow_passes = 0;
     }
@@ -716,10 +697,7 @@ in
 {
   home.username = "localhost";
   home.homeDirectory = "/home/localhost";
-  # DÜZELTME (2026-10-05): configuration.nix ile eşitlendi. İki stateVersion
-  # farklıysa Home Manager geçiş kuralları tutarsız uygulanır (HM kendi
-  # sürüm geçiş tablosunu kullanır). İkisi de 25.11'e sabitlendi.
-  home.stateVersion = "25.11";
+  home.stateVersion = "26.05";
 
   dconf.settings = {
     "org/gnome/desktop/interface" = {
@@ -982,15 +960,6 @@ TESSDATA_DIR="$HOME/.local/share/tessdata"
 CACHE_FILE="/tmp/wuwa_translate_cache"
 touch "$CACHE_FILE"
 
-# Önbelleğe tek satırlık, newline-safe kayıt yazar.
-# Anahtar ve değer base64 kodlanır → kayıt ne zaman tek satır kalmalı.
-# (TAB ayracı çok satırlı OCR metninde kayıt bölerdi.)
-cache_put() {
-    printf '%s %s\n' \
-        "$(printf '%s' "$1" | base64 -w0)" \
-        "$(printf '%s' "$2" | base64 -w0)" >> "$CACHE_FILE"
-}
-
 # ─── Hızlı çeviri (Argos Translate) ───
 translate_fast() {
     # DÜZELTME (2026-10-04): nixpkgs'te `argos-translate` paketi yok
@@ -1020,14 +989,7 @@ translate_llm() {
                          --arg pr "EN: ''${text}"$'\n'"TR:" \
                          '{model: $mod, prompt: $pr, stream: false, options: {temperature: 0.0, num_predict: 80}}')
 
-    # DÜZELTME (2026-10-05): `curl -s` zaman aşımı içermiyordu. Ollama
-    # ayakta ama yanıt vermiyorsa (model yüklenirken, GPU yokken, OOM'da)
-    # curl sonsuza kadar bekliyordu; bu da WuWa'nın OCR döngüsünü kilitliyor
-    # ve geri bildirim hiç gelmiyordu. --fail ayrıca HTTP hatalarını da
-    # yakalar; --max-time Ollama'nın gerçekçi bir yanıt süresini aşar.
-    curl -fsS --connect-timeout 2 --max-time 20 \
-         http://localhost:11434/api/generate -d "$json_payload" \
-        | jq -r '.response' 2>/dev/null | xargs
+    curl -s http://localhost:11434/api/generate -d "$json_payload" | jq -r '.response' 2>/dev/null | xargs
 }
 
 # ─── Genel çeviri (önbellek + Argos → Ollama) ───
@@ -1037,28 +999,13 @@ translate() {
     [ "$letter_count" -lt 5 ] && { echo ""; return; }
 
     # Önbellek kontrolü
-    #
-    # DÜZELTME (2026-10-05): cache "raw<TAB>ceviri" diye DÜZ SATIRLI yazılıyordu
-    # ve `grep -F | cut -d'\t'` ile okunuyordu. Ama tesseract çok satırlı metin
-    # üretebilir; bu durumda bir kayıt birden fazla satıra bölünüyor ve
-    # `cut -f2` yalnızca ilk satırı alıyor. Sonuç: cache'dE KAYITLI OLAN
-    # çevriler BULUNAMIYOR (sürekli yeniden çeviri) ya da yarım/karışık
-    # metin dönüyor. Ayrıca grep -F, metinde geçen herhangi bir regex/pipe
-    # için de sorun çıkarabiliyor.
-    # Çözüm: TAB ayracı yerine base64(url-safe olmayan standart) kullanıyoruz.
-    # base64 çıktısı tanım gereği satır sonu İÇERMEZ, dolayısıyla kayıt
-    # bütünlüğü korunur; grep -F ile güvenle eşleşir.
-    local key val
-    key=$(printf '%s' "$raw" | base64 -w0)
-    val=$(grep -F -m1 -- "$key" "$CACHE_FILE" 2>/dev/null | head -n 1 | cut -d' ' -f2-)
-    if [ -n "$val" ]; then
-        printf '%s' "$val" | base64 -d 2>/dev/null && return
-    fi
+    local cached=$(grep -F -m1 -- "$raw" "$CACHE_FILE" 2>/dev/null | head -n 1 | cut -d'\t' -f2)
+    [ -n "$cached" ] && { echo "$cached"; return; }
 
     # Hızlı çeviriyi dene
     local fast=$(translate_fast "$raw")
     if [ -n "$fast" ] && [ "''${#fast}" -gt 2 ]; then
-        cache_put "$raw" "$fast"
+        printf '%s\t%s\n' "$raw" "$fast" >> "$CACHE_FILE"
         echo "$fast"
         return
     fi
@@ -1066,7 +1013,7 @@ translate() {
     # Yedek olarak LLM'ye (Aya/Gemma) sor
     local llm=$(translate_llm "$raw")
     if [ -n "$llm" ]; then
-        cache_put "$raw" "$llm"
+        printf '%s\t%s\n' "$raw" "$llm" >> "$CACHE_FILE"
         echo "$llm"
         return
     fi
@@ -1232,64 +1179,13 @@ done
     '';
   };
 
-  # Duvar kağıdı aç/kapat (SUPER+W). waypaper kaldırıldığı için bu artık
-  # mpvpaper'ı kontrol ediyor. ÖNEMLİ: servis doğrudan start/stop EDİLMEZ —
-  # yalnızca aşağıdaki bayrak değişir. Kararı mpvpaper-watchdog verir (tek
-  # doğruluk kaynağı); böylece oyun başlattığında kullanıcı tercihi korunur.
-  home.file.".local/bin/wallpaper-toggle" = {
-    executable = true;
-    text = ''
-      #!${pkgs.bash}/bin/bash
-      FLAG="$XDG_RUNTIME_DIR/wallpaper-enabled"
-      if [ -e "$FLAG" ]; then
-        rm -f "$FLAG"
-        ${pkgs.coreutils}/bin/printf 'Canli duvar kagidi: KAPALI\n'
-      else
-        : > "$FLAG"
-        ${pkgs.coreutils}/bin/printf 'Canli duvar kagidi: ACIK\n'
-      fi
-      # Watchdog'u uyandir ki bayrak hemen uygulansin.
-      # DÜZELTME (2026-10-05): burada eskiden SIGUSR1 gonderiliyordu ama
-      # watchdog'un ana döngüsü bir alt kabukta çalıştığı için sinyal
-      # tetiklenmiyordu. Şimdi watchdog bayrağı kendisi izliyor (bkz.
-      # mpvpaper-watchdog içindeki arka plan döngüsü), yalnızca dosya
-      # durumu değişti. Ek bir sinyal göndermeye gerek yok.
-      :
-    '';
-  };
-
   # mpvpaper watchdog (BindsTo kaldırıldı)
   home.file.".local/bin/mpvpaper-watchdog" = {
     executable = true;
     text = ''
       #!${pkgs.bash}/bin/bash
       MONITORED_CLASSES="brave-browser"
-      # wallpaper-toggle bu bayragi degistirir; karari yine BU script verir.
-      WALLPAPER_FLAG="$XDG_RUNTIME_DIR/wallpaper-enabled"
       HYPR_SOCK="$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock"
-      # Yol değişkeni Nix tarafında gömülü: shellcheck bu script'i Nix
-      # bağlamından ÇIKARDIĞI için interpolasyonu göremez ve SC2154
-      # ("referenced but not assigned") verir. Nix tarafında zaten
-      # ${wallpaperVideo} tam yolu expanded olarak yazılır; burada
-      # literal olarak tekrarlıyoruz. Değiştirirken home.nix'in
-      # wallpaperVideo let-değerini de güncelle.
-      WALLPAPER_VIDEO="/home/localhost/Downloads/arthur-leywin-the-beginning-after-the-end.3840x2160.mp4"
-
-      # DÜZELTME (2026-10-05, P2-8): video dosyasi yoksa mpvpaper.service
-      # `ConditionPathExists` yuzunden hic baslamiyor. Once kullaniciya
-      # ACIKCA soylemek gerekiyor — yoksa "duvar kagidi calismiyor"
-      # belirtisi belirsiz kalir (ayarlar, compositor, guc yonetimi
-      # hepsi supheli gorunur).
-      wallpaper_exists() { [ -e "$WALLPAPER_VIDEO" ]; }
-
-      if ! wallpaper_exists; then
-        echo "mpvpaper: video bulunamadi -> $WALLPAPER_VIDEO" >&2
-        echo "  Canli duvar kagidi devre disi. Duzeltmek icin:" >&2
-        echo "  1) Videoyu indirin ve yukaridaki yola tasiyin, ya da" >&2
-        echo "  2) nixos/home.nix icindeki wallpaperVideo degerini" >&2
-        echo "     baska bir dosya yoluna degistirin, sonra:" >&2
-        echo "     systemctl --user restart mpvpaper-watchdog" >&2
-      fi
 
       is_gamemode_active() {
         local count
@@ -1304,51 +1200,19 @@ done
           '[.[].class | select(. != null)] | map(select(. as $c | $classes | split(",") | index($c))) | length'
       }
 
-      # DÜZELTME (2026-10-05) — TEK DOĞRULUK KAYNAĞI.
-      # Bu fonksiyon artık mpvpaper'ın AÇIK/KAPALI kararının TEK yeridir.
-      # Önceden iki ayrı kontrolcü vardı (waypaper binding + bu watchdog) ve
-      # ayrıca oyun durumunu kontrol eden ikinci bir yol daha vardı. Artık:
-      #   • Kullanıcı SUPER+W'ye basınca YALNIZCA bayrak değişir (servise
-      #     dokunulmaz) — kullanıcının tercihi oyun sırasında ezilmez.
-      #   • GameMode/pencereler de YALNIZCA buraya girer.
-      # Böylece iki taraf birbirini ezmiyor; ikisi de aynı kararı veriyor.
-      user_enabled() {
-        # Bayrak yoksa = kullanıcı wallpaper'ı kapatmamış (varsayılan AÇIK).
-        [ ! -e "$WALLPAPER_FLAG" ]
-      }
-
       update_wallpaper() {
-        if ! user_enabled; then
-          systemctl --user stop mpvpaper.service 2>/dev/null
-        elif [ "$(count_monitored)" -gt 0 ]; then
-          systemctl --user stop mpvpaper.service 2>/dev/null
-        elif is_gamemode_active; then
+        if [ "$(count_monitored)" -gt 0 ]; then
           systemctl --user stop mpvpaper.service 2>/dev/null
         else
-          systemctl --user start mpvpaper.service 2>/dev/null
+          if is_gamemode_active; then
+            systemctl --user stop mpvpaper.service 2>/dev/null
+          else
+            systemctl --user start mpvpaper.service 2>/dev/null
+          fi
         fi
       }
 
       update_wallpaper
-
-      # DÜZELTME (2026-10-05): eski fikir SIGUSR1 ile anında yenilemeydi.
-      # Bu yanlıştı: asagidaki socat|while YAPISI bir alt kabuk (subshell)
-      # icinde donuyor, ana surec ise boru hattini bekliyor. Bash, calisan
-      # on planli komut bitmeden trap'i isLEMEZ; yani SIGUSR1 tusunmazdi.
-      # Bunun yerine ucuz bir bayrak izleyici: yalnizca bayragin VARLIK
-      # durumu degistiginde update_wallpaper cagrilir. Boylece her saniyede
-      # hyprctl/jq calismaz, sadece tek bir dosya testi yapilir.
-      (
-        last=""
-        while true; do
-          if [ -e "$WALLPAPER_FLAG" ]; then cur="off"; else cur="on"; fi
-          if [ "$cur" != "$last" ]; then
-            last="$cur"
-            update_wallpaper
-          fi
-          sleep 1
-        done
-      ) &
 
       if [ -S "$HYPR_SOCK" ]; then
         socat -u "UNIX-CONNECT:$HYPR_SOCK" - | while read -r line; do
@@ -1628,18 +1492,7 @@ systemd.user.services = {
       Type = "simple";
       ConditionPathExists = "${wallpaperVideo}";
       Environment = "PATH=${lib.makeBinPath [ pkgs.mpvpaper pkgs.mpv ]}";
-      # DÜZELTME (2026-10-05): yollar önceden çıplak unit komutuna
-      # gömülüyordu. systemd ExecStart'ta '%' özel karakterdir (%i/%n/%p
-      # specifier) ve boşluk içeren bir path argümanı ikiye bölünürdü.
-      # lib.escapeShellArg her iki durumu da kapatır: yol tek argüman kalır,
-      # '%' kaçırılır.
-      ExecStart = lib.escapeShellArgs [
-        "${pkgs.mpvpaper}/bin/mpvpaper"
-        "-p"
-        "--mpv-options" "loop=inf"
-        monitorOutput
-        wallpaperVideo
-      ];
+      ExecStart = "${pkgs.mpvpaper}/bin/mpvpaper -p --mpv-options \"loop=inf\" ${monitorOutput} ${wallpaperVideo}";
       Restart = "on-failure";
       RestartSec = 3;
     };
