@@ -19,6 +19,23 @@ BACKUP_DIR="$HOME/.nixos-config-backup-$(date +%Y%m%d-%H%M%S)"
 NIXOS_DIR="/etc/nixos"
 NIXOS_FLAKE_DIR="$NIXOS_DIR/nixos"
 
+# --force yalnızca IOMMU gate'ini aşar. Normalde izole olmayan bir grup
+# kurulumu durdurur; --force bunu bilinçli bir kullanıcı kararı yapar.
+FORCE=0
+for arg in "$@"; do
+  case "$arg" in
+    --force|-f) FORCE=1 ;;
+    -h|--help)
+      echo "Usage: ./install.sh [--force]"
+      echo "  --force   IOMMU group beklenmedik cihaz içeriyorsa da devam et."
+      echo "            Yalnızca ACS override gibi önlemler biliyorsanız kullanın."
+      exit 0 ;;
+    *)
+      echo "Unknown option: $arg (see --help)" >&2
+      exit 2 ;;
+  esac
+done
+
 echo ""
 echo -e "${CYAN}==============================================================${NC}"
 echo -e "${CYAN}   NixOS Hyprland Gaming + VFIO — Safe Setup Script${NC}"
@@ -108,22 +125,60 @@ read -rp "Enter GPU Audio PCI address (e.g. 0000:0b:00.1): " gpu_audio
 # ─── IOMMU group preflight ─────────────────────────────────
 step "IOMMU group check"
 short_pci() { echo "$1" | sed -E 's/^0000://'; }
+# Kullanıcı "0b:00.0" / "0000:0b:00.0" / "00000b:00.0" yazabiliyor; sysfs
+# daima tam "0000:bb:dd.f" biçiminde. Karşılaştırma yapılmadan önce
+# hepsini tek biçime indiriyoruz, yoksa "temiz grup" kontrolü yanlış negatif
+# üretir.
+norm_pci() {
+  local p="${1,,}"
+  p="${p#0000:}"
+  printf '0000:%s' "$p"
+}
 gpu_short="$(short_pci "$gpu_pci")"
 iommu_dir="/sys/bus/pci/devices/0000:${gpu_short}/iommu_group"
 if [ -e "$iommu_dir" ]; then
   group_num="$(basename "$(readlink -f "$iommu_dir")")"
   info "GPU (0000:${gpu_short}) IOMMU group: ${group_num}"
   echo "Bu gruptaki tüm PCI cihazları:"
+  unexpected=()
   for dev in /sys/kernel/iommu_groups/"${group_num}"/devices/*; do
+    [ -e "$dev" ] || continue
     dev_addr="$(basename "$dev")"
     lspci -nns "${dev_addr#0000:}" | sed 's/^/    /'
+    case "$(norm_pci "$dev_addr")" in
+      "$(norm_pci "$gpu_pci")"|"$(norm_pci "$gpu_audio")") ;;
+      *) unexpected+=("$dev_addr") ;;
+    esac
   done
   echo ""
-  warn "Yukarıdaki listede GPU (${gpu_pci}) ve ses fonksiyonu (${gpu_audio})"
-  warn "DIŞINDA bir cihaz varsa, o cihaz da VM'e verilmeden GPU'yu tek"
-  warn "başına ayıramazsınız (ACS override gibi ek önlemler gerekir)."
-  read -rp "Devam etmek istiyor musunuz? (yes/no): " iommu_confirm
-  [[ "$iommu_confirm" != "yes" ]] && { info "Aborted."; exit 0; }
+  if [ "${#unexpected[@]}" -eq 0 ]; then
+    log "IOMMU group temiz — yalnızca GPU ve GPU ses fonksiyonu var."
+  elif [ "$FORCE" -eq 1 ]; then
+    warn "IOMMU group izole DEĞİL: ${#unexpected[@]} beklenmedik cihaz."
+    for u in "${unexpected[@]}"; do
+      warn "    $u  $(lspci -nns "${u#0000:}" 2>/dev/null | cut -d' ' -f2-)"
+    done
+    warn "--force verildiği için devam ediliyor. İzolasyon garantisi yok."
+  else
+    error "IOMMU group izole DEĞİL — kurulum durduruldu."
+    echo -e "  ${RED}Beklenmedik ${#unexpected[@]} cihaz:${NC}"
+    for u in "${unexpected[@]}"; do
+      echo "    $u  $(lspci -nns "${u#0000:}" 2>/dev/null | cut -d' ' -f2-)"
+    done
+    echo ""
+    warn "GPU + ses dışındaki cihazlar da VM'e verilmeden tek GPU'yu"
+    warn "ayıramazsınız: VFIO bind ya başarısız olur ya da beklenmedik"
+    warn "cihazlar host tarafında erişilemez hale gelir (boot sonrası sürpriz)."
+    echo ""
+    info "Düzeltme yolları:"
+    echo "    1. BIOS/UEFI'de IOMMU'yu (AMD-Vi / Intel VT-d) açın; yeni anakart"
+    echo "       anakartlar genelde IOMMU'yu varsayılan AÇIK gelir."
+    echo "    2. 'lspci -nnk' ile beklenmedik cihazları tanıyın. Bunlar ayrı bir"
+    echo "       PCIe root porta bağlıysa fiziksel olarak taşımak genelde tek"
+    echo "       gerçek çözümdür."
+    echo "    3. Bu adımı bilinçli olarak atlamak istiyorsanız: ./install.sh --force"
+    exit 1
+  fi
 else
   warn "IOMMU group bilgisi okunamadı (${iommu_dir} yok)."
   warn "IOMMU'nun BIOS'ta etkin olduğundan emin olun; kontrol atlanıyor."
@@ -199,10 +254,32 @@ if [ -d "$REPO_DIR/nixos/hooks" ]; then
     sudo chmod 0755 "$NIXOS_FLAKE_DIR/hooks/qemu"
     log "Copied hooks/ (configuration.nix references ./hooks/qemu as a relative path)."
 
-    sudo sed -i \
-        -e "s|^GPU_PCI=\".*\"|GPU_PCI=\"${gpu_pci}\"|" \
-        -e "s|^GPU_AUDIO=\".*\"|GPU_AUDIO=\"${gpu_audio}\"|" \
-        "$NIXOS_FLAKE_DIR/hooks/qemu" && log "Hook script'teki GPU PCI adresleri de güncellendi."
+    # DÜZELTME (2026-10-05): buradaki `sed -i` ile değişkenler
+    # kaçırılmadan konuşturuluyordu. sed replacement metninde `\`, `&` ve
+    # `|` karakterleri ÖZEL anlam taşır; kullanıcı bunları içeren bir PCI
+    # adresi (ya da beklenmedik bir karakter) yazarsa hook sessizce bozulur.
+    # PCI adresi zaten regex ile doğrulanabilir olduğu için: önce formatı
+    # doğrula, sonra Python ile hedefli ve kaçırılabilir bir yaz.
+    if ! printf '%s\n%s\n' "$gpu_pci" "$gpu_audio" | grep -qEv '^[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}\.[0-9a-fA-F]$'; then
+      error "PCI adresi biçimi geçersiz: beklenen '0000:0b:00.0'."
+    fi
+    if python3 - "$gpu_pci" "$gpu_audio" "$NIXOS_FLAKE_DIR/hooks/qemu" <<'PYEOF2'
+import re, sys
+gpu, aud, path = sys.argv[1], sys.argv[2], sys.argv[3]
+data = open(path, encoding="utf-8").read()
+for var, val in (("GPU_PCI", gpu), ("GPU_AUDIO", aud)):
+    pat = re.compile(r'^(%s=)(")[^"]*(")' % var, re.M)
+    data, n = pat.subn(lambda m: m.group(1) + m.group(2) + val + m.group(3), data)
+    if n != 1:
+        sys.exit(f"beklenen tek {var}= satırı bulunamadı ({n} eşleşme)")
+open(path, "w", encoding="utf-8").write(data)
+print("OK")
+PYEOF2
+    then
+      log "Hook script'teki GPU PCI adresleri de güncellendi."
+    else
+      error "hooks/qemu patch başarısız — dosya bozulmadı, elle düzeltin."
+    fi
 
     # DÜZELTME (2026-10-05): buradaki `git update-index --skip-worktree`
     # kaldırıldı. /etc/nixos/nixos genelde bir git deposu DEĞİLDİR ve
@@ -244,19 +321,55 @@ def xml_attrs(addr):
     return f'domain="0x{d}" bus="0x{b}" slot="0x{s}" function="0x{f}"'
 
 data = open(src, encoding="utf-8").read()
-pattern = re.compile(
-    r'(<hostdev\b[^>]*>\s*<source>\s*<address\s+)([^/]+)(/>)',
-    re.DOTALL)
 
-addrs = [xml_attrs(gpu), xml_attrs(aud)]
+# DÜZELTME (2026-10-05) — placeholder tabanlı eşleştirme.
+# Önceden "ilk iki PCI <hostdev>" varsayımı vardı. Bu, XML'e ileride bir
+# NIC/USBTL PCI hostdev ya da ikinci bir GPU eklenmesi HEMEN yanlış cihazı
+# hedeflerdi (sessizce). Artık XML'de `GPU_PCI_PLACEHOLDER` ve
+# `GPU_AUDIO_PCI_PLACEHOLDER` yorum işaretçileri var; eşleştirme yalnızca
+# bunun hemen ardından gelen hostdev bloğuna yapılır, yani sıra önemsiz.
+#
+# Geriye dönük uyum: işaretçi yoksa eski sıra-tabanlı davranışa düşülür
+# (kullanıcının elde ettiği eski bir XML'i yine de işleyebilmek için).
+# DİKKAT: re.search(...)[start:] üzerinde çalışan match nesnesinin
+# .start()/.end() ofsetleri O ALT DİZE GÖRELİDİR. Doğrudan new[...] içinde
+# kullanılırsa dosyanın yanlış bir yerine yazılır ve XML parçalanır. Bu yüzden
+# mutlak ofset: marker_sonu + match.start(2).
+def hostdev_after(marker):
+    m = re.search(r'<!--\s*' + marker + r'.*?-->', data, re.DOTALL)
+    if not m:
+        return None
+    h = re.search(
+        r'(<hostdev\b[^>]*>\s*<source>\s*<address\s+)([^/]+?)(/>)',
+        data[m.end():], re.DOTALL)
+    if not h:
+        return None
+    return (m.end() + h.start(2), m.end() + h.end(2))
+
+targets = [("GPU_PCI_PLACEHOLDER", gpu), ("GPU_AUDIO_PCI_PLACEHOLDER", aud)]
+new = data
 counter = [0]
+used_fallback = False
+for marker, addr in targets:
+    span = hostdev_after(marker)
+    if span:
+        a, b = span
+        new = new[:a] + xml_attrs(addr) + new[b:]
+        counter[0] += 1
 
-def repl(m):
-    i = counter[0]
-    counter[0] += 1
-    return m.group(1) + (addrs[i] if i < len(addrs) else m.group(2)) + m.group(3)
-
-new = pattern.sub(repl, data)
+if counter[0] == 0:
+    # Eski XML şeması: işaretçi yok, sıra-tabanlı fallback.
+    used_fallback = True
+    pattern = re.compile(
+        r'(<hostdev\b[^>]*>\s*<source>\s*<address\s+)([^/]+?)(/>)',
+        re.DOTALL)
+    addrs = [xml_attrs(gpu), xml_attrs(aud)]
+    c = [0]
+    def repl(m):
+        i = c[0]; c[0] += 1
+        return m.group(1) + (addrs[i] if i < len(addrs) else m.group(2)) + m.group(3)
+    new = pattern.sub(repl, data)
+    counter[0] = c[0]
 
 # DÜZELTME (2026-10-05): 0 veya 3+ hostdev durumunda eski kod sessizce
 # sys.exit(1) veriyordu. 2 GPU + NIC geçiren bir kurulumda bu, hook'un yeni
@@ -266,14 +379,20 @@ new = pattern.sub(repl, data)
 # (kalanları elle düzenlemesi için adreslerini stdout'a bas).
 n = counter[0]
 if n == 0:
-    sys.exit("HATA: XML'de PCI hostdev bulunamadı (0 eşleşme). Dosya yazılmadı.")
-if n != 2:
-    print(f"UYARI: XML'de {n} PCI hostdev bulundu, 2 bekleniyordu.", file=sys.stderr)
-    print(f"UYARI: SADECE ilk 2'si yazıldı (GPU={gpu}, Audio={aud}).", file=sys.stderr)
-    print(f"UYARI: {n-2} hostdev elle düzenilmeli — her birinin <source><address>",
+    sys.exit("HATA: XML'de GPU/GPU-audio PCI hostdev bulunamadı. Dosya yazılmadı.")
+if used_fallback:
+    print("UYARI: XML'de GPU_PCI_PLACEHOLDER işaretçisi yok — eski şema olduğu",
           file=sys.stderr)
-    print("UYARI: satırı aşağıdaki komutla doğrula:", file=sys.stderr)
-    print(f"  grep -n -A3 '<hostdev' {dst}", file=sys.stderr)
+    print("UYARI: için sıra-tabanlı (ilk 2 hostdev) eşleştirme kullanıldı.",
+          file=sys.stderr)
+    print("UYARI: İleride NIC/USB PCI hostdev eklersen bu yanlış cihazı",
+          file=sys.stderr)
+    print("UYARI: hedefler. vm-xml/win10.xml'i yeni şemaya geçirin.", file=sys.stderr)
+    if n > 2:
+        print(f"UYARI: {n} PCI hostdev bulundu; SADECE ilk 2'si yazıldı.",
+              file=sys.stderr)
+        print(f"UYARI: Kalan {n-2} tanesini elle doğrulayın:", file=sys.stderr)
+        print(f"  grep -n -A3 '<hostdev' {dst}", file=sys.stderr)
 
 open(dst, "w", encoding="utf-8").write(new)
 print(f"OK: {n} hostdev bulundu, {min(n,2)} tanesi güncellendi -> {dst}")
@@ -304,8 +423,30 @@ echo -e "     ${CYAN}lsblk -f${NC}  # UUID'leri kontrol edin"
 # ─── Btrfs snapshot subvolume ───────────────────────────
 step "Btrfs snapshot subvolume"
 if findmnt -no FSTYPE /home 2>/dev/null | grep -qi btrfs; then
-  if [ -d /home/.snapshots ]; then
-    log "/home/.snapshots already exists."
+  if ! command -v btrfs &>/dev/null; then
+    warn "btrfs-progs yok — /home/.snapshots doğrulanamıyor."
+    warn "Kurulumdan sonra elle kontrol edin: btrfs subvolume show /home/.snapshots"
+  elif [ -d /home/.snapshots ]; then
+    # DÜZELTME: `-d /home/.snapshots` yalnızca "dizin var" der. Snapper'ın
+    # ve `neededForBoot = true` olan mount'un gerçekten çalışması için
+    # orada bir BTRFS SUBVOLUME olması şart; düz bir dizin snapshot üretmez
+    # ve boot sırasında "not a btrfs subvolume" hatası verir. Bu yüzden
+    # btrfs'in kendisine soruyoruz.
+    if sudo btrfs subvolume show /home/.snapshots >/dev/null 2>&1; then
+      log "/home/.snapshots mevcut ve gerçek bir Btrfs subvolume."
+    elif [ -n "$(ls -A /home/.snapshots 2>/dev/null)" ]; then
+      error "/home/.snapshots bir Btrfs subvolume DEĞİL ve içi boş değil."
+      echo -e "  ${RED}Bu dizin normal bir klasör; içinde veri var, silinmedi.${NC}"
+      echo "    • İçeriği yedekleyip kaldırın, sonra kurulumu tekrar çalıştırın:"
+      echo "        sudo mv /home/.snapshots /home/.snapshots.bak"
+      echo "    • Ya da mevcut kurulumun subvolume şemasını elle oluşturun:"
+      echo "        sudo btrfs subvolume create /home/.snapshots"
+    else
+      warn "/home/.snapshots boş bir dizin, subvolume değil — düzeltiliyor."
+      sudo rmdir /home/.snapshots
+      sudo btrfs subvolume create /home/.snapshots
+      log "Created /home/.snapshots as a real subvolume."
+    fi
   else
     warn "/home/.snapshots is MISSING — snapper 'home' config and boot would both fail."
     sudo btrfs subvolume create /home/.snapshots
