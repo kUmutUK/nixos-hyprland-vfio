@@ -105,6 +105,33 @@ echo ""
 read -rp "Enter GPU VGA PCI address (e.g. 0000:0b:00.0): " gpu_pci
 read -rp "Enter GPU Audio PCI address (e.g. 0000:0b:00.1): " gpu_audio
 
+# DÜZELTME (2026-10-06): burada doğrulama YOKTU. Aşağıdaki sed, girilen
+# metni olduğu gibi hooks/qemu içindeki GPU_PCI/GPU_AUDIO satırlarına
+# yazıyordu. "0000:0b:00" ya da "gpu" gibi hatalı bir girdi sessizce
+# geçerli bir hook üretiyor, hata ancak çok sonra — VM başlatılırken —
+# sysfs/fuser tarafında ve o zaman da "neden GPU passthrough olmadı"
+# biçiminde çıkıyordu. VM XML senkronundaki Python bloğu zaten regex ile
+# doğruluyordu; hook tarafı da aynı kuralı uyguluyor.
+valid_pci() {
+  [[ "$1" =~ ^[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}\.[0-9a-fA-F]$ ]]
+}
+
+for _try in 1 2 3; do
+  if valid_pci "$gpu_pci"; then break; fi
+  warn "'$gpu_pci' geçerli bir PCI adresi değil — beklenen biçim: 0000:0b:00.0"
+  if [ "$_try" -lt 3 ]; then read -rp "GPU PCI adresi: " gpu_pci; fi
+done
+valid_pci "$gpu_pci" || error "GPU PCI adresi 3 denemede de geçersiz — kurulum durduruluyor."
+
+for _try in 1 2 3; do
+  if valid_pci "$gpu_audio"; then break; fi
+  warn "'$gpu_audio' geçerli bir PCI adresi değil — beklenen biçim: 0000:0b:00.1"
+  if [ "$_try" -lt 3 ]; then read -rp "GPU Audio PCI adresi: " gpu_audio; fi
+done
+valid_pci "$gpu_audio" || error "GPU Audio PCI adresi 3 denemede de geçersiz — kurulum durduruluyor."
+
+log "GPU PCI: $gpu_pci / Audio: $gpu_audio (biçim doğrulandı)"
+
 # ─── IOMMU group preflight ─────────────────────────────────
 step "IOMMU group check"
 short_pci() { echo "$1" | sed -E 's/^0000://'; }
