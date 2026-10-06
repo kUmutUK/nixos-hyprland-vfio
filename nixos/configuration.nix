@@ -571,7 +571,12 @@ in
 
   nix.settings = {
     experimental-features = [ "nix-command" "flakes" ];
-    auto-optimise-store = true;
+    # DÜZELTME (2026-10-06): `auto-optimise-store = true` kaldırıldı.
+    # Nix >= 2.19'da store zaten zstd ile sıkıştırılıyor ve `nix.optimise`
+    # varsayılan olarak zstd'yi kullanıyor; bu satır pratikte hiçbir şey
+    # kazandırmıyordu, yalnızca store path'lerinin yeniden yazılmasını
+    # tetikleyip ilk `nixos-rebuild`'i uzatıyordu. `nix.optimise` bulunamayan
+    # Nix sürümlerinde ise her path eklemede hata logluyordu.
     max-jobs = "auto";
     keep-outputs = true;
     keep-derivations = true;

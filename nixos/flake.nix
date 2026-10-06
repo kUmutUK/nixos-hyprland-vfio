@@ -76,7 +76,12 @@
           # hyprland, hyprlock, hypridle, hyprpicker, hyprpolkitagent ve
           # xdg-desktop-portal-hyprland hepsi aynı nixpkgs rev'inden gelir.
           programs.hyprland.package = pkgs.hyprland;
-          environment.systemPackages = [ pkgs.pyprland ];
+          # DÜZELTME (2026-10-06): `environment.systemPackages = [ pkgs.pyprland ]`
+          # burada kaldırıldı. pyprland ZATEN `configuration.nix` →
+          # `environment.systemPackages` listesinde tanımlıydı; buradaki ikinci
+          # tanım aynı paketi iki kez PATH'e ekliyordu. CHANGELOG [1.3.1]
+          # tekrarın "temizlendiğini" kaydetmişti ama bu satır duruyordu.
+          # Tek kaynak: configuration.nix.
           # home.persistence (home.nix) çalışması için ekstra bir şey
           # yapmaya gerek yok: home-manager.nixosModules.home-manager zaten
           # yukarıda import edildiğinden, impermanence.nixosModules.impermanence
