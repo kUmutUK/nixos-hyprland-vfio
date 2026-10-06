@@ -10,6 +10,14 @@ This project follows:
 
 # [1.3.3] - 2026-10-06
 
+> ⚠️ **Bu bölümün altındaki commit hash'lerinin hepsi tarihseldir.** Hiçbiri
+> güncel HEAD değildir. Depo GitHub web arayüzünden tek commit olarak yükleniyor,
+> bu yüzden hash her yüklemede değişir; aşağıda geçen `0137b38`, `24cd1ca`,
+> `97a1665`, `b993f54`, `602f217`, `0d35833`, `4bc1258d` değerleri **yazıldıkları
+> andaki** commit'leri gösterir. Güncel HEAD: **`af7337f`** ("Add files via upload").
+> Bu not, geçmiş bölümlerin **anlatı olarak** doğru, ama hash olarak güncelliğini
+> yitirmiş olduğunu belgeler; geçmiş kayıtları yeniden yazmadık.
+
 Bağımsız denetim turu #2. Bu turda **CI'ın üç kapısı yerinde yeniden koşuldu**
 (Nix 2.35.2 kuruldu), `low_latency_layer` gerçekten indirildi, upstream kaynak
 (`low_latency_layer@948a561`, `impermanence@7b1d38`, `lsfg-vk-flake@62aadfc`)
@@ -452,8 +460,11 @@ duruyordu. Kulaklık/Spotify ikonu hiç çizilmiyordu. Dolduruldu.
   "libvirt `/etc/libvirt/hooks`'i okumaz" tespiti **doğru**.
 - `security.pam.loginLimits` value'su string olabilir (`oneOf [ str int ]`).
 - hyprlock 0.9.6 `$TIME` / `$USER`'ı destekliyor (`IWidget::formatString`,
-  `IWidget.cpp:200,208`) ve otomatik tazeliyor. `assets/example.conf:79`
-  da `text = $TIME` kullanıyor.
+  `IWidget.cpp:200,208`) ve otomatik tazeliyor.
+  > **DÜZELTME (2026-10-06):** bu satır `assets/example.conf:79`'a atıf yapıyordu.
+  > **Böyle bir dosya repoda yok** (`assets/` yalnızca iki PNG içeriyor), yani
+  > kanıt bağlantısı kırıktı. Gerçek doğrulama yeri `nixos/home.nix` →
+  > `hyprlockConf` bloğundaki `text = $TIME` satırıdır; iddianın kendisi doğrudur.
 - `hyprland.conf` kullanılıyor, yok sayılmıyor. `Jeremy::getMainConfigPath()`
   önce `.lua` arıyor ama `Hyprutils::Path::findConfig` yalnızca
   `XDG_CONFIG_HOME` / `XDG_CONFIG_DIRS` / `/etc/xdg` altına bakıyor;
