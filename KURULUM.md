@@ -169,12 +169,13 @@ Bu rehberdeki yol **değerleri sormadan** kurar: `nixos/` klasörü olduğu gibi
 kopyalanır. `install.sh`'ı çalıştırmadığınız için `home.nix` içindeki şu değerler
 **yer tutucu olarak kalır** ve kurulumdan sonra elle değiştirilmelidir:
 
-| Değer | Varsayılan | Sonucu |
-|-------|-----------|--------|
-| `hyprlandMonitorLine` | `"monitor = ,preferred,auto,1"` | **Monitör tanımı boş** → `hyprland.conf` ilk satırı hatalı, masaüstü açılmayabilir |
-| `monitorOutput` | `"DP-3"` | Yanlış çıktıysa `mpvpaper` duvar kağıdı çalışmaz |
-| `gitName` / `gitEmail` | `"changeme"` / `"you@example.com"` | Commit'ler sahte kimlikle etiketlenir |
-| `wallpaperVideo` | `~/Downloads/arthur-leywin-….mp4` | Dosya yoksa `mpvpaper.service` sessizce atlanır |
+| # | Değer | Varsayılan | Sonucu |
+|---|-------|-----------|--------|
+| 1 | `hyprlandMonitorLine` | `"monitor = ,preferred,auto,1"` | **Monitör tanımı boş** → `hyprland.conf` ilk satırı hatalı, masaüstü açılmayabilir |
+| 2 | `monitorOutput` | `"DP-3"` | Yanlış çıktıysa `mpvpaper` duvar kağıdı çalışmaz (oturum açılışında uyarı çıkar) |
+| 3 | `gitName` | `"changeme"` | Commit'ler sahte isimle etiketlenir |
+| 4 | `gitEmail` | `"you@example.com"` | Commit'ler sahte adresle etiketlenir |
+| 5 | `wallpaperVideo` | `~/Downloads/arthur-leywin-….mp4` | Dosya yoksa `mpvpaper.service` sessizce atlanır |
 
 Mevcut NixOS'u güncelliyorsanız bunların hepsini `install.sh` sizin yerinize
 doldurur (monitörü `hyprctl`/`/sys/class/drm`'den okur). Yeni kurulumda elle
@@ -203,6 +204,24 @@ düzenleyin (satır ~4-12):
 > `hyprlandMonitorLine`'daki monitör **adı boş bırakılırsa** tüm monitörler
 > workspace 1'e aynalanır — tek monitörde zararsız, çok monitörde kurulumu
 > bozar. Bu yüzden yukarıda `DP-1` gibi gerçek bir ad yazılıyor.
+
+### `hyprland.lua` gölgelemesi hakkında
+
+Bu config `.conf` kullanıyor. Hyprland 0.56.2 bir `~/.config/hypr/hyprland.lua`
+bulursa onu tercih eder ve `.conf`'i **sessizce tamamen yok sayar** — hata yok,
+uyarı yok, masaüstü Hyprland'ın varsayılanına döner.
+
+`home.nix` buna karşı `HYPRLAND_CONFIG` değerini oturum ortamına sabit olarak
+yazıyor, bu yüzden **bu kurulumda gölgeleme gerçekleşemez**. Ek olarak WuWa
+ekran-okuma bölgeleri `wuwa-auto.sh` içinde artık ekran çözünürlüğüne göre
+doğrulanıyor; sığmıyorsa döngüye girmeden uyarı veriyor.
+
+Kontrol (kurulumdan sonra bir kez):
+
+```bash
+echo "$HYPRLAND_CONFIG"   # /home/localhost/.config/hypr/hyprland.conf
+hyprctl configversion
+```
 
 ---
 
