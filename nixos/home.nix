@@ -1332,9 +1332,38 @@ done
   # (Anahtarın mutlak yol olmak zorunda olmasının nedeni modülün tip
   #  kısıtıdır — göreli yol verilirse eval "not of type 'absolute path'"
   #  hatasıyla düşüyor; gerçek eval ile doğrulandı.)
-  # ⚠️ Burada yalnızca lsfg-vk shader önbelleği korunuyor. /nix/persist'in
-  # kendisi bu tanımla yönetilmez (impermanence'in "nix" manager'ı bu modül
-  # NixOS tarafında, home.persistence tanımı ona dokunmaz).
+  #
+  # ⚠️ DÜZELTME (2026-10-06): buradaki yorum "yalnızca lsfg-vk shader
+  # önbelleği korunuyor" diyordu. Bu YANLIŞTI ve yanlış olduğu tespit edildi:
+  # kalıcılaştırılan `.config/lsfg-vk/conf.toml` bir ÖNBELLEK DEĞİL, lsfg-vk'nin
+  # YAPILANDIRMA dosyasıdır. (upstream `lsfg-vk-flake/module.nix`, `configFile`
+  # seçeneğinin tam olarak bu yolu beklediğini belgeliyor; shader önbelleği
+  # ~/.cache altındadır.) Yani kalıcı olan şey oyun başına kare çarpanı ayarları.
+  #
+  # MEKANİZMA (impermanence NixOS modülü üzerinden doğrulandı):
+  # impermanence bunu Home Manager aktivasyonu DEĞİL, `local-fs.target`'tan
+  # önce koşan bir systemd servisi olarak kuruyor:
+  #   systemd.services.persist-nix-persist-home-home-localhost-.config-lsfg\x2dvk-conf.toml
+  # Servis `mount-file.bash`'ı çalıştırır: ilk boot'ta
+  # /nix/persist/home/.config/lsfg-vk/conf.toml henüz yoktur (tmpfiles kuralı
+  # yalnızca /nix/persist/home'u açıyor), bu yüzden mount noktasına bir
+  # SYMLINK kurulur ve Home Manager yazımını bu symlink üzerinden yapar —
+  # yani dosya kalıcı depoya düşer. Sonraki boot'larda symlink zaten doğru
+  # olduğu için servis "ignoring" deyip çıkıyor.
+  #
+  # ⚠️ PRATİK SONUÇ: bu yol artık impermanence'in yönetimindedir. `home.nix`
+  # içindeki conf.toml'u değiştirdiğinizde değişiklik her rebuild'da
+  # uygulanmayabilir. Yeni değerleri almak için kalıcı kopyayı silin:
+  #     rm -f /nix/persist/home/.config/lsfg-vk/conf.toml
+  # (Sonraki activasyonda yeni değer geri yazılır.)
+  #
+  # NOT: /nix/persist'in kendisi bu tanımla yönetilmez (impermanence'in "nix"
+  # manager'ı bu modül NixOS tarafında, home.persistence tanımı ona dokunmaz).
+  # ⚠️ Aynı sınıf gölgeleme tuzağı — config'in `/etc/vulkan/implicit_layer.d`
+  # için kendi not düştüğü hâl — bu dosyada kasten UYGULANMAMIŞTIR: burada
+  # gölgelenmesi istenen şeyin bir cache değil, bir yapılandırma olduğu
+  # varsayılmıştı. Gerçekte cache'i korumak istiyorsanız bu listeyi
+  # ".cache/lsfg-vk" ile değiştirin.
   home.persistence."/nix/persist/home" = {
     files = [ ".config/lsfg-vk/conf.toml" ];
   };
@@ -1578,74 +1607,74 @@ done
   };
 };
 
-systemd.user.services = {
-  mpvpaper = {
-    Unit = {
-      Description = "mpvpaper live wallpaper service (looped)";
-      After = [ "graphical-session.target" ];
-      PartOf = [ "graphical-session.target" ];
+  systemd.user.services = {
+    mpvpaper = {
+      Unit = {
+        Description = "mpvpaper live wallpaper service (looped)";
+        After = [ "graphical-session.target" ];
+        PartOf = [ "graphical-session.target" ];
+      };
+      Service = {
+        Type = "simple";
+        ConditionPathExists = "${wallpaperVideo}";
+        Environment = "PATH=${lib.makeBinPath [ pkgs.mpvpaper pkgs.mpv ]}";
+        ExecStart = "${pkgs.mpvpaper}/bin/mpvpaper -p --mpv-options \"loop=inf\" ${monitorOutput} ${wallpaperVideo}";
+        Restart = "on-failure";
+        RestartSec = 3;
+      };
+      Install.WantedBy = [ "graphical-session.target" ];
     };
-    Service = {
-      Type = "simple";
-      ConditionPathExists = "${wallpaperVideo}";
-      Environment = "PATH=${lib.makeBinPath [ pkgs.mpvpaper pkgs.mpv ]}";
-      ExecStart = "${pkgs.mpvpaper}/bin/mpvpaper -p --mpv-options \"loop=inf\" ${monitorOutput} ${wallpaperVideo}";
-      Restart = "on-failure";
-      RestartSec = 3;
+
+    mpvpaper-watchdog = {
+      Unit = {
+        Description = "Brave açıldığında canlı duvar kağıdını durdurur";
+        After = [ "graphical-session.target" ];
+        PartOf = [ "graphical-session.target" ];
+      };
+      Service = {
+        Type = "simple";
+        Environment = "PATH=${lib.makeBinPath [ pkgs.hyprland pkgs.jq pkgs.socat pkgs.systemd pkgs.gawk ]}";
+        ExecStart = "${pkgs.bash}/bin/bash ${config.home.homeDirectory}/.local/bin/mpvpaper-watchdog";
+        Restart = "on-failure";
+        RestartSec = 3;
+      };
+      Install.WantedBy = [ "graphical-session.target" ];
     };
-    Install.WantedBy = [ "graphical-session.target" ];
+
+    gamemode-notify = {
+      Unit = {
+        Description = "Gamemode durum değişikliklerini Dunst ile bildir";
+        After = [ "graphical-session-pre.target" ];
+        PartOf = [ "graphical-session.target" ];
+      };
+      Install = {
+        WantedBy = [ "graphical-session.target" ];
+      };
+      Service = {
+        Type = "simple";
+        ExecStart = "${gamemodeNotifyScript}/bin/gamemode-notify";
+        Restart = "on-failure";
+        RestartSec = 5;
+        Environment = "PATH=${lib.makeBinPath [ pkgs.libnotify pkgs.dbus pkgs.gnugrep pkgs.systemd pkgs.coreutils ]}";
+      };
+    };
   };
 
-  mpvpaper-watchdog = {
-    Unit = {
-      Description = "Brave açıldığında canlı duvar kağıdını durdurur";
-      After = [ "graphical-session.target" ];
-      PartOf = [ "graphical-session.target" ];
-    };
-    Service = {
-      Type = "simple";
-      Environment = "PATH=${lib.makeBinPath [ pkgs.hyprland pkgs.jq pkgs.socat pkgs.systemd pkgs.gawk ]}";
-      ExecStart = "${pkgs.bash}/bin/bash ${config.home.homeDirectory}/.local/bin/mpvpaper-watchdog";
-      Restart = "on-failure";
-      RestartSec = 3;
-    };
-    Install.WantedBy = [ "graphical-session.target" ];
-  };
-
-  gamemode-notify = {
-    Unit = {
-      Description = "Gamemode durum değişikliklerini Dunst ile bildir";
-      After = [ "graphical-session-pre.target" ];
-      PartOf = [ "graphical-session.target" ];
-    };
-    Install = {
-      WantedBy = [ "graphical-session.target" ];
-    };
-    Service = {
-      Type = "simple";
-      ExecStart = "${gamemodeNotifyScript}/bin/gamemode-notify";
-      Restart = "on-failure";
-      RestartSec = 5;
-      Environment = "PATH=${lib.makeBinPath [ pkgs.libnotify pkgs.dbus pkgs.gnugrep pkgs.systemd pkgs.coreutils ]}";
-    };
-  };
-};
-
-home.packages = with pkgs; [
-  # P1-2 (2026-10-05): pypr müzik scratchpad'ı `mpv` çağırıyordu ama mpv ne
-  # systemPackages'ta ne home.packages'ta vardı (yorum "kurulu" diyordu).
-  # mpvpaper kendi unit PATH'inde mpv taşıdığı için duvar kağıdı çalışıyor,
-  # SUPER+SHIFT+S ise sessizce boş dönüyordu.
-  mpv
-  fd ripgrep jq wget curl file tree
-  # DÜZELTME (2026-10-06): `playerctl`, `wev` ve `libnotify` burada YİNE DE
-  # vardı; üçü de `configuration.nix` → `environment.systemPackages` altında
-  # zaten tanımlıydı. CHANGELOG [1.3.1] bu tekrarın "temizlendiğini"
-  # kaydetmişti ama yalnızca `hyprpicker` gerçekten kaldırılmıştı; geri kalan
-  # üçü duruyordu. Zararsız (her ikisi de aynı store yolunu PATH'e ekler) ama
-  # "home.nix tek doğruluk kaynağı" ilkesine aykırıydı. Kaldırıldı: kullanıcı
-  # PATH'inde zaten systemPackages üzerinden mevcutlar.
-  pamixer
-  nano satty socat
- ];
+  home.packages = with pkgs; [
+    # P1-2 (2026-10-05): pypr müzik scratchpad'ı `mpv` çağırıyordu ama mpv ne
+    # systemPackages'ta ne home.packages'ta vardı (yorum "kurulu" diyordu).
+    # mpvpaper kendi unit PATH'inde mpv taşıdığı için duvar kağıdı çalışıyor,
+    # SUPER+SHIFT+S ise sessizce boş dönüyordu.
+    mpv
+    fd ripgrep jq wget curl file tree
+    # DÜZELTME (2026-10-06): `playerctl`, `wev` ve `libnotify` burada YİNE DE
+    # vardı; üçü de `configuration.nix` → `environment.systemPackages` altında
+    # zaten tanımlıydı. CHANGELOG [1.3.1] bu tekrarın "temizlendiğini"
+    # kaydetmişti ama yalnızca `hyprpicker` gerçekten kaldırılmıştı; geri kalan
+    # üçü duruyordu. Zararsız (her ikisi de aynı store yolunu PATH'e ekler) ama
+    # "home.nix tek doğruluk kaynağı" ilkesine aykırıydı. Kaldırıldı: kullanıcı
+    # PATH'inde zaten systemPackages üzerinden mevcutlar.
+    pamixer
+    nano satty socat
+  ];
 }
