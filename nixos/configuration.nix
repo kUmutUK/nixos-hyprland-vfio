@@ -131,7 +131,7 @@ in
   boot.loader.efi.canTouchEfiVariables = true;
   boot.kernelParams = [
     "amd_pstate=active" "nowatchdog" "nmi_watchdog=0"
-    "transparent_hugepage=madvise" "amd_iommu=on" "iommu=pt"
+    "transparent_hugepage=madvise" "iommu=pt"
     "usbcore.autosuspend=-1" "video=efifb:off"
     "amdgpu.ppfeaturemask=0xfffd7fff" "kvm.ignore_msrs=1"
     "pcie_aspm=off" "rcupdate.rcu_expedited=1"
