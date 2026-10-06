@@ -420,6 +420,14 @@ let
     # hatırlamak zorunda kalıyorsun. Şimdi kontrol burada, oturum açılışında,
     # görünür şekilde yapılıyor.
     exec-once = ${pkgs.coreutils}/bin/sh -c '[ -e "${wallpaperVideo}" ] || notify-send -t 15000 -u critical "mpvpaper" "Canlı duvar kağıdı bulunamadı: ${wallpaperVideo}\nDosyayı indirin veya home.nix içindeki wallpaperVideo değerini değiştirin, sonra: systemctl --user restart mpvpaper mpvpaper-watchdog"'
+    # DÜZELTME (2026-10-06): yukarıdaki kontrol SADECE video dosyasının
+    # varlığına bakıyordu. ${monitorOutput} çıkışı yanlışsa — ki varsayılan
+    # "DP-3" başka hiçbir makinede doğru değil — systemd unit'i normal
+    # başlıyor, mpvpaper "output not found" ile ölüyor ve Restart=on-failure
+    # onu 3 saniyede bir yeniden başlatıyor. Kullanıcı yalnızca "duvar
+    # kağıdı yok" görüyor ve gerçek sebebi (yanlış çıkış adı) hiçbir yerde
+    # yazmıyor. Çıkış adı artık oturum açılışında doğrulanıyor.
+    exec-once = ${pkgs.coreutils}/bin/sh -c 'hyprctl monitors 2>/dev/null | grep -qE "^Monitor ${monitorOutput}[ (]" || notify-send -t 15000 -u critical "mpvpaper" "Monitör çıkışı bulunamadı: ${monitorOutput}\nhyprctl monitors çıktısından gerçek adı alıp home.nix içindeki monitorOutput değerini düzeltin (örn. DP-1), sonra: systemctl --user restart mpvpaper mpvpaper-watchdog"'
   '';
 
   hyprlockConf = ''
@@ -703,6 +711,45 @@ in
   home.homeDirectory = "/home/localhost";
   home.stateVersion = "26.05";
 
+  # ─── Hyprland config yönlendirmesini AÇIKÇA sabitle ──────────────
+  # DÜZELTME (2026-10-06). Bu, README'de yıllardır "⚠️ ÖNEMLİ" diye
+  # duran ama hiçbir zaman kapatılmayan tuzağın kalıcı çözümü.
+  #
+  # Gerçek davranış (Hyprland v0.56.2,
+  # src/config/supplementary/jeremy/Jeremy.cpp → getMainConfigPath()):
+  #   1. $HYPRLAND_CONFIG                      ← EXPLICIT, en yüksek öncelik
+  #   2. findConfig("hyprland","lua")  → $XDG_CONFIG_HOME/hypr/hyprland.lua
+  #   3. findConfig("hyprland","conf") → $XDG_CONFIG_HOME/hypr/hyprland.conf
+  #   4. $XDG_CONFIG_DIRS/.../hyprland.lua
+  #   ve İLK bulunan kazanır.
+  #
+  # Yani `~/.config/hypr/hyprland.lua` dosyası bir gün var olursa, aşağıdaki
+  # `xdg.configFile."hypr/hyprland.conf"` sessizce TAMAMEN yok sayılır:
+  # hata yok, uyarı yok, masaüstü Hyprland'ın varsayılanına döner.
+  #
+  # README'in "PATH'te hyprland.lua olmamalı" ifadesi de yanlıştı —
+  # `findConfig` PATH'e bakmaz, yalnızca XDG_CONFIG_HOME / XDG_CONFIG_DIRS /
+  # /etc/xdg altına bakar. (Bu yüzden NixOS'un /run/current-system/sw/share
+  # altına koyduğu stub, docs/archive/README.md'nin dediği gibi gölgeleme
+  # YAPMIYOR — o iddia bu satırın teknik olarak doğru kısmıydı.)
+  #
+  # Oysa asıl tehlike oluşturulmadığında: Home Manager activasyonu henüz
+  # çalışmamışken Hyprland bir kez başlatılırsa (kurulum sırasında, ya da
+  # config silinip yeniden açıldığında), Hyprland eksik config'i görüp kendi
+  # ÖRNEK hyprland.lua dosyasını ~/.config/hypr/ altına üretir — ve bir sonraki
+  # açılışta bütün config gölgelenir. Hiçbir belgede bahsedilmemişti.
+  #
+  # Çözüm: yolu environment'e açıkça yaz. HYPRLAND_CONFIG tanımlıyken
+  # findConfig hiç çalışmaz, yani gölgeleme mekanizması yapısal olarak
+  # devre dışı kalır. Bu config zaten .conf tabanlı olduğu için sabitlemek
+  # doğru davranış; ileride Lua'ya geçilirse bu satır kaldırılmalıdır.
+  home.sessionVariables.HYPRLAND_CONFIG =
+    "${config.home.homeDirectory}/.config/hypr/hyprland.conf";
+
+  # Doğrulama: `hyprctl configversion` ve
+  # `test -e ~/.config/hypr/hyprland.lua && echo "⚠️ gölgeleme riski"`
+  # (artık etkisiz olmalı — yine de izlemek için).
+
   dconf.settings = {
     "org/gnome/desktop/interface" = {
       color-scheme = "prefer-dark";
@@ -944,9 +991,55 @@ in
 # dört `local`'da da atamanın return değeri zaten kullanılmıyor, `||`/set -e
 # yolu yok. 2026-10-05'te CI'a gömülü script taraması eklenince bu kapıya girdi.
 
-# ─── Yeni bölge tanımları (Senin jilet gibi hassas koordinatların) ───
-GEOMETRY_MAIN="0,971 2560x438"
-GEOMETRY_CHOICE="1561,513 916x585"
+# ─── Bölge tanımları ─────────────────────────────────────────────
+# DÜZELTME (2026-10-06): bu koordinatlar 2560x1440'e SABİTLENMİŞTİ ve
+# başka bir çözünürlükte ekranın dışına taşabiliyordu. Taştığında grim ya
+# hata veriyor ya da alakasız bir bölgeyi tarıyor; kullanıcı "çeviri
+# çalışmıyor" deyip gerçek sebebi göremiyordu. Artık:
+#   (1) WUWA_GEOMETRY_MAIN / WUWA_GEOMETRY_CHOICE ile geçersiz kılınabilir,
+#   (2) bölge ekrana sığmıyorsa döngüye girmeden UYARI basılıyor.
+DEFAULT_GEOMETRY_MAIN="0,971 2560x438"
+DEFAULT_GEOMETRY_CHOICE="1561,513 916x585"
+
+GEOMETRY_MAIN="''${WUWA_GEOMETRY_MAIN:-$DEFAULT_GEOMETRY_MAIN}"
+GEOMETRY_CHOICE="''${WUWA_GEOMETRY_CHOICE:-$DEFAULT_GEOMETRY_CHOICE}"
+
+# Ekran çözünürlüğü. hyprctl yoksa/okunamazsa boş kalır ve doğrulama
+# atlanır (eskiden de doğrulama yoktu, en azından artık çalışmıyor demeyecek).
+#
+# DÜZELTME: `hyprctl monitors` "2560x1440@170.00" biçiminde YENİLEME HIZI da
+# basıyor; doğrudan cut edilirse MON_H "1440@170.00" olur ve tüm karşılaştırmalar
+# "integer expression expected" hatasına düşer. Önce @ ile bölüp boyut alınıyor.
+MON_SIZE=$(hyprctl monitors 2>/dev/null | grep -oPm1 '[0-9]+x[0-9]+@[0-9.]+' | head -n1 | cut -d@ -f1)
+MON_W=$(echo "$MON_SIZE" | cut -dx -f1)
+MON_H=$(echo "$MON_SIZE" | cut -dx -f2)
+
+# "X,Y WxH" biçimindeki bölge çalışma alanına sığıyor mu?
+geometry_fits() {
+    [ -n "$MON_W" ] && [ -n "$MON_H" ] || return 0
+    local pos size x y w h
+    pos=$(echo "$1" | cut -d' ' -f1)
+    size=$(echo "$1" | cut -d' ' -f2)
+    x=$(echo "$pos" | cut -d, -f1)
+    y=$(echo "$pos" | cut -d, -f2)
+    w=$(echo "$size" | cut -dx -f1)
+    h=$(echo "$size" | cut -dx -f2)
+    # Sayı olmayan bir şey varsa (yazım hatası) sessizce geç, eski davranış.
+    case "$x$y$w$h" in *[!0-9]*) return 0 ;; esac
+    [ $(( x + w )) -le "$MON_W" ] && [ $(( y + h )) -le "$MON_H" ]
+}
+
+# NOT: çoklu monitör düzeninde hyprctl "at X,Y" konumu da raporlar; burada
+# yalnızca boyut karşılaştırılıyor. Tek monitörde tam doğru, çoklu
+# monitörde kullanıcıyı yanlış alarmdan koruyan bir üst sınır.
+for _region in "altyazı|$GEOMETRY_MAIN" "seçenekler|$GEOMETRY_CHOICE"; do
+    _label=$(echo "$_region" | cut -d'|' -f1)
+    _geom=$(echo "$_region" | cut -d'|' -f2)
+    if ! geometry_fits "$_geom"; then
+        notify-send -t 25000 -u critical "WuWa AI" \
+            "$_label bölgesi ($_geom) ekrana sığmıyor (ekran: $MON_W x$MON_H). Çeviri bu bölgeyi tarayamayacak. home.nix'deki wuwa-auto.sh değerlerini ya da WUWA_GEOMETRY_MAIN / WUWA_GEOMETRY_CHOICE ortam değişkenini düzelt." || true
+    fi
+done
 
 IMAGE_MAIN="/tmp/wuwa_main.png"
 IMAGE_CHOICE="/tmp/wuwa_choice.png"
@@ -1545,7 +1638,14 @@ home.packages = with pkgs; [
   # SUPER+SHIFT+S ise sessizce boş dönüyordu.
   mpv
   fd ripgrep jq wget curl file tree
-  playerctl pamixer wev
-  nano satty socat libnotify
+  # DÜZELTME (2026-10-06): `playerctl`, `wev` ve `libnotify` burada YİNE DE
+  # vardı; üçü de `configuration.nix` → `environment.systemPackages` altında
+  # zaten tanımlıydı. CHANGELOG [1.3.1] bu tekrarın "temizlendiğini"
+  # kaydetmişti ama yalnızca `hyprpicker` gerçekten kaldırılmıştı; geri kalan
+  # üçü duruyordu. Zararsız (her ikisi de aynı store yolunu PATH'e ekler) ama
+  # "home.nix tek doğruluk kaynağı" ilkesine aykırıydı. Kaldırıldı: kullanıcı
+  # PATH'inde zaten systemPackages üzerinden mevcutlar.
+  pamixer
+  nano satty socat
  ];
 }
