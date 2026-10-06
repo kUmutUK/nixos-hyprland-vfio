@@ -277,7 +277,7 @@ let
     # Doğru biçim `cyclenext` dispatcher'ı: argümansız = sonraki pencere,
     # "prev" = önceki (DispatcherTranslator.cpp:471-489).
     bind = $mainMod, mouse_down, cyclenext
-    bind = $mainMod, mouse_up, cyclenext prev
+    bind = $mainMod, mouse_up, cyclenext, prev
 
     # ⚠️ $mainMod + M (monocle) BİLEREK BAĞLI DEĞİL.
     # Eski satır `hyprctl dispatch layoutmsg set monocle` idi ve dwindle'da
@@ -1364,9 +1364,9 @@ done
   # gölgelenmesi istenen şeyin bir cache değil, bir yapılandırma olduğu
   # varsayılmıştı. Gerçekte cache'i korumak istiyorsanız bu listeyi
   # ".cache/lsfg-vk" ile değiştirin.
-  home.persistence."/nix/persist/home" = {
-    files = [ ".config/lsfg-vk/conf.toml" ];
-  };
+  #home.persistence."/nix/persist/home" = {
+    #files = [ ".config/lsfg-vk/conf.toml" ];
+  #};
 
   programs = {
     # ⚠️ `programs.home-manager.enable = true;` KALDIRILDI.
@@ -1408,14 +1408,15 @@ done
         gm-status = "gamemoded -s";
       };
       interactiveShellInit = ''
-        # DÜZELTME: burada MANPAGER + `sh -c "..."` sarmalayıcısı vardı ve ikisi
-        # de yanlıştı. (1) Git MANPAGER'ı OKUMAZ — sırası belgelidir:
-        # $GIT_PAGER -> core.pager -> $PAGER -> derleme varsayılanı (less).
-        # (2) sh -c sarmalayıcısı dosya adını $0'a düşürürdü.
-        # Doğrusu: doğrudan PAGER + pipeline (git dosyayı son komuta ekler,
-        # böylece bat dosyayı argüman olarak alır).
-        set -gx PAGER 'col -bx | bat -l man -p --paging=always'
-      '';
+  # PAGER: normal dosyalar için düz less.
+  set -gx PAGER 'less -R'
+
+    # MANPAGER: bat ile renklendirme NixOS man-db + groff kombinasyonunda
+  # bozuk ANSI kodları üretiyor (ESC + [ karakterleri kayboluyor, `4mLS`
+  # gibi metin çıkıyor). En güvenilir seçenek less -R — man-db zaten
+  # varsayılan olarak bunu kullanır, ANSI renkleri doğru yorumlar.
+  set -gx MANPAGER 'less -R'
+'';
       shellInit = ''
         set -gx fish_greeting ""
       '';
