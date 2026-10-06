@@ -8,6 +8,134 @@ This project follows:
 
 ---
 
+# [1.3.3] - 2026-10-06
+
+Bağımsız denetim turu #2. Bu turda **CI'ın üç kapısı yerinde yeniden koşuldu**
+(Nix 2.35.2 kuruldu), `low_latency_layer` gerçekten indirildi, upstream kaynak
+(`low_latency_layer@948a561`, `impermanence@7b1d38`, `lsfg-vk-flake@62aadfc`)
+okundu ve impermanence'in gerçekten ne ürettiği `nix eval` ile incelendi.
+Bulunanların **tamamı belge katmanındaydı**; kodda P0/P1 düzeltme gerektiren
+kırık çıkmadı.
+
+## 🔴 Fixed — projenin gerçek `README.md`'si kaybolmuştu
+
+- **Kök `README.md`, `docs/archive/README.md` dosyasının bir kopyasıydı.**
+  37 satır, yalnızca Hyprland satırında tek fark — yani depo GitHub'da
+  göründüğünde ilk ekranda *"Arşiv — SÜPERSEDED analizler"* başlığı çıkıyordu;
+  projenin ne olduğu, nasıl kurulacağı ve hangi tuşun ne yaptığı hiçbir yerde
+  yoktu.
+- Döngüsel ölü bağlantı: arşiv README'si *"Gerçek giriş `README.md`
+  §Hyprland'da"* diyordu, ama `README.md`'de böyle bir bölüm bulunmuyordu.
+- `[1.3.2]`'nin *"README düzeltildi (virt-manager uyarısı, §7b '5 Değer',
+  HYPRLAND_CONFIG bölümü)"* kaydı da bu yüzden **kayıp içeriği** anlatıyordu.
+- → Kök `README.md` sıfırdan yazıldı: gereksinimler, iki ayrı kurulum yolu,
+  VM başlatma, tam tuş kısayolu tablosu, grafik/oyun bileşenleri, özel ayarlar,
+  bilinen sınırlar, depo haritası, doğrulama komutları. `KURULUM.md` ile
+  çakışmayacak şekilde yazıldı (kurulum detayı orada kalıyor).
+
+## 🟠 Fixed — `home.nix` kalıcılık yorumu ne yaptığını yanlış söylüyordu
+
+- `home.persistence."/nix/persist/home"` yorumu *"yalnızca lsfg-vk shader
+  önbelleği korunuyor"* diyordu. **Yanlıştı:** kalıcılaştırılan
+  `.config/lsfg-vk/conf.toml` bir önbellek değil, lsfg-vk'nın **yapılandırma**
+  dosyasıdır. Upstream `lsfg-vk-flake/module.nix`, `configFile` seçeneğinin tam
+  olarak bu yolu beklediğini belgeliyor; shader önbelleği `~/.cache` altındadır.
+- Yani kalıcı olan şey oyun başına kare çarpanı ayarları — ve bu, config'in
+  `/etc/vulkan/implicit_layer.d` için kendi not düştüğü *"persist dizini ilk
+  açılışta boş → gölgeler ve kaybolur"* tuzağının **aynı sınıfı**, ama
+  `/etc/vulkan` için düzeltilmiş hâli burada uygulanmamıştı.
+- Mekanizma doğrulandı: impermanence bunu Home Manager aktivasyonu değil,
+  `local-fs.target`'tan **önce** koşan bir systemd servisi olarak kuruyor
+  (`persist-nix-persist-home-home-localhost-.config-lsfg\x2dvk-conf.toml`).
+  `mount-file.bash` ilk boot'ta mount noktasına bir symlink kuruyor, HM yazımı
+  bu symlink üzerinden yapıyor → dosya kalıcı depoya düşüyor. İlk seferde
+  çalışıyor; yorum artık bunu ve `rm -f` ile sıfırlama adımını anlatıyor.
+- → Yorum düzeltildi. Davranış **değiştirilmedi** (tasarımın sahibinin
+  tercihi); kullanıcıyı yanıltan açıklama gerçeği anlatacak biçimde yeniden
+  yazıldı.
+
+## 🟠 Fixed — `KURULUM.md` çalışmayan bir talimat veriyordu
+
+- **`HOST_USER=kullanici sudo virsh start win10`** (eski §9b) **çalışamaz**:
+  hook'u **libvirtd** (uzun ömürlü systemd servisi) çalıştırır, `virsh`
+  istemcisinin ortamını miras almaz; ayadaki `sudo` da `env_reset` ile ortamı
+  temizler. `HOST_USER` config'in hiçbir yerinde tanımlı değil — hook her
+  zaman `localhost`'u sonlandırıyor.
+- → Talimat kaldırıldı; gerçek durum ve tek geçerli çözüm yolu
+  (`virtualisation.libvirtd.hooks.qemu.vfio`'ya `environment` eklemek)
+  yazıldı.
+
+## 🟡 Fixed — doküman hataları
+
+- **Üç farklı commit hash'i "güncel kod" diye geçiyordu.** Gerçek HEAD `af7337f`
+  ("Add files via upload"); `docs/archive/README.md` ve `DEGISIKLIKLER.md`
+  `0137b38`, `CHANGELOG [1.3.2]` ise `24cd1ca` diyordu. Depo GitHub web
+  arayüzünden tek commit olarak yüklendiği için hash her yüklemede değişiyor —
+  `[1.3.2]` bunu zaten "yapısal" diye not etmişti, ama arşiv belgeleri eski
+  hash'i hâlâ şimdiki kod diye sunuyordu. Gerçek HEAD'e hizalandı, artarak
+  neden değiştiğini belirten not eklendi.
+- **`KURULUM.md` §7b, boş monitör adı için "masaüstü açılmayabilir"**
+  diyordu. Boş ad geçerli Hyprland söz dizimidir ve masaüstü **açılır**;
+  gerçek etkisi tüm çıkışların workspace 1'e yansılanmasıdır (çok monitörde
+  bozuk, tek monitörde zararsız). `home.nix`'teki doğru ifadeyle hizalandı.
+- **`KURULUM.md` §6'da `chown "$(id -un)": /mnt/nix/persist/home`** — tırnak
+  dışına sıkan `:` `chown kullanici: dosya` demek, yani *"owner'ı kullanıcı yap,
+  grubu değiştirme"*. Muhtemelen `$(id -un):$(id -gn)` kastedilmişti. Daha
+  önemlisi canlı ISO'da `localhost` kullanıcısı olmadığı için ISO kullanıcısına
+  sahiplik veriyordu. Satır kaldırıldı: sahiplik zaten boot'ta
+  `systemd.tmpfiles.rules` → `d /nix/persist/home 0755 localhost localhost -`
+  kuralıyla düzeltiliyor (`d` mevcut dizinde de mode/owner uygular).
+- **`assets/example.conf` diye bir dosya yok.** `README.md:15` ve
+  `CHANGELOG [1.3.2]` bunu, *"`$TIME` düzeltmesi doğrulandı"* kanıtı olarak
+  gösteriyordu. İddianın kendisi doğru (`nixos/home.nix` → `hyprlockConf`
+  → `text = $TIME`), yalnızca kanıt bağlantısı kırıktı. Arşiv README'sindeki
+  atıf, gerçek doğrulama yerine (`nixos/home.nix`) yönlendirildi.
+- **`docs/archive/README.md` §Hyprland satırı bayattı.** Kök README'de
+  2026-10-06 düzeltmesi uygulanmış, arşiv kopyasında eski *"Fiilen
+  gerçekleşmiyor"* ifadesi kalmıştı. Arşiv kopyası da gerçekle hizalandı.
+- **`home.nix` girintisi yanıltıyordu.** `systemd.user.services` ve
+  `home.packages` sütun 0'da başlıyordu; üstlerinde modül attrset'i kapatan
+  `};` göründüğü için dosya **yapısal olarak kırık** okunuyordu. Parantez
+  dengesi ölçüldü: **parse hatası yok**, yalnızca girinti. Bloklar girintilendi.
+
+## 📝 Yeniden doğrulananlar (değiştirilmedi)
+
+- **CI'ın üç kapısı gerçekten geçiyor** — bu kez bağımsız olarak koşuldu:
+  `shellcheck -S warning install.sh nixos/hooks/qemu` → 0; gömülü 7 script →
+  0; `nix flake check --no-build` → `all checks passed!` (exit 0).
+- **Dördüncü kapı da çalışıyor:** eval sonrası `flake.lock` özeti değişmiyor.
+- **`low_latency_layer` sha256'ı doğru.** Gerçek `fetchFromGitHub` build'i
+  başarılı (`[1.3.1]`'in iddiasının teyidi).
+- **Upstream yorumları doğru.** İndirilen kaynakta: `install(TARGETS … LIBRARY
+  DESTINATION ${CMAKE_INSTALL_LIBDIR})`, `install(FILES … DESTINATION
+  "${CMAKE_INSTALL_DATADIR}/vulkan/implicit_layer.d/")`, manifest'te
+  `disable_environment` var / `enable_environment` **yok**,
+  `layer_context.hh` yalnızca 3 ortam değişkeni okuyor. `configuration.nix`'teki
+  yorumların tamamı ispatlandı.
+- **CHANGELOG iddiaları tutarlı:** Hyprland ailesi sürümleri (0.56.2 / 0.9.6 /
+  0.1.8 / 0.4.7 / 0.1.3) tek nixpkgs rev'inden geliyor; 2 Vulkan katmanı aktif
+  (3 değil); `@gamemode` `loginLimits`'ten kalkmış; paket tekrarları gerçekten
+  temizlenmiş; `HYPRLAND_CONFIG` sabitlenmiş.
+- **`install.sh`'in `home.nix` yaması çalışıyor.** Beş değişkenin regex'i gerçek
+  dosyada denendi: her biri tam 1 satır eşleşiyor, `monitorOutput` regex'i
+  `hyprlandMonitorLine`'i yanlışlıkla yakalamıyor, yamalanmış dosya
+  `nix flake check`'ten geçiyor.
+
+## ⚠️ Bilerek dokunulmadı
+
+- **`assets/kitty-.png` (168 KB) ve `assets/wall-.png` (2,88 MB)** — ikisi de
+  config'e bağlı değil (`kitty-.png` hiçbir yerde referans edilmiyor; duvar
+  kâğıdı `~/Downloads/*.mp4`'e bakıyor) ve birlikte zip'in ~%96'sını oluşturuyor.
+  Silmek kullanıcının tercihi; README'de "config'e bağlı değil" diye belirtildi.
+- **`low_latency_layer`'ın Reflex/SPOOF_NVIDIA davranışı** — yalnızca kaynak
+  okunarak doğrulandı, gerçek bir GPU'da çalıştırılmadı.
+- **`hooks/qemu`'daki Navi 2x kurtarma yolu** — `remove` + `rtcwake` + `rescan`
+  mantığı kaynaktan doğru, ama RX 6700 XT üzerinde ikinci VM açılışıyla
+  test edilmedi.
+- **`system.stateVersion = "26.05"`** — kurulumun yapıldığı nixpkgs ile
+  tutarlı görünüyor ama sürüm stratejisi (yeni sürüme geçiş prosedürü)
+  belgede yok.
+
 # [1.3.2] - 2026-10-06
 
 Bağımsız denetim turu. Bu tur bulguları **çalıştırılarak** doğrulandı: CI'ın iki
