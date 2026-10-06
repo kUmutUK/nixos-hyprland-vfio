@@ -1,6 +1,9 @@
 # Uygulanan Düzeltmeler
 
-Tarih: 2026-10-05 · Baz: commit `0137b38` (belgede geçen `602f217` bu repoda yok)
+Tarih: 2026-10-05 · Baz: commit `af7337f` (belgede geçen `0137b38` ve `602f217` bu repoda yok)
+
+> **DÜZELTME (2026-10-06):** başlıkta `0137b38` geçiyordu. Depo GitHub web
+> arayüzünden tek commit olarak yükleniyor; o anki gerçek HEAD `af7337f`.
 
 ## ÖNCEKİ RAPORDAKİ P0-1 GERÇEKTEN SAHTE POZİTİFTİ — DÜZELTİLDİ
 Raporda "`low_latency_layer` .so'su yüklenemiyor" denmişti. Bu **yanlıştır**
