@@ -1,19 +1,3 @@
-> # ⛔ SÜPERSEDED — GÜNCEL KOD İÇİN KULLANMA
->
-> Bu rapor `nixos-hyprland-vfio(1)(2)(3)(4).zip` birleşimi için yazıldı.
-> Aşağıdaki hüküm **artık doğru DEĞİLDİR.** Özellikle §0'ın
-> *"sistem şu an hâliyle derlenmiyor"* hükmü ve `installPhase` ile
-> `python3` maddeleri düzeltilmiştir:
->
-> - `low-latency_layer` özel `installPhase`'i kaldırıldı
-> - `python3` `environment.systemPackages`'a eklendi
->
-> Güncel düzeltme kaydı tek yerde: `CHANGELOG.md` → `[1.3.0]`.
-> Arşivdeki diğer raporlar ve bu klasörün amacı: `docs/archive/README.md`.
->
-> ⚠️ Aşağıdaki metin, neyi doğruladığınıza dair iyi niyetli bir kayıttır
-> ve tarihsel değerini korur — ama bir sonraki adımını buradan planlamayın.
-
 # `nixos-hyprland-vfio(1)(2)(3)(4).zip` — Kapsamlı Kod & Yapılandırma Analizi
 
 **Tarih:** 2026-10-05 · **Yöntem:** statik okuma + CI kapılarının yerelde yeniden koşumu + gerçek `nix flake check` + gerçek `nix build` (derleme) + upstream kaynak doğrulaması

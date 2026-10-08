@@ -40,7 +40,7 @@ Ama üç düzeyde sorun var:
 | 4 | `exec-once` "sıralama" yorumu yanlış → watchdog yarışla 3 sn geç başlıyor | **P1** | `home.nix:402-409` |
 | 5 | `hyprlandMonitorLine` hâlâ monitör adı içermiyor | **P2** | `home.nix:7`, `install.sh:151` |
 | 6 | flake.lock'ta **iki** home-manager rev'i (kök + impermanence) | **P2** | `flake.lock` |
-| 7 | ~~`win10.xml`: x86_64 firmware + i386 NVRAM şablonu~~ **ÇÜRÜTÜLDÜ — mevcut hali DOĞRU, `edk2-x86_64-vars.fd` diye bir dosya QEMU'da yok** | ~~P2~~ **YOK** | `win10.xml:18-19` |
+| 7 | `win10.xml`: x86_64 firmware + **i386** NVRAM şablonu | **P2** | `win10.xml:18-19` |
 | 8 | swtpm dizini sahiplik servisinin kapsamı dışında | **P2** | `configuration.nix:491` |
 | 9 | `virsh start` oturumu kendisi sonlandırıyor, hiçbir yerde uyarılmıyor | **P2** | `hooks/qemu:139` |
 | 10 | hyprlock `cmd[]` label'ları `awk`/`date` gibi PATH'e bağımlı araç çağırıyor | **P2** | `home.nix:446-471` |
@@ -272,61 +272,12 @@ impermanence.inputs.home-manager.follows = "home-manager";
 
 ---
 
-## 7. ~~P2~~ ÇÜRÜTÜLDÜ — `win10.xml`: x86_64 firmware + i386 NVRAM şablonu (**bulgu yanlıştı, mevcut hali doğru**)
+## 7. P2 — `win10.xml`: x86_64 firmware + i386 NVRAM şablonu
 
 ```xml
 <loader readonly="yes" type="pflash" format="raw">/run/libvirt/nix-ovmf/edk2-x86_64-code.fd</loader>
 <nvram template="/run/libvirt/nix-ovmf/edk2-i386-vars.fd" templateFormat="raw" format="raw">/var/lib/libvirt/qemu/nvram/win10_VARS.fd</nvram>
 ```
-
-> 🚫 **BU BULGU YANLIŞTI — 2026-10-08'de ÇÜRÜTÜLDÜ. Aşağıdaki düzeltmeyi
-> UYGULAMAYIN.** Orijinal metin aşağıda "❌ ESKİ (YANLIŞ) ANALİZ" olarak korunmuştur.
->
-> **Gerçek durum:** QEMU 8.2.0 → 10.0.0 arası **hiçbir sürümde
-> `edk2-x86_64-vars.fd` diye bir dosya YOKTUR**. Bu, upstream OVMF paketleme
-> gerçeğidir: x86_64 hedefi için **tek bir** değişken deposu şablonu vardır ve
-> adı `edk2-i386-vars.fd`'dir.
->
-> Doğrulama (QEMU `pc-bios/` dizini, GitHub API ile sürüm sürüm tarandı):
->
-> | Sürüm | `edk2-x86_64-vars.fd` | `edk2-i386-vars.fd` |
-> |---|---|---|
-> | v8.2.0 | ❌ yok | ✅ var |
-> | v9.0.0 | ❌ yok | ✅ var |
-> | v9.1.0 | ❌ yok | ✅ var |
-> | v9.2.0 | ❌ yok | ✅ var |
-> | v10.0.0 | ❌ yok | ✅ var |
->
-> Mevcut `pc-bios` edk2 dosyaları tam olarak şunlar:
-> `edk2-aarch64-code`, `edk2-arm-code`, `edk2-arm-vars`, `edk2-i386-code`,
-> `edk2-i386-secure-code`, `edk2-i386-vars`, `edk2-riscv-code`, `edk2-riscv-vars`,
-> `edk2-x86_64-code`, `edk2-x86_64-microvm`, `edk2-x86_64-secure-code`.
-> Dikkat: `x86_64-vars` **yok**, `x86_64-microvm` **var** — karıştırılması
-> kolay bir isim. `microvm` bu senaryo için de uygun DEĞİL (microVM için
-> özel minimal build'dir; normal PC boot zinciri sunmaz).
->
-> **Sonuç:** `win10.xml`'deki `edk2-i386-vars.fd` **DOĞRU ve ZORUNLU** seçimdir.
-> Önerilen "`edk2-i386-vars.fd` → `edk2-x86_64-vars.fd`" değişikliği
-> uygulansaydı `<nvram template=...>` var olmayan bir dosyayı gösterirdi;
-> `/run/libvirt/nix-ovmf/` altına `cp -sfv` ile kopyalanan dosyalar yalnızca
-> QEMU'nun firmware JSON'larında ADI GEÇENLER olduğundan, o dosya hiç
-> kopyalanmazdı → **VM ilk açılışta "pflash: not found" ile boot EDİLEMEZDI.**
-> Bu, var olan düşük riskli bir durumu, kalıcı ve kurulumu durduran bir hataya
-> çevirirdi.
->
-> Öte yandan "nixpkgs `libvirtd-config` firmware JSON'larındaki dosyaları
-> kopyalıyor" gözlemi **doğruydu** ve `/run/libvirt/nix-ovmf`'in popüle
-> edilme mekanizmasını doğru anlatıyordu — sadece hangi dosyanın doğru
-> olduğuna dair sonuca varılmış yanlıştı.
->
-> **Ders:** "i386/x86_64" adlandırması upstream'ta mimariyi değil, OVMF'nin
-> derlendiği **SDK/platform yönünü** ifade eder. Değişken deposu şablonu için
-> x86_64 hedefinde `i386-vars` ADI kullanılır. Dosya adı "yanlış görünüyor"
-> diye değiştirilmemelidir; doğrulanabilir tek doğruluk kaynağı upstream
-> paketleme listesidir.
-
-<details>
-<summary>❌ ESKİ (YANLIŞ) ANALİZ — düzeltilmedi olarak korundu</summary>
 
 Kod **64-bit** OVMF, değişken deposu şablonu ise **IA32** OVMF build'i. `win10.xml`
 `arch="x86_64"`, yani eşleşmiyor. OVMF'te x86_64 misafir için doğru eşleme
@@ -348,8 +299,6 @@ arkitektürden bağımsız), ama yanlış eşleşmenin klasik belirtileri misafi
 olarak görünme", değişken kaybı / Secure Boot anahtarı uyuşmazlığı. Secure Boot burada
 kapalı, dolayısıyla risk düşük — ama düzeltmesi tek kelime:
 `edk2-i386-vars.fd` → `edk2-x86_64-vars.fd`.
-
-</details>
 
 ---
 
