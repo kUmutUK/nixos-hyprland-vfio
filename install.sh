@@ -157,7 +157,7 @@ else
 fi
 
 echo ""
-monitor_output="DP-3"
+monitor_output="DP-1"
 if command -v hyprctl &>/dev/null 2>&1 && hyprctl activeworkspace &>/dev/null 2>&1; then
   monitor_output=$(hyprctl monitors | grep -oPm1 '^Monitor \K\S+')
   log "Active Hyprland monitor: $monitor_output"
@@ -538,6 +538,17 @@ echo -e "   ${CYAN}sudo mkdir -p /var/lib/libvirt/images${NC}"
 echo -e "   ${CYAN}sudo qemu-img create -f qcow2 /var/lib/libvirt/images/win10new.qcow2 120G${NC}"
 echo -e "   ${YELLOW}ISO dosyalarını /var/lib/libvirt/images/ altına kopyalayın${NC}"
 echo -e "   ${CYAN}sudo virsh define /var/lib/libvirt/win10.xml${NC}"
+# E1: <nvram template=...> yalnızca NVRAM ilk oluşturulurken okunur. Daha önce
+# tanımlanmış bir 'win10' varsa ve /var/lib/libvirt/qemu/nvram/win10_VARS.fd
+# eski (hatalı) şablondan üretilmişse, XML'i düzeltmek onu yenilemez —
+# kullanıcı reboot eder, hiçbir şey değişmemiş görür ve düzeltmeyi geri alır.
+# --nvram OLMADAN undefine NVRAM dosyasını korur ve tuzağı çözmez.
+if virsh dominfo win10 >/dev/null 2>&1; then
+  echo -e "   ${YELLOW}⚠ win10 daha önce tanımlanmış. Eğer NVRAM eski şablondan${NC}"
+  echo -e "   ${YELLOW}  üretildiyse XML düzeltmesi işe yaramaz — NVRAM'ı sıfırla:${NC}"
+  echo -e "   ${CYAN}  sudo virsh undefine win10 --nvram${NC}   ${YELLOW}(--nvram şart!)${NC}"
+  echo -e "   ${YELLOW}  sonra yukarıdaki 'virsh define' satırını tekrar çalıştır.${NC}"
+fi
 echo -e "   ${CYAN}virsh list --all${NC}   ${YELLOW}→ 'win10' shut off olarak görünmeli${NC}"
 echo -e "   ${CYAN}(XML yukarıdaki adımda zaten /var/lib/libvirt/win10.xml'e yazıldı;${NC}"
 echo -e "    ${CYAN}3+ hostdev varsa UYARI'ya dikkat et — fazlasını elle düzenle.)${NC}"
