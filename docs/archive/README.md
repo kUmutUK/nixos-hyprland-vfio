@@ -3,6 +3,35 @@
 Bu klasördeki belgeler **eski sürümlere karşı** yazılmıştır ve artık
 koda bakarak doğrulanmamalıdır.
 
+> **Klasördeki dört raporun tamamı arşivdir.** Aşağıda hepsi listelenmiştir.
+> Bu klasöre yeni bir rapor eklerken: dosya adını `-SUPERSEDED.md` ile bitir,
+> buraya bir satır ekle, ve dosyanın EN ÜSTÜNE aşağıdaki gibi bir afiş koy.
+> Böylece bir kullanıcı doğrudan dosyayı açsa bile geçerliliğini görür —
+> aksi hâlde dosyanın kendi başlığı "kapsamlı analiz / sistem derlenmiyor"
+> gibi güncel bir hüküm veriyor ve yanlış yönlendiriyor.
+
+## `NIXOS-HYPRLAND-VFIO-ANALIZ.md`
+
+`nixos-hyprland-vfio(1)(2)(3)(4).zip` birleşimi için yazıldı.
+
+⚠️ Bu dosya **arşivlenmiş hâliyle bile güncel kod hakkında yanlış hüküm
+veriyor**; iki iddiası artık geçersiz:
+
+| Rapordaki iddia | Bugünkü durum |
+|---|---|
+| "`low-latency-layer` türetmesindeki gereksiz `installPhase` bloğu ilk `nixos-rebuild`'i kesin olarak düşürüyor" | **Düzeltildi.** `configuration.nix` içindeki özel `installPhase` kaldırıldı (bkz. `nixos/configuration.nix`, `low-latency-layer` bloğu). |
+| "`install.sh`'ın python3'e bağlı XML senkronu, sistemde python3 olmadığı için her zaman 'python3 yok' uyarısına düşüyor" | **Düzeltildi.** `python3` `environment.systemPackages`'a eklendi. |
+
+Rapordaki diğer maddeler için güncel kayıt: `CHANGELOG.md` → `[1.3.0]`.
+
+## `DEGISIKLIKLER.md`
+
+`ANALIZ-2026-10-05-ZIP3-SUPERSEDED.md` raporundan çıkan düzeltmelerin
+uygulanmış hâli. **Uygulanan iş, gerekçesi ve vazgeçilen/yanlış bulunan
+maddeler** içerir — bir düzeltmenin NEDEN yapılmadığını görmek için
+değerli. Ancak karşılaştırma tablosu eski satır numaralarına göre yazıldı;
+kodla doğrulamak için kullanma, güncel kayıt `CHANGELOG.md`'dir.
+
 ## `ANALIZ-2026-10-05-ZIP3-SUPERSEDED.md`
 
 `nixos-hyprland-vfio(3).zip` @ commit `97a1665` için yazıldı.
