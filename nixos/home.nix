@@ -1001,6 +1001,32 @@ in
 # dört `local`'da da atamanın return değeri zaten kullanılmıyor, `||`/set -e
 # yolu yok. 2026-10-05'te CI'a gömülü script taraması eklenince bu kapıya girdi.
 
+# ─── Ön koşul: ImageMagick ────────────────────────────────────
+# DÜZELTME (2026-10-08): görüntü ön işleme `mogrify` ile yapılıyordu.
+# nixpkgs'teki `imagemagick` paketi ImageMagick 7'dir ve `mainProgram = "magick"`;
+# postInstall'da legacy isimlere (`convert`, `mogrify`, `identify`) symlink
+# ÜRETİLMEZ. Yani PATH'te `mogrify` YOKTUR.
+#
+# Sonuç: her döngüde iki `mogrify` çağrısı "command not found" ile başarısız
+# oluyor, `2>/dev/null` bunu sessizce yutuyor, tesseract İŞLENMEMİŞ koyu
+# zeminli ham ekran görüntüsünü okuyor ve neredeyse her zaman boş/çöp metin
+# dönüyor. Kullanıcı tuşa basar, betik çalışır, bildirim hiç görünmez, HİÇBİR
+# hata çıkmaz. Dahası: tesseract 3–30 sn'de bir, sonsuza dek boşuna koşar —
+# 2026-10-05'te eklenen idle geri çekilmesinin engellemeye çalıştığı tam olarak
+# bu yük.
+#
+# Düzeltme: IM7'de legacy komut `magick mogrify` alt komutuyla çağrılır.
+# Store yolu doğrudan yazılıyor (config'in geri kalanıyla aynı desen:
+# ${pkgs.hyprlock}/bin/hyprlock). Ek olarak, araç yoksa döngüye hiç girmeyip
+# GÖRÜNÜR bir hata veriyor — bir daha sessiz ölüm yok.
+MAGICK="${pkgs.imagemagick}/bin/magick"
+if [ ! -x "$MAGICK" ]; then
+    echo "HATA: ImageMagick bulunamadı: $MAGICK" >&2
+    notify-send -t 15000 -u critical "WuWa AI" \
+        "ImageMagick bulunamadı: $MAGICK\nGörüntü ön işleme yapılamaz, çeviri üretilmez." 2>/dev/null || true
+    exit 1
+fi
+
 # ─── Bölge tanımları ─────────────────────────────────────────────
 # DÜZELTME (2026-10-06): bu koordinatlar 2560x1440'e SABİTLENMİŞTİ ve
 # başka bir çözünürlükte ekranın dışına taşabiliyordu. Taştığında grim ya
@@ -1140,7 +1166,7 @@ while true; do
     CHANGED=0
     # 1. Ana altyazı
     grim -g "$GEOMETRY_MAIN" "$IMAGE_MAIN" 2>/dev/null
-    mogrify -resize 200% \
+    "$MAGICK" mogrify -resize 200% \
             -modulate 100,0 \
             -colorspace Gray \
             -lat 20x20+5% \
@@ -1172,7 +1198,7 @@ while true; do
 
     # 2. Seçenek/cevap alanı
     grim -g "$GEOMETRY_CHOICE" "$IMAGE_CHOICE" 2>/dev/null
-    mogrify -resize 200% \
+    "$MAGICK" mogrify -resize 200% \
             -modulate 100,0 \
             -colorspace Gray \
             -lat 20x20+5% \
