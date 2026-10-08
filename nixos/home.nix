@@ -3,36 +3,12 @@
 let
   gitName            = "changeme";
   gitEmail           = "you@example.com";
-  # ⚠️ DÜZELTME (2026-10-08) — ÇELİŞKİ GIDERILDI.
-  #
-  # Sorun: `monitorOutput` "DP-3" iken `hyprlandMonitorLine` "DP-1" idi.
-  # İki değişken AYRI çıkış adlarına bakıyordu. install.sh ikisini de
-  # doldurduğu için orada sorun görünmüyordu; ama elle klonlayan biri
-  # mpvpaper'ı DP-3'e (olmayan çıkış → "output not found") ve Hyprland
-  # kuralını DP-1'e (olmayan çıkış → kural yok sayılır) yönlendiriyordu.
-  # Yani sistem tutarlı görünüp İKİ tarafta da sessizce bozuk çalışıyordu.
-  #
-  # Çözüm: `monitorOutput` tek doğruluk kaynağı; `hyprlandMonitorLine`
-  # ondan TÜRETİLİR. Artık ikisi ayrışamaz.
-  #
-  # install.sh ile kurulumda: apply_var artık `hyprlandMonitorLine` satırını
-  # KOŞULLU yazar — kullanıcı gerçekten farklı bir satır girmediyse (yani
-  # varsayılanla aynıysa) hiç dokunmaz, türetme kurulurda korunur. Kullanıcı
-  # çözünürlük/refresh yazmak isterse (örn. "monitor = DP-1,2560x1440@170,auto,1")
-  # türetme bilinçli olarak geçersiz kılınır ve o satır yazılır.
-  # ⚠️ Bu koşullu davranış 2026-10-08'de eklendi; önceki yorum "apply_var her
-  #    ikisini de yazar, türetmeyi ezer" diyordu ve artık GEÇERSİZDİR.
-  #
-  # Değeri kendi sisteminize göre değiştirin: `hyprctl monitors`
-  # çıktısındaki gerçek çıkış adı (örn. "DP-1", "HDMI-A-1").
-  # Boş AD bırakmayın: boş ad "tüm çıkışlara uygula" demektir ve
-  # çok monitörde kurulumu bozar.
-  monitorOutput      = "DP-1";
+  monitorOutput      = "DP-3";
   # P2-1 (2026-10-05): boş monitör adı pratikte "tüm monitörleri workspace 1'e
   # aynala" demekti (13. alan preferred, 14. mirror, 15. workspace). Tek
   # monitörde zararsız, çok monitörde kurulumu bozuyordu. install.sh artık
-  # gerçek çıktıyı yazıyor (apply_var "hyprlandMonitorLine").
-  hyprlandMonitorLine = "monitor = ${monitorOutput},preferred,auto,1";
+  # gerçek çıktıyı yazıyor; buradaki değer yalnızca manuel klonlayanları korur.
+  hyprlandMonitorLine = "monitor = ,preferred,auto,1";
   wallpaperVideo     = "${config.home.homeDirectory}/Downloads/arthur-leywin-the-beginning-after-the-end.3840x2160.mp4";
 
   gamemodeNotifyScript = pkgs.writeShellScriptBin "gamemode-notify" ''
@@ -1015,32 +991,6 @@ in
 # dört `local`'da da atamanın return değeri zaten kullanılmıyor, `||`/set -e
 # yolu yok. 2026-10-05'te CI'a gömülü script taraması eklenince bu kapıya girdi.
 
-# ─── Ön koşul: ImageMagick ────────────────────────────────────
-# DÜZELTME (2026-10-08): görüntü ön işleme `mogrify` ile yapılıyordu.
-# nixpkgs'teki `imagemagick` paketi ImageMagick 7'dir ve `mainProgram = "magick"`;
-# postInstall'da legacy isimlere (`convert`, `mogrify`, `identify`) symlink
-# ÜRETİLMEZ. Yani PATH'te `mogrify` YOKTUR.
-#
-# Sonuç: her döngüde iki `mogrify` çağrısı "command not found" ile başarısız
-# oluyor, `2>/dev/null` bunu sessizce yutuyor, tesseract İŞLENMEMİŞ koyu
-# zeminli ham ekran görüntüsünü okuyor ve neredeyse her zaman boş/çöp metin
-# dönüyor. Kullanıcı tuşa basar, betik çalışır, bildirim hiç görünmez, HİÇBİR
-# hata çıkmaz. Dahası: tesseract 3–30 sn'de bir, sonsuza dek boşuna koşar —
-# 2026-10-05'te eklenen idle geri çekilmesinin engellemeye çalıştığı tam olarak
-# bu yük.
-#
-# Düzeltme: IM7'de legacy komut `magick mogrify` alt komutuyla çağrılır.
-# Store yolu doğrudan yazılıyor (config'in geri kalanıyla aynı desen:
-# ${pkgs.hyprlock}/bin/hyprlock). Ek olarak, araç yoksa döngüye hiç girmeyip
-# GÖRÜNÜR bir hata veriyor — bir daha sessiz ölüm yok.
-MAGICK="${pkgs.imagemagick}/bin/magick"
-if [ ! -x "$MAGICK" ]; then
-    echo "HATA: ImageMagick bulunamadı: $MAGICK" >&2
-    notify-send -t 15000 -u critical "WuWa AI" \
-        "ImageMagick bulunamadı: $MAGICK\nGörüntü ön işleme yapılamaz, çeviri üretilmez." 2>/dev/null || true
-    exit 1
-fi
-
 # ─── Bölge tanımları ─────────────────────────────────────────────
 # DÜZELTME (2026-10-06): bu koordinatlar 2560x1440'e SABİTLENMİŞTİ ve
 # başka bir çözünürlükte ekranın dışına taşabiliyordu. Taştığında grim ya
@@ -1180,7 +1130,7 @@ while true; do
     CHANGED=0
     # 1. Ana altyazı
     grim -g "$GEOMETRY_MAIN" "$IMAGE_MAIN" 2>/dev/null
-    "$MAGICK" mogrify -resize 200% \
+    mogrify -resize 200% \
             -modulate 100,0 \
             -colorspace Gray \
             -lat 20x20+5% \
@@ -1212,7 +1162,7 @@ while true; do
 
     # 2. Seçenek/cevap alanı
     grim -g "$GEOMETRY_CHOICE" "$IMAGE_CHOICE" 2>/dev/null
-    "$MAGICK" mogrify -resize 200% \
+    mogrify -resize 200% \
             -modulate 100,0 \
             -colorspace Gray \
             -lat 20x20+5% \
@@ -1401,48 +1351,19 @@ done
   # yani dosya kalıcı depoya düşer. Sonraki boot'larda symlink zaten doğru
   # olduğu için servis "ignoring" deyip çıkıyor.
   #
-  # ⚠️ PRATİK SONUÇ: bu yol impermanence'in yönetimine girerse `home.nix`
+  # ⚠️ PRATİK SONUÇ: bu yol artık impermanence'in yönetimindedir. `home.nix`
   # içindeki conf.toml'u değiştirdiğinizde değişiklik her rebuild'da
-  # uygulanmayabilir. Yeni değerleri almak için kalıcı kopyayı silmek
-  # gerekirdi:
+  # uygulanmayabilir. Yeni değerleri almak için kalıcı kopyayı silin:
   #     rm -f /nix/persist/home/.config/lsfg-vk/conf.toml
+  # (Sonraki activasyonda yeni değer geri yazılır.)
   #
   # NOT: /nix/persist'in kendisi bu tanımla yönetilmez (impermanence'in "nix"
   # manager'ı bu modül NixOS tarafında, home.persistence tanımı ona dokunmaz).
-  # Aynı sınıf gölgeleme tuzağı — config'in `/etc/vulkan/implicit_layer.d`
-  # için kendi not düştüğü hâl — bu dosyada da UYGULANMIYOR.
-  #
-  # ══════════════════════════════════════════════════════════════════════
-  # ⚠️ DÜZELTME (2026-10-08) — AŞAĞIDAKİ BLOK KAPALI, BİLEREK.
-  #
-  # Bu bölüm, yukarıdaki "MEKANİZMA" anlatımı KAPALI BLOĞU tarif ediyordu.
-  # Okuyan biri (veya bir refactor) "burada mekanizma anlatılıyor, demek ki
-  # aktif" diye okuyup `lsfg-vk/conf.toml`'un kalıcılaştırıldığını varsayıyordu.
-  # Oysa aşağıdaki üç satır TAMAMEN yorumda: `home.persistence` ETKİN DEĞİL.
-  #
-  # Önceki turda P1 olarak raporlandı. İnceleme sonucu: kod hatalı DEĞİL,
-  # blok kasıtlı olarak kapalı. Kapatma sebepleri (CHANGELOG [1.0.0], 1136):
-  #   1) `home.persistence` bir noktada build'i kırıyordu: option impermanence'in
-  #      Home Manager modülünde tanımlı, o modül HM'e bağlı değildi →
-  #      "option `home.persistence` does not exist".
-  #   2) Önerilen çözüm (`home-manager.sharedModules = [ ... ]`) DEPREKATED;
-  #      o çıktı artık yalnızca `assertion = false` içeriyor, eklenirse build kırılır.
-  #   3) Doğru yol zaten mevcut: `impermanence.nixosModules.impermanence`
-  #      (flake.nix'te import EDİLİ) modülü kendi HM modülünü
-  #      `home-manager.sharedModules`'e koşullu olarak enjekte ediyor
-  #      (bkz. impermanence/nixos.nix). Yani option şu an GEÇERLİ.
-  #
-  # Yine de kalıcılaştırılmıyor, çünkü kalıcılaştırılan şey bir cache değil
-  # bir YAPILANDIRMA dosyası: impermanence mount noktasına symlink kurup
-  # Home Manager'ı o symlink üzerinden yazmaya zorlar, sonuçta `home.nix`'teki
-  # değişiklik her rebuild'de uygulanmayabilir. Yapılandırma sürüm
-  # kontrolünde kalmalı; yalnızca cache kalıcı olmalıydı.
-  #
-  # SONUÇ (mevcut ve DOĞRU davranış): `xdg.configFile` aşağıda tanımlı
-  # olduğu için conf.toml her rebuild'de yeniden yazılır, yani
-  # `multiplier`/`flow_scale` ayarları kalıcı değildir — bu, bu config'in
-  # kasıtlı seçimidir. Kalıcılık istenirse aşağıdaki bloğun `#` işaretlerini
-  # kaldırın VE yukarıdaki "PRATİK SONUÇ" uyarısına uygun davranın.
+  # ⚠️ Aynı sınıf gölgeleme tuzağı — config'in `/etc/vulkan/implicit_layer.d`
+  # için kendi not düştüğü hâl — bu dosyada kasten UYGULANMAMIŞTIR: burada
+  # gölgelenmesi istenen şeyin bir cache değil, bir yapılandırma olduğu
+  # varsayılmıştı. Gerçekte cache'i korumak istiyorsanız bu listeyi
+  # ".cache/lsfg-vk" ile değiştirin.
   #home.persistence."/nix/persist/home" = {
     #files = [ ".config/lsfg-vk/conf.toml" ];
   #};
@@ -1666,23 +1587,6 @@ done
         on-resume = "${pkgs.hyprland}/bin/hyprctl dispatch dpms on";
       }
       {
-        # ⚠️ DÜZELTME (2026-10-08): bu adım "ekranı kıs" DEĞİL, parlaklığı
-        # MUTLAK %70'e sabitliyor (`brightnessctl -s set 70%`). Yönü tamamen
-        # başlangıç değerine bağlı: kullanıcı %40'ta çalışıyorsa PARLATIR,
-        # %100'de çalışıyorsa kısar. "İdeal %70" gibi bir varsayım yok.
-        #
-        # Ayrıca: harici monitörlü bir masaüstünde /sys/class/backlight/ genelde
-        # BOŞTUR; brightnessctl o durumda "No device found" deyip hiçbir şey
-        # yapmaz, yani bu satır hedef donanımda büyük olasılıkla sessiz bir
-        # no-op'tur. İç paneli (backlight) olan dizüstülerde ise gerçekten
-        # parlaklığı değiştirir.
-        #
-        # Zamanlama bağlamı: 150 sn'de bu, 300 sn'de `dpms off`. Yani 150–300 sn
-        # aralığında ekran AÇIK kalıyor. Niyet gerçekten "karart" ise doğrusu
-        # göreli azaltma (`brightnessctl --set 10%-`) ya da bu listener'ın
-        # kaldırılıp yalnızca 300 sn'lik dpms off'un bırakılması.
-        # Kaldırmadım: tasarımın sahibinin tercihi, davranışı değiştirmek
-        # kullanıcının kararı — burada yalnızca BELGELENMEMİŞ kısmı yazıldı.
         timeout = 150;
         on-timeout = "${pkgs.brightnessctl}/bin/brightnessctl -s set 70%";
         on-resume = "${pkgs.brightnessctl}/bin/brightnessctl -r";
