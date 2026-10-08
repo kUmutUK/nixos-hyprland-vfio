@@ -338,9 +338,11 @@ virsh list --all     # 'win10' → "shut off" olarak görünmeli
 > kurtarma adımını burada görürsün.
 >
 > **Çok kullanıcılı sistemlerde `HOST_USER`:** hook, oturumu kapatmak için
-> `loginctl terminate-user "${HOST_USER:-localhost}"` çalıştırır (bkz.
-> `nixos/hooks/qemu`). Varsayılan `localhost`, bu config'in kullanıcı adıdır
-> ve tek kullanıcılı kurulumlar için doğrudur.
+> `loginctl terminate-user "$HOST_USER"` çalıştırır (bkz. `nixos/hooks/qemu`).
+> Değer artık sabit yazılmaz: `configuration.nix` → `vfioHook` gövdesinde
+> `export HOST_USER="${config.users.users.localhost.name}"` ile config'den
+> okunur. Bu config'in kullanıcı adı `localhost`, dolayısıyla tek kullanıcılı
+> kurulumlar için doğrudur ve ayrıca hiçbir şey yapmanız gerekmez.
 >
 > ⚠️ **DÜZELTME (2026-10-06):** burada önce
 > `HOST_USER=kullanici sudo virsh start win10` yazıyordu. Bu **çalışmaz**:
@@ -349,10 +351,26 @@ virsh list --all     # 'win10' → "shut off" olarak görünmeli
 > ile ortamı zaten temizler. `HOST_USER` config'in hiçbir yerinde tanımlı
 > değildir, dolayısıyla hook her zaman `localhost`'u kullanır.
 >
-> Gerçekten farklı bir kullanıcıyı hedeflemek istiyorsanız tek yol
-> NixOS modülünde hook'a ortam vermektir — `configuration.nix` içinde
-> `virtualisation.libvirtd.hooks.qemu.vfio` tanımına bir `environment`
-> seçeneği ekleyin (bkz. `nixos/configuration.nix` → `vfioHook`).
+> Gerçekten farklı bir kullanıcıyı hedeflemek istiyorsanız yol `configuration.nix`
+> → `vfioHook` gövdesindeki `export HOST_USER=...` satırıdır; orada
+> `config.users.users.localhost.name` okunuyor.
+>
+> ⚠️ **DÜZELTME (2026-10-08):** burada önce
+> *"tek yol `virtualisation.libvirtd.hooks.qemu.vfio` tanımına bir
+> `environment` seçeneği eklemek"* yazıyordu. **O seçenek mevcut değil:**
+> nixpkgs'te `virtualisation.libvirtd.hooks` bir submodule olsa da içindeki
+> `qemu` seçeneğinin tipi `attrsOf path`'tir — `hooks.qemu.vfio` yalnızca bir
+> store yoludur, alt-option'ı olamaz. Bu reçeteyi uygulamaya çalışan kullanıcı
+> *"The option ... does not exist"* hatası alır ve çözümsüz kaldığını sanır.
+> Gerçek çözüm `vfioHook` gövdesine yazılan `export` satırıdır ve zaten
+> uygulanmıştır.
+>
+> Not: hook artık `users.users.localhost` **öznitelik yolunu** okuyor.
+> Hesabı Nix'te anahtar değiştirerek (`users.users.localhost` →
+> `users.users.ahmet`) yeniden adlandırırsanız `vfioHook` ifadesi **derleme
+> sırasında hata verir** — bu, eski sessiz davranıştan iyidir. Farklı bir
+> giriş adı istiyorsanız özniteliği değil `users.users.localhost.name`
+> *değerini* değiştirin.
 
 ---
 
