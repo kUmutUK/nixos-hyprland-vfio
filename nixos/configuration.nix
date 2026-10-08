@@ -83,31 +83,6 @@ let
   # bulamaz ve stop_hyprland() bekleme döngüsü anında çöker. Artık store
   # yolları aşağıda HOOK_* değişkenleri olarak enjekte ediliyor; hook bu
   # değişkenleri kullanıyor, tanımlı değillerse /run/current-system/sw/bin'e düşüyor.
-  # ⚠️ AŞAĞIDAKİ HOOK GÖVDESİNDE KAÇIŞ KURALI — ÖNCE BUNU OKU
-  #
-  # Hook, bir Nix indented string (`'' … ''`) içinde tanımlanıyor. Böyle bir
-  # gövde içinde Nix sözdizimi devreye girer:
-  #
-  #     ${ifade}   →  Nix interpolasyonu. Nix ifadeyi HESAPLAR, sonucu yazar.
-  #     ''${ifade}  →  kaçış. Nix diziyi olduğu gibi (literal) aktarır,
-  #                    yani kabuk kendisi genişletsin diye kullanılır.
-  #
-  # Gövdede `hooks/qemu`'nun `loginctl terminate-user "${HOST_USER:-localhost}"`
-  # satırını alıntılarken İKİNCİ biçim kullanıldı, çünkü `:-` bir Nix
-  # operatörü değildir: interpolasyon olarak yazılsaydı derleme başlamadan
-  # EVAL aşamasında parse hatası verirdi.
-  #
-  # ⚠️ SAKIN O İKİ TEK TIRNAĞI "TEMİZLEME" — kaçışı bozmak Nix'i kırar.
-  # ⚠️ Ve şunu bil: Nix'te "yorum satırı" kavramı, string DIŞINDAKİ `#`
-  #    için geçerlidir. Indented string'in içindeki `#` yalnızca kabuk için
-  #    yorumdur; Nix'e göre düz string içeriğidir ve aynı kaçış kurallarına
-  #    tabidir. Bu yüzden kaçışı açıklayan bir yorum bile aynı tuzağa
-  #    düşebilir — açıklamayı yazarken de kaçış uygulamak gerekir. Bu notun
-  #    `'' … ''` DIŞINDA olması bilerek seçildi: burada interpolasyon açan
-  #    dizileri örnek olarak yazmak güvenlidir, Nix onları parse etmez.
-  #
-  # Denetim: gövdede kaçışlı dizi sayısı 0 DEĞİL olmalıdır; gerçek
-  # interpolasyonların hepsi geçerli bir Nix ifadesi olmalıdır.
   vfioHook = pkgs.writeShellScript "libvirt-vfio-hook" ''
     # DÜZELTME: burada yalnızca coreutils + systemd enjekte ediliyordu.
     # libvirtd'in PATH'i qemu+netcat+swtpm (nixpkgs virtualisation/libvirtd.nix)
@@ -121,24 +96,6 @@ let
     export HOOK_SETPCI="${lib.getExe' pkgs.pciutils "setpci"}"
     export HOOK_FUSER="${lib.getExe' pkgs.psmisc "fuser"}"
     export HOOK_RTCWAKE="${lib.getExe' pkgs.util-linux "rtcwake"}"
-    # DÜZELTME (2026-10-08): hooks/qemu `loginctl terminate-user` çağırıyor
-    # ama HOST_USER'ı KİMSE export etmiyordu. Varsayılan kullanıcı adı
-    # `localhost` olduğu için görünmüyordu; hesap adı farklıysa oturumlar
-    # kapanmıyor, GPU kilitli kalıyor, stop_hyprland() zaman aşımına düşüyor,
-    # rollback oluyor ve VM açılmıyor. (Hemen alttaki
-    # `loginctl terminate-seat seat0` çoğu senaryoda işi gördüğü için etki
-    # dar; yine de varsayılan isme güvenmek yerine config'den okumak doğru.)
-    #
-    # [1.3.3]'te önerilen yol (`hooks.qemu.vfio.environment`) YOKTUR:
-    # `virtualisation.libvirtd.hooks` submodule olsa da içindeki `qemu`
-    # seçeneği `attrsOf path` tipinde — `hooks.qemu.vfio` yalnızca bir store
-    # yoludur, alt-option'ı olamaz. Hook libvirtd tarafından TEK DOSYA
-    # olarak çalıştığı için bu export, aşağıdaki `readFile ./hooks/qemu`
-    # bloğunun tamamı boyunca geçerli olur.
-    #
-    # Kaçış sözdizimi ve "neden burada" gerekçesi için yukarıdaki
-    # "AŞAĞIDAKİ HOOK GÖVDESİNDE KAÇIŞ KURALI" notuna bakın.
-    export HOST_USER="${config.users.users.localhost.name}"
     ${builtins.readFile ./hooks/qemu}
   '';
 
