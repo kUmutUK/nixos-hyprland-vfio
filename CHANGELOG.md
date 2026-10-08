@@ -131,6 +131,21 @@ Daha önce öne sürülen, tur sonunda **doğrulanamayan** iki madde:
   Hook libvirtd tarafından **tek dosya** olarak çalıştığı için bu export
   `hooks/qemu`'nun geri kalanı boyunca geçerli.
 
+- 📌 **Davranış değişikliği (bilerek kabul edildi):** hook artık sabit bir isim
+  okumuyor, `users.users.localhost.name` **öznitelik yolunu** okuyor. Yani
+  `HOST_USER`'ın hâlâ `localhost` olması bir tesadüf — config'in kullanıcı adını
+  okuyor. İki sonuç:
+  1. Hesabı Nix'te **öznitelik anahtarını** değiştirerek yeniden adlandırırsanız
+     (`users.users.localhost` → `users.users.ahmet`) ifade **derleme sırasında
+     hata verir**: `attribute 'localhost' missing`. Eski sessiz davranıştan
+     **iyidir** — kullanıcı hatayı kurulum sırasında görür.
+  2. Farklı bir giriş adı isteyenler anahtarı değil `name` *değerini*
+     değiştirmelidir: `users.users.localhost.name = "ahmet";`
+
+  Bu yüzden `README.md` "Bilinen sınırlar" listesindeki **`HOST_USER` sabit**
+  maddesi **kaldırıldı**: artık yanlış değil, gereksiz — hook kendini açıklıyor,
+  durum `KURULUM.md` §9b'de ayrıntılı.
+
 - ⚠️ **Bu, `[1.3.3]`'te önerilen yol DEĞİLDİR** — oradaki öneri
   (`hooks.qemu.vfio.environment`) nixpkgs'te **var olmayan** bir option'dı:
   `virtualisation.libvirtd.hooks` submodule olsa da içindeki `qemu`

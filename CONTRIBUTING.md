@@ -64,11 +64,21 @@ shellcheck -S warning install.sh nixos/hooks/qemu
 > `home.nix` içine gömülü script'ler doğrudan taranamaz. Onları çıkarmak için:
 >
 > ```bash
-> python3 scripts/extract-embedded-scripts.py /tmp/emb | xargs -0 -n1 -- shellcheck -S warning
+> mapfile -d '' -t EMB < <(python3 scripts/extract-embedded-scripts.py /tmp/emb)
+> [ "${#EMB[@]}" -gt 0 ] || { echo "HATA: gömülü betik bulunamadı"; exit 1; }
+> printf '%s\0' "${EMB[@]}" | xargs -0 -r -n1 -- shellcheck -S warning
 > ```
 >
-> CI bunu otomatik yapıyor. Manuel değişiklikten sonra çalıştırmazsan
-> CI yakalar — ama iki tur beklemek istemiyorsan elle de koş.
+> ⚠️ `-r` **şart**. `xargs` boş girdide komutu sıfır argümanla bir kez
+> çalıştırır; shellcheck dosya adı almayınca stdin'i okuyup temiz çıkar —
+> yani extractor 0 betik bulduğunda **hiçbir şey taranmadan yeşil** dönersin.
+> Ek olarak boş çıktıyı yukarıdaki `|| exit 1` ile reddediyoruz; asıl
+> koruma zaten CI'da, ama bu komutu elle koşarken de aynı tuzağa düşmemek
+> için gerekli.
+>
+> CI aynı kontrolü `shell: bash` + `set -euo pipefail` ile yapıyor ve
+> kaç betiğin tarandığını yazdırıyor. Manuel değişiklikten sonra koşarsan
+> iki tur beklemezsin.
 
 ---
 
