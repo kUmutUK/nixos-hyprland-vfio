@@ -180,7 +180,7 @@ kopyalanır. `install.sh`'ı çalıştırmadığınız için `home.nix` içindek
 
 | # | Değer | Varsayılan | Sonucu |
 |---|-------|-----------|--------|
-| 1 | `hyprlandMonitorLine` | `"monitor = ,preferred,auto,1"` | Monitör adı boş → **tüm çıkışlar** workspace 1'e yansılanır. Tek monitörde zararsız, **çok monitörlü kurulumda bozuk** (ikinci monitör çalışmaz, pencere yönlendirme şaşar). Masaüstü yine açılır. |
+| 1 | `hyprlandMonitorLine` | `"monitor = DP-1,preferred,auto,1"` | **Örnek addır**; sizin çıktınız `DP-1` değilse bu kural yok sayılır. ⚠️ 2026-10-08'den önce buradaki varsayılan **boş** monitör adıydı (`"monitor = ,preferred,auto,1"`) ve bu, tüm çıkışların workspace 1'e yansılanmasına yol açıyordu — tek monitörde zararsız, çok monitörlü kurulumda bozuk. Artık gerçek bir örnek duruyor; yine de `hyprctl monitors`'tan öğrenip kendi çıktınızı yazın. |
 | 2 | `monitorOutput` | `"DP-3"` | Yanlış çıktıysa `mpvpaper` duvar kağıdı çalışmaz (oturum açılışında kritik uyarı çıkar) |
 | 3 | `gitName` | `"changeme"` | Commit'ler sahte isimle etiketlenir |
 | 4 | `gitEmail` | `"you@example.com"` | Commit'ler sahte adresle etiketlenir |
