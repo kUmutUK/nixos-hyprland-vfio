@@ -21,26 +21,6 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     cachyos-kernel.url = "github:xddxdd/nix-cachyos-kernel";
-    # DÜZELTME (2026-10-08): bu girdi kök nixpkgs'i takip ETMİYORDU.
-    # `home-manager`, `lsfg-vk-flake` ve `impermanence` için
-    # `.inputs.nixpkgs.follows` tanımlıydı; yalnızca `cachyos-kernel`
-    # dışarıda kalmıştı. Bunun `flake.lock`'taki sonucu İKİ nixpkgs
-    # node'unun bir arada yaşamasıydı:
-    #
-    #   root.inputs.nixpkgs            -> nixpkgs_2 = 151fa4e8ddfd
-    #   cachyos-kernel.inputs.nixpkgs  -> nixpkgs    = c51d592ab064
-    #
-    # Yani yukarıdaki "tek nixpkgs rev'i her zaman ABI tutarlılığı
-    # garantisi verir" notunun (aşağıda) karşılığı bu lock'ta
-    # sağlanmıyordu.
-    #
-    # Etki İŞLEVSEL DEĞİL — sistem bu lock'ta çalışıyor, kernel
-    # derleniyor, çakışma bir option'ı kırmıyor. Bozuk olan, yorumun
-    # kendisinin bu lock için doğru olmaması. Yine de tek satırlık ve
-    # düşük riskli bir düzeltme: `nix flake lock` sonrasında `nixpkgs_2`
-    # node'u tamamen kaybolur ve overlay de dahil her şey tek rev'e
-    # bağlanır.
-    cachyos-kernel.inputs.nixpkgs.follows = "nixpkgs";
     home-manager.url = "github:nix-community/home-manager";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
     # ⚠️ Hyprland overlay'i KALDIRILDI (karar hâlâ doğru, GEREKÇE bayat).
