@@ -13,9 +13,15 @@ let
   # Yani sistem tutarlı görünüp İKİ tarafta da sessizce bozuk çalışıyordu.
   #
   # Çözüm: `monitorOutput` tek doğruluk kaynağı; `hyprlandMonitorLine`
-  # ondan TÜRETİLİR. Artık ikisi ayrışamaz. install.sh'ın apply_var'ı
-  # her ikisini de yazdığı için elle kurulumda davranış değişmez
-  # (apply_var her zaman tam satırı değiştirir, türetmeyi ezer).
+  # ondan TÜRETİLİR. Artık ikisi ayrışamaz.
+  #
+  # install.sh ile kurulumda: apply_var artık `hyprlandMonitorLine` satırını
+  # KOŞULLU yazar — kullanıcı gerçekten farklı bir satır girmediyse (yani
+  # varsayılanla aynıysa) hiç dokunmaz, türetme kurulurda korunur. Kullanıcı
+  # çözünürlük/refresh yazmak isterse (örn. "monitor = DP-1,2560x1440@170,auto,1")
+  # türetme bilinçli olarak geçersiz kılınır ve o satır yazılır.
+  # ⚠️ Bu koşullu davranış 2026-10-08'de eklendi; önceki yorum "apply_var her
+  #    ikisini de yazar, türetmeyi ezer" diyordu ve artık GEÇERSİZDİR.
   #
   # Değeri kendi sisteminize göre değiştirin: `hyprctl monitors`
   # çıktısındaki gerçek çıkış adı (örn. "DP-1", "HDMI-A-1").
