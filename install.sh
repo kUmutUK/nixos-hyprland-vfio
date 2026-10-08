@@ -245,9 +245,22 @@ fi
 # ediyor ama libvirt hâlâ eski adresi aradığı için VM "device not found"
 # ile başlamıyordu.
 step "VM XML PCI senkronizasyonu"
+# DÜZELTME (2026-10-08): `command -v python3` KULLANICI'nın PATH'ini arar,
+# `sudo python3` ise sudo'nun secure_path'ini (Defaults env_reset + secure_path).
+# İkisi farklı çözümleme olduğu için kontrol "geçti" derken gerçek çalıştırma
+# "command not found" ile patlayabiliyordu — ve patlama `if ... then` yapısı
+# içinde yutulduğu için kullanıcı yalnızca "XML güncellenemedi" uyarısı
+# alıyordu. NixOS'ta secure_path genelde /run/current-system/sw/bin içerir
+# (yani çoğu kurulumda sorun çıkmaz) ama bu bir tesadüf, garanti değil:
+# özelleştirilmiş bir sudoers `secure_path` ya da `env_reset` kapalıysa
+# farklı sonuç verir.
+# Çözüm: python3'ü BİR KERE kullanıcı PATH'inden mutlak yola çöz, sonra
+# her yerde `sudo "$PYTHON3"` kullan. Böylece kontrol ve çalıştırma aynı
+# binary'yi gösterir.
+PYTHON3="$(command -v python3 || true)"
 if [ ! -f "$REPO_DIR/vm-xml/win10.xml" ]; then
   warn "vm-xml/win10.xml bulunamadı — XML'i elle düzenle."
-elif ! command -v python3 >/dev/null 2>&1; then
+elif [ -z "$PYTHON3" ]; then
   warn "python3 yok — vm-xml/win10.xml'i elle düzenle (bus/slot/function)."
 else
   # DÜZELTME (2026-10-05): script daha önce $REPO_DIR/vm-xml/win10.xml dosyasını
@@ -266,7 +279,7 @@ else
   # ürettiği felaket senaryosunda (hook yeni PCI adresine bind oluyor, libvirt
   # eski adresi arıyor → "device not found") kalıyorsun.
   # apply_var() zaten `sudo python3` kullanıyor; aynı desen buraya da uygulanır.
-  if sudo mkdir -p /var/lib/libvirt && sudo python3 - "$gpu_pci" "$gpu_audio" "$REPO_DIR/vm-xml/win10.xml" "$PATCHED_XML" <<'PYEOF'
+  if sudo mkdir -p /var/lib/libvirt && sudo "$PYTHON3" - "$gpu_pci" "$gpu_audio" "$REPO_DIR/vm-xml/win10.xml" "$PATCHED_XML" <<'PYEOF'
 import re, sys
 
 gpu, aud, src, dst = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
@@ -394,7 +407,11 @@ HOME_NIX="$NIXOS_FLAKE_DIR/home.nix"
 # değer olarak işleniyor, yazma atomik. python3 artık
 # environment.systemPackages'ta olduğu için (XML senkronu düzeltmesiyle)
 # bu sistemde garanti edilebilir.
-if ! command -v python3 >/dev/null 2>&1; then
+# DÜZELTME (2026-10-08): buradaki `command -v python3` KULLANICI PATH'ini
+# ararken apply_var() sudo altında çalışıyordu. İkisi farklı çözümleme
+# olduğundan kontrol geçerken çalıştırma patlayabiliyordu. Yukarıda
+# $PYTHON3 zaten mutlak yola çözüldü; aynı değişkeni kullan.
+if [ -z "$PYTHON3" ]; then
     error "python3 gerekli ama PATH'te yok — home.nix güvenle güncellenemez."
 fi
 
@@ -404,7 +421,7 @@ apply_var() {
     warn "Variable '${var_name}' not found in home.nix — skipped."
     return 0
   fi
-  if ! sudo python3 - "$HOME_NIX" "$var_name" "$new_value" <<'PYEOF'
+  if ! sudo "$PYTHON3" - "$HOME_NIX" "$var_name" "$new_value" <<'PYEOF'
 import re, sys, os, tempfile
 
 path, var, value = sys.argv[1], sys.argv[2], sys.argv[3]
@@ -453,7 +470,30 @@ fi
 apply_var "gitName" "$git_name"
 apply_var "gitEmail" "$git_email"
 apply_var "monitorOutput" "$monitor_output"
-apply_var "hyprlandMonitorLine" "$hypr_mon_line"
+
+# DÜZELTME (2026-10-08): `hyprlandMonitorLine` artık home.nix'te
+# `monitorOutput`'tan TÜRETİLİYOR (tek kaynak). apply_var regex'i o satırı
+# bulup TAMAMINI ezerdi, yani deploy edilen dosyada
+#   hyprlandMonitorLine = "monitor = DP-3,preferred,auto,1";
+# kalırdı ve `${monitorOutput}` kaybolurdu — tek-kaynak ilişkisi kurulumda
+# kayboluyordu. home.nix'in varsayılanı zaten `monitor = ${monitorOutput},
+# preferred,auto,1` ürettiği için varsayılan durumda YAZMAK GEREK YOK.
+#
+# Ama tamamen silmek de doğru değil: çok monitörlü kurulumda kullanıcı
+# çözünürlük/yenileme hızı da yazmak isteyebilir
+# (örn. "monitor = DP-1,2560x1440@170,auto,1") ve o zaman türetme bilinçli
+# olarak geçersiz kılınır. Bu yüzden: yalnızca kullanıcı GERÇEKTEN farklı
+# bir satır verdiyse yaz.
+#
+# Boş bırakıldığında (üzeri + Enter) türetme korunur; özel satır girildiğinde
+# apply_var onu yazar. Kullanıcıya ne olacağını da söylüyoruz.
+hypr_mon_default="monitor = ${input_mon:-$monitor_output},preferred,auto,1"
+if [ "$hypr_mon_line" = "$hypr_mon_default" ]; then
+  info "Hyprland monitor satırı varsayılandan aynı — home.nix'te monitorOutput'tan türetiliyor, yazılmadı."
+else
+  apply_var "hyprlandMonitorLine" "$hypr_mon_line"
+  info "Özel Hyprland monitor satırı yazıldı (türetme bu kurulumda bilinçli olarak geçersiz kılındı)."
+fi
 apply_var "wallpaperVideo" "$wallpaper_video"
 
 # ─── Final checklist ────────────────────────────────────
