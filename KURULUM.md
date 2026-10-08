@@ -180,8 +180,8 @@ kopyalanır. `install.sh`'ı çalıştırmadığınız için `home.nix` içindek
 
 | # | Değer | Varsayılan | Sonucu |
 |---|-------|-----------|--------|
-| 1 | `hyprlandMonitorLine` | `"monitor = DP-1,preferred,auto,1"` | **Örnek addır**; sizin çıktınız `DP-1` değilse bu kural yok sayılır. ⚠️ 2026-10-08'den önce buradaki varsayılan **boş** monitör adıydı (`"monitor = ,preferred,auto,1"`) ve bu, tüm çıkışların workspace 1'e yansılanmasına yol açıyordu — tek monitörde zararsız, çok monitörlü kurulumda bozuk. Artık gerçek bir örnek duruyor; yine de `hyprctl monitors`'tan öğrenip kendi çıktınızı yazın. |
-| 2 | `monitorOutput` | `"DP-1"` | Yanlış çıktıysa `mpvpaper` duvar kağıdı çalışmaz (oturum açılışında kritik uyarı çıkar) |
+| 1 | `hyprlandMonitorLine` | `"monitor = ,preferred,auto,1"` | Monitör adı boş → **tüm çıkışlar** workspace 1'e yansılanır. Tek monitörde zararsız, **çok monitörlü kurulumda bozuk** (ikinci monitör çalışmaz, pencere yönlendirme şaşar). Masaüstü yine açılır. |
+| 2 | `monitorOutput` | `"DP-3"` | Yanlış çıktıysa `mpvpaper` duvar kağıdı çalışmaz (oturum açılışında kritik uyarı çıkar) |
 | 3 | `gitName` | `"changeme"` | Commit'ler sahte isimle etiketlenir |
 | 4 | `gitEmail` | `"you@example.com"` | Commit'ler sahte adresle etiketlenir |
 | 5 | `wallpaperVideo` | `~/Downloads/arthur-leywin-….mp4` | Dosya yoksa `mpvpaper.service` sessizce atlanır |
@@ -317,26 +317,6 @@ virsh list --all     # 'win10' → "shut off" olarak görünmeli
 > ⚠️ XML'deki disk/NVRAM yolları sabit geliyor. Kendi diskine göre
 > düzenlemezsen `virsh start win10` "disk bulunamadı" ile başarısız olur.
 >
-> 🔴 **NVRAM'I SIFIRLA — bu adım atlama (E1).**
->
-> `<nvram template="...">` **yalnızca NVRAM dosyası ilk oluşturulurken** okunur.
-> Mevcut `/var/lib/libvirt/qemu/nvram/win10_VARS.fd` dosyası **eski şablondan**
-> üretilmişse, XML'i düzeltmek onu **yenilemez** — libvirt var olan dosyayı
-> olduğu gibi kullanmaya devam eder. Sonuç: XML'i düzeltir, reboot edersin,
-> hiçbir şey değişmemiş görünür ve "düzeltme yanlış" diye geri alırsın.
->
-> ```bash
-> sudo virsh undefine win10 --nvram     # --nvram: NVRAM dosyasını da SİLER
-> sudo virsh define /var/lib/libvirt/win10.xml
-> ```
->
-> `--nvram` **olmadan** `undefine` NVRAM dosyasını korur ve bu durumu
-> düzeltmez. Yeni NVRAM, `virsh start` sırasında XML'deki
-> `OVMF_VARS.fd` şablonundan yeniden üretilir.
->
-> Bu config'te `<secure-boot>` kapalı olduğu için NVRAM silmek Secure Boot
-> anahtarı kaybettirmez; sadece boot sırası ve UEFI değişkenleri sıfırlanır.
->
 > ⚠️ **VM'i masaüstü oturumundan başlatmayın.** `hooks/qemu`, GPU'yu bırakmak için
 > `loginctl terminate-user <kullanıcı>` çalıştırıyor — yani `virsh start` komutunu
 > verdiğiniz oturumun **kendisi** kapanıyor (istemci sonucu gösteremeden ölüyor;
@@ -358,11 +338,9 @@ virsh list --all     # 'win10' → "shut off" olarak görünmeli
 > kurtarma adımını burada görürsün.
 >
 > **Çok kullanıcılı sistemlerde `HOST_USER`:** hook, oturumu kapatmak için
-> `loginctl terminate-user "$HOST_USER"` çalıştırır (bkz. `nixos/hooks/qemu`).
-> Değer artık sabit yazılmaz: `configuration.nix` → `vfioHook` gövdesinde
-> `export HOST_USER="${config.users.users.localhost.name}"` ile config'den
-> okunur. Bu config'in kullanıcı adı `localhost`, dolayısıyla tek kullanıcılı
-> kurulumlar için doğrudur ve ayrıca hiçbir şey yapmanız gerekmez.
+> `loginctl terminate-user "${HOST_USER:-localhost}"` çalıştırır (bkz.
+> `nixos/hooks/qemu`). Varsayılan `localhost`, bu config'in kullanıcı adıdır
+> ve tek kullanıcılı kurulumlar için doğrudur.
 >
 > ⚠️ **DÜZELTME (2026-10-06):** burada önce
 > `HOST_USER=kullanici sudo virsh start win10` yazıyordu. Bu **çalışmaz**:
@@ -371,26 +349,10 @@ virsh list --all     # 'win10' → "shut off" olarak görünmeli
 > ile ortamı zaten temizler. `HOST_USER` config'in hiçbir yerinde tanımlı
 > değildir, dolayısıyla hook her zaman `localhost`'u kullanır.
 >
-> Gerçekten farklı bir kullanıcıyı hedeflemek istiyorsanız yol `configuration.nix`
-> → `vfioHook` gövdesindeki `export HOST_USER=...` satırıdır; orada
-> `config.users.users.localhost.name` okunuyor.
->
-> ⚠️ **DÜZELTME (2026-10-08):** burada önce
-> *"tek yol `virtualisation.libvirtd.hooks.qemu.vfio` tanımına bir
-> `environment` seçeneği eklemek"* yazıyordu. **O seçenek mevcut değil:**
-> nixpkgs'te `virtualisation.libvirtd.hooks` bir submodule olsa da içindeki
-> `qemu` seçeneğinin tipi `attrsOf path`'tir — `hooks.qemu.vfio` yalnızca bir
-> store yoludur, alt-option'ı olamaz. Bu reçeteyi uygulamaya çalışan kullanıcı
-> *"The option ... does not exist"* hatası alır ve çözümsüz kaldığını sanır.
-> Gerçek çözüm `vfioHook` gövdesine yazılan `export` satırıdır ve zaten
-> uygulanmıştır.
->
-> Not: hook artık `users.users.localhost` **öznitelik yolunu** okuyor.
-> Hesabı Nix'te anahtar değiştirerek (`users.users.localhost` →
-> `users.users.ahmet`) yeniden adlandırırsanız `vfioHook` ifadesi **derleme
-> sırasında hata verir** — bu, eski sessiz davranıştan iyidir. Farklı bir
-> giriş adı istiyorsanız özniteliği değil `users.users.localhost.name`
-> *değerini* değiştirin.
+> Gerçekten farklı bir kullanıcıyı hedeflemek istiyorsanız tek yol
+> NixOS modülünde hook'a ortam vermektir — `configuration.nix` içinde
+> `virtualisation.libvirtd.hooks.qemu.vfio` tanımına bir `environment`
+> seçeneği ekleyin (bkz. `nixos/configuration.nix` → `vfioHook`).
 
 ---
 

@@ -8,191 +8,6 @@ This project follows:
 
 ---
 
-# [1.3.4] - 2026-10-08
-
-Bağımsız inceleme turu. Bulgular tekrar gözden geçirildi; iki tanesi
-**çekildi**, iki tanesi **düzeltildi**, bir tanesi **sınırlama olarak
-yeniden sınıflandırıldı**. Aşağıda neyin neden değiştiği açık.
-
-## 🔴 Fixed — CI kapısı, hiçbir şey taramadan yeşil kalıyordu
-
-- **`.github/workflows/check.yml`, "Embedded home.nix scripts" adımı:**
-  ```bash
-  python3 scripts/extract-embedded-scripts.py /tmp/emb | xargs -0 -n1 -- shellcheck -S warning
-  ```
-  İki ayrı zaafiyet üst üste biniyordu:
-  1. `xargs`'ta **`-r` / `--no-run-if-empty` yoktu**. Boş girdide xargs
-     komutu **sıfır argümanla bir kez** çalıştırır; shellcheck dosya adı
-     almayınca stdin'i okur, pipe boşaldığı için temiz çıkar, `exit 0` döner.
-  2. Bu step'te **`shell:` anahtarı tanımlı değil**, yani GitHub Actions'ın
-     varsayılanı `bash -e {0}` — **`pipefail` YOK**. (`shell: bash` yazılsaydı
-     `bash -eo pipefail` olurdu.) Dolayısıyla extractor'ın **çökmesi** de
-     aynı şekilde yutuluyordu; `set -e` sol tarafı korumuyor.
-
-  Sonuç: `home.nix` içindeki `hypr/scripts/...` desenleri bir refactor'da
-  kayarsa extractor **0 betik** bulup mutlu mesut çıkıyor, `echo "OK"`
-  basıyor, kapı yeşil kalıyor ve hiçbir şey taranmamış oluyordu. Bu tam
-  olarak `[1.3.0]`'ta bu adımı ekleme gerekçesi olarak yazılan hata sınıfı.
-
-- → `shell: bash` eklendi (pipefail açık), **boş çıktı açıkça reddediliyor**,
-  betik sayısı 7'nin altına düşerse uyarı veriyor, `xargs` artık `-r` alıyor
-  ve sonuçta kaç betiğin tarandığı yazdırılıyor. Doğrulama: extractor
-  sandbox'ta normal çalışmada 7 betik üretiyor; 0 betik senaryosu artık
-  `::error::` ile kırılıyor.
-
-## 🟠 Fixed — `hyprlandMonitorLine` yorumu kendi değerini yanlış tanımlıyordu
-
-- `home.nix`'teki P2-1 yorumu *"buradaki değer yalnızca manuel klonlayanları
-  **korur**"* diyordu — ama duran değer `monitor = ,preferred,auto,1`, yani
-  **boş monitör adıydı: sorunun kendisi.** Yorum doğru teşhisi yapıp yanlış
-  sonuca bağlanıyordu; elle klonlayan tam olarak o bozuk davranışı alıyordu.
-- → Değer `KURULUM.md` §7b'in de zaten önerdiği gerçek bir örneğe çevrildi
-  (`monitor = DP-1,preferred,auto,1`) ve yorum yeniden yazıldı. `KURULUM.md` §7b
-  tablosundaki varsayılan sütunu da buna göre güncellendi.
-
-## 🟡 Fixed — `docs/archive/` iki raporun varlığı belirsizdi
-
-- `docs/archive/README.md` yalnızca iki `-SUPERSEDED` dosyayı açıklıyordu;
-  `NIXOS-HYPRLAND-VFIO-ANALIZ.md` ve `DEGISIKLIKLER.md` hiç anılmıyordu.
-  Klasör seviyesindeki genel afiş ikisini de kapsıyordu, **ama bir kullanıcı
-  doğrudan dosyayı açtığında** karşılayacağı ilk şey kendi güçlü hükmüydü
-  (*"sistem şu an hâliyle derlenmiyor"*).
-- ⚠️ `NIXOS-HYPRLAND-VFIO-ANALIZ.md`'in **iki hükmü artık geçersiz** ve
-  düzeltilmiş: `low_latency_layer`'ın özel `installPhase`'i kaldırıldı,
-  `python3` `environment.systemPackages`'a eklendi.
-- → Dört raporun tamamı `docs/archive/README.md`'de tek tek listelendi, her
-  biri için "güncel kodda hangi maddesi geçersiz" tablosu eklendi, ve
-  `NIXOS-HYPRLAND-VFIO-ANALIZ.md`'in en üstüne ⛔ SÜPERSEDED afişi kondu.
-  Yeni arşiv dosyası eklenirse ne yapılacağı da klasör README'sine yazıldı.
-- `[1.3.2]`'deki *"docs/archive/ (~92 KB, **4 dosya**)"* sayımı da düzeltildi
-  (klasörde 5 dosya var, `README.md` dahil).
-
-## 📝 Belgelenmemiş davranış açıklandı (davranış DEĞİŞTİRİLMEDİ)
-
-- **`home.nix` → `services.hypridle`, 150 sn'lik parlaklık adımı.**
-  `brightnessctl -s set 70%` bir "karartma" değil, **mutlak %70'e sabitlemedir**;
-  yönü tamamen başlangıç değerine bağlıdır (%40'ta çalışıyorsa parlatır,
-  %100'de çalışıyorsa kısar). Ayrıca harici monitörlü masaüstülerde
-  `/sys/class/backlight/` genelde boş olduğu için bu satır büyük olasılıkla
-  **sessiz bir no-op**tur.
-  Zamanlama bağlamı: 150 sn'de parlaklık, 300 sn'de `dpms off` — yani
-  150–300 sn arası ekran açık kalıyor.
-- → Yalnızca **yorum eklendi**. Tasarımın sahibinin tercihi olduğu için
-  davranış değiştirilmedi; doğru alternatifler (`--set 10%-` ya da listener'ı
-  kaldırmak) yorumda belirtildi.
-
-## ⚠️ Yeniden sınıflandırıldı — `HOST_USER` bir hata değil, sınırlama
-
-- `hooks/qemu:145` → `loginctl terminate-user "${HOST_USER:-localhost}"`
-  kullanıyor ve `HOST_USER`'ı **kimse export etmiyor** (bu doğrulandı,
-  config'in hiçbir yerinde geçmiyor).
-- **Ancak:** `configuration.nix` kullanıcı adını zaten `localhost`'a sabitliyor
-  (`users.users.localhost`), `home.nix` de `home.username = "localhost"` diyor ve
-  `install.sh` kullanıcı adı **sormuyor**. Yani varsayılan akışta fallback
-  doğru kullanıcıyı sonlandırıyor, kurulum çalışıyor.
-- Sorun **yalnızca** kullanıcı hesap adını config'in 3+ noktasından
-  (`users.users.X`, `home-manager.users.X`, `home.username`) değiştirirse
-  ortaya çıkıyor: oturumlar kapanmıyor → GPU kilitli kalıyor →
-  `stop_hyprland` zaman aşımı → rollback → VM açılmıyor.
-- → Kod **değiştirilmedi**. `[1.3.3]`'te doğru teşhis zaten konmuş ve doğru
-  çözüm ("`virtualisation.libvirtd.hooks.qemu`'ya `environment` eklemek")
-  yazılmış; bunu uygulamak, hesap adını özelleştirenler için ayrı bir karar.
-
-## ❌ Çekilen iki iddia
-
-Daha önce öne sürülen, tur sonunda **doğrulanamayan** iki madde:
-
-- **"CI'da `pipefail` extractor'ın çökmesini yakalar"** — bu workflow için
-  **yanlış**. `shell:` anahtarı olmadığı için GitHub Actions `bash -e {0}`
-  çalıştırıyor, `pipefail` yok. Doğrulandı: `set -e` altında
-  `{ python3 -c 'exit 3'; } | xargs ...` hâlâ `exit 0` veriyor. (0-senaryo
-  bulgusu yine de ayakta — o senaryo `pipefail`'dan bağımsız.)
-- **"arşivdeki raporlar kullanıcıyı yanıltıyor"** — **geri alındı**. Klasör
-  README'si zaten "SÜPERSEDED analizler" başlığını taşıyor ve genel afiş
-  bütün klasörü kapsıyor. Gerçek sorun yalnızca iki dosyanın varlığının
-  belgelenmemiş olmasıydı; o yukarıda giderildi.
-
-## 🟠 Fixed — VFIO hook'unda `HOST_USER` hiç export edilmiyordu — **KAPATILDI**
-
-- `hooks/qemu:145` → `loginctl terminate-user "${HOST_USER:-localhost}"`
-  kullanıyor, ama **`HOST_USER`'ı config'in hiçbir yerinde export eden yoktu**
-  (doğrulandı: `vfioHook` yalnızca `PATH`, `HOOK_SETPCI`, `HOOK_FUSER`,
-  `HOOK_RTCWAKE` enjekte ediyordu).
-- **Etki daraltılmış hâliyle:** `loginctl terminate-seat seat0` (satır 146)
-  çoğu senaryoda işi gördüğü için tek kullanıcılı masaüstünde kurulum
-  çalışıyordu. Sorun; hesap adı `users.users.localhost.name`'den farklıysa
-  **ve** oturum seat0 dışındaysa çıkıyor: oturum kapanmıyor → GPU kilitli →
-  `stop_hyprland()` zaman aşımı → rollback → VM açılmıyor.
-  (Ayrıca `loginctl` çıktısı `|| true` ile yutulduğu için sebebi log'da görünmüyor.)
-- → `configuration.nix` içindeki `vfioHook` gövdesine tek satır eklendi:
-  ```nix
-  export HOST_USER="${config.users.users.localhost.name}"
-  ```
-  Hook libvirtd tarafından **tek dosya** olarak çalıştığı için bu export
-  `hooks/qemu`'nun geri kalanı boyunca geçerli.
-
-- 📌 **Davranış değişikliği (bilerek kabul edildi):** hook artık sabit bir isim
-  okumuyor, `users.users.localhost.name` **öznitelik yolunu** okuyor. Yani
-  `HOST_USER`'ın hâlâ `localhost` olması bir tesadüf — config'in kullanıcı adını
-  okuyor. İki sonuç:
-  1. Hesabı Nix'te **öznitelik anahtarını** değiştirerek yeniden adlandırırsanız
-     (`users.users.localhost` → `users.users.ahmet`) ifade **derleme sırasında
-     hata verir**: `attribute 'localhost' missing`. Eski sessiz davranıştan
-     **iyidir** — kullanıcı hatayı kurulum sırasında görür.
-  2. Farklı bir giriş adı isteyenler anahtarı değil `name` *değerini*
-     değiştirmelidir: `users.users.localhost.name = "ahmet";`
-
-  Bu yüzden `README.md` "Bilinen sınırlar" listesindeki **`HOST_USER` sabit**
-  maddesi **kaldırıldı**: artık yanlış değil, gereksiz — hook kendini açıklıyor,
-  durum `KURULUM.md` §9b'de ayrıntılı.
-
-- ⚠️ **Bu, `[1.3.3]`'te önerilen yol DEĞİLDİR** — oradaki öneri
-  (`hooks.qemu.vfio.environment`) nixpkgs'te **var olmayan** bir option'dı:
-  `virtualisation.libvirtd.hooks` submodule olsa da içindeki `qemu`
-  seçeneğinin tipi `attrsOf path`'tir, yani `hooks.qemu.vfio` yalnızca bir
-  store yoludur. Burası yeni option istemeden, hook'un kendi gövdesine yazarak
-  çözüyor.
-
-- ⚠️ **Aynı düzenleme sırasında ikinci bir hata yakalandı ve düzeltildi.**
-  Açıklama yorumunda `hooks/qemu`'nun satırını alıntılarken önce
-  `"${HOST_USER:-localhost}"` yazılmıştı. Bu bir **Nix indented string'in
-  içidir**: Nix oradaki `${...}`'ı interpolasyon sanır, `HOST_USER:-localhost`
-  geçerli bir Nix ifadesi olmadığı için build başlamadan **eval aşamasında
-  hata** verirdi. Nix yorumları da string içeriğidir — `#` ile başlaması
-  kurtarmaz. `''${` ile kaçırıldı.
-
-  Aynı dosyada yan yana iki farklı `${` var, **karıştırılmamalı**:
-  | Yazım | Anlamı |
-  |---|---|
-  | `export HOST_USER="${config.users.users.localhost.name}"` | `${}` **kasıtlı** — Nix hesaplasın |
-  | `loginctl terminate-user "''${HOST_USER:-localhost}"` | `''${` **kaçışlı** — kabuk literal `${` görsün |
-
-  Baştaki iki apostrofu "temizleyen" biri Nix'i kırar. `configuration.nix`
-  içine bu ayrımın açıklandığı bir yarıklı uyarı notu bırakıldı.
-
-- ⚠️ **Ve aynı tuzak İKİNCİ KEZ, tam da uyarıyı yazan yorumun içinde
-  yakalandı.** İlk uyarı notu, kaçışın ne olduğunu açıklamak için yorum
-  satırlarına çıplak `${` yazmıştı — ki bu da bir Nix hatasıdır. Yani dosya
-  "bu tuzağa düşmeyin" derken kendi tuzağa düşmüştü. Yorumlar Nix'te ayrışmaz:
-  `#` yalnızca kabuk içindir, Nix'e göre düz string içeriğidir.
-  → Yorum, kaçış dizisini **yazmadan sözlü tarif edecek** şekilde yeniden
-  yazıldı; Nix yorum satırı kavramı olmadığı açıkça belirtildi.
-
-  **Denetim komutu (bu dosyada kaçış sayısı 0 DEĞİL olmalı):**
-  ```bash
-  # 1) kaçış var mı?
-  grep -c "''\${" nixos/configuration.nix      # 0 değil, ≥1 olmalı
-  # 2) gövdedeki TÜM interpolasyonları Nix ifadesi mi? (kabuk sözdizimi taşıyan var mı)
-  #    gövdeyi çıkar, ''$ kaçışlarını gizle, kalan ${...} içeriklerini listele
-  ```
-  Uygulanan hâlde: kaçış **1**, gerçek interpolasyon **6**, geçersiz çıplak
-  `${` **0**, süslü parantez dengesi **74/74**.
-
-**Ders (proje geneli):** `''${...}` kaçışı bir Nix indented string'ine yazılan
-her açıklama için gerekli olabilir, ama açıklamayı yazmanın kendisi aynı
-kurala tabidir. Kaçışı örneklerken **metin olarak yazmak yerine tarif etmek**
-(iki tek tırnak + dolar) hem güvenli hem okunur.
-
 # [1.3.3] - 2026-10-06
 
 > ⚠️ **Bu bölümün altındaki commit hash'lerinin hepsi tarihseldir.** Hiçbiri
@@ -254,15 +69,9 @@ kırık çıkmadı.
   istemcisinin ortamını miras almaz; ayadaki `sudo` da `env_reset` ile ortamı
   temizler. `HOST_USER` config'in hiçbir yerinde tanımlı değil — hook her
   zaman `localhost`'u sonlandırıyor.
-- → Talimat kaldırıldı; gerçek durum yazıldı.
-- ⚠️ **DÜZELTME (2026-10-08, `[1.3.4]`):** bu maddenin "tek geçerli çözüm
-  yolu" olarak verdiği `virtualisation.libvirtd.hooks.qemu.vfio.environment`
-  **MEVCUT DEĞİL.** nixpkgs'te `virtualisation.libvirtd.hooks` bir submodule,
-  ama içindeki `qemu` seçeneğinin tipi **`attrsOf path`**'tir — yani
-  `hooks.qemu.vfio` bir store yoludur, alt-option'ı olamaz. Bu notu uygulamaya
-  çalışan kullanıcı `The option ... does not exist` hatası alır ve çözümün
-  imkânsız olduğunu sanar. Gerçek çözüm `[1.3.4]`'te uygulandı: `export`
-  doğrudan `vfioHook` gövdesine yazılıyor.
+- → Talimat kaldırıldı; gerçek durum ve tek geçerli çözüm yolu
+  (`virtualisation.libvirtd.hooks.qemu.vfio`'ya `environment` eklemek)
+  yazıldı.
 
 ## 🟡 Fixed — doküman hataları
 
@@ -438,10 +247,9 @@ eklenen geometri doğrulaması 5 senaryoda test edildi ve `flake.lock` /
 - **`hardware-configuration.nix` içindeki gerçek UUID'ler** — makineye özgü
   oldukları için kullanıcının kendi `nixos-generate-config` çıktısıyla
   değiştirilmesi gerekiyor; repo değeri kasıtlı olarak örnek/uygulanabilir tutuluyor.
-- **`docs/archive/` (~92 KB, 5 dosya)** — tamamı geçersiz analiz ama
+- **`docs/archive/` (~92 KB, 4 dosya)** — tamamı geçersiz analiz ama
   `docs/archive/README.md` bunu açıkça söylüyor; silmek tarihsel kayıt
-  kaybı olurdu. ([1.3.4]: dört raporun tamamı tek tek listelendi ve
-  dosyaların kendi başlıklarına da ⛔ afişi eklendi.)
+  kaybı olurdu.
 - **impermanence'in `environment.persistence` uyarısı** — mevcut uyarı
   gürültü; susturmanın bedeli daha ağır ([1.2.2]'de denenip geri alındı).
 

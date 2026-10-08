@@ -4,11 +4,8 @@ Tek ekran kartı AMD Radeon'u bir **Windows 10 VM'ine** geçiren, geri kalanı
 gaming odaklı Hyprland masaüstü olan, tamamen **flake** tabanlı bir NixOS
 kurulumu.
 
-> Hedef donanım: AMD Ryzen (desktop) + AMD Radeon **RX 6000 serisi**
-> (Navi 22/23, `gfx1030`) · UEFI · tek ekran kartı. NVIDIA ve Intel için
-> destek yok. RX 7000 (Navi 31+, `gfx11.x`) **gaming tarafında çalışır** —
-> RADV sürücüsü destekliyor — ama Ollama/ROCm override'ı aşağıda ayrıntılı
-> olduğu gibi buna göre ayarlanmalıdır.
+> Hedef donanım: AMD Ryzen (desktop) + AMD Radeon RX 6000/7000 · UEFI ·
+> tek ekran kartı. NVIDIA ve Intel için destek yok.
 
 ---
 
@@ -46,7 +43,7 @@ değerinde hook'u çağırır.
 | | |
 |---|---|
 | **CPU** | AMD Ryzen (desktop). Intel desteklenmiyor — `kvm-amd`, `amd_iommu`, `amd_pstate` sabit kodlanmış. |
-| **GPU** | AMD Radeon **RX 6000 serisi** (Navi 22/23 = `gfx1030`). Bu config RX 6000'e göre ayarlıdır; RX 7000 (Navi 31+, `gfx11.x`) masaüstü/gaming için çalışır ama `services.ollama.rocmOverrideGfx = "10.3.0"` **yanlış** olur — kendi `gfx` sürümünüzle değiştirin. `amdgpu.ppfeaturemask=0xfffd7fff` de Navi'ye özeldir. |
+| **GPU** | AMD Radeon RX 6000/7000 (Navi 22/23). Config'de Ollama için `rocmOverrideGfx = "10.3.0"` yazılı. |
 | **Firmware** | UEFI zorunlu. BIOS'ta IOMMU **açık** olmalı (`amd_iommu=on` etkinleşmesi için). |
 | **Depolama** | ~810 GB boş alan (aşağıdaki bölümlendirmede 1 GiB EFI + 8 GiB swap + 800 GiB LUKS). |
 | **Kernel** | CachyOS BORE 6.18 (önyüklenen flake input'u üzerinden). |
@@ -238,9 +235,9 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE "korthos|lsl"
 
 > **Guest tarafı ayarlı.** `vm-xml/win10.xml` bir **Windows 10** domain'idir ve
 > kernel parametreleri buna göre seçilmiştir: `kvm.ignore_msrs=1`
-> (Windows 10'un bozuk MSR raporlaması) ve `rcupdate.rcu_expedited=1`
+> (Windows 10'un bozuk MSR raporlaması) ve `rcu.rcu_expedited=1`
 > (Windows'un RCU bekleme davranışı). Linux guest kullanırsanız `ignore_msrs`
-> gereksiz, `rcupdate.rcu_expedited` ise ek yük demektir — ikisini de çıkarın.
+> gereksiz, `rcu_expedited` ise ek yük demektir — ikisini de çıkarın.
 
 ---
 
@@ -277,6 +274,8 @@ Oyun dışında ppd profilini `balanced`'a çekmeniz önerilir.
   konsola açık bir mesaj bırakılıp **host reboot** önerilir. Garanti değil.
 - **Host'ta GPU yokken grafik yok.** VM çalışırken yalnızca metin konsolu var.
   Acil kurtarma için `Ctrl+Alt+F2` → `systemctl reboot`.
+- **`HOST_USER` sabit.** Hook `localhost`'u sonlandırır. Tek kullanıcılı
+  kurulum içindir; `KURULUM.md` §9b'de bu konu ayrıntılı.
 - **swap şifrelenmemiş.** LUKS dışındaki açık bölümde.
 - **CSR (Client-Side Rendering).** Bu bir oyun/gaming config'i; KDE/Wayland
   gibi ağır masaüstü bileşenleri yok.
@@ -334,11 +333,7 @@ nix develop ./nixos                    # nixfmt, statix, deadnix, shellcheck, jq
 nixfmt .                               # biçimlendir
 
 shellcheck -S warning install.sh nixos/hooks/qemu
-
-# gömülü betikler — boş çıktıyı KABUL ETME, yoksa hiçbir şey taranmaz
-mapfile -d '' -t EMB < <(python3 scripts/extract-embedded-scripts.py /tmp/emb)
-[ "${#EMB[@]}" -gt 0 ] || { echo "HATA: gömülü betik bulunamadı"; exit 1; }
-printf '%s\0' "${EMB[@]}" | xargs -0 -r -n1 -- shellcheck -S warning
+python3 scripts/extract-embedded-scripts.py /tmp/emb | xargs -0 -n1 -- shellcheck -S warning
 
 cd nixos && nix flake check --no-build
 ```
