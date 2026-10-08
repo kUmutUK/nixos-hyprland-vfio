@@ -3,22 +3,30 @@
 let
   gitName            = "changeme";
   gitEmail           = "you@example.com";
-  monitorOutput      = "DP-3";
+  # ⚠️ DÜZELTME (2026-10-08) — ÇELİŞKİ GIDERILDI.
+  #
+  # Sorun: `monitorOutput` "DP-3" iken `hyprlandMonitorLine` "DP-1" idi.
+  # İki değişken AYRI çıkış adlarına bakıyordu. install.sh ikisini de
+  # doldurduğu için orada sorun görünmüyordu; ama elle klonlayan biri
+  # mpvpaper'ı DP-3'e (olmayan çıkış → "output not found") ve Hyprland
+  # kuralını DP-1'e (olmayan çıkış → kural yok sayılır) yönlendiriyordu.
+  # Yani sistem tutarlı görünüp İKİ tarafta da sessizce bozuk çalışıyordu.
+  #
+  # Çözüm: `monitorOutput` tek doğruluk kaynağı; `hyprlandMonitorLine`
+  # ondan TÜRETİLİR. Artık ikisi ayrışamaz. install.sh'ın apply_var'ı
+  # her ikisini de yazdığı için elle kurulumda davranış değişmez
+  # (apply_var her zaman tam satırı değiştirir, türetmeyi ezer).
+  #
+  # Değeri kendi sisteminize göre değiştirin: `hyprctl monitors`
+  # çıktısındaki gerçek çıkış adı (örn. "DP-1", "HDMI-A-1").
+  # Boş AD bırakmayın: boş ad "tüm çıkışlara uygula" demektir ve
+  # çok monitörde kurulumu bozar.
+  monitorOutput      = "DP-1";
   # P2-1 (2026-10-05): boş monitör adı pratikte "tüm monitörleri workspace 1'e
   # aynala" demekti (13. alan preferred, 14. mirror, 15. workspace). Tek
   # monitörde zararsız, çok monitörde kurulumu bozuyordu. install.sh artık
   # gerçek çıktıyı yazıyor (apply_var "hyprlandMonitorLine").
-  #
-  # ⚠️ DÜZELTME (2026-10-08): yorumun devamı "buradaki değer yalnızca manuel
-  # klonlayanları korur" diyordu — ama duran değer boş monitör adıydı, yani
-  # sorunun KENDİSİ. Yorum doğru teşhisi yapıp yanlış sonuca bağlanıyordu:
-  # elle klonlayan tam olarak o bozuk davranışı alıyordu.
-  #
-  # Artık gerçek bir örnek değer duruyor (KURULUM.md §7b'in de önerdiği gibi).
-  # Önemsiz bir çıktı adı (DP-1) kullandığınız sistemde Hyprland bu kuralı
-  # yok sayıp geçer — sizin çıktınızın adını `hyprctl monitors`'tan bakıp
-  # buraya yazın. Boş AD bırakmayın: boş ad "tüm çıkışlara uygula" demektir.
-  hyprlandMonitorLine = "monitor = DP-1,preferred,auto,1";
+  hyprlandMonitorLine = "monitor = ${monitorOutput},preferred,auto,1";
   wallpaperVideo     = "${config.home.homeDirectory}/Downloads/arthur-leywin-the-beginning-after-the-end.3840x2160.mp4";
 
   gamemodeNotifyScript = pkgs.writeShellScriptBin "gamemode-notify" ''
@@ -1387,19 +1395,48 @@ done
   # yani dosya kalıcı depoya düşer. Sonraki boot'larda symlink zaten doğru
   # olduğu için servis "ignoring" deyip çıkıyor.
   #
-  # ⚠️ PRATİK SONUÇ: bu yol artık impermanence'in yönetimindedir. `home.nix`
+  # ⚠️ PRATİK SONUÇ: bu yol impermanence'in yönetimine girerse `home.nix`
   # içindeki conf.toml'u değiştirdiğinizde değişiklik her rebuild'da
-  # uygulanmayabilir. Yeni değerleri almak için kalıcı kopyayı silin:
+  # uygulanmayabilir. Yeni değerleri almak için kalıcı kopyayı silmek
+  # gerekirdi:
   #     rm -f /nix/persist/home/.config/lsfg-vk/conf.toml
-  # (Sonraki activasyonda yeni değer geri yazılır.)
   #
   # NOT: /nix/persist'in kendisi bu tanımla yönetilmez (impermanence'in "nix"
   # manager'ı bu modül NixOS tarafında, home.persistence tanımı ona dokunmaz).
-  # ⚠️ Aynı sınıf gölgeleme tuzağı — config'in `/etc/vulkan/implicit_layer.d`
-  # için kendi not düştüğü hâl — bu dosyada kasten UYGULANMAMIŞTIR: burada
-  # gölgelenmesi istenen şeyin bir cache değil, bir yapılandırma olduğu
-  # varsayılmıştı. Gerçekte cache'i korumak istiyorsanız bu listeyi
-  # ".cache/lsfg-vk" ile değiştirin.
+  # Aynı sınıf gölgeleme tuzağı — config'in `/etc/vulkan/implicit_layer.d`
+  # için kendi not düştüğü hâl — bu dosyada da UYGULANMIYOR.
+  #
+  # ══════════════════════════════════════════════════════════════════════
+  # ⚠️ DÜZELTME (2026-10-08) — AŞAĞIDAKİ BLOK KAPALI, BİLEREK.
+  #
+  # Bu bölüm, yukarıdaki "MEKANİZMA" anlatımı KAPALI BLOĞU tarif ediyordu.
+  # Okuyan biri (veya bir refactor) "burada mekanizma anlatılıyor, demek ki
+  # aktif" diye okuyup `lsfg-vk/conf.toml`'un kalıcılaştırıldığını varsayıyordu.
+  # Oysa aşağıdaki üç satır TAMAMEN yorumda: `home.persistence` ETKİN DEĞİL.
+  #
+  # Önceki turda P1 olarak raporlandı. İnceleme sonucu: kod hatalı DEĞİL,
+  # blok kasıtlı olarak kapalı. Kapatma sebepleri (CHANGELOG [1.0.0], 1136):
+  #   1) `home.persistence` bir noktada build'i kırıyordu: option impermanence'in
+  #      Home Manager modülünde tanımlı, o modül HM'e bağlı değildi →
+  #      "option `home.persistence` does not exist".
+  #   2) Önerilen çözüm (`home-manager.sharedModules = [ ... ]`) DEPREKATED;
+  #      o çıktı artık yalnızca `assertion = false` içeriyor, eklenirse build kırılır.
+  #   3) Doğru yol zaten mevcut: `impermanence.nixosModules.impermanence`
+  #      (flake.nix'te import EDİLİ) modülü kendi HM modülünü
+  #      `home-manager.sharedModules`'e koşullu olarak enjekte ediyor
+  #      (bkz. impermanence/nixos.nix). Yani option şu an GEÇERLİ.
+  #
+  # Yine de kalıcılaştırılmıyor, çünkü kalıcılaştırılan şey bir cache değil
+  # bir YAPILANDIRMA dosyası: impermanence mount noktasına symlink kurup
+  # Home Manager'ı o symlink üzerinden yazmaya zorlar, sonuçta `home.nix`'teki
+  # değişiklik her rebuild'de uygulanmayabilir. Yapılandırma sürüm
+  # kontrolünde kalmalı; yalnızca cache kalıcı olmalıydı.
+  #
+  # SONUÇ (mevcut ve DOĞRU davranış): `xdg.configFile` aşağıda tanımlı
+  # olduğu için conf.toml her rebuild'de yeniden yazılır, yani
+  # `multiplier`/`flow_scale` ayarları kalıcı değildir — bu, bu config'in
+  # kasıtlı seçimidir. Kalıcılık istenirse aşağıdaki bloğun `#` işaretlerini
+  # kaldırın VE yukarıdaki "PRATİK SONUÇ" uyarısına uygun davranın.
   #home.persistence."/nix/persist/home" = {
     #files = [ ".config/lsfg-vk/conf.toml" ];
   #};
