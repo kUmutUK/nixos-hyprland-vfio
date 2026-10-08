@@ -181,7 +181,7 @@ kopyalanır. `install.sh`'ı çalıştırmadığınız için `home.nix` içindek
 | # | Değer | Varsayılan | Sonucu |
 |---|-------|-----------|--------|
 | 1 | `hyprlandMonitorLine` | `"monitor = DP-1,preferred,auto,1"` | **Örnek addır**; sizin çıktınız `DP-1` değilse bu kural yok sayılır. ⚠️ 2026-10-08'den önce buradaki varsayılan **boş** monitör adıydı (`"monitor = ,preferred,auto,1"`) ve bu, tüm çıkışların workspace 1'e yansılanmasına yol açıyordu — tek monitörde zararsız, çok monitörlü kurulumda bozuk. Artık gerçek bir örnek duruyor; yine de `hyprctl monitors`'tan öğrenip kendi çıktınızı yazın. |
-| 2 | `monitorOutput` | `"DP-3"` | Yanlış çıktıysa `mpvpaper` duvar kağıdı çalışmaz (oturum açılışında kritik uyarı çıkar) |
+| 2 | `monitorOutput` | `"DP-1"` | Yanlış çıktıysa `mpvpaper` duvar kağıdı çalışmaz (oturum açılışında kritik uyarı çıkar) |
 | 3 | `gitName` | `"changeme"` | Commit'ler sahte isimle etiketlenir |
 | 4 | `gitEmail` | `"you@example.com"` | Commit'ler sahte adresle etiketlenir |
 | 5 | `wallpaperVideo` | `~/Downloads/arthur-leywin-….mp4` | Dosya yoksa `mpvpaper.service` sessizce atlanır |
@@ -316,6 +316,26 @@ virsh list --all     # 'win10' → "shut off" olarak görünmeli
 
 > ⚠️ XML'deki disk/NVRAM yolları sabit geliyor. Kendi diskine göre
 > düzenlemezsen `virsh start win10` "disk bulunamadı" ile başarısız olur.
+>
+> 🔴 **NVRAM'I SIFIRLA — bu adım atlama (E1).**
+>
+> `<nvram template="...">` **yalnızca NVRAM dosyası ilk oluşturulurken** okunur.
+> Mevcut `/var/lib/libvirt/qemu/nvram/win10_VARS.fd` dosyası **eski şablondan**
+> üretilmişse, XML'i düzeltmek onu **yenilemez** — libvirt var olan dosyayı
+> olduğu gibi kullanmaya devam eder. Sonuç: XML'i düzeltir, reboot edersin,
+> hiçbir şey değişmemiş görünür ve "düzeltme yanlış" diye geri alırsın.
+>
+> ```bash
+> sudo virsh undefine win10 --nvram     # --nvram: NVRAM dosyasını da SİLER
+> sudo virsh define /var/lib/libvirt/win10.xml
+> ```
+>
+> `--nvram` **olmadan** `undefine` NVRAM dosyasını korur ve bu durumu
+> düzeltmez. Yeni NVRAM, `virsh start` sırasında XML'deki
+> `OVMF_VARS.fd` şablonundan yeniden üretilir.
+>
+> Bu config'te `<secure-boot>` kapalı olduğu için NVRAM silmek Secure Boot
+> anahtarı kaybettirmez; sadece boot sırası ve UEFI değişkenleri sıfırlanır.
 >
 > ⚠️ **VM'i masaüstü oturumundan başlatmayın.** `hooks/qemu`, GPU'yu bırakmak için
 > `loginctl terminate-user <kullanıcı>` çalıştırıyor — yani `virsh start` komutunu
