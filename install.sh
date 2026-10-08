@@ -220,59 +220,6 @@ for f in configuration.nix home.nix flake.nix flake.lock; do
     fi
 done
 
-# ─── hardware-configuration.nix (zorunlu girdi) ─────────────
-# configuration.nix → `imports = [ ./hardware-configuration.nix ]` yaptığı için
-# bu dosya YOKSA `nixos-rebuild` EVAL HATASI verir. Burada bilinçli olarak
-# `builtins.pathExists` ile import'u koşullu yapmıyoruz: öyle bir guard hatayı
-# susturur ve sistemi `fileSystems` tanımsız derler. Gürültülü eval hatası,
-# sessiz yarım kurulumdan iyidir.
-#
-# install.sh ÇALIŞAN bir sistemde çalışır; yani disk UUID'leri zaten doğrudur
-# ve nixos-generate-config'in ürettiği dosya tipik olarak /etc/nixos altındadır.
-# "Farklı diske taşıma" senaryosu (--root /mnt) install.sh'ın kapsamı DIŞINDA —
-# onu KURULUM.md yönetir.
-#
-# ÜZERİNE YAZMA KARARI (3 dal — sessiz seçim yok):
-#   1) Hedef yoksa            → kopyala
-#   2) Hedef varsa, aynıysa   → dokunma
-#   3) Hedef varsa, FARKLIYSA → HEDEFİ KORU, farkı göster, değiştirme komutunu yaz
-# Neden 3 "her koşuda taze kopyala" değil: flake-dir kopyası kullanıcının elle
-# düzenlediği yer (swap UUID'si, ek alt hacim). Üstteki dosya yalnızca
-# nixos-generate-config'in ham çıktısı — ikinci kurulumda onu ezip kullanıcının
-# emeğini almak yanlış olur.
-# Neden yine de "koru ve sus": ters yön de var — kullanıcı üstteki dosyayı
-# yeniden ürettiyse sessizce bayatlamak da kötü. Bu yüzden iki yol da
-# görünür, kararı kullanıcı verir.
-#
-# Karşılaştırma `cmp`/`diff` DEĞİL `$(cat …)` ile yapılıyor: `cmp` diffutils'ten
-# gelir ve bu config'in systemPackages listesinde YOK. Dosyalar ~3 KB; cat
-# (coreutils) yeter.
-HARDWARE_MISSING=0
-HARDWARE_SRC="$NIXOS_DIR/hardware-configuration.nix"
-HARDWARE_DST="$NIXOS_FLAKE_DIR/hardware-configuration.nix"
-if [ ! -f "$HARDWARE_SRC" ]; then
-    HARDWARE_MISSING=1
-    warn "hardware-configuration.nix YOK (${HARDWARE_SRC}) — rebuild EVAL HATASI verir."
-    warn "Üretme komutu MANUAL STEPS listesine eklendi."
-elif [ -f "$HARDWARE_DST" ]; then
-    if [ "$(cat "$HARDWARE_SRC")" = "$(cat "$HARDWARE_DST")" ]; then
-        log "hardware-configuration.nix zaten güncel — dokunulmadı."
-    else
-        warn "hardware-configuration.nix FARKLI — flake-dir'deki sürüm KORUNDU."
-        warn "  üst (ham): ${HARDWARE_SRC}"
-        warn "  alt (aktif): ${HARDWARE_DST}"
-        warn "  farkı görmek için: sudo diff -u ${HARDWARE_SRC} ${HARDWARE_DST}"
-        warn "  Üsttekini tercih ediyorsan:"
-        warn "    sudo cp ${HARDWARE_SRC} ${HARDWARE_DST}"
-    fi
-else
-    sudo cp "$HARDWARE_SRC" "$HARDWARE_DST"
-    log "Copied hardware-configuration.nix (kaynak: ${HARDWARE_SRC})"
-    warn "Bu, install.sh'in ÇALIŞTIĞI SİSTEMİN dosyası — UUID'ler o makineye ait."
-    warn "Farklı bir diske taşınıyorsan bu dosya YANLIŞ olur. MANUAL STEPS'teki"
-    warn "doğrulama adımını izle ve gerekirse nixos-generate-config ile üret."
-fi
-
 if [ -d "$REPO_DIR/nixos/hooks" ]; then
     sudo rm -rf "$NIXOS_FLAKE_DIR/hooks"
     sudo cp -r "$REPO_DIR/nixos/hooks" "$NIXOS_FLAKE_DIR/hooks"
@@ -388,10 +335,19 @@ PYEOF
   fi
 fi
 
-# `hardware-configuration.nix` artık yukarıda "Copying configuration files"
-# bölümünde ele alınıyor (kopyalandı ya da MANUAL STEPS'e madde düştü).
-# Buradaki eski uyarı bloğu kaldırıldı: aynı konuyu iki kez söylüyordu ve
-# "Mevcut sistemde zaten varsa" komutu artık otomatik çalışıyordu.
+warn "hardware-configuration.nix was NOT copied (machine-specific — UUID'ler size özel)."
+warn "Flake ./hardware-configuration.nix bekliyor, yani dosya şurada olmalı:"
+echo -e "     ${CYAN}${NIXOS_FLAKE_DIR}/hardware-configuration.nix${NC}"
+echo ""
+echo "   Mevcut sistemde zaten varsa:"
+echo -e "     ${CYAN}sudo cp ${NIXOS_DIR}/hardware-configuration.nix ${NIXOS_FLAKE_DIR}/${NC}"
+echo ""
+echo "   Yeni kurulumda:"
+echo -e "     ${CYAN}sudo cp /mnt/etc/nixos/hardware-configuration.nix ${NIXOS_FLAKE_DIR}/${NC}"
+echo ""
+echo "   Ya da elle oluşturun:"
+echo -e "     ${CYAN}sudo nixos-generate-config --root /mnt${NC}"
+echo -e "     ${CYAN}lsblk -f${NC}  # UUID'leri kontrol edin"
 
 # ─── Btrfs snapshot subvolume ───────────────────────────
 step "Btrfs snapshot subvolume"
@@ -558,31 +514,10 @@ echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 step_num=1
 
-if [ "$HARDWARE_MISSING" -eq 1 ]; then
-  # Dosya yok: configuration.nix onu import ettiği için bu madde OPSIYONEL
-  # değil. Üretme komutunda `>` DEĞİL `| sudo tee` kullanıyoruz — `sudo cmd > yol`
-  # deseni yönlendirmeyi sudo'nun DIŞINDA bırakır, yani /etc/nixos'a yazma
-  # yetkisi olmayan kullanıcıda "Permission denied" verir. (Bu sınıftaki ikinci
-  # hatadır; birincisi PYTHON3'ün kullanıcı PATH'i ile sudo secure_path'i
-  # arasında çözümlenmesiydi.)
-  echo -e "${step_num}. ${RED}hardware-configuration.nix ÜRETİLMELİ${NC} (${HARDWARE_SRC} yok):"
-  echo -e "   ${CYAN}sudo nixos-generate-config --show-hardware-config${NC}"
-  echo -e "     ${CYAN}| sudo tee ${NIXOS_FLAKE_DIR}/hardware-configuration.nix${NC}"
-  echo "   ${YELLOW}(| sudo tee: '>' yetki hatası verir — yönlendirme sudo dışında kalır)${NC}"
-  echo "   ${YELLOW}Farklı diske taşıyorsan: --show-hardware-config yerine${NC}"
-  echo "   ${YELLOW}  sudo nixos-generate-config --root /mnt --show-hardware-config${NC}"
-  echo "   Bu olmadan rebuild EVAL HATASI verir (configuration.nix onu import ediyor)."
-  ((step_num++))
-else
-  echo -e "${step_num}. Doğrula: ${CYAN}${NIXOS_FLAKE_DIR}/hardware-configuration.nix${NC}"
-  echo "   ${YELLOW}Bu dosya install.sh'in çalıştığı SİSTEMDEN kopyalandı.${NC}"
-  echo "   ${YELLOW}Farklı bir diske taşıyıyorsan YANLIŞTIR — aşağıdaki üretme${NC}"
-  echo "   ${YELLOW}komutuyla kendi makinenin dosyasıyla değiştir:${NC}"
-  echo -e "     ${CYAN}sudo nixos-generate-config --root /mnt --show-hardware-config${NC}"
-  echo -e "     ${CYAN}| sudo tee ${NIXOS_FLAKE_DIR}/hardware-configuration.nix${NC}"
-  echo "   lsblk -f   # beklenen UUID'lerle eşleşiyor mu?"
-  ((step_num++))
-fi
+echo -e "${step_num}. Update disk UUIDs in ${CYAN}${NIXOS_FLAKE_DIR}/hardware-configuration.nix${NC}:"
+echo "   lsblk -f   # to see UUIDs"
+echo "   Then set: LUKS device, Btrfs subvolumes, EFI, swap."
+((step_num++))
 
 if [[ "$CPU_VENDOR" != "amd" || "$GPU_VENDOR" != "amd" ]]; then
   echo ""
@@ -624,7 +559,7 @@ echo -e "${step_num}. Rebuild, then REBOOT:"
 echo -e "   ${CYAN}sudo nixos-rebuild dry-activate --flake ${NIXOS_FLAKE_DIR}#nixos${NC}"
 echo -e "   ${CYAN}sudo nixos-rebuild switch     --flake ${NIXOS_FLAKE_DIR}#nixos${NC}"
 echo -e "   ${CYAN}sudo reboot${NC}"
-echo -e "   ${YELLOW}REBOOT ZORUNLU: iommu=pt, amdgpu.ppfeaturemask${NC}"
+echo -e "   ${YELLOW}REBOOT ZORUNLU: iommu=pt, amd_iommu=on, amdgpu.ppfeaturemask${NC}"
 ((step_num++))
 
 echo ""

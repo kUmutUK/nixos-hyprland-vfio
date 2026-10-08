@@ -45,11 +45,11 @@ değerinde hook'u çağırır.
 
 | | |
 |---|---|
-| **CPU** | AMD Ryzen (desktop). Intel desteklenmiyor — `kvm-amd`, `amd_pstate`, `iommu=pt` sabit kodlanmış. |
+| **CPU** | AMD Ryzen (desktop). Intel desteklenmiyor — `kvm-amd`, `amd_iommu`, `amd_pstate` sabit kodlanmış. |
 | **GPU** | AMD Radeon **RX 6000 serisi** (Navi 22/23 = `gfx1030`). Bu config RX 6000'e göre ayarlıdır; RX 7000 (Navi 31+, `gfx11.x`) masaüstü/gaming için çalışır ama `services.ollama.rocmOverrideGfx = "10.3.0"` **yanlış** olur — kendi `gfx` sürümünüzle değiştirin. `amdgpu.ppfeaturemask=0xfffd7fff` de Navi'ye özeldir. |
-| **Firmware** | UEFI zorunlu. BIOS'ta IOMMU **açık** olmalı. AMD'de kernel, firmware IOMMU'yu sunduğu anda sürücüyü otomatik etkinleştirir — `amd_iommu=on` **gerekmez** (ve modern kernelda artık geçerli bir değer de değildir; bkz. `v6.18/admin-guide/kernel-parameters.html`). Passthrough modu `iommu=pt` ile açılır ve o `configuration.nix` → `boot.kernelParams` içinde zaten var. |
+| **Firmware** | UEFI zorunlu. BIOS'ta IOMMU **açık** olmalı (`amd_iommu=on` etkinleşmesi için). |
 | **Depolama** | ~810 GB boş alan (aşağıdaki bölümlendirmede 1 GiB EFI + 8 GiB swap + 800 GiB LUKS). |
-| **Kernel** | CachyOS BORE, **7.2.x** (kilitli flake input'undan; şu an `linux-cachyos-bore-7.2.9`, `modDirVersion` = `7.2.9-cachyos`). 7.2, upstream stable (2026-08-16 çıktı, 7.2.9 = 2026-10-03) ve 6.x serisinden sonraki **yeni major** serisi — 6.18 yalnızca bir "birkaç minor geride" değil, **önceki major serinin sonucusu**. Bu satır bayatlarsa yeniden ölç: `nix eval .#nixosConfigurations.nixos.config.boot.kernelPackages.kernel.version` (flake dizininden: `nix eval ./nixos#...`). |
+| **Kernel** | CachyOS BORE 6.18 (önyüklenen flake input'u üzerinden). |
 | **Disk** | LUKS2 + Btrfs (subvolume'lu) + EFI. Swap LUKS'un **dışında**, açık bölümde. |
 
 > **Çok kartlı sistem uyarısı.** Kurulum betiği IOMMU grubunu denetler. Grubun
@@ -112,9 +112,10 @@ sudo nixos-rebuild switch     --flake /etc/nixos/nixos#nixos
 sudo reboot            # ZORUNLU
 ```
 
-> 🔴 **Reboot zorunludur.** `iommu=pt`, `amdgpu.ppfeaturemask` gibi kernel
-> parametreleri `switch` ile uygulanmaz. **Reboot etmeden VFIO testi
-> yaparsanız IOMMU açık değildir** ve GPU `vfio-pci`'ye bağlanmaz.
+> 🔴 **Reboot zorunludur.** `iommu=pt`, `amd_iommu=on`,
+> `amdgpu.ppfeaturemask` gibi kernel parametreleri `switch` ile uygulanmaz.
+> **Reboot etmeden VFIO testi yaparsanız IOMMU açık değildir** ve GPU
+> `vfio-pci`'ye bağlanmaz.
 
 ### SSH notu
 

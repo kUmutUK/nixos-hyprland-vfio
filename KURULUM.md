@@ -420,16 +420,11 @@ sudo nixos-rebuild switch --flake /etc/nixos/nixos#nixos
 sudo reboot
 ```
 
-> ⚠️ **Reboot zorunludur.** `iommu=pt`, `amdgpu.ppfeaturemask` gibi kernel
-> parametreleri `switch` ile uygulanmaz; yalnızca yeniden
+> ⚠️ **Reboot zorunludur.** `iommu=pt`, `amd_iommu=on`, `amdgpu.ppfeaturemask`
+> gibi kernel parametreleri `switch` ile uygulanmaz; yalnızca yeniden
 > başlatınca etkin olur. **Reboot olmadan VFIO testi yapılırsa IOMMU açık
 > değildir ve GPU'yu `vfio-pci`'ye bağlamak mümkün olmaz.** Buna karşılık
 > hook'un çalıştığını `switch`'ten hemen sonra da doğrulayabilirsiniz.
->
-> Not: `amd_iommu=on` **gerekmez.** AMD'de kernel IOMMU sürücüsünü firmware
-> IOMMU'yu sunduğu anda otomatik etkinleştirir; parametrenin bu değeri modern
-> kernel belgelerinde de listelenmiyor. Yapman gereken tek şey BIOS'ta
-> IOMMU'nun **açık** olmasını doğrulamak.
 
 ## Log kontrol
 
