@@ -24,6 +24,29 @@ veriyor**; iki iddiası artık geçersiz:
 
 Rapordaki diğer maddeler için güncel kayıt: `CHANGELOG.md` → `[1.3.0]`.
 
+## `NIXOS-HYPRLAND-VFIO-ANALIZ-v2-2026-10-08.md`
+
+2026-10-08'de `nixos-hyprland-vfio(1).zip` üzerinde yapılan bağımsız inceleme
+turunun raporu. **Düzeltmelerden önceki hâli** tarif eder.
+
+Raporda 5 iddia vardı; tur sonunda **2'si düzeltildi, 2'si çekildi, 1'i yeniden
+sınıflandırıldı**. Ayrıca bu turun **kaçırdığı** bir bulgu var:
+
+| Durum | Madde |
+|---|---|
+| ✅ Düzeltildi | CI kapısı boş listede sessizce yeşil kalıyordu |
+| ✅ Düzeltildi | `home.nix`'teki `hyprlandMonitorLine` yorumu kendi değerini yanlış tanımlıyordu |
+| ⚠️ Sınıflandırıldı → sonra **düzeltildi** | `HOST_USER` — rapor "kod değiştirilmedi" diyordu, sonradan kapatıldı |
+| ❌ Çekildi | "`brightnessctl -s set 70%` ekranı parlatıyor" — yön baseline'a bağlı, masaüstünde no-op |
+| ❌ Çekildi | "`docs/archive/` kullanıcıyı yanıltıyor" — arşiv kendini doğru ilan ediyordu |
+
+**Raporda hiç geçmeyen bulgu:** `wuwa-auto.sh` içindeki `mogrify` çağrıları —
+nixpkgs'teki `imagemagick` yalnızca `magick` kurduğu için komut hiç çalışmıyor,
+`2>/dev/null` bunu yutup WuWa AI çeviri özelliğini sessizce öldürüyordu.
+`[1.3.4]`'te düzeltildi.
+
+Güncel doğru kayıt: `CHANGELOG.md` → `[1.3.4]`.
+
 ## `DEGISIKLIKLER.md`
 
 `ANALIZ-2026-10-05-ZIP3-SUPERSEDED.md` raporundan çıkan düzeltmelerin
