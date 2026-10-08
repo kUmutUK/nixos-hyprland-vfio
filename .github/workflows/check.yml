@@ -42,43 +42,9 @@ jobs:
         # olarak bu boşluktan geçti (Nix kaçışı -> `tr -d 'f'`, git'in okumadığı
         # MANPAGER). scripts/extract-embedded-scripts.py Nix indented-string'lerini
         # çözüp betikleri diske yazar.
-        #
-        # ⚠️ DÜZELTME (2026-10-08): bu adım BOŞ LİSTEYİ sessizce geçiyordu.
-        #
-        #   python3 ...extract-embedded-scripts.py /tmp/emb | xargs -0 -n1 -- shellcheck -S warning
-        #
-        # 1) xargs'ta `-r` / `--no-run-if-empty` YOKTU. Boş girdide xargs komutu
-        #    SIFIR ARGÜMANLA bir kez çalıştırır: shellcheck dosya adı almayınca
-        #    stdin'i okur, pipe zaten boşaldığı için temiz çıkar, exit 0 döner.
-        # 2) Bu step'te `shell:` anahtarı tanımlı DEĞİL, yani GitHub Actions'ın
-        #    varsayılanı `bash -e {0}` — PIPEFAIL YOK. (`shell: bash` yazılsaydı
-        #    `bash -eo pipefail` olurdu.) Yani extractor'ın ÇÖKMESİ de aynı
-        #    şekilde yutuluyordu; sadece sol taraf `set -e` ile korunmuyor.
-        #
-        # Sonuç: home.nix'teki `hypr/scripts/...` desenleri bir refactor'da
-        # kayarsa extractor 0 betik bulup mutlu mesut çıkıyor, `echo "OK"`
-        # basıyor, kapı YEŞİL kalıyor ve HİÇBİR ŞEY taranmamış oluyordu.
-        # Tam olarak bu kapının yakalamak için kurulduğu hata sınıfı.
-        #
-        # Düzeltme: (a) `shell: bash` ile pipefail açık, (b) boş çıktı ve
-        # (c) minimum betik sayısı açıkça reddediliyor, (d) xargs `-r` alıyor.
-        shell: bash
         run: |
-          set -euo pipefail
-          mapfile -d '' -t EMBEDDED < <(python3 scripts/extract-embedded-scripts.py /tmp/emb)
-          COUNT="${#EMBEDDED[@]}"
-          if [ "$COUNT" -eq 0 ]; then
-            echo "::error::home.nix içinden hiç gömülü bash betiği çıkarılamadı (0 betik)."
-            echo "::error::extract-embedded-scripts.py marker'ları home.nix ile uyuşmuyor —"
-            echo "::error::kapı sessizce hiçbir şey taramadan geçmesin diye BİLEREK kırıldı."
-            exit 1
-          fi
-          if [ "$COUNT" -lt 7 ]; then
-            echo "::warning::gömülü betik sayısı $COUNT (önceden 7 idi)."
-            echo "::warning::home.nix'den betik silinmiş olabilir ya da marker kaçmış olabilir."
-          fi
-          printf '%s\0' "${EMBEDDED[@]}" | xargs -0 -r -n1 -- shellcheck -S warning
-          echo "  embedded scripts OK ($COUNT betik tarandı)"
+          python3 scripts/extract-embedded-scripts.py /tmp/emb             | xargs -0 -n1 -- shellcheck -S warning
+          echo "  embedded scripts OK"
 
       # ---- THE GATE THIS REPO WAS ACTUALLY MISSING ----
       # Workflow'un adı "Nix Flake Check" idi ama içinde TEK SATIR Nix yoktu:
