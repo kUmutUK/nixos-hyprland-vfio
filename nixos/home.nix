@@ -7,8 +7,18 @@ let
   # P2-1 (2026-10-05): boş monitör adı pratikte "tüm monitörleri workspace 1'e
   # aynala" demekti (13. alan preferred, 14. mirror, 15. workspace). Tek
   # monitörde zararsız, çok monitörde kurulumu bozuyordu. install.sh artık
-  # gerçek çıktıyı yazıyor; buradaki değer yalnızca manuel klonlayanları korur.
-  hyprlandMonitorLine = "monitor = ,preferred,auto,1";
+  # gerçek çıktıyı yazıyor (apply_var "hyprlandMonitorLine").
+  #
+  # ⚠️ DÜZELTME (2026-10-08): yorumun devamı "buradaki değer yalnızca manuel
+  # klonlayanları korur" diyordu — ama duran değer boş monitör adıydı, yani
+  # sorunun KENDİSİ. Yorum doğru teşhisi yapıp yanlış sonuca bağlanıyordu:
+  # elle klonlayan tam olarak o bozuk davranışı alıyordu.
+  #
+  # Artık gerçek bir örnek değer duruyor (KURULUM.md §7b'in de önerdiği gibi).
+  # Önemsiz bir çıktı adı (DP-1) kullandığınız sistemde Hyprland bu kuralı
+  # yok sayıp geçer — sizin çıktınızın adını `hyprctl monitors`'tan bakıp
+  # buraya yazın. Boş AD bırakmayın: boş ad "tüm çıkışlara uygula" demektir.
+  hyprlandMonitorLine = "monitor = DP-1,preferred,auto,1";
   wallpaperVideo     = "${config.home.homeDirectory}/Downloads/arthur-leywin-the-beginning-after-the-end.3840x2160.mp4";
 
   gamemodeNotifyScript = pkgs.writeShellScriptBin "gamemode-notify" ''
@@ -1587,6 +1597,23 @@ done
         on-resume = "${pkgs.hyprland}/bin/hyprctl dispatch dpms on";
       }
       {
+        # ⚠️ DÜZELTME (2026-10-08): bu adım "ekranı kıs" DEĞİL, parlaklığı
+        # MUTLAK %70'e sabitliyor (`brightnessctl -s set 70%`). Yönü tamamen
+        # başlangıç değerine bağlı: kullanıcı %40'ta çalışıyorsa PARLATIR,
+        # %100'de çalışıyorsa kısar. "İdeal %70" gibi bir varsayım yok.
+        #
+        # Ayrıca: harici monitörlü bir masaüstünde /sys/class/backlight/ genelde
+        # BOŞTUR; brightnessctl o durumda "No device found" deyip hiçbir şey
+        # yapmaz, yani bu satır hedef donanımda büyük olasılıkla sessiz bir
+        # no-op'tur. İç paneli (backlight) olan dizüstülerde ise gerçekten
+        # parlaklığı değiştirir.
+        #
+        # Zamanlama bağlamı: 150 sn'de bu, 300 sn'de `dpms off`. Yani 150–300 sn
+        # aralığında ekran AÇIK kalıyor. Niyet gerçekten "karart" ise doğrusu
+        # göreli azaltma (`brightnessctl --set 10%-`) ya da bu listener'ın
+        # kaldırılıp yalnızca 300 sn'lik dpms off'un bırakılması.
+        # Kaldırmadım: tasarımın sahibinin tercihi, davranışı değiştirmek
+        # kullanıcının kararı — burada yalnızca BELGELENMEMİŞ kısmı yazıldı.
         timeout = 150;
         on-timeout = "${pkgs.brightnessctl}/bin/brightnessctl -s set 70%";
         on-resume = "${pkgs.brightnessctl}/bin/brightnessctl -r";
