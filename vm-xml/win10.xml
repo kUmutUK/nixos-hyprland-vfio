@@ -15,8 +15,30 @@
       <feature enabled="no" name="enrolled-keys"/>
       <feature enabled="no" name="secure-boot"/>
     </firmware>
-    <loader readonly="yes" type="pflash" format="raw">/run/libvirt/nix-ovmf/edk2-x86_64-code.fd</loader>
-    <nvram template="/run/libvirt/nix-ovmf/edk2-i386-vars.fd" templateFormat="raw" format="raw">/var/lib/libvirt/qemu/nvram/win10_VARS.fd</nvram>
+    <!--
+      OVMF yolları (E1, 2026-10-08): bu iki yol "edk2-x86_64-code.fd" ve
+      "edk2-i386-vars.fd" idi. İkisi de bu sistemde ÜRETİLMEYEN dosyalardı:
+        * nixpkgs OVMF türetmesi metaPlatforms'tan i686'ı ÇIKARIR, dolayısıyla
+          edk2-i386-vars.fd hiç build edilmez.
+        * gerçek dosya adları ${fwPrefix}_CODE.fd / ${fwPrefix}_VARS.fd'dir ve
+          x86_64 için fwPrefix = "OVMF" → OVMF_CODE.fd / OVMF_VARS.fd.
+          Bu ikisi /run/libvirt/nix-ovmf/ altına libvirtd tarafından kopyalanır.
+
+      ⚠️ DOĞRULA (XML'i tanımlamadan ÖNCE tek komut):
+          ls /run/libvirt/nix-ovmf/
+        OVMF_CODE.fd ve OVMF_VARS.fd görünüyorsa bu yollar doğrudur.
+        Başka adlar görünüyorsa (örn. edk2-*.fd) yukarıdaki iki path'i
+        SHEKLDEKI ADLA değiştir — nixpkgs'in OVMF paketlemesi sürüme göre
+        değişebilir ve bu dosyada hangisinin doğru olduğu TEYİT EDİLMEMİŞTİR.
+
+      ⚠️ NVRAM: "nvram template" özniteliği yalnızca dosya İLK oluşturulurken
+      okunur. Daha önce define edilmiş bir win10 varsa mevcut win10_VARS.fd eski
+      şablondan üretilmiş olur ve XML düzeltmesi onu yenilemez. Önce
+      "virsh undefine win10" komutunu NVRAM bayrağıyla çalıştır, sonra bu
+      dosyayı yeniden define et. Ayrıntı ve tam komut: KURULUM.md §7.
+    -->
+    <loader readonly="yes" type="pflash" format="raw">/run/libvirt/nix-ovmf/OVMF_CODE.fd</loader>
+    <nvram template="/run/libvirt/nix-ovmf/OVMF_VARS.fd" templateFormat="raw" format="raw">/var/lib/libvirt/qemu/nvram/win10_VARS.fd</nvram>
     <bootmenu enable="yes"/>
   </os>
   <features>
