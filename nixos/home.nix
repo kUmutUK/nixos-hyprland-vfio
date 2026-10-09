@@ -1037,11 +1037,18 @@ for _region in "altyazı|$GEOMETRY_MAIN" "seçenekler|$GEOMETRY_CHOICE"; do
     if ! geometry_fits "$_geom"; then
         notify-send -t 25000 -u critical "WuWa AI" \
             "$_label bölgesi ($_geom) ekrana sığmıyor (ekran: $MON_W x$MON_H). Çeviri bu bölgeyi tarayamayacak. home.nix'deki wuwa-auto.sh değerlerini ya da WUWA_GEOMETRY_MAIN / WUWA_GEOMETRY_CHOICE ortam değişkenini düzelt." || true
+        exit 1
     fi
 done
 
-IMAGE_MAIN="/tmp/wuwa_main.png"
-IMAGE_CHOICE="/tmp/wuwa_choice.png"
+# Ekran görüntüleri her çalıştırma için ayrı ve yalnız kullanıcıya açık dizinde.
+umask 077
+TMPD=$(mktemp -d -t wuwa-XXXXXX) || exit 1
+trap 'rm -rf "$TMPD"' EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+IMAGE_MAIN="$TMPD/main.png"
+IMAGE_CHOICE="$TMPD/choice.png"
 
 LAST_MAIN=""
 LAST_CHOICE=""
@@ -1053,8 +1060,10 @@ TESSDATA_DIR="$HOME/.local/share/tessdata"
 [ ! -d "$TESSDATA_DIR" ] && TESSDATA_DIR="/run/current-system/sw/share/tessdata"
 
 # ─── Çeviri önbelleği ───
-CACHE_FILE="/tmp/wuwa_translate_cache"
-touch "$CACHE_FILE"
+CACHE_HOME="''${XDG_CACHE_HOME:-$HOME/.cache}"
+CACHE_FILE="$CACHE_HOME/wuwa_translate_cache"
+mkdir -p "$CACHE_HOME" || exit 1
+touch "$CACHE_FILE" && chmod 600 "$CACHE_FILE" || exit 1
 
 # ─── Hızlı çeviri (Argos Translate) ───
 translate_fast() {
@@ -1085,7 +1094,9 @@ translate_llm() {
                          --arg pr "EN: ''${text}"$'\n'"TR:" \
                          '{model: $mod, prompt: $pr, stream: false, options: {temperature: 0.0, num_predict: 80}}')
 
-    curl -s http://localhost:11434/api/generate -d "$json_payload" | jq -r '.response' 2>/dev/null | xargs
+    curl -s --connect-timeout 2 --max-time 10 \
+         http://localhost:11434/api/generate -d "$json_payload" \
+         | jq -r '.response' 2>/dev/null | xargs
 }
 
 # ─── Genel çeviri (önbellek + Argos → Ollama) ───
