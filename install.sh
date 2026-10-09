@@ -201,7 +201,14 @@ for src in "$HOME/.config/hypr" "$HOME/.config/waybar" "$HOME/.config/gtk-3.0" "
            "$NIXOS_DIR/hardware-configuration.nix" \
            "$NIXOS_FLAKE_DIR/hardware-configuration.nix"; do
     if [ -e "$src" ]; then
-        cp -rL "$src" "$BACKUP_DIR/" 2>/dev/null && log "Backed up: $(basename "$src")" || true
+        # DÜZELTME: düz "$BACKUP_DIR/" hedefi İSİM ÇAKIŞMASI üretiyordu.
+        # `hardware-configuration.nix` listedeki İKİ farklı yoldan geliyor
+        # ($NIXOS_DIR ve $NIXOS_FLAKE_DIR); ikisi de aynı isimle yazıldığı için
+        # ikincisi birincisini sessizce eziyordu — kullanıcı geri dönmek
+        # istediğinde YANLIŞ dosyayı geri yüklüyordu. Yol '/'→'_' ile
+        # düzleştirilerek her kaynak kendi benzersiz adını alıyor.
+        cp -rL "$src" "$BACKUP_DIR/$(echo "$src" | tr '/' '_')" 2>/dev/null \
+            && log "Backed up: $(echo "$src" | tr '/' '_')" || true
     fi
 done
 log "Backup saved to $BACKUP_DIR"
@@ -219,6 +226,27 @@ for f in configuration.nix home.nix flake.nix flake.lock; do
         warn "Skipping missing file: $f"
     fi
 done
+
+# DÜZELTME: hardware-configuration.nix daha önce HİÇ kopyalanmıyordu, sadece
+# uyarılıyordu. Oysa configuration.nix `imports = [ ./hardware-configuration.nix ]`
+# yapıyor ve './' FLAKE DİZİNİNE göre çözülüyor → yol
+# /etc/nixos/nixos/hardware-configuration.nix olmak zorunda. Standart NixOS
+# kurulumunda dosya /etc/nixos/hardware-configuration.nix'te durduğu için
+# ilk `nixos-rebuild` "path .../nixos/hardware-configuration.nix does not
+# exist" ile düşüyordu — script "Setup complete" dedikten hemen sonra.
+# Depodaki değerler makineye özgü olduğu için kopyalanmıyor; yereldeki sürüm
+# varsa taşınıyor.
+if [ -f "$NIXOS_DIR/hardware-configuration.nix" ]; then
+    sudo cp "$NIXOS_DIR/hardware-configuration.nix" "$NIXOS_FLAKE_DIR/"
+    HW_IN_PLACE=1
+    log "Copied hardware-configuration.nix (machine-specific, from $NIXOS_DIR)"
+elif [ -f "$NIXOS_FLAKE_DIR/hardware-configuration.nix" ]; then
+    HW_IN_PLACE=1
+    log "hardware-configuration.nix already in place — skipped"
+else
+    HW_IN_PLACE=0
+    warn "hardware-configuration.nix bulunamadı — rebuild patlayacak (aşağıya bak)."
+fi
 
 if [ -d "$REPO_DIR/nixos/hooks" ]; then
     sudo rm -rf "$NIXOS_FLAKE_DIR/hooks"
@@ -322,6 +350,10 @@ PYEOF
   fi
 fi
 
+if [ "$HW_IN_PLACE" = "1" ]; then
+  log "hardware-configuration.nix yerinde — aşağıdaki 'elle kopyalayın' adımı gerekmiyor."
+  echo "  Yine de doğrula: lsblk -f  # mount edilen her bölümün UUID'si doğru mu?"
+else
 warn "hardware-configuration.nix was NOT copied (machine-specific — UUID'ler size özel)."
 warn "Flake ./hardware-configuration.nix bekliyor, yani dosya şurada olmalı:"
 echo -e "     ${CYAN}${NIXOS_FLAKE_DIR}/hardware-configuration.nix${NC}"
@@ -335,6 +367,7 @@ echo ""
 echo "   Ya da elle oluşturun:"
 echo -e "     ${CYAN}sudo nixos-generate-config --root /mnt${NC}"
 echo -e "     ${CYAN}lsblk -f${NC}  # UUID'leri kontrol edin"
+fi
 
 # ─── Btrfs snapshot subvolume ───────────────────────────
 step "Btrfs snapshot subvolume"
