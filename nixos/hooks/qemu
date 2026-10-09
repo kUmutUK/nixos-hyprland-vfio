@@ -13,9 +13,19 @@ bind_vfio() {
     if [ -e "/sys/bus/pci/devices/$dev/driver" ]; then
       echo "$dev" > "/sys/bus/pci/devices/$dev/driver/unbind" 2>/dev/null
     fi
-    echo "vfio-pci" > "/sys/bus/pci/devices/$dev/driver_override"
-    echo "$dev" > "/sys/bus/pci/drivers/vfio-pci/bind" 2>/dev/null ||
-      echo "$dev" > /sys/bus/pci/drivers_probe 2>/dev/null
+    # DÜZELTME: aşağıdaki iki yazma 2>/dev/null ile yutuluyordu ve bind
+    # başarısız olsa bile HİÇBİR iz bırakmıyordu. Kullanıcı ancak çok
+    # sonra, prepare() sonundaki device_bound_to_vfio kontrolünde
+    # "GPU bağlanamadı" görüyor ve NEDENini (IOMMU kapalı mı, override
+    # mı takılı, kart başka sürücüde mi) öğrenemiyordu. Şimdi her iki
+    # adım da loglanıyor; device_bound_to_vfio kontrolü YERİNDE kalıyor.
+    echo "vfio-pci" > "/sys/bus/pci/devices/$dev/driver_override" 2>/dev/null ||
+      log "UYARI: $dev icin driver_override yazilamadi (cihaz yok mu?)."
+    if ! echo "$dev" > "/sys/bus/pci/drivers/vfio-pci/bind" 2>/dev/null; then
+      log "UYARI: $dev -> vfio-pci bind basarisiz, drivers_probe deneniyor."
+      echo "$dev" > /sys/bus/pci/drivers_probe 2>/dev/null ||
+        log "  $dev -> drivers_probe de basarisiz. En olasi nedenler: IOMMU kapali (BIOS'ta amd_iommu=on), ya da kart baska bir surucuye bagli ve IOMMU grubu tek basina degil."
+    fi
   done
 }
 
