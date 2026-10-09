@@ -100,10 +100,43 @@ jobs:
           # EVAL eder, indirme yapmaz. (Ayrıca --accept-flake-config olmadan
           # flake'in nixConfig'i zaten "untrusted" sayılıp yok sayılıyor.)
           nix flake check --no-build --show-trace \
+            --no-update-lock-file \
             --option warn-dirty false
           echo "  flake evaluates OK"
 
-      # KİLİT SÜRÜKLENMESİNİ KALICI OLARAK YAKALA
+      # ℹ️ BU ADIM GATE DEĞİL, BİLGİLENDİRMEDİR. Yakalayan kapılar şunlardır:
+      #   1) shellcheck (install.sh + nixos/hooks/qemu)
+      #   2) embedded home.nix script taraması
+      #   3) nix flake check (eval only)  ← option hatalarını asıl o yakalar
+      #   4) flake.lock unchanged
+      # statix ve deadnix BULGULARI LOG'A YAZAR, workflow'u KIRMaz. Bu kasıtlı:
+      # statix her bulguda PR'ı bloklardı, bu da bir config reposu için gürültü.
+      # `|| echo` yüzünden her zaman exit 0 — bu bir PIPELINE değil (pipefail'ın
+      # burada ilgisi yok), `cmd || echo` ifadesinin kendisi exit kodunu yutar.
+      # NOT: buradaki `nix develop` `--no-build` DEĞİLDİR ve olması da gerekmez.
+      # devShell paketleri (nixfmt, statix, deadnix, shellcheck, jq, …) hepsi
+      # cache'te; `low_latency_layer` gibi kaynak derlemesi bu adımda olmuyor.
+      # `--no-build` yalnızca bir ÖNCEKİ adımda anlamlı: `nix flake check` orada
+      # sistem build'ini istemiyor, sadece modül sistemini değerlendirmek istiyor.
+      - name: statix / deadnix (repo kökü .nix dosyaları) — BİLGİLENDİRME
+        run: |
+          # P3: önceki hâli KİLİTLENMEMİŞ nixpkgs çekiyordu (nixpkgs#statix),
+          # yani aynı commit'te farklı sonuç verebilirdi. Artık flake'in kendi
+          # devShell'inden, kilitli rev ile çalışıyor.
+          nix --extra-experimental-features "nix-command flakes" \
+            develop ./nixos --no-update-lock-file --command statix check . \
+            || echo "::warning::statix bulguları var (gate değil)"
+          nix --extra-experimental-features "nix-command flakes" \
+            develop ./nixos --no-update-lock-file --command deadnix . \
+            || echo "::warning::deadnix bulguları var (gate değil)"
+
+      # ── KİLİT SÜRÜKLENMESİNİ KALICI OLARAK YAKALA ──────────────────
+      # DİKKAT: bu adım bilerek EN SONDA. Aynı flake'i eval eden her adım
+      # lock'u değiştirebilir (`nix develop` dahil — `--no-update-lock-file`
+      # eklediğimiz için artık yazmıyorlar, ama bu güveneceğimiz tek şey
+      # değil: yeni bir nix adımı ekleyen unutabilir). Gate kendisinden SONRA
+      # lock'u bozabilecek bir adım varsa, kanonik olmayan lock ilk eval'de
+      # fark edilmez ve sessizce geçer. Bu yüzden kapanış her zaman buradadır.
       - name: flake.lock unchanged
         working-directory: nixos
         run: |
@@ -113,19 +146,3 @@ jobs:
             exit 1
           fi
           echo "  flake.lock clean"
-
-      # flake'in DEĞERLENDİRİLDİĞİ doğrulanır: bir option yanlış yazılmışsa
-      # ("services.lsfg-vk", "systemd.tmpfiles.rules", impermanence modülü)
-      # burada düşer. impermanence'in "Neither /var/lib/nixos nor any of its
-      # parents are persisted" uyarısı GÜRÜLTÜDÜR ve bu adımı kırmaz.
-      - name: statix / deadnix (repo kökü .nix dosyaları)
-        run: |
-          # P3: önceki hâli KİLİTLENMEMİŞ nixpkgs çekiyordu (nixpkgs#statix),
-          # yani aynı commit'te farklı sonuç verebilirdi. Artık flake'in kendi
-          # devShell'inden, kilitli rev ile çalışıyor.
-          nix --extra-experimental-features "nix-command flakes" \
-            develop ./nixos --command statix check . \
-            || echo "::warning::statix bulguları var (gate değil)"
-          nix --extra-experimental-features "nix-command flakes" \
-            develop ./nixos --command deadnix . \
-            || echo "::warning::deadnix bulguları var (gate değil)"
