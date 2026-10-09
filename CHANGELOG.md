@@ -1,5 +1,21 @@
 # 📜 Changelog
 
+
+# [1.3.7] - 2026-10-09
+
+## VFIO ve kurulum güvenliği
+
+- `vm-xml/win10.xml`: NVRAM şablonu, paylaşılan NixOS sistem envanterinde bulunan `edk2-i386-vars.fd` yoluna çevrildi. İki PCI `<hostdev>` bloğunda `<driver name="vfio"/>` zaten bulunduğundan tekrar eklenmedi.
+- `nixos/hooks/qemu`: `fuser` eksikliği artık GPU'nun boş olduğu şeklinde yorumlanmıyor; denetim aracı ve GPU aygıt düğümleri, masaüstü durdurulmadan önce / GPU devri öncesinde doğrulanıyor. `fuser` denetim hataları fail-closed davranıyor.
+- `nixos/hooks/qemu`: `prepare` sırasında HUP/INT/TERM gelirse mümkün olduğunca host sürücüsü ve masaüstü geri yüklemesi deneniyor. `SIGKILL` yakalanamaz ve donanım kurtarması garanti edilemez.
+- `.github/workflows/check.yml`: kaynak hook yanında `configuration.nix` tarafından üretilen VFIO hook sarmalayıcısı da küçük bir derivation olarak build edilip ShellCheck ile denetleniyor; tam NixOS sistemi build edilmiyor.
+- `install.sh`: var olan yapılandırmaların herhangi bir yedeği başarısızsa kurulum yıkıcı kopyalama adımlarına geçmeden duruyor. `hooks/` yedekleme listesinde zaten vardı.
+- `nixos/home.nix`: Hypridle bloğunun girintisi düzenlendi; davranış değişmedi.
+- `README.md`: `pcie_aspm=off` açıklaması güç tasarrufu garantisi vermeyecek şekilde düzeltildi.
+- Çalıştırılabilir modlar `install.sh`, `nixos/hooks/qemu` ve `scripts/extract-embedded-scripts.py` dosyalarına verildi.
+
+Statik doğrulama, VM'nin gerçek donanımda açıldığını kanıtlamaz. Bu ortamda NixOS değerlendirmesi/build'i ve GPU passthrough çalışma zamanı testi yapılmadı.
+
 All notable changes to this project will be documented here.
 
 This project follows:
