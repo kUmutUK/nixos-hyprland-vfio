@@ -13,6 +13,16 @@ This project follows:
 İki davranış değişikliği + kozmetik temizlik. `[1.3.5]`'in devamı; o turun
 "bilerek dokunulmadı" maddesinin karşılığı burada.
 
+## 🟡 Fixed — statik denetimde kalan üç P3 iyileştirmesi
+
+- **`wuwa-gemma-init`:** `set -euo pipefail` eklendi; model indirme başarısızsa
+  açık hata mesajıyla servis başarısız çıkıyor ve yanıltıcı "hazır" mesajı basılmıyor.
+- **Çeviri önbelleği:** alt dize araması yerine TAB ile ayrılmış ilk alan üzerinde
+  tam anahtar karşılaştırması yapılıyor.
+- **Gömülü betik CI kapısı:** sıfırdan büyük herhangi bir sayı yerine tam olarak
+  7 betik bekleniyor; extractor bir bloğu kaçırırsa adım kırmızı oluyor. Betik
+  sayısı bilinçli değişirse beklenen sayı da güncellenmeli.
+
 ## 🟠 Fixed — `rcupdate.rcu_expedited=1` kaldırıldı (davranış)
 
 `boot.kernelParams`'tan **silindi**. Silinen satırın yerine gerekçe notu bırakıldı.
@@ -794,13 +804,18 @@ satır sonu üretiliyor.
 okur, çok satırlı çevirinin tamamı kayboluyordu. Artık tüm çıktı
 değişkende toplanıyor.
 
-## 🟡 Fixed — Canlı duvar kağıdı sessizce hiç açılmıyordu
+## 🟡 Fixed — `mpvpaper` dosya koşulu doğru systemd bölümünde
 
-`mpvpaper.service` `ConditionPathExists = ${wallpaperVideo}` taşıyor. Dosya
-yoksa systemd unit'i **sessizce** atlar — ne hata ne duvar kağıdı.
-`install.sh` yalnızca yol soruyor, videoyu indirmiyordu.
+Önceki açıklamadaki "dosya yoksa systemd unit'i sessizce atlar" iddiası o
+sürüm için doğru değildi: `ConditionPathExists` yanlışlıkla `[Service]`
+bölümüne karşılık gelen `Service` kümesindeydi ve systemd bu anahtarı yok
+sayıyordu. Bu durumda `ExecStart` dosyayı açamayınca hata veriyor ve
+`Restart=on-failure` servisi tekrar deniyordu.
 
-- Oturum açılışında görünür `notify-send -u critical` kontrolü eklendi.
+`ConditionPathExists` artık `[Unit]` bölümüne karşılık gelen `Unit` kümesinde.
+Video dosyası yoksa servis başlatılmıyor; oturum açılışındaki görünür
+`notify-send -u critical` uyarısı kullanıcıyı ayrıca bilgilendiriyor.
+`install.sh` video dosyasını indirmez; yalnızca yolunu yapılandırır.
 
 ## 🟡 Fixed — `wuwa-auto.sh` hiç dinlenmiyordu
 

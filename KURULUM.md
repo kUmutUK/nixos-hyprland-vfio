@@ -173,7 +173,7 @@ kopyalanır. `install.sh`'ı çalıştırmadığınız için `home.nix` içindek
 | 2 | `monitorOutput` | `"DP-3"` | Yanlış çıktıysa `mpvpaper` duvar kağıdı çalışmaz (oturum açılışında kritik uyarı çıkar) |
 | 3 | `gitName` | `"changeme"` | Commit'ler sahte isimle etiketlenir |
 | 4 | `gitEmail` | `"you@example.com"` | Commit'ler sahte adresle etiketlenir |
-| 5 | `wallpaperVideo` | `~/Downloads/arthur-leywin-….mp4` | Dosya yoksa `mpvpaper.service` sessizce atlanır |
+| 5 | `wallpaperVideo` | `~/Downloads/arthur-leywin-….mp4` | Dosya yoksa `Unit.ConditionPathExists` servisi başlatmaz; oturum açılışında kritik uyarı gösterilir |
 
 Mevcut NixOS'u güncelliyorsanız bunların hepsini `install.sh` sizin yerinize
 doldurur (monitörü `hyprctl`/`/sys/class/drm`'den okur). Yeni kurulumda elle
