@@ -64,7 +64,7 @@ shellcheck -S warning install.sh nixos/hooks/qemu
 > `home.nix` içine gömülü script'ler doğrudan taranamaz. Onları çıkarmak için:
 >
 > ```bash
-> python3 scripts/extract-embedded-scripts.py /tmp/emb | xargs -0 -n1 -- shellcheck -S warning
+> python3 scripts/extract-embedded-scripts.py /tmp/emb | xargs -0 -r -n1 -- shellcheck -S warning
 > ```
 >
 > CI bunu otomatik yapıyor. Manuel değişiklikten sonra çalıştırmazsan

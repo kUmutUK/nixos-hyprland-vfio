@@ -303,6 +303,18 @@ Oyun dışında ppd profilini `balanced`'a çekmeniz önerilir.
   Acil kurtarma için `Ctrl+Alt+F2` → `systemctl reboot`.
 - **`HOST_USER` sabit.** Hook `localhost`'u sonlandırır. Tek kullanıcılı
   kurulum içindir; `KURULUM.md` §9b'de bu konu ayrıntılı.
+- **VM'e giriş cihazı tanımlı değil.** `vm-xml/win10.xml` içindeki USB hostdev
+  yorum satırında; `<graphics>`/VNC/SPICE elemanı da yok. Yani GPU
+  passthrough'tan sonra host'ta grafik olmaması *beklenen* davranışken, host'a
+  bağlı klavye/farenin guest'e **hiç ulaşmaması** ayrı ve çözülebilir bir eksik:
+  tanımlı tek giriş yolu emüle PS/2 (`virsh console` üzerinden metin). Oyun
+  için düzeltme: kendi cihazınızın VID:PID'sini bulup (host'ta
+  `lsusb` → `idVendor`/`idProduct`) `win10.xml`'deki yorumlu `<hostdev
+  mode="subsystem" type="usb">` bloğunu açın, ardından `virsh define` +
+  `virsh start` gerekir. Hostdev `managed="yes"` olduğu için host'un cihazı
+  VM'e devredilir ve VM kapanınca geri döner.
+  > 💡 `2a7a:8a47` yorumdaki değer **bakımcının kendi CASUE klavyesidir** —
+  > sizin cihazınız değil, kopyalamayın.
 - **swap şifrelenmemiş.** LUKS dışındaki açık bölümde.
 - **CSR (Client-Side Rendering).** Bu bir oyun/gaming config'i; KDE/Wayland
   gibi ağır masaüstü bileşenleri yok.
@@ -360,7 +372,7 @@ nix develop ./nixos                    # nixfmt, statix, deadnix, shellcheck, jq
 nixfmt .                               # biçimlendir
 
 shellcheck -S warning install.sh nixos/hooks/qemu
-python3 scripts/extract-embedded-scripts.py /tmp/emb | xargs -0 -n1 -- shellcheck -S warning
+python3 scripts/extract-embedded-scripts.py /tmp/emb | xargs -0 -r -n1 -- shellcheck -S warning
 
 cd nixos && nix flake check --no-build
 ```
