@@ -365,9 +365,23 @@ if [ "$ACTION" = "prepare" ]; then
   echo 0 > /sys/class/vtconsole/vtcon1/bind 2>/dev/null || true
   echo efi-framebuffer.0 > /sys/bus/platform/drivers/efi-framebuffer/unbind 2>/dev/null || true
   sleep 1
-  # DÜZELTME (2026-10-05): sıra ters çevrildi. vfio-pci bind sırasında zaten
-  # bir reset yapıyor; bind SONRASI yapılan ek FLR gereksiz ve Navi2x reset
-  # bug'ının en çok konuşulan tetikleyicisiydi. Reset artık bind'den önce.
+  # C2 (2026-10-09): GPU reset denemesinden önce mevcut PCI sürücüsünü
+  # ayır. Özellikle amdgpu bağlıyken reset çağrılmasını önle; ardından
+  # bind_vfio() cihazı vfio-pci'ye bağlar. Durum bayrağı, araya sinyal
+  # girerse rollback'in GPU'yu host sürücüsüne geri bağlamasını sağlar.
+  PREPARE_GPU_PCI_TOUCHED=1
+  if [ -e "/sys/bus/pci/devices/$GPU_PCI/driver" ]; then
+    if ! echo "$GPU_PCI" > "/sys/bus/pci/devices/$GPU_PCI/driver/unbind" 2>/dev/null; then
+      log "HATA: $GPU_PCI mevcut sürücüden ayrılamadı; reset denenmeyecek."
+      rollback_prepare
+      exit 1
+    fi
+  fi
+  if [ -e "/sys/bus/pci/devices/$GPU_PCI/driver" ]; then
+    log "HATA: $GPU_PCI unbind sonrasında hâlâ bir sürücüye bağlı; reset denenmeyecek."
+    rollback_prepare
+    exit 1
+  fi
   vendor_reset "$GPU_PCI"
   bind_vfio "$GPU_PCI" "$GPU_AUDIO"
 
