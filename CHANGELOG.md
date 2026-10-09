@@ -103,6 +103,47 @@ CHANGELOG [1.3.1]'in polkit düzeltmesi doğruymuş, **dokunulmadı**.
 > davranışı sürümden sürüme değişiyor; "nixpkgs şöyle yapıyor" demek için
 > kilitli rev'i okumak gerekiyor.
 
+## 🟠 Fixed — CI'da `flake.lock` kapısı, kilitlediği şeyden sonra geliyordu
+
+`flake.lock unchanged` adımı workflow'da `statix`/`deadnix`'ten **önce**ydi.
+Ama o adım `nix develop ./nixos` çağırıyor — yani gate kendisinden sonra lock'u
+değiştirebilecek bir adımdan önce kapanıyordu. Kanonik olmayan bir lock ilk
+eval'de fark edilmezse, ikinci adım bir daha değiştirse **sessizce geçiyordu**.
+Bu, [1.3.4] Notlar bölümünde yazılan "son söz CI'ın `flake.lock unchanged`
+adımıdır" cümlesini de yanlış kılıyordu: adım o an için sondan ikinci söz.
+
+→ **İki katmanlı düzeltme, ikisi birbirinin yerine geçmiyor:**
+
+1. **Sıralama:** gate workflow'un **sonuna** taşındı. Yeni bir nix eval/build
+   adımı ekleyen gate'i arkaya alabilir, ama kapı yine de en sonda kalır.
+2. **Mekanizma:** lock'a dokunan üç çağrıya da `--no-update-lock-file` eklendi
+   — `nix flake check` ve iki `nix develop`. Artık hiçbir adım lock'u yazma
+   yetkisine sahip değil. Bayrak, ileride eklenen bir nix adımı bayrağı
+   unutsa bile gate'in anlamlı kalmasını sağlamaz; o işi sıralama yapar.
+
+## ℹ️ Netleştirme — `statix`/`deadnix` GATE DEĞİL, bilgilendirmedir
+
+`check.yml`'in "gate olmayan adımlar" yorumu doğruydu ama repo dokümanları
+"her hata tipi CI'da yakalanıyor" izlenimi veriyordu. Gerçekte **dört**
+kapı var, dördü de gate:
+
+| Kapı | Ne yakalar |
+|---|---|
+| `shellcheck` (install.sh + hooks/qemu) | bash hataları |
+| embedded home.nix script taraması | gömülü script'lerdeki bash hataları |
+| `nix flake check --no-build` | **option hataları** — asıl yakalayan bu |
+| `flake.lock unchanged` | lock kanonikliği |
+
+`statix` ve `deadnix` **bulguları log'a yazar, workflow'u kırmaz.** Bu kasıtlı:
+statix her bulguda PR'ı bloklardı, bir config reposu için gürültü olurdu. İki
+mekanik not: (a) `|| echo` yüzünden her zaman exit 0 — bu bir *pipeline* olmadığı
+için `set -o pipefail`'ın burada hiçbir ilgisi yok, `cmd || echo` ifadesinin
+kendisi exit kodunu yutar; (b) buradaki `nix develop` `--no-build` **değildir
+ve olması da gerekmez** — devShell paketlerinin hepsi cache'te, `low_latency_layer`
+gibi kaynak derlemesi bu adımda olmuyor. `--no-build` yalnızca `nix flake check`
+adımında anlamlıdır; oradaki gerekçe "sistem build'ini istemiyoruz, sadece
+modül sistemini değerlendireceğiz"tir.
+
 ## Notlar
 
 - **`flake.lock` elle düzenlendi** (`impermanence` node'u düştü, `root.inputs`
@@ -120,6 +161,14 @@ CHANGELOG [1.3.1]'in polkit düzeltmesi doğruymuş, **dokunulmadı**.
   `nix flake check --no-build` sonrası diff'i ölçer, yani kanonik olmayan bir
   lock'un değerlendirme sırasında yeniden yazılıp yazılmadığını gerçek eval
   yolunda görür. O adım yeşile dönene kadar commit'lemeyin.
+
+  Bu turda gate'in kendisi de düzeltildi: adım workflow'un **sonuna** taşındı
+  (eskiden `statix`/`deadnix`'ten ÖNCEydi, yani kendisinden sonra lock'u
+  bozabilecek `nix develop` çağıran bir adım vardı) ve lock'a dokunan üç nix
+  çağrısına da `--no-update-lock-file` eklendi. İkisi birbirinin yerine
+  geçmez: bayrak mekanizmayı kapatır, sıralama ise ileride bayrağı
+  unutacak bir nix adımı eklenirse gate'in yine de son söz olmasını garanti
+  eder. Detay: aşağıdaki "CI kapı sırası" maddesi.
 - **`flake.nix`'teki impermanence notu kasıtlı olarak kısa tutuldu** (21 → 5
   satır) ve gerekçe `configuration.nix`'e taşındı. Kaldırılan bir şeyin
   gerekçesi girdiden uzunsa, ya gerekçe yanlış yere yazılmıştır ya da
