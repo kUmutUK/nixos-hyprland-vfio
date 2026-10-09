@@ -48,7 +48,7 @@ let
     # Manifest içindeki library_path mutlak store yoludur, RPATH'li .so da
     # libvulkan'ı kendi çözer; symlinkJoin/runtimePath'e gerek yoktur.
     #
-    # Doğrulama (pinned nixpkgs 7a0f122 + bu rev):
+    # Doğrulama (pinned nixpkgs 151fa4e8 + bu rev):
     #   • sha256 doğrulandı: iUdcNnmY4NqaEnhoJUn7KEKTFQrlqo4tYOkLwEhmL+s= ✔
     #   • installPhase'li hâli: derleme %100, installPhase'de PATLADI ✘
     #   • installPhase'siz hâli: başarılı, manifest üretilen tam yolda ✔
