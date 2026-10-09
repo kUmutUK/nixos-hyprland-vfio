@@ -564,7 +564,7 @@ in
       for d in /var/lib/libvirt/images /var/lib/libvirt/qemu /var/lib/libvirt/swtpm; do
         if [ -d "$d" ]; then
           chown qemu-libvirtd:qemu-libvirtd "$d" 2>/dev/null || true
-          find "$d" -maxdepth 2 -exec chown qemu-libvirtd:qemu-libvirtd {} + 2>/dev/null || true
+          find "$d" -maxdepth 2 -exec chown -h qemu-libvirtd:qemu-libvirtd {} + 2>/dev/null || true
         fi
       done
     '';
