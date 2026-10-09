@@ -63,7 +63,7 @@
           nixpkgs.overlays = [
             cachyos-kernel.overlays.default
           ];
-          boot.kernelPackages = pkgs.cachyosKernels.linuxPackages-cachyos-bore;
+          boot.kernelPackages = pkgs.cachyosKernels.linuxPackages-cachyos-bore-lto;
           # hyprland, hyprlock, hypridle, hyprpicker, hyprpolkitagent ve
           # xdg-desktop-portal-hyprland hepsi aynı nixpkgs rev'inden gelir.
           programs.hyprland.package = pkgs.hyprland;
