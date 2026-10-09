@@ -44,11 +44,17 @@ jobs:
         # çözüp betikleri diske yazar.
         run: |
           # ⚠️ `-r` (--no-run-if-empty) ZORUNLU. GNU xargs boş girdide komutu
-          # ARGÜMANSIZ bir kez çalıştırır: shellcheck stdin'den boş okur, 0 döner,
-          # CI yeşil kalır. extract-embedded-scripts.py bir gün 0 betik bulursa
-          # (MARKERS regex'i bozulması, home.nix'in yeniden yazılması) kapı sessizce
-          # açılır — oysa bu adımın var olma sebebi tam olarak o boşluğu kapatmaktı.
-          # `-r` olmadan bu step bir güvence değil, bir tuzaktır.
+          # ARGÜMANSIZ bir kez çalıştırır. Ölçüldü (GNU xargs 4.9.0, shellcheck 0.9.0):
+          #   printf '' | xargs -0    -n1 -- shellcheck  → exit 123
+          #     (shellcheck dosya argümanı yok diye usage basıp exit 3 verir;
+          #      yani tuzak "sessiz yeşil" DEĞİL, "gürültülü kırmızı"dır)
+          #   printf '' | xargs -0 -r -n1 -- shellcheck  → hiç çalışmaz, exit 0
+          # Yani bugünkü shellcheck'te bu tuzak kapıyı sessizce değil, gürültüyle
+          # kırıyor. Yine de bu adımın var olma sebebi o boşluğu KAPATMAK: betik
+          # çıkarımı bozulursa adım "yeşil ama hiçbir şey denetlememiş" olmamalı.
+          # NOT: eski yorumda "shellcheck stdin'den boş okur, 0 döner, CI yeşil
+          # kalır" deniyordu; bu shellcheck sürüm bağımlı ve ölçülmüş hali YANLIŞTIR.
+          # Davranış sürüme göre değişirse tekrar doğrula.
           python3 scripts/extract-embedded-scripts.py /tmp/emb \
             | xargs -0 -r -n1 -- shellcheck -S warning
           # Savunma katmanı: çıkarılan betik sayısı sıfıra düşerse step patlasın.
