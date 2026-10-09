@@ -191,6 +191,14 @@
       <model type="none"/>
     </video>
     <!--
+    KLAVYE/FARE GİRİŞİ — varsayılan olarak KAPALI.
+    Neden kapalı: vendor/product ID'ler cihaza özeldir. Aşağıdaki 2a7a:8a47
+    bakımcının kendi CASUE klavyesidir; başka bir makinede geçersizdir ve
+    `virsh start` "no such device" ile düşer.
+    Kullanmadan önce: host'ta `lsusb` çalıştırıp kendi cihazınızın
+    idVendor/idProduct değerlerini yazın, sonra `virsh define` + `virsh start`.
+    Bu olmadan guest'e tek giriş yolu emüle PS/2'dir (virsh console, metin).
+    Ayrıntı: README → "Bilinen sınırlar".
     <hostdev mode="subsystem" type="usb" managed="yes">
       <source><vendor id="0x2a7a"/><product id="0x8a47"/></source>
       <address type="usb" bus="0" port="1"/>
