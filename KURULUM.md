@@ -294,14 +294,28 @@ nixos-install --flake /mnt/etc/nixos/nixos#nixos --accept-flake-config
 ```bash
 # vm-xml zaten §7'de repodan /mnt/etc/nixos/vm-xml olarak kopyalandı.
 sudo mkdir -p /var/lib/libvirt/images /var/lib/libvirt/qemu
+
+# ⚠️ DÜZELTME (2026-10-09): bu satır hiçbir dokümanda yoktu. `win10.xml` içinde
+# <source file="/var/lib/libvirt/images/win10new.qcow2"/> tanımlı; disk
+# oluşturulmazsa `virsh define` BAŞARILI olur ama `virsh start win10`
+# "failed to find drive" ile düşer. `install.sh` bu adımı zaten yapıyordu —
+# eksik olan yalnızca elle kurulum yolu (bu rehber).
+sudo qemu-img create -f qcow2 /var/lib/libvirt/images/win10new.qcow2 120G
+
 sudo cp /mnt/etc/nixos/vm-xml/win10.xml /var/lib/libvirt/
 sudo virsh define /var/lib/libvirt/win10.xml
 virsh list --all     # 'win10' → "shut off" olarak görünmeli
 ```
 
 > ⚠️ **ISO dosyaları:** `virsh start win10` için iki ISO gerekir:
-> `Win10_22H2_English_x64v1.iso` ve `virtio-win-*.iso` →
+> `Win10_22H2_English_x64v1.iso` ve `virtio-win-0.1.285.iso` →
 > `sudo cp <iso> /var/lib/libvirt/images/`
+>
+> ⚠️ **XML'deki PCI adresleri:** `install.sh`'ı çalıştırmadıysanız `win10.xml`
+> içindeki `<hostdev>` kaynak adresleri depodaki varsayılan
+> (`0000:0b:00.0` / `.1`) olarak kalır. `lspci` çıktınla eşleşmiyorsa elle
+> düzenleyin — aksi halde hook yeni adrese, libvirt eskisine bakar ve
+> "device not found" alırsınız.
 
 > ⚠️ XML'deki disk/NVRAM yolları sabit geliyor. Kendi diskine göre
 > düzenlemezsen `virsh start win10` "disk bulunamadı" ile başarısız olur.

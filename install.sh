@@ -364,15 +364,17 @@ echo "    virtio-win-0.1.285.iso"
 echo ""
 
 # ─── /nix/persist/home ──────────────────────────────────
-step "Persistent storage directory"
-if [ -d /nix/persist/home ]; then
-  log "/nix/persist/home already exists."
-else
-  warn "/nix/persist/home is MISSING — home.persistence bind-mount would fail."
-  sudo mkdir -p /nix/persist/home
-  log "Created /nix/persist/home."
-fi
-echo ""
+# DÜZELTME (2026-10-09): bu adım KALDIRILDI. Uyarısı artık doğru değildi.
+# `home.persistence` bloğu zaten 2026-10-09'da silinmişti (home.nix →
+# "home.persistence KALDIRILDI", flake.nix → impermanence girdisi + modülü,
+# configuration.nix → /nix/persist/home tmpfiles kuralı). Yani hiçbir bind-mount
+# yok; "bind-mount would fail" uyarısı var olmayan bir mekanizmayı tarif ediyordu.
+# Adım ayrıca /nix/persist altına kullanılmayan boş bir dizin açıp bırakıyordu.
+# CHANGELOG [1.3.4] impermanence'i "üç yerden" kaldırdığını yazıyordu; dördüncüsü
+# bu dosyaydı ve atlanmıştı.
+#
+# Daha önce çalıştırmışsanız /nix/persist/home boş bir dizin olarak duruyor olabilir.
+# Zararsızdır ve config onu kullanmıyor; silmek isterseniz: sudo rmdir /nix/persist/home
 
 # ─── Variable substitution ──────────────────────────────
 step "Applying safe variable substitutions"
