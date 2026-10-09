@@ -96,6 +96,9 @@ let
     export HOOK_SETPCI="${lib.getExe' pkgs.pciutils "setpci"}"
     export HOOK_FUSER="${lib.getExe' pkgs.psmisc "fuser"}"
     export HOOK_RTCWAKE="${lib.getExe' pkgs.util-linux "rtcwake"}"
+    # Suspend/remove/rescan recovery is deliberately opt-in; default stays off.
+    # To enable, set systemd.services.libvirtd.environment.VFIO_ALLOW_SUSPEND_RECOVERY = "1".
+    export VFIO_ALLOW_SUSPEND_RECOVERY="''${VFIO_ALLOW_SUSPEND_RECOVERY:-0}"
     ${builtins.readFile ./hooks/qemu}
   '';
 
@@ -555,9 +558,13 @@ in
     # qemu-libvirtd kullanıcı/grubu libvirtd modülü tarafından oluşturulur;
     # activation sırasında henüz yoksa chown hata vermesin diye `|| true`.
     script = ''
+      # Ana /var/lib/libvirt dizininin sahibini değiştirme: burası libvirt'in
+      # ayrıcalıklı durum/hook alanı. Yalnız ilgili çalışma dizinlerini ve ilk
+      # iki seviyedeki öğeleri düzelt; tüm ağacı özyinelemeli dolaşma.
       for d in /var/lib/libvirt/images /var/lib/libvirt/qemu /var/lib/libvirt/swtpm; do
         if [ -d "$d" ]; then
-          chown -R qemu-libvirtd:qemu-libvirtd "$d" || true
+          chown qemu-libvirtd:qemu-libvirtd "$d" 2>/dev/null || true
+          find "$d" -maxdepth 2 -exec chown qemu-libvirtd:qemu-libvirtd {} + 2>/dev/null || true
         fi
       done
     '';
