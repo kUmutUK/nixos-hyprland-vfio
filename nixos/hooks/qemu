@@ -62,9 +62,16 @@ device_has_real_driver() {
 # yeniden taratmak (rescan). Bu, cihazı sanki yeni takılmış gibi sıfırdan
 # enumerate ettirip normal sürücü eşleşmesini (amdgpu / snd_hda_intel)
 # tetikliyor. Host'u kısaca uyuttuğu için görünür/rahatsız edici bir adım
-# — bu yüzden SADECE sessiz unbind/rebind yetersiz kalırsa devreye giriyor.
+# — yalnızca sessiz unbind/rebind yetersiz kalırsa VE opt-in etkinse devreye girer.
 suspend_rescan_recovery() {
-  log "Sessiz unbind/rebind yetersiz kaldı, remove+suspend+rescan kurtarma deneniyor..."
+  # Bu yol PCI aygıtlarını kaldırır ve host'u askıya alır; varsayılan olarak kapalıdır.
+  if [ "${VFIO_ALLOW_SUSPEND_RECOVERY:-0}" != "1" ]; then
+    log "Suspend/remove/rescan fallback KAPALI (VFIO_ALLOW_SUSPEND_RECOVERY=0)."
+    log "GPU geri gelmediyse manuel kurtarma: sudo modprobe -r amdgpu && sudo modprobe amdgpu"
+    log "Bu da işe yaramazsa host'u yeniden başlatın (sudo reboot)."
+    return 1
+  fi
+  log "Suspend/remove/rescan kurtarması açık; sessiz unbind/rebind yetersiz kaldı..."
   for dev in "$@"; do
     echo 1 > "/sys/bus/pci/devices/$dev/remove" 2>/dev/null || true
   done
@@ -285,16 +292,16 @@ if [ "$ACTION" = "release" ]; then
   sleep 1
 
   # Sessiz unbind/rebind işe yaramadıysa (Navi2x reset bug ihtimali),
-  # ağır ama daha güvenilir remove+suspend+rescan yöntemine düş.
+  # ağır remove+suspend+rescan yöntemi yalnızca opt-in etkinse çalışır.
   if ! device_has_real_driver "$GPU_PCI" || ! device_has_real_driver "$GPU_AUDIO"; then
     suspend_rescan_recovery "$GPU_AUDIO" "$GPU_PCI"
     if ! device_has_real_driver "$GPU_PCI"; then
-      log "UYARI: $GPU_PCI kurtarma sonrası da normal sürücüye bağlanmadı — GPU muhtemelen PCIe bus'tan düştü, host reboot gerekebilir."
+      log "UYARI: $GPU_PCI normal sürücüye bağlanmadı; otomatik fallback kapalı olabilir veya yeniden bağlama başarısız olmuştur. Host kurtarması gerekebilir."
     fi
     # Önceden sadece GPU (.0) tekrar kontrol ediliyordu; audio (.1)
     # fonksiyonu kurtarma sonrası sürücüsüz kalsa bile bu fark edilmiyordu.
     if ! device_has_real_driver "$GPU_AUDIO"; then
-      log "UYARI: $GPU_AUDIO (ses fonksiyonu) kurtarma sonrası da normal sürücüye bağlanmadı."
+      log "UYARI: $GPU_AUDIO (ses fonksiyonu) normal sürücüye bağlanmadı; otomatik fallback kapalı olabilir veya yeniden bağlama başarısız olmuştur."
     fi
   fi
 
