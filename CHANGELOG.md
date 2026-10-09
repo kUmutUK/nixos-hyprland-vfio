@@ -8,6 +8,97 @@ This project follows:
 
 ---
 
+# [1.3.6] - 2026-10-09
+
+İki davranış değişikliği + kozmetik temizlik. `[1.3.5]`'in devamı; o turun
+"bilerek dokunulmadı" maddesinin karşılığı burada.
+
+## 🟠 Fixed — `rcupdate.rcu_expedited=1` kaldırıldı (davranış)
+
+`boot.kernelParams`'tan **silindi**. Silinen satırın yerine gerekçe notu bırakıldı.
+
+Parametre iki ayrı nedenle yanlış yerdeydi:
+
+1. **README'nin gerekçesi olgusal olarak yanlıştı.** *"Windows'un RCU bekleme
+   davranışı"* deniyordu — Windows'ta RCU yok. Parametre misafire hiçbir şey
+   yapmıyor.
+2. **Host parametresi, host'un maliyeti koşulsuz.** README *"Linux guest
+   kullanırsanız çıkarın"* diyordu, ama host her zaman Linux. Gerçek etkisi
+   host'ta tüm grace-period primitive'lerini expedited gibi davrandırmak;
+   kernel dokümanı bunu *"pahalı ve gerçek zamanlı iş yüklerine düşman"*
+   diye tanımlıyor (expedited grace period'lar boş-olmayan tüm CPU'lara IPI
+   yollar).
+
+Bu config'in amacı düşük jitter — `low_latency_layer` (VK_AMD_anti_lag),
+GameMode, RADV_PERFTEST=gpl hepsi bunun için. Parametre tersini yapıyordu.
+
+`[1.3.5]`'te bu karar **bilinçli olarak ertelenmişti**, çünkü parametrenin
+CHANGELOG'da, arşiv raporlarında veya commit geçmişinde hiçbir kaydı yoktu;
+"kaldır" demek de bir varsayımdı. Kapsam turunda karar verildi: kaynak yok,
+dolayısıyla kaldır.
+
+> Yan not: README parametreyi ayrıca **yanlış adla** yazıyordu
+> (`rcu.rcu_expedited=1`; gerçek ad `rcupdate.rcu_expedited`). Cümle tamamen
+> silindiği için bu hata da gitti.
+
+**Korunan komşular:** `kvm.ignore_msrs=1` ve `amdgpu.ppfeaturemask` dokunulmadı
+— ilkincisi README'de doğru belgelenmiş, ikincisi standart maske.
+
+## 🟠 Fixed — `hooks/qemu`: kritik uyarı görünmeyen konsola yazılıyordu (davranış)
+
+**Bu, sıralama hatasıydı ve kullanıcıya tam olarak ulaşması gereken mesajı
+ulaştırmıyordu.**
+
+`release` akışında metin konsolları (`vtcon0`/`vtcon1`) ve `efi-framebuffer`
+geri bağlanıyordu — ama `start_hyprland`'dan hemen önce, yani **"GPU sürücüsü
+yok, siyah ekran normal, `systemctl reboot` çalıştır" mesajı yazıldıktan
+SONRA.** O sırada vtcon'lar hâlâ `prepare` aşamasında çözülmüş durumda
+olduğundan mesaj iki terminale de yazılıyor, ikisi de görünmüyor.
+
+→ Rebind bloğu, kritik uyarıdan **önce** olacak şekilde yukarı taşındı; sondaki
+tekrar silindi. Sıralamanın etkisi: greetd'den önce çalışır ama greetd'ye
+dokunmaz — sadece metin konsolları geri gelir. GPU hâlâ sürücüsüzse grafik
+oturum yine açılmaz, ama bu noktada kullanıcı artık konsolda ne yapması
+gerektiğini okuyabilir.
+
+→ İkinci değişiklik: `suspend_rescan_recovery()` içindeki *"host 3 sn askıya
+alınacak"* uyarısı da tty'ye yazılıyordu ve aynı sebepten görünmüyordu.
+Askıya alma zaten `$LOGFILE`'a rtcwake çıktısıyla düştüğü için `log()`'a
+çevrildi.
+
+> Bu düzeltme bilinçli olarak **kapsam dışı bırakılamayacak** bir işti:
+> mesajın tek amacı siyah ekrana bakan kullanıcıya ulaşmak.
+
+## 🟡 Fixed — doküman ve kozmetik
+
+- **"5.18+" iddiası kaldırıldı** (`[1.3.5]`'teki `amd_iommu` gerekçesinde).
+  Sürüm numarası yanlışlanabilir bir iddiaydı; "no-op, maliyeti sıfır" gerekçesi
+  onsuz da ayakta.
+- **`docs/archive/README.md`** var olmayan `assets/example.conf:79`'a atıf
+  yapıyordu; doğru kaynak (`nixos/home.nix` → `hyprlockConf`) ile değiştirildi.
+- **Waybar `mpris` ikonu:** `chromium = "🦺"` (güvenlik yeleği) → `"🌐"`.
+  Brave'ın pencere modülünde zaten `🌐` kullanılıyor; tutarlılık sağlandı.
+- **Bayat yorum (`configuration.nix`, gamemode `custom`):** "oyun sırasında
+  watchdog bir start atarsa" diyordu — yanlıştı, `update_wallpaper` oyun
+  aktifken start atmıyor. Gerçek kalan senaryo: oyun biterken bir tarayıcı
+  açıksa, gamemode `end` mpvpaper'ı geri başlatır ve bir sonraki pencere olayına
+  kadar görünür. Yorum buna göre düzeltildi.
+- **`SUPER`+`W` (waypaper):** README'de "duvar kâğıdı" deniyordu, oysa sistem
+  `mpvpaper` (video) kullanıyor ve waypaper yapılandırılmamış. Binding kaldırılmadı
+  (daha az invaziv seçenek); README'ye ayrımı ve kaldırma talimatını anlatan bir
+  dipnot eklendi.
+
+## 📌 Bilerek dokunulmadı
+
+- `hyprlandMonitorLine` boş monitör adı — bilinçli tercih; `install.sh` dolduruyor,
+  `KURULUM.md §7b` belgeliyor.
+- `kvm.ignore_msrs=1` — README'de doğru belgelenmiş.
+- `amdgpu.ppfeaturemask` köken notu — standart maske, hedef kitleye bariz.
+- `assets/` görsellerinin README'ye gömülmesi — yeni bir görsel bakım yükü;
+  haritada liste olarak kalıyor.
+
+---
+
 # [1.3.5] - 2026-10-09
 
 Kurulum yolu tutarlılığı turu. Üç düzeltme de aynı sınıf: **kod ile doküman
