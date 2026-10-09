@@ -18,3 +18,5 @@ result-*
 # Sensitive files that should never be committed
 hashedPassword
 *.private
+__pycache__/
+*.pyc

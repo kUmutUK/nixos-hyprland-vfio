@@ -221,8 +221,14 @@ for src in "$HOME/.config/hypr" "$HOME/.config/waybar" "$HOME/.config/gtk-3.0" "
         # ikincisi birincisini sessizce eziyordu — kullanıcı geri dönmek
         # istediğinde YANLIŞ dosyayı geri yüklüyordu. Yol '/'→'_' ile
         # düzleştirilerek her kaynak kendi benzersiz adını alıyor.
-        cp -rL "$src" "$BACKUP_DIR/$(echo "$src" | tr '/' '_')" 2>/dev/null \
-            && log "Backed up: $(echo "$src" | tr '/' '_')" || true
+        backup_name="$(echo "$src" | tr '/' '_')"
+        if cp -rL "$src" "$BACKUP_DIR/$backup_name" 2>/dev/null; then
+            log "Backed up: $backup_name"
+        else
+            warn "Backup FAILED for: $src"
+            warn "No existing configuration has been replaced yet; aborting for safety."
+            exit 1
+        fi
     fi
 done
 log "Backup saved to $BACKUP_DIR"

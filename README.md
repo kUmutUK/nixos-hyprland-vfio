@@ -288,7 +288,7 @@ Bunlar "NixOS'un default'undan farklı ve bilinçli" seçimlerdir:
 | `vm.swappiness = 180` | RAM baskınken agresif temizlemeye izin verir. (Öncelik seçmez, **yazma eğilimini** ayarlar.) |
 | `hypridle` 900 sn → `systemctl suspend` | Suspend öncesi hyprlock **çağrılmaz**: foreground'da bloklar ve arkadaki suspend'e hiç sıra gelmez. Kilit zaten `before_sleep_cmd` ile yapılıyor. |
 | `home.sessionVariables.HYPRLAND_CONFIG` | Hyprland 0.56 `hyprland.lua` varsa `.conf`'u sessizce tamamen yok sayar. Yol sabitlenince bu mekanizma yapısal olarak devre dışı kalır. |
-| `amd_pstate=active`, `pcie_aspm=off` | Masaüstü boşluğunda güç tasarrufu. |
+| `amd_pstate=active`, `pcie_aspm=off` | `amd_pstate=active` AMD P-State sürücüsünü etkinleştirir; `pcie_aspm=off` Linux’un ASPM yönetimini devre dışı bırakıp firmware ayarlarına dokunmamasını söyler. Bu parametre tek başına boşta güç tasarrufu garantilemez. |
 
 **Ayarların sahibi:** üç yazıcı birbiriyle yarışıyor —
 `power-profiles-daemon` (CPU governor), `ananicy-cpp` (nice/ioprio) ve
