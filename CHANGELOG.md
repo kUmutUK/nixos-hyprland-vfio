@@ -8,6 +8,115 @@ This project follows:
 
 ---
 
+# [1.3.5] - 2026-10-09
+
+Kurulum yolu tutarlılığı turu. Üç düzeltme de aynı sınıf: **kod ile doküman
+arasındaki kopukluk.** Hiçbiri derlemeyi/boot'u kırmıyor; üçü de **ilk kez kuran
+kullanıcıyı** bir noktada durduruyor.
+
+## 🔴 Fixed — `install.sh`, silinmiş bir mekanizma için hâlâ adım çalıştırıyordu
+
+[1.3.4] impermanence'i "üç yerden" kaldırdığını yazıyordu: `flake.nix` (girdi +
+modül), `configuration.nix` (tmpfiles kuralı), `home.nix` (`home.persistence`).
+**Dördüncüsü `install.sh`'ydi ve atlanmıştı.**
+
+```bash
+# install.sh:366-374 (silindi)
+step "Persistent storage directory"
+if [ -d /nix/persist/home ]; then … else
+  warn "/nix/persist/home is MISSING — home.persistence bind-mount would fail."
+  sudo mkdir -p /nix/persist/home
+fi
+```
+
+İki ayrı yanlış:
+
+1. **Uyarı artık doğru değildi.** `home.persistence` 2026-10-09'da silinmişti;
+   hiçbir bind-mount yok. Script, var olmayan bir mekanizmanın başarısız
+   olacağını söylüyordu.
+2. **Adım hiçbir işe yaramıyordu** — `/nix/persist` altına kullanılmayan boş
+   bir dizin açıp bırakıyordu. `KURULUM.md` §6 zaten bunu gereksiz sayıyordu.
+
+→ Adım kaldırıldı; yerine neden kaldırıldığını ve eski kurulumlarda dizinin
+nasıl temizleneceğini açıklayan not bırakıldı (`rmdir`, `rm -rf` değil —
+dizin boş değilse veri kaybı olmasın).
+
+## 🟠 Fixed — `amd_iommu=on` belgelenmişti, config'te yoktu
+
+`boot.kernelParams` içinde `iommu=pt` var, `amd_iommu=on` **yoktu**. Ama
+parametreyi bu config'in bir parçasıymış gibi anan **beş** referans vardı:
+`README.md:45,47,112` · `KURULUM.md:374` · `install.sh:83,511`.
+
+En rahatsız edici olan `README.md:112`'ydi:
+
+> 🔴 **Reboot zorunludur.** `iommu=pt`, `amd_iommu=on`, `amdgpu.ppfeaturemask`
+> gibi kernel parametreleri `switch` ile uygulanmaz. **Reboot etmeden VFIO testi
+> yaparsanız IOMMU açık değildir** ve GPU `vfio-pci`'ye bağlanmaz.
+
+Bu, kullanıcıya config'te **bulunmayan** bir parametreyi reboot sebebi olarak
+sunuyor. `install.sh:83`'teki *"Replace 'amd_iommu=on' → 'intel_iommu=on'"*
+talimatı da, dosyada olmayan bir satırı düzenlemeni söylüyordu.
+
+→ **Parametre config'e eklendi**, belgelerden çıkarılmadı. İki seçenekten bu
+seçildi çünkü:
+
+- Modern Zen'de (kernel 5.18+) AMD IOMMU varsayılan açık gelir; yani parametre
+  zaten-açık durumda **sıfır maliyetli bir güvence** (no-op).
+- IOMMU kapalıysa VFIO zaten çalışmıyor. Parametre olmadığında bunu ancak
+  "GPU neden bağlanmadı" belirtisiyle, yani en pahalı anda öğreniyorsun.
+- Belgeyi *"kernel 5.18+ varsayılan"* diye sürüm-bağımlı bir iddiaya çevirmek,
+  eski kernelde veya firmware sürprizinde yanlış yönlendirir.
+
+**Sınıf ayrımı (ileride karıştırılmasın):** `amd_iommu=on` bir *alt sistem
+beyanıdır* (IOMMU açık olmalı). Aynı listedeki `rcupdate.rcu_expedited=1` ise
+*performans dengesidir* ve farklı bir muhakeme gerektirir — bkz. aşağıdaki
+açık madde.
+
+## 🟠 Fixed — sıfırdan kurulum yolu VM'i hiçbir noktada başlatamıyordu
+
+İki ayrı eksik, ikisi de `./install.sh` tarafından zaten yapıldığı için fark
+edilmemişti:
+
+| | Durum |
+|---|---|
+| `/var/lib/libvirt/win10.xml` | `README.md:130` bu dosyayı `virsh define` ediyordu ama **Yol A'da** nereden geleceğini söylemiyordu. Dosyayı yalnız `install.sh` üretiyor. |
+| `/var/lib/libvirt/images/win10new.qcow2` | `win10.xml` bu yolu bekliyor, ama **`qemu-img` hiçbir dokümanda geçmiyordu** — yalnız `install.sh:359`. |
+
+Belirti farklı olduğu için ikisi ayrı ayrı kırıcıydı: dosya yoksa `virsh define`
+"no such file" ile düşüyor; dosya kopyalanıp disk oluşturulmazsa `define`
+**başarılı** oluyor ve hata ancak `virsh start`'ta *"failed to find drive"* olarak
+çıkıyor — yani kullanıcı "domain tanımlandı" sanıp ilerliyor.
+
+→ `KURULUM.md` §9b'ye `qemu-img create` adımı, `README.md` → *VM'i başlatma*
+bölümüne üç adımlık hazırlık bloğu eklendi. Ek olarak `install.sh` çalıştırılmadıysa
+XML'deki `<hostdev>` PCI adreslerinin depodaki varsayılan kaldığı ve
+`hooks/qemu`'daki `GPU_PCI` / `GPU_AUDIO` ile eşleşmesi gerektiği
+belgelendi (bu, `install.sh`'ın XML senkronunun devraldığı iş).
+
+## ⚠️ Bilerek dokunulmadı — `rcupdate.rcu_expedited=1`
+
+Bu turda **karar verilmedi, kasıtlı olarak ayrı tutuldu.**
+
+Parametre `boot.kernelParams`'ta duruyor ve README:239 onu *"Windows'un RCU
+bekleme davranışı"* diye gerekçelendiriyor. İki sorunlu nokta var:
+
+1. **Windows'ta RCU yok.** Parametre misafire hiçbir şey yapmıyor.
+2. **Bu bir host parametresi** ve host her zaman Linux. README'ın *"ek yük
+   demek — Linux guest kullanırsanız çıkarın"* tavsiyesi bu yüzden ters: yük
+   koşulsuz. Kernel dokümanı bunu *"gerçek zamanlı iş yüklerine karşı
+   düşman"* diye tanımlıyor (expedited grace period'lar boş-olmayan tüm
+   CPU'lara IPI yollar).
+
+Ama **hiçbir yerde bu parametrenin neden eklendiğine dair kayıt yok** —
+CHANGELOG'da, arşiv raporlarında, commit geçmişinde geçmiyor. `kvm.ignore_msrs=1`
+ve `amdgpu.ppfeaturemask` da aynı şekilde kayıtsız; tüm `boot.kernelParams`
+bloğu hiç denetlenmemiş. Köken bilinmeden "kaldır" demek de bir varsayım olur
+— bu yüzden ya kaynak bulunmalı ya da parametre, kaldırıldığı gerekçesiyle
+birlikte düşürülmeli. İkisi de davranış değişikliği, bu yüzden doküman
+düzeltmesinden ayrı bir tur.
+
+---
+
 # [1.3.4] - 2026-10-09
 
 Bağımsız denetim turu #3. Bu turda **üç gerçek düzeltme** yapıldı ve bir
