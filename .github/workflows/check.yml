@@ -43,8 +43,21 @@ jobs:
         # MANPAGER). scripts/extract-embedded-scripts.py Nix indented-string'lerini
         # çözüp betikleri diske yazar.
         run: |
-          python3 scripts/extract-embedded-scripts.py /tmp/emb             | xargs -0 -n1 -- shellcheck -S warning
-          echo "  embedded scripts OK"
+          # ⚠️ `-r` (--no-run-if-empty) ZORUNLU. GNU xargs boş girdide komutu
+          # ARGÜMANSIZ bir kez çalıştırır: shellcheck stdin'den boş okur, 0 döner,
+          # CI yeşil kalır. extract-embedded-scripts.py bir gün 0 betik bulursa
+          # (MARKERS regex'i bozulması, home.nix'in yeniden yazılması) kapı sessizce
+          # açılır — oysa bu adımın var olma sebebi tam olarak o boşluğu kapatmaktı.
+          # `-r` olmadan bu step bir güvence değil, bir tuzaktır.
+          python3 scripts/extract-embedded-scripts.py /tmp/emb \
+            | xargs -0 -r -n1 -- shellcheck -S warning
+          # Savunma katmanı: çıkarılan betik sayısı sıfıra düşerse step patlasın.
+          n=$(find /tmp/emb -maxdepth 1 -name '*.sh' -type f 2>/dev/null | wc -l)
+          if [ "$n" -eq 0 ]; then
+            echo "::error::home.nix içinden hiç gömülü betik çıkarılamadı — shellcheck adımı boşa döndü."
+            exit 1
+          fi
+          echo "  embedded scripts OK ($n betik)"
 
       # ---- THE GATE THIS REPO WAS ACTUALLY MISSING ----
       # Workflow'un adı "Nix Flake Check" idi ama içinde TEK SATIR Nix yoktu:
