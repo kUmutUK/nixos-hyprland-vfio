@@ -130,7 +130,20 @@ for _try in 1 2 3; do
 done
 valid_pci "$gpu_audio" || error "GPU Audio PCI adresi 3 denemede de geçersiz — kurulum durduruluyor."
 
-log "GPU PCI: $gpu_pci / Audio: $gpu_audio (biçim doğrulandı)"
+for addr in "$gpu_pci" "$gpu_audio"; do
+  if [ ! -e "/sys/bus/pci/devices/${addr}" ]; then
+    error "PCI cihazı yok: $addr — lspci -nn çıktısından doğru adresi girin."
+  fi
+done
+
+gpu_grp=$(basename "$(readlink -f "/sys/bus/pci/devices/${gpu_pci}/iommu_group" 2>/dev/null)" 2>/dev/null)
+audio_grp=$(basename "$(readlink -f "/sys/bus/pci/devices/${gpu_audio}/iommu_group" 2>/dev/null)" 2>/dev/null)
+if [ -n "$gpu_grp" ] && [ -n "$audio_grp" ] && [ "$gpu_grp" != "$audio_grp" ]; then
+  warn "GPU ve ses fonksiyonu farklı IOMMU gruplarında ($gpu_grp vs $audio_grp)."
+  warn "Tek başına passthrough yapılamayabilir; ACS override veya grup kontrolü gerekir."
+fi
+
+log "GPU PCI: $gpu_pci / Audio: $gpu_audio (biçim ve sysfs varlığı doğrulandı)"
 
 # ─── IOMMU group preflight ─────────────────────────────────
 step "IOMMU group check"
@@ -308,7 +321,7 @@ else
   # eski adresi arıyor → "device not found") kalıyorsun.
   # apply_var() zaten `sudo python3` kullanıyor; aynı desen buraya da uygulanır.
   if sudo mkdir -p /var/lib/libvirt && sudo python3 - "$gpu_pci" "$gpu_audio" "$REPO_DIR/vm-xml/win10.xml" "$PATCHED_XML" <<'PYEOF'
-import re, sys
+import os, re, shutil, sys, time
 
 gpu, aud, src, dst = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
 
@@ -321,7 +334,7 @@ def xml_attrs(addr):
 
 data = open(src, encoding="utf-8").read()
 pattern = re.compile(
-    r'(<hostdev\b[^>]*>\s*<source>\s*<address\s+)([^/]+)(/>)',
+    r'(<hostdev\b[^>]*>\s*(?:<driver\b[^>]*/>\s*)?<source>\s*<address\s+)([^/]+)(/>)',
     re.DOTALL)
 
 addrs = [xml_attrs(gpu), xml_attrs(aud)]
@@ -350,6 +363,11 @@ if n != 2:
           file=sys.stderr)
     print("UYARI: satırı aşağıdaki komutla doğrula:", file=sys.stderr)
     print(f"  grep -n -A3 '<hostdev' {dst}", file=sys.stderr)
+
+if os.path.exists(dst):
+    backup = f"{dst}.bak-{int(time.time())}"
+    shutil.copy2(dst, backup)
+    print(f"NOTE: mevcut XML yedeklendi -> {backup}")
 
 open(dst, "w", encoding="utf-8").write(new)
 print(f"OK: {n} hostdev bulundu, {min(n,2)} tanesi güncellendi -> {dst}")

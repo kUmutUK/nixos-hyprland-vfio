@@ -32,6 +32,26 @@ loadkeys trq
 
 # 💾 2. Disk Bölümlendirme
 
+> ⚠️ **Aşağıdaki komutlar diskin bölüm tablosunu TAMAMEN siler.**
+> Yanlış aygıt adı verirseniz mevcut sisteminizi kaybedebilirsiniz.
+> Önce bağlı diskleri inceleyin ve hedefin model/seri numarasını doğrulayın:
+
+```bash
+lsblk -o NAME,SIZE,MODEL,SERIAL,FSTYPE,MOUNTPOINTS
+```
+
+> Hedef diski iki kez kontrol edin. Aşağıdaki `/dev/nvme0n1` değerini kendi
+> diskinizle değiştirin; devam eden komutları aynı terminal oturumunda çalıştırın.
+
+```bash
+DISK=/dev/nvme0n1    # ← BURAYI DEĞİŞTİRİN
+# NVMe disklerde bölüm adı p1/p2; SATA/SCSI disklerde sda1/sda2 olur.
+case "$DISK" in
+  *[0-9]) PART_PREFIX="${DISK}p" ;;
+  *)      PART_PREFIX="$DISK" ;;
+esac
+```
+
 | Bölüm | Açıklama |
 |------|----------|
 | EFI | 1G FAT32 |
@@ -43,13 +63,13 @@ loadkeys trq
 ## Disk oluşturma
 
 ```bash
-sudo sgdisk -Z /dev/nvme0n1
+sudo sgdisk -Z "$DISK"
 
-sudo sgdisk -n 1:0:+1G  -t 1:ef00 -c 1:EFI  /dev/nvme0n1
-sudo sgdisk -n 2:0:+8G  -t 2:8200 -c 2:SWAP /dev/nvme0n1
-sudo sgdisk -n 3:0:+800G -t 3:8309 -c 3:LUKS /dev/nvme0n1
+sudo sgdisk -n 1:0:+1G  -t 1:ef00 -c 1:EFI  "$DISK"
+sudo sgdisk -n 2:0:+8G  -t 2:8200 -c 2:SWAP "$DISK"
+sudo sgdisk -n 3:0:+800G -t 3:8309 -c 3:LUKS "$DISK"
 
-sudo partprobe /dev/nvme0n1
+sudo partprobe "$DISK"
 ```
 
 ---
@@ -57,8 +77,8 @@ sudo partprobe /dev/nvme0n1
 # 🔒 3. LUKS2 Kurulum
 
 ```bash
-cryptsetup luksFormat /dev/nvme0n1p3 --type luks2
-cryptsetup open /dev/nvme0n1p3 cryptroot
+cryptsetup luksFormat "${PART_PREFIX}3" --type luks2
+cryptsetup open "${PART_PREFIX}3" cryptroot
 ```
 
 ---
@@ -66,8 +86,8 @@ cryptsetup open /dev/nvme0n1p3 cryptroot
 # 💽 4. Dosya Sistemleri
 
 ```bash
-mkfs.fat -F32 /dev/nvme0n1p1
-mkswap /dev/nvme0n1p2
+mkfs.fat -F32 "${PART_PREFIX}1"
+mkswap "${PART_PREFIX}2"
 mkfs.btrfs -L nixos /dev/mapper/cryptroot
 ```
 
@@ -114,9 +134,9 @@ mount -o subvol=@log,noatime,ssd,discard=async /dev/mapper/cryptroot /mnt/var/lo
 mount -o subvol=@snapshots,noatime,compress=zstd:1,ssd,discard=async /dev/mapper/cryptroot /mnt/.snapshots
 
 
-mount /dev/nvme0n1p1 /mnt/boot
+mount "${PART_PREFIX}1" /mnt/boot
 
-swapon /dev/nvme0n1p2
+swapon "${PART_PREFIX}2"
 
 # ⚠️ `/mnt/nix/persist/home` artık GEREKMIYOR (2026-10-09).
 # Bu blok daha önce `home.nix` → `home.persistence."/nix/persist/home"`

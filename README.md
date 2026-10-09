@@ -229,6 +229,12 @@ sudo journalctl -u libvirtd -f
 | `SUPER` + `SHIFT T` | tek seferlik OCR + çeviri (Türkçe) |
 | `SUPER` + `ALT T` | fare seçimini otomatik çevir toggle'ı |
 
+> ⚠️ `auto-translate.sh` ve `SUPER`+`SHIFT`+`T` komutu `translate-shell`
+> (`trans`) kullanır ve varsayılan olarak Google Translate backend'ine bağlanır.
+> Fareyle seçtiğiniz metin çeviri için ağa gönderilir; hassas metinlerde
+> kullanmayın. Çevirinin yerel kalmasını istiyorsanız `trans` çağrısını Ollama
+> tabanlı yerel bir çeviri akışıyla değiştirin.
+
 Ses seviyesi için `XF86AudioRaiseVolume` / `LowerVolume` / `Mute` çalışır.
 
 > † **`SUPER`+`W` statik duvar kâğıdı içindir, canlı duvar kâğıdı değil.** Masaüstünde
