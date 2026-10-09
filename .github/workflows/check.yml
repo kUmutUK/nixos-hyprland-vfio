@@ -57,13 +57,14 @@ jobs:
           # Davranış sürüme göre değişirse tekrar doğrula.
           python3 scripts/extract-embedded-scripts.py /tmp/emb \
             | xargs -0 -r -n1 -- shellcheck -S warning
-          # Savunma katmanı: çıkarılan betik sayısı sıfıra düşerse step patlasın.
+          # Sabit beklenen sayı, extractor bir MARKER'ı kaçırırsa CI'ın yeşil kalmasını önler.
+          # Yeni bir gömülü betik bilinçli olarak eklenir/silinirse bu sayıyı güncelleyin.
           n=$(find /tmp/emb -maxdepth 1 -name '*.sh' -type f 2>/dev/null | wc -l)
-          if [ "$n" -eq 0 ]; then
-            echo "::error::home.nix içinden hiç gömülü betik çıkarılamadı — shellcheck adımı boşa döndü."
+          if [ "$n" -ne 7 ]; then
+            echo "::error::home.nix içinden 7 gömülü betik bekleniyordu, $n bulundu. Extractor marker'larını ve beklenen sayıyı kontrol edin."
             exit 1
           fi
-          echo "  embedded scripts OK ($n betik)"
+          echo "  embedded scripts OK ($n/7 betik)"
 
       # ---- THE GATE THIS REPO WAS ACTUALLY MISSING ----
       # Workflow'un adı "Nix Flake Check" idi ama içinde TEK SATIR Nix yoktu:
