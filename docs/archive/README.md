@@ -12,7 +12,7 @@ Yani belgedeki satır numaraları ve iki P1 bulgusu **bugün geçerli değil**:
 
 | Bulgu | Bugünkü durum |
 |---|---|
-| #1 `{H:M}` / `{user}` literal metin | **Düzeltildi.** Artık `$TIME` / `$USER`; hyprlock 0.9.6 `IWidget::formatString` bunları substitute eder (`IWidget.cpp:200,208`) ve `updateEveryMs` ile otomatik tazeler. `assets/example.conf:79` da `text = $TIME` kullanıyor. |
+| #1 `{H:M}` / `{user}` literal metin | **Düzeltildi.** Artık `$TIME` / `$USER`; hyprlock 0.9.6 `IWidget::formatString` bunları substitute eder (`IWidget.cpp:200,208`) ve `updateEveryMs` ile otomatik tazeler. `nixos/home.nix` → `hyprlockConf` bloğunda da `text = $TIME` kullanılıyor. |
 | #2 Hyprland 0.56.2 `hyprland.lua`'ya öncelik veriyor, `.conf` yok sayılıyor | **Fiilen gerçekleşmiyor.** `Jeremy::getMainConfigPath()` önce `findConfig("hyprland","lua")` arar; ama `Hyprutils::Path::findConfig` yalnızca `XDG_CONFIG_HOME`, `XDG_CONFIG_DIRS` ve `/etc/xdg` altına bakar. NixOS'un `environment.pathsToLink = [ "/share/hypr" ]` ile koyduğu stub `/run/current-system/sw/share/hypr/hyprland.lua` bu dizinlerde **değil** → `~/.config/hypr/hyprland.conf` kazanır. |
 
 Kalan maddelerin güncel hâli CHANGELOG'un `[1.3.0]` bölümündedir.
