@@ -241,8 +241,20 @@ if [ -f "$NIXOS_DIR/hardware-configuration.nix" ]; then
     HW_IN_PLACE=1
     log "Copied hardware-configuration.nix (machine-specific, from $NIXOS_DIR)"
 elif [ -f "$NIXOS_FLAKE_DIR/hardware-configuration.nix" ]; then
-    HW_IN_PLACE=1
-    log "hardware-configuration.nix already in place — skipped"
+    # DÜZELTME: burası önce "HW_IN_PLACE=1" idi ve YANLIŞTI. Bu dal, dizinde
+    # duran dosyanın KULLANICININ dosyası olduğunu varsayıyordu — ama
+    # /etc/nixos altına klonlanmış bir repoda buradaki dosya BAKIMCININ
+    # UUID'leridir. README Yol A'da `rm -rf /mnt/etc/nixos && cp -r /tmp/repo/.`
+    # yapıldığı için /etc/nixos/hardware-configuration.nix hiç oluşmayabilir
+    # ve ilk dal hiç çalışmazken bu dal tutar: kullanıcı "in place" görür,
+    # "Setup complete" der, sistem yanlış UUID'lerle açılmaz.
+    # Repodan gelen bir dosyayı "doğrulanmış" saymak mümkün değil — bu yüzden
+    # HW_IN_PLACE=0 ve uyarı BASKILANMAZ (1.3.5'te düzeltilen uyarı).
+    HW_IN_PLACE=0
+    warn "hardware-configuration.nix orada ama SADECE repodan gelmiş olabilir —"
+    warn "içindeki UUID'ler büyük olasılıkla BAĞIMCININ, sizin makinenizin değil."
+    warn "Rebuild ÖNCESİ kendi makineniz için 'nixos-generate-config --show-hardware-config'"
+    warn "çıktısıyla değiştirin. Aksi halde sistem açılmaz."
 else
     HW_IN_PLACE=0
     warn "hardware-configuration.nix bulunamadı — rebuild patlayacak (aşağıya bak)."
