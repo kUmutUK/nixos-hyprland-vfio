@@ -61,10 +61,11 @@ suspend_rescan_recovery() {
   sleep 1
   # DÜZELTME (2026-10-05): askıya alma kalıcı bir kilitlenme riski taşır —
   # RTC alarmı BIOS'ta kapalıysa host bir daha kendiliğinden uyanmaz.
-  # Kullanıcıya konsolda görünür bir uyarı bırakıyoruz.
-  for tty in /dev/tty1 /dev/tty2; do
-    [ -w "$tty" ] && printf '%s\n' "GPU kurtarma: host 3 sn askiya alinacak (bu bir hata degil)." > "$tty" 2>/dev/null || true
-  done
+  # DÜZELTME (2026-10-09): bu uyarı daha önce /dev/tty1 ve /dev/tty2'ye
+  # yazılıyordu, ancak vtcon'lar `prepare` aşamasında çözülmüş durumda
+  # olduğu için mesaj GÖRÜNMEYEN konsollara düşüyordu. Askıya alma zaten
+  # $LOGFILE'a rtcwake çıktısıyla kaydediliyor; log() yeterli.
+  log "GPU kurtarma: host 3 sn askiya alinacak (bu bir hata degil)."
   if [ -x "${HOOK_RTCWAKE:-/run/current-system/sw/bin/rtcwake}" ]; then
     "${HOOK_RTCWAKE:-/run/current-system/sw/bin/rtcwake}" -m mem -s 3 >>"$LOGFILE" 2>&1 || \
       log "UYARI: rtcwake başarısız oldu (bkz. log), suspend adımı atlanmış olabilir."
@@ -287,6 +288,22 @@ if [ "$ACTION" = "release" ]; then
     fi
   fi
 
+  # DÜZELTME (2026-10-09): metin KONSOLLARININ GERİ BAĞLANMASI buraya taşındı.
+  # Önceden bu üç satır `start_hyprland`'dan hemen önce, yani aşağıdaki kritik
+  # uyarı YAZILDIKTAN SONRA çalışıyordu. O sırada vtcon0/vtcon1 hâlâ `prepare`
+  # aşamasında çözülmüş durumda olduğundan "GPU sürücüsü yok, siyah ekran normal,
+  # şunu yap" mesajı GÖRÜNMEYEN konsollara yazılıyordu — yani tam olarak o
+  # mesajın var olma sebebi olan kullanıcıya hiç ulaşmıyordu.
+  #
+  # Sıralamanın etkisi: greetd'den ÖNCE çalışır ama greetd'ye dokunmaz; sadece
+  # metin konsolları (vt1/vt2) ve efi-framebuffer geri gelir. GPU hâlâ sürücüsüzse
+  # grafik oturum yine açılmaz, ama bu noktada kullanıcı artık konsolda ne
+  # yapması gerektiğini okuyabilir.
+  echo 1 > /sys/class/vtconsole/vtcon0/bind 2>/dev/null || true
+  echo 1 > /sys/class/vtconsole/vtcon1/bind 2>/dev/null || true
+  echo efi-framebuffer.0 > /sys/bus/platform/drivers/efi-framebuffer/bind 2>/dev/null || true
+  sleep 1
+
   # DÜZELTME: GPU kurtarma sonrası hâlâ sürücüsüzse (Navi2x reset bug) bu
   # satırlar yalnızca bir "UYARI" loglayıp masaüstünü açıyordu -> kullanıcı
   # siyah ekrana bakar ve ne yapacağını bilemiyordu. Artık durum tty1'e de
@@ -303,9 +320,8 @@ if [ "$ACTION" = "release" ]; then
     log "GPU host'a geri verildi, masaüstü başlatılıyor."
   fi
 
-  echo 1 > /sys/class/vtconsole/vtcon0/bind 2>/dev/null || true
-  echo 1 > /sys/class/vtconsole/vtcon1/bind 2>/dev/null || true
-  echo efi-framebuffer.0 > /sys/bus/platform/drivers/efi-framebuffer/bind 2>/dev/null || true
+  # NOT: vtcon/efifb rebind artık yukarıda, kritik uyarıdan ÖNCE yapılıyor
+  # (DÜZELTME 2026-10-09). Burada tekrarı gereksiz.
   # NOT: burada bilinçli olarak exit 1 YOK. start_hyprland'ı atlamak greetd'yi
   # kapalı bırakır ve kullanıcının grafik oturumu açma şansını da keser; oysa
   # metot zaten denendi ve GPU sürücüsüz. Doğru davranış: yönlendirme mesajını
