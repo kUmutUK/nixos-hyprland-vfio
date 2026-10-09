@@ -198,6 +198,7 @@ mkdir -p "$BACKUP_DIR"
 for src in "$HOME/.config/hypr" "$HOME/.config/waybar" "$HOME/.config/gtk-3.0" "$HOME/.config/gtk-4.0" \
            "$NIXOS_FLAKE_DIR/configuration.nix" "$NIXOS_FLAKE_DIR/home.nix" \
            "$NIXOS_FLAKE_DIR/flake.nix" "$NIXOS_FLAKE_DIR/flake.lock" \
+           "$NIXOS_FLAKE_DIR/hooks" \
            "$NIXOS_DIR/hardware-configuration.nix" \
            "$NIXOS_FLAKE_DIR/hardware-configuration.nix"; do
     if [ -e "$src" ]; then
@@ -384,12 +385,16 @@ fi
 # ─── Btrfs snapshot subvolume ───────────────────────────
 step "Btrfs snapshot subvolume"
 if findmnt -no FSTYPE /home 2>/dev/null | grep -qi btrfs; then
-  if [ -d /home/.snapshots ]; then
-    log "/home/.snapshots already exists."
+  if sudo btrfs subvolume show /home/.snapshots >/dev/null 2>&1; then
+    log "/home/.snapshots is an existing Btrfs subvolume."
+  elif [ -e /home/.snapshots ]; then
+    error "/home/.snapshots exists but is NOT a Btrfs subvolume. Move/inspect it manually; refusing to continue because neededForBoot=true requires the subvolume."
   else
-    warn "/home/.snapshots is MISSING — snapper 'home' config and boot would both fail."
+    warn "/home/.snapshots is MISSING — creating the required Btrfs subvolume."
     sudo btrfs subvolume create /home/.snapshots
-    log "Created /home/.snapshots."
+    sudo btrfs subvolume show /home/.snapshots >/dev/null 2>&1 \
+      || error "Failed to verify /home/.snapshots as a Btrfs subvolume."
+    log "Created and verified /home/.snapshots Btrfs subvolume."
   fi
 else
   warn "/home is not a btrfs mount — skipping (snapper home config will not work)."
@@ -459,7 +464,7 @@ path, var, value = sys.argv[1], sys.argv[2], sys.argv[3]
 with open(path, encoding="utf-8") as fh:
     text = fh.read()
 
-escaped = value.replace("\\", "\\\\").replace('"', '\\"')
+escaped = value.replace("\\", "\\\\").replace('"', '\\"').replace("${", "\\${")
 
 pattern = re.compile(
     r'^(?P<indent>[ \t]*)' + re.escape(var) + r'[ \t]*=[ \t]*.*$', re.MULTILINE
