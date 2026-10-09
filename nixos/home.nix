@@ -1326,46 +1326,35 @@ done
     '';
   };
 
-  # home.persistence anahtarı DOĞRUDAN kalıcı depolama kök yoludur:
-  # impermanence HM modülünde persistentStoragePath'in varsayılanı anahtarın
-  # kendisidir, yani "/nix/persist/home" gerçek köktür. $HOME'a GÖRE yorumlanmaz.
-  # (Anahtarın mutlak yol olmak zorunda olmasının nedeni modülün tip
-  #  kısıtıdır — göreli yol verilirse eval "not of type 'absolute path'"
-  #  hatasıyla düşüyor; gerçek eval ile doğrulandı.)
+  # home.persistence KALDIRILDI (2026-10-09) — bu config kalıcı depolama
+  # (impermanence) KULLANMIYOR, kasıtlı olarak.
   #
-  # ⚠️ DÜZELTME (2026-10-06): buradaki yorum "yalnızca lsfg-vk shader
-  # önbelleği korunuyor" diyordu. Bu YANLIŞTI ve yanlış olduğu tespit edildi:
-  # kalıcılaştırılan `.config/lsfg-vk/conf.toml` bir ÖNBELLEK DEĞİL, lsfg-vk'nin
-  # YAPILANDIRMA dosyasıdır. (upstream `lsfg-vk-flake/module.nix`, `configFile`
-  # seçeneğinin tam olarak bu yolu beklediğini belgeliyor; shader önbelleği
-  # ~/.cache altındadır.) Yani kalıcı olan şey oyun başına kare çarpanı ayarları.
+  # Geçmiş: burada `home.persistence."/nix/persist/home" = { files =
+  # [ ".config/lsfg-vk/conf.toml" ]; }` vardı ama YORUMDAYDI, yani hiç
+  # çalışmıyordu; buna rağmen yorumun kendisi mekanizmayı aktif anlatıyordu
+  # ("bu yol artık impermanence'in yönetimindedir"). Aynı anda flake.nix
+  # impermanence modülünü import ediyor, configuration.nix de
+  # /nix/persist/home için bir tmpfiles kuralı açıyordu. Üçü de ölüydü;
+  # kalıcılık mekanizması hiç işlemiyordu.
   #
-  # MEKANİZMA (impermanence NixOS modülü üzerinden doğrulandı):
-  # impermanence bunu Home Manager aktivasyonu DEĞİL, `local-fs.target`'tan
-  # önce koşan bir systemd servisi olarak kuruyor:
-  #   systemd.services.persist-nix-persist-home-home-localhost-.config-lsfg\x2dvk-conf.toml
-  # Servis `mount-file.bash`'ı çalıştırır: ilk boot'ta
-  # /nix/persist/home/.config/lsfg-vk/conf.toml henüz yoktur (tmpfiles kuralı
-  # yalnızca /nix/persist/home'u açıyor), bu yüzden mount noktasına bir
-  # SYMLINK kurulur ve Home Manager yazımını bu symlink üzerinden yapar —
-  # yani dosya kalıcı depoya düşer. Sonraki boot'larda symlink zaten doğru
-  # olduğu için servis "ignoring" deyip çıkıyor.
+  # Neden açılmadı: `.config/lsfg-vk/conf.toml` bir ÖNBELLEK değil,
+  # lsfg-vk'nın YAPILANDIRMA dosyası (upstream `lsfg-vk-flake/module.nix`,
+  # `configFile` seçeneği tam olarak bu yolu bekliyor; shader önbelleği
+  # ~/.cache altında). Kalıcılaştırılsaydı, persist deposu bir kez yazıldıktan
+  # sonra buradaki her değişiklik `rm -f /nix/persist/home/.config/lsfg-vk/
+  # conf.toml` adımı atlanmadan uygulanmayacaktı — declarative kontrol
+  # sessizce kaybolurdu. Bu, configuration.nix'in /etc/vulkan için kendi
+  # not düştüğü "ilk açılışta boş persist dizini mount noktasını gölgeler"
+  # tuzağının aynısı, sadece bu kez gölgelenecek şey bir cache değil config.
+  # Gerçekte korunacak bir şey yok: /nix/persist altında hiçbir veri yaşamıyor.
   #
-  # ⚠️ PRATİK SONUÇ: bu yol artık impermanence'in yönetimindedir. `home.nix`
-  # içindeki conf.toml'u değiştirdiğinizde değişiklik her rebuild'da
-  # uygulanmayabilir. Yeni değerleri almak için kalıcı kopyayı silin:
-  #     rm -f /nix/persist/home/.config/lsfg-vk/conf.toml
-  # (Sonraki activasyonda yeni değer geri yazılır.)
+  # Geri açmak isterseniz: flake.nix'e impermanence girdisi + modülünü,
+  # configuration.nix'e `environment.persistence` ve `/nix/persist/home`
+  # tmpfiles kuralını, buraya da aşağıdaki bloğu geri koyun — HEPSİ aynı
+  # committe. Yarısı açık yarısı kapalı bir mekanizma en kötü durumdur.
   #
-  # NOT: /nix/persist'in kendisi bu tanımla yönetilmez (impermanence'in "nix"
-  # manager'ı bu modül NixOS tarafında, home.persistence tanımı ona dokunmaz).
-  # ⚠️ Aynı sınıf gölgeleme tuzağı — config'in `/etc/vulkan/implicit_layer.d`
-  # için kendi not düştüğü hâl — bu dosyada kasten UYGULANMAMIŞTIR: burada
-  # gölgelenmesi istenen şeyin bir cache değil, bir yapılandırma olduğu
-  # varsayılmıştı. Gerçekte cache'i korumak istiyorsanız bu listeyi
-  # ".cache/lsfg-vk" ile değiştirin.
   #home.persistence."/nix/persist/home" = {
-    #files = [ ".config/lsfg-vk/conf.toml" ];
+  #  files = [ ".config/lsfg-vk/conf.toml" ];
   #};
 
   programs = {

@@ -39,20 +39,14 @@
     #   hyprpolkitagent 0.1.3
     lsfg-vk-flake.url = "github:pabloaul/lsfg-vk-flake/main";
     lsfg-vk-flake.inputs.nixpkgs.follows = "nixpkgs";
-    
-    # ⭐ Bu girdiyi ekle:
-    impermanence.url = "github:nix-community/impermanence";
-    impermanence.inputs.nixpkgs.follows = "nixpkgs";
-    # DÜZELTME (2026-10-05): follows tanımlı değilken impermanence KENDİ
-    # home-manager rev'ini (c47b2cc64a62) getiriyordu, root ise 7b4c5ec4beda
-    # kullanıyordu — iki HM sürümü aynı anda modül sistemine giriyordu.
-    # imperative modülün HM modülü HM@A için yazılmış, home.persistence'u ise
-    # HM@B değerlendiriyordu. Bu klasik "option does not exist" sınıfı sessiz
-    # kırılmalar üretir.
-    impermanence.inputs.home-manager.follows = "home-manager";
+    # ⚠️ impermanence girdisi ve modülü KALDIRILDI (2026-10-09) — bu config
+    # kalıcı depolama kullanmıyor, kasıtlı olarak. Gerekçe ve geri açma
+    # reçetesi: configuration.nix → "Kalıcı depolama (impermanence)" notu.
+    # Özet: home.persistence yorumdaydı, environment.persistence hiç
+    # tanımlanmadıydı; modülün tek ürettiği her rebuild'de basılan uyarıydı.
   };
 
-  outputs = { self, nixpkgs, cachyos-kernel, home-manager, lsfg-vk-flake, impermanence, ... }:
+  outputs = { self, nixpkgs, cachyos-kernel, home-manager, lsfg-vk-flake, ... }:
   let
     system = "x86_64-linux";
     pkgs = nixpkgs.legacyPackages.${system};
@@ -63,10 +57,7 @@
       modules = [
         home-manager.nixosModules.home-manager
         lsfg-vk-flake.nixosModules.default
-        
-        # ⭐ Modülü burada içe aktar:
-        impermanence.nixosModules.impermanence
-        
+
         ({ pkgs, ... }: {
           nixpkgs.config.allowUnfree = true;
           nixpkgs.overlays = [
@@ -82,13 +73,6 @@
           # tanım aynı paketi iki kez PATH'e ekliyordu. CHANGELOG [1.3.1]
           # tekrarın "temizlendiğini" kaydetmişti ama bu satır duruyordu.
           # Tek kaynak: configuration.nix.
-          # home.persistence (home.nix) çalışması için ekstra bir şey
-          # yapmaya gerek yok: home-manager.nixosModules.home-manager zaten
-          # yukarıda import edildiğinden, impermanence.nixosModules.impermanence
-          # kendi Home Manager modülünü home-manager.sharedModules'e otomatik
-          # ekliyor (bkz. impermanence/nixos.nix). impermanence.homeManagerModules.impermanence'i
-          # elle import ETMEYİN — o yol artık deprecated ve sadece
-          # "assertion = false" içeriyor, elle eklerse build'i kırar.
         })
         ./configuration.nix
       ];
