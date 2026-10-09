@@ -647,11 +647,16 @@ in
       Type = "oneshot";
       Environment = "HOME=/root";
       ExecStart = pkgs.writeShellScript "wuwa-gemma-init" ''
+        set -euo pipefail
+
         if ${cfgpkg}/bin/ollama list | grep -q '^wuwa-gemma'; then
           echo "wuwa-gemma zaten var, atlanıyor."
         else
           echo "aya-expanse:8b çekiliyor (yaklaşık 8 GB)…"
-          ${cfgpkg}/bin/ollama pull aya-expanse:8b
+          if ! ${cfgpkg}/bin/ollama pull aya-expanse:8b; then
+            echo "HATA: aya-expanse:8b indirilemedi; wuwa-gemma oluşturulmadı." >&2
+            exit 1
+          fi
           ${cfgpkg}/bin/ollama create wuwa-gemma -f ${wuwaGemmaModelfile}
           echo "wuwa-gemma hazır."
         fi
