@@ -10,6 +10,12 @@ log() {
 
 bind_vfio() {
   for dev in "$@"; do
+    # İşlemden önce işaretle: sinyal unbind/bind sırasında gelse bile
+    # rollback aygıtın canlı sysfs durumunu kontrol ederek karar verebilir.
+    case "$dev" in
+      "$GPU_PCI") PREPARE_GPU_PCI_TOUCHED=1 ;;
+      "$GPU_AUDIO") PREPARE_GPU_AUDIO_TOUCHED=1 ;;
+    esac
     if [ -e "/sys/bus/pci/devices/$dev/driver" ]; then
       echo "$dev" > "/sys/bus/pci/devices/$dev/driver/unbind" 2>/dev/null
     fi
@@ -151,6 +157,9 @@ stop_hyprland() {
     return 1
   fi
 
+  # fuser doğrulandı; bu noktadan sonra masaüstü/servisler kısmen
+  # durdurulabilir. Hata olursa rollback yalnızca bu adımı geri alır.
+  PREPARE_DESKTOP_TOUCHED=1
   log "Greetd durduruluyor..."
   systemctl stop greetd 2>/dev/null || true
 
@@ -275,23 +284,53 @@ device_bound_to_vfio() {
   [ "$drv" = "vfio-pci" ]
 }
 
-# ROLLBACK: prepare aşamasında VFIO bind başarısız olursa, host'u yarım
-# durumda (masaüstü kapalı, GPU ne host'ta ne guest'te) bırakmak yerine
-# elden geldiğince eski haline döndürmeye çalışıyoruz.
+# Rollback'ta yalnızca VFIO hazırlığı sırasında dokunulmuş aygıtları
+# düzelt. Canlı sürücü hâlâ host sürücüsüyse onu unbind etme; bind_vfio
+# sürücü değiştiremeden başarısız olmuş olabilir. Yalnızca override'ı temizle.
+restore_prepare_device() {
+  local dev="$1" touched="$2" drv
+  [ "$touched" = "1" ] || return 0
+
+  drv=$(basename "$(readlink -f "/sys/bus/pci/devices/$dev/driver" 2>/dev/null)" 2>/dev/null)
+  if [ -z "$drv" ] || [ "$drv" = "vfio-pci" ]; then
+    log "Rollback: $dev sürücüsüz/vfio-pci; host sürücüsü geri yükleniyor."
+    release_host_driver "$dev"
+  else
+    log "Rollback: $dev hâlâ $drv sürücüsünde; sürücü unbind edilmeyecek."
+    echo "" > "/sys/bus/pci/devices/$dev/driver_override" 2>/dev/null || true
+  fi
+}
+
+# ROLLBACK: prepare sırasında gerçekten dokunulmuş durumları geri al.
+# stop_hyprland erken hata verirse GPU sürücülerine hiç dokunulmaz.
 rollback_prepare() {
   # Rollback sırasında sinyal gelirse kurtarma adımlarını iç içe sokma.
   trap - HUP INT TERM
-  log "HATA: GPU vfio-pci'ye bağlanamadı, rollback deneniyor..."
-  release_host_driver "$GPU_PCI" "$GPU_AUDIO"
-  echo 1 > /sys/class/vtconsole/vtcon0/bind 2>/dev/null || true
-  echo 1 > /sys/class/vtconsole/vtcon1/bind 2>/dev/null || true
-  echo efi-framebuffer.0 > /sys/bus/platform/drivers/efi-framebuffer/bind 2>/dev/null || true
-  start_hyprland
+  log "HATA: prepare başarısız; durum takibiyle rollback deneniyor..."
+
+  restore_prepare_device "$GPU_PCI" "$PREPARE_GPU_PCI_TOUCHED"
+  restore_prepare_device "$GPU_AUDIO" "$PREPARE_GPU_AUDIO_TOUCHED"
+
+  if [ "$PREPARE_DISPLAY_DETACH_ATTEMPTED" -eq 1 ]; then
+    echo 1 > /sys/class/vtconsole/vtcon0/bind 2>/dev/null || true
+    echo 1 > /sys/class/vtconsole/vtcon1/bind 2>/dev/null || true
+    echo efi-framebuffer.0 > /sys/bus/platform/drivers/efi-framebuffer/bind 2>/dev/null || true
+  fi
+
+  if [ "$PREPARE_DESKTOP_TOUCHED" -eq 1 ]; then
+    start_hyprland
+  fi
 }
 
 GUEST="$1"
 ACTION="$2"
 TARGET_VM="win10"
+
+# prepare aşamasındaki durum bayrakları; her hook çağrısı yeni süreçtir.
+PREPARE_DESKTOP_TOUCHED=0
+PREPARE_DISPLAY_DETACH_ATTEMPTED=0
+PREPARE_GPU_PCI_TOUCHED=0
+PREPARE_GPU_AUDIO_TOUCHED=0
 
 # Bu script libvirt tarafından TÜM VM'ler için çağrılır (sadece $TARGET_VM
 # için değil). Filtre olmadan ileride eklenecek herhangi bir VM de host
@@ -321,6 +360,7 @@ if [ "$ACTION" = "prepare" ]; then
     rollback_prepare
     exit 1
   fi
+  PREPARE_DISPLAY_DETACH_ATTEMPTED=1
   echo 0 > /sys/class/vtconsole/vtcon0/bind 2>/dev/null || true
   echo 0 > /sys/class/vtconsole/vtcon1/bind 2>/dev/null || true
   echo efi-framebuffer.0 > /sys/bus/platform/drivers/efi-framebuffer/unbind 2>/dev/null || true
