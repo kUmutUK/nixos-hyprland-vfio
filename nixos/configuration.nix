@@ -472,21 +472,13 @@ in
     # her çeviri Ollama'ya düşüyordu. translate-shell (`trans`) bunun yerine geçmez.
   ];
 
-  # home.nix'teki `home.persistence."/nix/persist/home"` tanımı bu dizini
-  # kalıcı depolama kökü olarak kullanıyor. Dizin yoksa Home Manager
-  # activation bind-mount'u sessizce başarısız oluyor ve ~/.config/lsfg-vk
-  # oluşmuyor. tmpfiles kuralı boot başında idempotent çalışıp dizini
-  # (gerekirse doğru sahiplikle) yeniden oluşturuyor; /nix bir btrfs alt
-  # hacmi (nodatacow) olduğu için içerik diskte kalıcı.
-  systemd.tmpfiles.rules = [
-    # DÜZELTME (2026-10-04): grup "users" idi. NixOS'ta isNormalUser
-    # kullanıcıların BİRİNCİL grubu kendi adıdır; "users" grubu extraGroups
-    # listesinde de yok. Bu yüzden dizin yanlış gruba sahip oluyordu ve
-    # Home Manager bind-mount'u kullanıcının kendi grubuyla uyuşmuyordu.
-    # Kullanıcı adı "localhost" → birincil grup da "localhost".
-    # Doğrula: id localhost   →  uid=... gid=... groups=...(localhost)
-    "d /nix/persist/home 0755 localhost localhost -"
-  ];
+  # systemd.tmpfiles: /nix/persist/home kuralı KALDIRILDI (2026-10-09).
+  # Kural, home.nix'teki `home.persistence."/nix/persist/home"` bloğuyla
+  # birlikte çalışacak biçimde yazılmıştı; ancak o blok yorumdaydı ve
+  # impermanence modülü de kaldırıldığı için kural hiçbir şeyin altını
+  # hazırlamıyordu — boot başında boş bir dizin açıp bırakıyordu.
+  # Kalıcı depolama geri gelirse bu kural da geri gelmeli (bkz. aşağıdaki
+  # "Kalıcı depolama" notu); tek başına, mekanizmasız bir dizin şart değil.
 
   environment.etc."vulkan/implicit_layer.d/low_latency_layer.json".source =
     "${low-latency-layer}/share/vulkan/implicit_layer.d/low_latency_layer.json";
@@ -644,32 +636,31 @@ in
     rulesProvider = pkgs.ananicy-rules-cachyos;
   };
 
-  # ─── Impermanence ───────────────────────────────────────────────────
-  # flake.nix impermanence modülünü import ediyor ama environment.persistence
-  # burada TANIMLANMIYOR; bu yüzden her nixos-rebuild'de şu uyarı basılıyor:
+  # ─── Kalıcı depolama (impermanence) ─────────────────────────────────
+  # Bu config KASTEN impermanence KULLANMIYOR. Geçmişte modül import
+  # ediliyordu ama `environment.persistence` hiç tanımlanmadığı için tek
+  # ürettiği şey her `nixos-rebuild`'de basılan uyarıydı:
   #   "environment.persistence: Neither /var/lib/nixos nor any of its parents
-  #    are persisted. The following users are missing a uid: ... "
+  #    are persisted. ..."
+  # Uyarı build'i etkilemez (update-users-groups.pl UID'leri /etc/passwd'deki
+  # ilk boş slottan seçtiği için pratikte sabit kalır) ama tamamen gürültü.
   #
-  # ⚠️ Burada environment.persistence."/var/lib/nixos" tanımı EKLEMEK
-  # denendi ve İKİ SEBEPLE GERİ ALINDI (gerçek `nix eval` ile ölçüldü):
-  #   1) Uyarıyı SESSİZE ÇEVRİRMİYOR — tanım eklenmiş halde de aynı uyarı
-  #      basılmaya devam ediyor.
-  #   2) Impermanence'in güncel sürümünde `method` option'ı kaldırılmış
-  #      durumda; persistence alt modülü zorlanınca
-  #      "The option `method` can no longer be used since it's been removed"
-  #      hatası veriyor. Yani uyarıyı susturmanın bedeli daha ağır.
+  # ⚠️ Burada `environment.persistence."/var/lib/nixos"` tanımı EKLEMEK denendi
+  # ve İKİ SEBEPLE GERİ ALINDI (gerçek `nix eval` ile ölçüldü):
+  #   1) Uyarıyı SESSİZE ÇEVRİRMİYOR — tanım eklenmiş halde de basılıyor.
+  #   2) Impermanence'in güncel sürümünde `method` option'ı kaldırılmış; alt
+  #      modül zorlanınca "The option `method` can no longer be used" hatası
+  #      veriyor. Yani uyarıyı susturmanın bedeli daha ağır.
   #
-  # Gerçek etki düşük: `update-users-groups.pl` UID'leri /etc/passwd'deki
-  # ilk boş slottan (allocId) seçtiği için pratikte her boot'ta aynı kalır.
-  # Bu bir GÜRÜLTÜ uyarısıdır, hata değildir — build'i etkilemez.
-  # Gerçekten susturmak isterseniz tek yol impermanence modülünü tamamen
-  # kaldırmaktır (flake.nix + bu yorum + home.nix'deki home.persistence).
-  #
+  # 2026-10-09: karar (b) uygulandı — impermanence girdisi flake.nix'ten ve
+  # modülü oradan TAMAMEN kaldırıldı, `home.nix`'teki yorumlu `home.persistence`
+  # bloğu silindi. Böylece uyarı da, ölü mekanizma da gitti. Geri açmak için
+  # flake.nix'teki notu okuyun; iki tarafı da AYNI committe getirin.
+
   # /etc/vulkan/implicit_layer.d, environment.etc ile yazılıyor (Vulkan
-  # manifesti salt-okunur bir store dosyası). Bu dizin bilinçli olarak
-  # impermanence bind-mount'una VERİLMİYOR: persist dizini ilk açılışta
-  # boş olduğu için etc dosyasını gölgeler ve Vulkan katmanı kaybolurdu.
-  # home.persistence (home.nix) tarafındaki .config/lsfg-vk ise ayrı ve geçerli.
+  # manifesti salt-okunur bir store dosyası). Kalıcı depolama geri gelirse bu
+  # dizin ona VERİLMEMELİ: persist dizini ilk açılışta boş olduğu için etc
+  # dosyasını gölgeler ve Vulkan katmanı kaybolurdu.
 
   # ─── DNS ────────────────────────────────────────────────────────────
   # ESKİ HALİ: services.nextdns + networking.networkmanager.dns = "none" +
