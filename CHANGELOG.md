@@ -8,6 +8,123 @@ This project follows:
 
 ---
 
+# [1.3.4] - 2026-10-09
+
+Bağımsız denetim turu #3. Bu turda **üç gerçek düzeltme** yapıldı ve bir
+**önceki tespit geri çekildi**. Ağırlık ölçüsü: biri kullanıcıya dokümante
+edilebilir bir davranış değişikliği, ikisi altyapı.
+
+## 🔴 Fixed — `check.yml`'in en değerli kapısı sessizce açıktı
+
+`home.nix`'e gömülü bash script'lerini shellcheck'ten geçiren adım şuydu:
+
+```bash
+python3 scripts/extract-embedded-scripts.py /tmp/emb | xargs -0 -n1 -- shellcheck -S warning
+```
+
+**GNU `xargs` boş girdide komutu ARGÜMANSIZ bir kez çalıştırır.** Yani
+`extract-embedded-scripts.py` 0 betik bulursa `xargs` yine `shellcheck`'i
+çağırır, shellcheck boş stdin okur ve **exit 0** döner — CI yeşil kalır.
+`MARKERS` regex'i bir gün bozulursa veya `home.nix`'in yapısı değişirse bu
+adım **sessizce hiçbir şey yapmaz**. Oysa bu kapının var olma sebebi tam olarak
+o boşluğu kapatmaktı: CHANGELOG [1.3.x]'te düzeltilen iki sessiz hata
+(`\f` → `tr -d 'f'`, git'in okumadığı `MANPAGER`) tam olarak bu boşluktan geçmişti.
+
+→ **`xargs -0 -r`** (boş girdide hiç çalıştırma) **+ sayım guard'ı** (`find …
+wc -l` ile 0 betik tespiti → `::error::` + exit 1). İki ayrı arıza modu, iki
+ayrı koruma: `-r` "xargs boş girdi" arızasını, guard "MARKERS bozuldu" arızasını
+kapatıyor. `-r` tek başına ikinciyi açık bırakırdı.
+
+## 🟠 Fixed — kalıcı depolama (impermanence) üç yerden ölüydü
+
+Tespit detayı aşağıdaki [1.3.3] düzeltme notunda; kısa özet: `home.nix`'teki
+`home.persistence` bloğu **yorumdaydı**, `flake.nix` modülü import ediyordu,
+`configuration.nix` `/nix/persist/home` tmpfiles kuralı açıyordu. Üçü de ölüydü
+ve yorum mekanizmayı aktif anlatıyordu. → Kalıcı depolama **kaldırıldı**:
+`flake.nix` girdi + import, `flake.lock` node, `home.nix` blok,
+`configuration.nix` tmpfiles kuralı. Gerekçe ve geri açma reçetesi
+`configuration.nix` → "Kalıcı depolama" notunda.
+
+### ⚠️ Kullanıcıya görünür yan etki
+
+`~/.config/lsfg-vk/conf.toml` artık `home.nix`'teki `xdg.configFile` tanımından
+**store symlink'i** olarak yazılıyor (daha önce de öyleydi — impermanence zaten
+çalışmıyordu; bu bir *değişiklik* değil, **dokümante edilmiş bir davranış**).
+
+Eğer bu dosyayı daha önce **elle** düzenlediyseniz (symlink'i kırıp gerçek
+dosya yazdıysanız), bir sonraki `home-manager` aktivasyonu onu store
+symlink'iyle **ezecek**. Impermanence altındayken böyle bir risk yoktu, çünkü
+o katman zaten hiç devreye girmiyordu. Declarative-first felsefeyle tutarlı,
+ama sürpriz olmasın diye burada. Değişiklik yapmak için `home.nix` → `xdg.configFile`
+→ `"lsfg-vk/conf.toml"` girdisini düzenleyin.
+
+**Veri kaybı olmaz.** `configuration.nix` → `home-manager.backupFileExtension =
+"backup"` tanımlı olduğu için HM, üzerine yazacağı mevcut dosyayı silmek yerine
+yanına `.backup` uzantısıyla düşürür. Yani ilk `nixos-rebuild switch` sonrası
+`~/.config/lsfg-vk/conf.toml.backup` belirebilir — **bu normal**, eski
+(impermanence) dosyanın kendisidir, silinebilir. Üstünde şüphe etmenize gerek
+yoktur; sürpriz olmaması için burada yazıyoruz.
+
+## 🟠 Fixed — `win10.xml` OVMF template mimari uyuşmazlığı (P2)
+
+```diff
+- <nvram template="/run/libvirt/nix-ovmf/edk2-i386-vars.fd" …>
++ <nvram template="/run/libvirt/nix-ovmf/edk2-x86_64-vars.fd" …>
+```
+
+Kod 64-bit (`edk2-x86_64-code.fd`), değişken deposu şablonu IA32 build'idir;
+`arch="x86_64"` ile eşleşmiyor. **Severity P2, "VM açılmaz" değil:** değişken
+deposu başlığı mimariden bağımsız olduğu için çoğu durumda açılır. Klasik
+belirti misafirin kendini *"yeni kurulum"* sanması / değişken kaybı. Secure Boot
+bu config'de kapalı. Her iki dosya da `/run/libvirt/nix-ovmf` altında zaten var
+(`libvirtd-config` firmware JSON'larından kopyalıyor) — dosya eksik değil,
+**yanlış** dosyaydı. `docs/archive/ANALIZ-2026-10-05-ZIP3-SUPERSEDED.md:278`
+zaten P2 olarak işaretlemiş, kodda uygulanmamıştı.
+
+## ✅ Retracted — `hooks/qemu` polkit'i geri açmıyor (GERÇEK DEĞİL)
+
+Önceki turlarda `start_hyprland()` içindeki `systemctl is-enabled --quiet`
+gate'inin `polkit.service`'i atladığı ileri sürüldü. **Bu yanlıştı, geri
+çekildi; `hooks/qemu`'ya dokunulmadı.**
+
+Kaynağa gidildi: kilitli nixpkgs rev'i (`c51d592`) `nixos/modules/security/
+polkit.nix` → `systemd.services.polkit` için **`wantedBy` tanımlı değil**.
+
+- `wantedBy` yok → unit'te `[Install]` bölümü yok → durum `static`
+- `systemctl is-enabled` man sayfası, Tablo 3: **`static` → exit code 0**
+
+Yani gate **geçiyor**, `systemctl start polkit.service` çalışıyor, polkit geri
+açılıyor. Hatayı iki katmanda birleştirmiştim: (1) D-Bus activation'ın
+`is-enabled` çıkışını etkilediğini sandım — etkilemiyor, `static`'i yaratan şey
+`[Install]` yokluğu; (2) `static`'in non-zero döndüğünü sandım — 0 dönüyor.
+CHANGELOG [1.3.1]'in polkit düzeltmesi doğruymuş, **dokunulmadı**.
+
+> Ders: bu tür iddialar varsayımla değil kaynakla verilir. NixOS modül
+> davranışı sürümden sürüme değişiyor; "nixpkgs şöyle yapıyor" demek için
+> kilitli rev'i okumak gerekiyor.
+
+## Notlar
+
+- **`flake.lock` elle düzenlendi** (`impermanence` node'u düştü, `root.inputs`
+  girdisi temizlendi — `nix` bu sandbox'ta yoktu). JSON geçerli ve indenting
+  Nix'in kendi formatıyla aynı, **ama kanonikliği teyit edilmedi.**
+
+  Commit öncesi ön kontrol: `cd nixos && nix flake lock && git diff --exit-code
+  flake.lock`. ⚠️ **Bu ön kontrolde boş çıkması "kanonikti" demek DEĞİLDİR.**
+  `nix flake lock` yalnızca input GRAFİĞİNİ doğrular (eksik/fazla node, kayan
+  `follows`); dosyayı yeniden SERİZLEMEZ, dolayısıyla elle yazılmış bir
+  lock'u olduğu gibi kabul edip hiç dokunmadan geçebilir. Boş çıkmanın
+  anlamı yalnızca "Nix'in değiştirmeyi gerekli görmediğidir."
+
+  **Son söz CI'ın `flake.lock unchanged` adımıdır** — o adım gerçek
+  `nix flake check --no-build` sonrası diff'i ölçer, yani kanonik olmayan bir
+  lock'un değerlendirme sırasında yeniden yazılıp yazılmadığını gerçek eval
+  yolunda görür. O adım yeşile dönene kadar commit'lemeyin.
+- **`flake.nix`'teki impermanence notu kasıtlı olarak kısa tutuldu** (21 → 5
+  satır) ve gerekçe `configuration.nix`'e taşındı. Kaldırılan bir şeyin
+  gerekçesi girdiden uzunsa, ya gerekçe yanlış yere yazılmıştır ya da
+  gereksiz uzamıştır. Burada ikincisiydi.
+
 # [1.3.3] - 2026-10-06
 
 > ⚠️ **Bu bölümün altındaki commit hash'lerinin hepsi tarihseldir.** Hiçbiri
@@ -61,6 +178,21 @@ kırık çıkmadı.
 - → Yorum düzeltildi. Davranış **değiştirilmedi** (tasarımın sahibinin
   tercihi); kullanıcıyı yanıltan açıklama gerçeği anlatacak biçimde yeniden
   yazıldı.
+
+### 🔴 Düzeltme (2026-10-09) — bu kaydın kendisi hatalıydı
+
+Yukarıdaki madde, düzeltmeyi tamamlanmış sayıyordu. Değildi. Bloğun **kendisi
+yorumdaydı** (`#home.persistence."/nix/persist/home"`), yani tarif edilen
+mekanizma hiç çalışmıyordu; buna rağmen yorum aktif anlatmaya devam ediyordu
+(*"bu yol artık impermanence'in yönetimindedir"*). "Yorum düzeltildi, davranış
+değişmedi" ifadesi bu yüzden yanlıştı: düzeltilen şey yorumdu, ama yorumun
+anlattığı şey gerçek değildi.
+
+→ **Bu kaydın düzeltilmesi ve kalıcı depolamanın tamamen kaldırılması
+[1.3.4]'te yapıldı.** Ayrıca: karar (a) — bloğu açmak — seçilseydi bu kayıt
+yine yalan olurdu, çünkü `environment.persistence` tanımsız kaldığı için
+impermanence'in rebuild uyarısı (a)'da da basmaya devam ederdi. `home.persistence`
+ve `environment.persistence` iki ayrı option'dır; biri diğerini doldurmaz.
 
 ## 🟠 Fixed — `KURULUM.md` çalışmayan bir talimat veriyordu
 

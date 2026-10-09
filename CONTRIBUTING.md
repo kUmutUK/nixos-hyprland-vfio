@@ -30,7 +30,7 @@ sudo nixos-rebuild dry-activate --flake .#nixos
 
 **CI aynısını otomatik yapıyor.** `.github/workflows/check.yml` artık
 `nix flake check --no-build` çalıştırıyor — yani bir option adı yanlış yazılırsa
-(`xwaylan.enable`, `services.lsfg-vk`, impermanence modülü…) PR merge olmadan
+(`xwaylan.enable`, `services.lsfg-vk`…) PR merge olmadan
 kırılıyor. Bu adım 2026-10-05'te eklendi; o tarihten önce CI'de **hiç Nix
 çalışmıyordu**, sadece shellcheck vardı.
 

@@ -118,24 +118,13 @@ mount /dev/nvme0n1p1 /mnt/boot
 
 swapon /dev/nvme0n1p2
 
-# home.nix'teki `home.persistence."/nix/persist/home"` (lsfg-vk yapılandırması)
-# bu dizini kalıcı depolama kökü olarak kullanıyor; yoksa Home Manager
-# activation bind-mount'u sessizce başarısız olur. @nix alt hacmi mount
-# edildikten sonra oluştur (nodatacow, diskte kalıcı).
-#
-# ⚠️ DÜZELTME (2026-10-06): burada `chown "$(id -un)": /mnt/nix/persist/home`
-# yazıyordu. İki sorunu vardı:
-#   1) Tırnak dışına sıkan `:` → `chown kullanici: dosya` = "owner'ı kullanıcı
-#      yap, grubu DEĞİŞTİRME". Amaçlanan muhtemelen `$(id -un):$(id -gn)`
-#      idi. Yanlışlıkla "çalışıyordu", ama yanlış sahiplik bırakıyordu.
-#   2) Daha önemlisi: canlı ISO'da `localhost` kullanıcısı henüz yok. ISO
-#      kullanıcısına (genelde `nixos`) sahiplik vermek, boot'tan sonra
-#      `/nix/persist/home` yanlış owner'da kalır.
-# Doğrusu: yalnızca dizni oluştur. Sahiplik zaten boot'ta
-# `configuration.nix` → `systemd.tmpfiles.rules` içindeki
-#   d /nix/persist/home 0755 localhost localhost -
-# kuralıyla düzeltilir (systemd-tmpfiles `d` mevcut dizinde de mode/owner'ı
-# uygular, yalnızca yoksa oluşturmaz).
+# ⚠️ `/mnt/nix/persist/home` artık GEREKMIYOR (2026-10-09).
+# Bu blok daha önce `home.nix` → `home.persistence."/nix/persist/home"`
+# kalıcılık katmanını varsayıyordu; o katman KALDIRILDI. Bu config artık
+# impermanence kullanmıyor — `~/.config/lsfg-vk/conf.toml` doğrudan
+# `home.nix` → `xdg.configFile` üzerinden yazılıyor ve /nix altında hiçbir
+# şey kalıcılaştırılmıyor. Gerekçe: CHANGELOG [1.3.4].
+# Aşağıdaki satır güvenli ama gereksiz; silmek de serbest:
 mkdir -p /mnt/nix/persist/home
 ```
 
