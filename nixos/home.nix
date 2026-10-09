@@ -11,6 +11,12 @@ let
   hyprlandMonitorLine = "monitor = ,preferred,auto,1";
   wallpaperVideo     = "${config.home.homeDirectory}/Downloads/arthur-leywin-the-beginning-after-the-end.3840x2160.mp4";
 
+  # systemd ExecStart için her argümanı systemd kurallarına göre quote et.
+  # JSON quoting boşluk/özel karakterleri korur; % ve $ da specifier ve
+  # environment-variable genişletmesini engellemek için escape edilir.
+  escapeSystemdExecArg = arg:
+    lib.replaceStrings [ "%" "$" ] [ "%%" "$$" ] (builtins.toJSON arg);
+
   gamemodeNotifyScript = pkgs.writeShellScriptBin "gamemode-notify" ''
     NOTIFY_SEND="${pkgs.libnotify}/bin/notify-send"
     ${pkgs.dbus}/bin/dbus-monitor --session \
@@ -1618,7 +1624,14 @@ done
       Service = {
         Type = "simple";
         Environment = "PATH=${lib.makeBinPath [ pkgs.mpvpaper pkgs.mpv ]}";
-        ExecStart = "${pkgs.mpvpaper}/bin/mpvpaper -p --mpv-options \"loop=inf\" ${monitorOutput} ${wallpaperVideo}";
+        ExecStart = lib.concatStringsSep " " (map escapeSystemdExecArg [
+          "${pkgs.mpvpaper}/bin/mpvpaper"
+          "-p"
+          "--mpv-options"
+          "loop=inf"
+          monitorOutput
+          wallpaperVideo
+        ]);
         Restart = "on-failure";
         RestartSec = 3;
       };
