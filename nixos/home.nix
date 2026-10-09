@@ -414,11 +414,10 @@ let
     # AYRICA bu satır mpvpaper-watchdog'u BAŞLATAN satırın ALTINDAYDI;
     # import önce, başlatma sonra olacak şekilde sıralandı.
     exec-once = ${pkgs.coreutils}/bin/sh -c 'systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE HYPRLAND_INSTANCE_SIGNATURE HYPRLAND_DISPLAY; systemctl --user start mpvpaper-watchdog gamemode-notify'
-    # DÜZELTME (2026-10-05): mpvpaper.service `ConditionPathExists = ${wallpaperVideo}`
-    # taşıyor. Dosya yoksa systemd unit'i SESSİZCE atlar — ne hata, ne uyarı,
-    # ne de duvar kağıdı. Kurulumdan sonra "neden mpv yok?" diye bakmak,
-    # hatırlamak zorunda kalıyorsun. Şimdi kontrol burada, oturum açılışında,
-    # görünür şekilde yapılıyor.
+    # DÜZELTME (2026-10-09): ConditionPathExists daha önce mpvpaper.service'in
+    # Service bölümündeydi; systemd bu konumda anahtarı yok sayıyordu. Artık
+    # Unit bölümünde doğru tanımlı: video yoksa servis başlatılmaz. Aşağıdaki
+    # exec-once kontrolü ayrıca kullanıcıya görünür bir uyarı gösterir.
     exec-once = ${pkgs.coreutils}/bin/sh -c '[ -e "${wallpaperVideo}" ] || notify-send -t 15000 -u critical "mpvpaper" "Canlı duvar kağıdı bulunamadı: ${wallpaperVideo}\nDosyayı indirin veya home.nix içindeki wallpaperVideo değerini değiştirin, sonra: systemctl --user restart mpvpaper mpvpaper-watchdog"'
     # DÜZELTME (2026-10-06): yukarıdaki kontrol SADECE video dosyasının
     # varlığına bakıyordu. ${monitorOutput} çıkışı yanlışsa — ki varsayılan
@@ -1095,8 +1094,8 @@ translate() {
     local letter_count=$(echo "$raw" | tr -cd 'a-zA-Z' | wc -c)
     [ "$letter_count" -lt 5 ] && { echo ""; return; }
 
-    # Önbellek kontrolü
-    local cached=$(grep -F -m1 -- "$raw" "$CACHE_FILE" 2>/dev/null | head -n 1 | cut -d'\t' -f2)
+    # Önbellek anahtarını ilk TAB alanıyla tam karşılaştır; substring eşleşmesi yapma.
+    local cached=$(awk -F '\t' -v k="$raw" '$1 == k { print $2; exit }' "$CACHE_FILE" 2>/dev/null)
     [ -n "$cached" ] && { echo "$cached"; return; }
 
     # Hızlı çeviriyi dene
@@ -1603,10 +1602,10 @@ done
         Description = "mpvpaper live wallpaper service (looped)";
         After = [ "graphical-session.target" ];
         PartOf = [ "graphical-session.target" ];
+        ConditionPathExists = "${wallpaperVideo}";
       };
       Service = {
         Type = "simple";
-        ConditionPathExists = "${wallpaperVideo}";
         Environment = "PATH=${lib.makeBinPath [ pkgs.mpvpaper pkgs.mpv ]}";
         ExecStart = "${pkgs.mpvpaper}/bin/mpvpaper -p --mpv-options \"loop=inf\" ${monitorOutput} ${wallpaperVideo}";
         Restart = "on-failure";
