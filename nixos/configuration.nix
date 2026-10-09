@@ -131,7 +131,22 @@ in
   boot.loader.efi.canTouchEfiVariables = true;
   boot.kernelParams = [
     "amd_pstate=active" "nowatchdog" "nmi_watchdog=0"
-    "transparent_hugepage=madvise" "iommu=pt"
+    # DÜZELTME (2026-10-09): "amd_iommu=on" EKLENDİ — config'te hiç yoktu,
+    # ama README, KURULUM.md ve install.sh onu bu config'in bir parametresi
+    # olarak anıyordu (README:45,47,112 · KURULUM.md:374 · install.sh:83,511).
+    # Özellikle README "Reboot etmeden VFIO testi yaparsanız IOMMU açık değildir"
+    # gerekçesini bu parametreye bağlıyordu. Belgelerden çıkarmak yerine
+    # parametreyi eklemek seçildi, çünkü:
+    #   • Modern Zen'de (5.18+) kernel AMD IOMMU'yu varsayılan açık geliyor, yani
+    #     bu parametre IOMMU zaten açıkken SIFIR maliyetli bir güvence — no-op.
+    #   • IOMMU kapalıysa da zaten VFIO çalışmıyor; parametre olmadığında hatayı
+    #     ancak "GPU bağlanmadı" belirtisiyle, yani en pahalı anda öğreniyorsun.
+    #   • Belgeyi "kernel 5.18+ varsayılan" diye sürüm-bağımlı bir iddiaya
+    #     çevirmek, eski kernelde veya sürücü/firmware sürprizinde yanlış yönlendirir.
+    # NOT: bu bir ALT SİSTEM beyanıdır (IOMMU açık olmalı), bir performans
+    # dengesi değildir. Aynı sınıftan olmayan "rcupdate.rcu_expedited=1" ile
+    # karıştırılmamalı — o, ayrı bir karar (bkz. aşağıdaki not).
+    "transparent_hugepage=madvise" "iommu=pt" "amd_iommu=on"
     "usbcore.autosuspend=-1" "video=efifb:off"
     "amdgpu.ppfeaturemask=0xfffd7fff" "kvm.ignore_msrs=1"
     "pcie_aspm=off" "rcupdate.rcu_expedited=1"
