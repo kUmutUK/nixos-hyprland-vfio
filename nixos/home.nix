@@ -1571,41 +1571,41 @@ done
   };
 
   services.hypridle = {
-  enable = true;
-  settings = {
-    general = {
-      before_sleep_cmd = "${pkgs.hyprlock}/bin/hyprlock";
-      after_sleep_cmd = "${pkgs.hyprland}/bin/hyprctl dispatch dpms on";
-      lock_cmd = "${pkgs.hyprlock}/bin/hyprlock";
-      ignore_dbus_inhibit = false;
+    enable = true;
+    settings = {
+      general = {
+        before_sleep_cmd = "${pkgs.hyprlock}/bin/hyprlock";
+        after_sleep_cmd = "${pkgs.hyprland}/bin/hyprctl dispatch dpms on";
+        lock_cmd = "${pkgs.hyprlock}/bin/hyprlock";
+        ignore_dbus_inhibit = false;
+      };
+      listener = [
+        {
+          timeout = 300;
+          on-timeout = "${pkgs.hyprland}/bin/hyprctl dispatch dpms off";
+          on-resume = "${pkgs.hyprland}/bin/hyprctl dispatch dpms on";
+        }
+        {
+          timeout = 150;
+          on-timeout = "${pkgs.brightnessctl}/bin/brightnessctl -s set 70%";
+          on-resume = "${pkgs.brightnessctl}/bin/brightnessctl -r";
+        }
+        {
+          timeout = 600;
+          on-timeout = "${pkgs.hyprlock}/bin/hyprlock";
+        }
+        {
+          # ÖNEMLİ: burada hyprlock ÇAĞRILMAZ. hyprlock foreground'da
+          # bloklar; kullanıcı şifre girene kadar süreç çıkmaz, dolayısıyla
+          # arkasındaki `systemctl suspend` hiç çalışmazdı. Üstelik
+          # general.before_sleep_cmd zaten hyprlock'ı çağırıyor, yani
+          # ikinci kez kilitleme de oluyordu. Tek görevi suspend.
+          timeout = 900;
+          on-timeout = "${pkgs.systemd}/bin/systemctl suspend";
+        }
+      ];
     };
-    listener = [
-      {
-        timeout = 300;
-        on-timeout = "${pkgs.hyprland}/bin/hyprctl dispatch dpms off";
-        on-resume = "${pkgs.hyprland}/bin/hyprctl dispatch dpms on";
-      }
-      {
-        timeout = 150;
-        on-timeout = "${pkgs.brightnessctl}/bin/brightnessctl -s set 70%";
-        on-resume = "${pkgs.brightnessctl}/bin/brightnessctl -r";
-      }
-      {
-        timeout = 600;
-        on-timeout = "${pkgs.hyprlock}/bin/hyprlock";
-      }
-      {
-        # ÖNEMLİ: burada hyprlock ÇAĞRILMAZ. hyprlock foreground'da
-        # bloklar; kullanıcı şifre girene kadar süreç çıkmaz, dolayısıyla
-        # arkasındaki `systemctl suspend` hiç çalışmazdı. Üstelik
-        # general.before_sleep_cmd zaten hyprlock'ı çağırıyor, yani
-        # ikinci kez kilitleme de oluyordu. Tek görevi suspend.
-        timeout = 900;
-        on-timeout = "${pkgs.systemd}/bin/systemctl suspend";
-      }
-    ];
   };
-};
 
   systemd.user.services = {
     mpvpaper = {
