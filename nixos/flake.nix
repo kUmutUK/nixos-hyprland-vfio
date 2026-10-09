@@ -27,14 +27,14 @@
     # Kararın eski gerekçesi: nixpkgs 0.54.3 veriyordu, overlay 0.55.0'a
     # zorluyordu, istemciler 0.54 ABI ile derlenmişti -> ABI karışıklığı.
     #
-    # DÜZELTME (2026-10-05): kilitli nixpkgs rev'i 7a0f122'de Hyprland
+    # DÜZELTME (2026-10-05): kilitli nixpkgs rev'i 151fa4e8'de Hyprland
     # 0.56.2'dir, yani artık nixpkgs overlay'in sürümünden YENİ. Buna rağmen
     # overlay'in kaldırılmış olması DOĞRU KARARDIR: tek nixpkgs rev'i her
     # zaman ABI tutarlılığı garantisi verir, sabitlenmiş bir sürüm ise
     # istemcileri geride bırakabilir. Sadece yukarıdaki gerekçe artık
     # geçerli değil.
     #
-    # Doğrulanan sürümler (kilitli rev 7a0f122f5090):
+    # Doğrulanan sürümler (kilitli rev 151fa4e8ddfd):
     #   hyprland 0.56.2 · hyprlock 0.9.6 · hypridle 0.1.8 · hyprpicker 0.4.7
     #   hyprpolkitagent 0.1.3
     lsfg-vk-flake.url = "github:pabloaul/lsfg-vk-flake/main";

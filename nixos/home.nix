@@ -925,7 +925,7 @@ in
     # pyprland kurulu ama config'i yoktu; hyprland.conf'taki
     # "pypr toggle term/music/filemanager" bağlantıları tanımsızdı.
     #
-    # pyprland 3.4.4 (kök nixpkgs rev'i 7a0f122f5090) üç yol tanıyor
+    # pyprland 3.4.4 (kök nixpkgs rev'i 151fa4e8ddfd) üç yol tanıyor
     # (src/constants.py:45-47):
     #   CONFIG_FILE        = ~/.config/pypr/config.toml     ← KANONİK
     #   LEGACY_CONFIG_FILE = ~/.config/hypr/pyprland.toml  ← ESKİ
