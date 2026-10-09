@@ -137,8 +137,9 @@ in
     # Özellikle README "Reboot etmeden VFIO testi yaparsanız IOMMU açık değildir"
     # gerekçesini bu parametreye bağlıyordu. Belgelerden çıkarmak yerine
     # parametreyi eklemek seçildi, çünkü:
-    #   • Modern Zen'de (5.18+) kernel AMD IOMMU'yu varsayılan açık geliyor, yani
-    #     bu parametre IOMMU zaten açıkken SIFIR maliyetli bir güvence — no-op.
+    #   • Modern Zen'de kernel AMD IOMMU'yu donanım desteklediğinde varsayılan
+    #     olarak açıyor, yani bu parametre IOMMU zaten açıkken SIFIR maliyetli
+    #     bir güvence — no-op.
     #   • IOMMU kapalıysa da zaten VFIO çalışmıyor; parametre olmadığında hatayı
     #     ancak "GPU bağlanmadı" belirtisiyle, yani en pahalı anda öğreniyorsun.
     #   • Belgeyi "kernel 5.18+ varsayılan" diye sürüm-bağımlı bir iddiaya
@@ -149,7 +150,13 @@ in
     "transparent_hugepage=madvise" "iommu=pt" "amd_iommu=on"
     "usbcore.autosuspend=-1" "video=efifb:off"
     "amdgpu.ppfeaturemask=0xfffd7fff" "kvm.ignore_msrs=1"
-    "pcie_aspm=off" "rcupdate.rcu_expedited=1"
+    "pcie_aspm=off"
+    # "rcupdate.rcu_expedited=1" 2026-10-09'da KALDIRILDI. Host'u koşulsuz
+    # etkiliyordu ve README'deki gerekçesi ("Windows'un RCU bekleme davranışı")
+    # olgusal olarak yanlıştı — Windows'ta RCU yok. Gerçek etkisi host'ta tüm
+    # grace period primitive'lerini expedited gibi davrandırmak, ki bu
+    # "pahalı ve gerçek zamanlı iş yüklerine düşman" (kernel.org RCU
+    # checklist). Bu config'in amacı düşük jitter; parametre tersini yapıyor.
   ];
 
   boot.initrd.availableKernelModules = lib.mkAfter [ "amdgpu" ];
@@ -514,11 +521,20 @@ in
         amd_performance_level = "high";
       };
       custom = {
-        # NOT: mpvpaper.service'i hem burada hem de home.nix içindeki
-        # mpvpaper-watchdog yönetiyor. İkisi de systemctl start/stop
-        # kullandığı için idempotent, ama oyun sırasında watchdog bir "start"
-        # atarsa duvar kağıdı oyun bitmeden geri gelebilir. Tek kaynak
-        # isterseniz aşağıdaki iki satırı silip yalnızca watchdog'u bırakın.
+        # DÜZELTME (2026-10-09): önceki yorum "oyun sırasında watchdog bir start
+        # atarsa duvar kağıdı oyun bitmeden geri gelebilir" diyordu — bu
+        # YANLIŞTI ve yanlış varsayıma dayanan bir "bilinçli risk" notuydu.
+        # Gerçekte mpvpaper-watchdog başlatmadan önce hem tarayıcı hem de
+        # is_gamemode_active kontrolü yapıyor (home.nix → update_wallpaper),
+        # yani oyun aktifken start atmıyor.
+        #
+        # Gerçekte kalan çakışma: iki ayrı yazıcı var (buradaki gamemode
+        # start/end ve watchdog'un systemctl çağrıları) ve ikisi de aynı unit'i
+        # yönetiyor. Senaryo "oyun sırasında" değil, oyun BİTERKEN bir tarayıcı
+        # açıksa: watchdog mpvpaper'ı durdurmuşken gamemode `end` onu yeniden
+        # başlatır ve bir sonraki pencere olayına kadar duvar kağıdı görünür.
+        # Tek kaynak isterseniz aşağıdaki iki satırı silip yalnızca watchdog'u
+        # bırakın.
         start = "${pkgs.systemd}/bin/systemctl --user stop mpvpaper.service";
         end   = "${pkgs.systemd}/bin/systemctl --user start mpvpaper.service";
       };

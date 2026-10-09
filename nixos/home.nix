@@ -689,7 +689,7 @@ let
       format = "{player_icon} {artist} - {title}";
       format-paused = "⏸ {artist} - {title}";
       format-stopped = "";
-      player-icons = { default = "🎵"; spotify = "󰀒"; firefox = "🦊"; chromium = "🦺"; };
+      player-icons = { default = "🎵"; spotify = "󰀒"; firefox = "🦊"; chromium = "🌐"; };
       status-icons = { paused = "⏸"; playing = "▶"; stopped = "■"; };
       max-length = 40;
       on-click = "playerctl play-pause";
