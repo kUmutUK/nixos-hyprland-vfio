@@ -193,7 +193,7 @@ sudo journalctl -u libvirtd -f
 | `SUPER` + `Q` | aktif pencereyi kapat |
 | `SUPER` + `F` | tam ekran |
 | `SUPER` + `V` | yüzen pencere |
-| `SUPER` + `W` | waypaper (duvar kâğıdı) |
+| `SUPER` + `W` | waypaper (statik duvar kâğıdı) † |
 | `SUPER` + `Escape` | hyprlock (kilitle) |
 | `SUPER` + `SHIFT E` | oturumu kapat |
 | `SUPER` + `SHIFT C` | hyprpicker renk seçici |
@@ -231,6 +231,14 @@ sudo journalctl -u libvirtd -f
 
 Ses seviyesi için `XF86AudioRaiseVolume` / `LowerVolume` / `Mute` çalışır.
 
+> † **`SUPER`+`W` statik duvar kâğıdı içindir, canlı duvar kâğıdı değil.** Masaüstünde
+> asıl olarak `mpvpaper` (video) çalışıyor; `mpvpaper.service` + `mpvpaper-watchdog`
+> onu yönetiyor. `waypaper`'ın kendi yapılandırılmış duvar kağıdı yok, dolayısıyla
+> bu tuş pratikte boş bir seçici açıyor ve mpvpaper'a dokunmuyor. Binding'i
+> tamamen kaldırmak isterseniz: `nixos/home.nix` → `bind = $mainMod, W, …` satırı.
+> İki aracı birlikte kullanacaksanız sıralamanın fark ettiğini bilin — mpvpaper
+> video layer'ı, waypaper ise arka plan resmini yazar.
+
 ---
 
 ## Grafik ve oyun
@@ -254,11 +262,9 @@ açıktır. Doğrulama:
 VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE "korthos|lsl"
 ```
 
-> **Guest tarafı ayarlı.** `vm-xml/win10.xml` bir **Windows 10** domain'idir ve
-> kernel parametreleri buna göre seçilmiştir: `kvm.ignore_msrs=1`
-> (Windows 10'un bozuk MSR raporlaması) ve `rcu.rcu_expedited=1`
-> (Windows'un RCU bekleme davranışı). Linux guest kullanırsanız `ignore_msrs`
-> gereksiz, `rcu_expedited` ise ek yük demektir — ikisini de çıkarın.
+> **Guest tarafı ayarlı.** `vm-xml/win10.xml` bir **Windows 10** domain'idir;
+> `kvm.ignore_msrs=1` Windows 10'un bozuk MSR raporlamasını bastırmak için var.
+> Linux guest kullanırsanız gereksizdir, çıkarın.
 
 ---
 
