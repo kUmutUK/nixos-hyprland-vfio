@@ -143,8 +143,9 @@ sudo qemu-img create -f qcow2 /var/lib/libvirt/images/win10new.qcow2 120G
 sudo virsh define /var/lib/libvirt/win10.xml    # ilk kez
 ```
 
-> Sıfırdan kurulumda XML `/mnt/etc/nixos/vm-xml/win10.xml` altındadır; tam
-> adımlar [`KURULUM.md` §9b](KURULUM.md). Ayrıca `install.sh`'ı çalıştırmadıysanız
+> Sıfırdan kurulum sırasında XML `/mnt/etc/nixos/vm-xml/win10.xml` altındadır;
+> ilk reboot sonrası hedef sistemde `/etc/nixos/vm-xml/win10.xml` olur. Tam VM hazırlığı
+> [`KURULUM.md` §10b](KURULUM.md) bölümündedir. Ayrıca `install.sh`'ı çalıştırmadıysanız
 > XML'deki `<hostdev>` PCI adresleri depodaki varsayılandır — `lspci` ile
 > eşleştirin (`nixos/hooks/qemu` içindeki `GPU_PCI` / `GPU_AUDIO` ile aynı olmalı).
 
@@ -308,7 +309,7 @@ Oyun dışında ppd profilini `balanced`'a çekmeniz önerilir.
 - **Host'ta GPU yokken grafik yok.** VM çalışırken yalnızca metin konsolu var.
   Acil kurtarma için `Ctrl+Alt+F2` → `systemctl reboot`.
 - **`HOST_USER` sabit.** Hook `localhost`'u sonlandırır. Tek kullanıcılı
-  kurulum içindir; `KURULUM.md` §9b'de bu konu ayrıntılı.
+  kurulum içindir; `KURULUM.md` §10b'de bu konu ayrıntılı.
 - **VM'e giriş cihazı tanımlı değil.** `vm-xml/win10.xml` içindeki USB hostdev
   yorum satırında; `<graphics>`/VNC/SPICE elemanı da yok. Yani GPU
   passthrough'tan sonra host'ta grafik olmaması *beklenen* davranışken, host'a

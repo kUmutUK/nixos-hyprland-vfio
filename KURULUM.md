@@ -303,7 +303,19 @@ nixos-install --flake /mnt/etc/nixos/nixos#nixos --accept-flake-config
 
 ---
 
-# 🖥️ 9b. VM'yi libvirt'e tanıt (ATLANMA)
+> ⚠️ **VM hazırlığı:** XML ve qcow2 dosyaları kurulum sonrası ilk açılışta oluşturulacak — §10b'ye bakın.
+
+---
+
+# 🔄 10. Reboot
+
+```bash
+reboot
+```
+
+---
+
+# 🖥️ 10b. VM'yi libvirt'e tanıt (ilk reboot sonrası)
 
 > **DÜZELTME (2026-10-04):** bu adım hiçbir dokümanda yoktu. Atlanırsa
 > domain tanımsız kalır; `nixos/hooks/qemu` içindeki
@@ -312,19 +324,28 @@ nixos-install --flake /mnt/etc/nixos/nixos#nixos --accept-flake-config
 > VFIO sistemi sessizce hiç çalışmaz.
 
 ```bash
-# vm-xml zaten §7'de repodan /mnt/etc/nixos/vm-xml olarak kopyalandı.
+# Bu komutları canlı ISO'da değil, kurulumun ilk reboot'undan sonra çalıştırın.
+# Kaynak XML hedef sistemde /etc/nixos/vm-xml/win10.xml yolundadır.
 sudo mkdir -p /var/lib/libvirt/images /var/lib/libvirt/qemu
 
-# ⚠️ DÜZELTME (2026-10-09): bu satır hiçbir dokümanda yoktu. `win10.xml` içinde
-# <source file="/var/lib/libvirt/images/win10new.qcow2"/> tanımlı; disk
-# oluşturulmazsa `virsh define` BAŞARILI olur ama `virsh start win10`
-# "failed to find drive" ile düşer. `install.sh` bu adımı zaten yapıyordu —
-# eksik olan yalnızca elle kurulum yolu (bu rehber).
-sudo qemu-img create -f qcow2 /var/lib/libvirt/images/win10new.qcow2 120G
+# XML'deki disk yolu için qcow2 oluştur. Var olan diske dokunma.
+if [ ! -f /var/lib/libvirt/images/win10new.qcow2 ]; then
+  sudo qemu-img create -f qcow2 /var/lib/libvirt/images/win10new.qcow2 120G
+else
+  echo "Mevcut VM diski korunuyor: /var/lib/libvirt/images/win10new.qcow2"
+fi
 
-sudo cp /mnt/etc/nixos/vm-xml/win10.xml /var/lib/libvirt/
+# install.sh çalışmadıysa kaynak XML'i kopyala. install.sh çalıştıysa
+# /var/lib/libvirt/win10.xml PCI adresleri eşitlenmiş halde bulunabilir;
+# mevcut dosyanın üzerine kaynak şablonu yazma.
+if [ ! -f /var/lib/libvirt/win10.xml ]; then
+  sudo cp /etc/nixos/vm-xml/win10.xml /var/lib/libvirt/
+else
+  echo "Mevcut XML korunuyor; PCI adreslerinin GPU hook'u ile eşleştiğini doğrula."
+fi
+
 sudo virsh define /var/lib/libvirt/win10.xml
-virsh list --all     # 'win10' → "shut off" olarak görünmeli
+sudo virsh list --all     # 'win10' → "shut off" olarak görünmeli
 ```
 
 > ⚠️ **ISO dosyaları:** `virsh start win10` için iki ISO gerekir:
@@ -376,14 +397,6 @@ virsh list --all     # 'win10' → "shut off" olarak görünmeli
 > NixOS modülünde hook'a ortam vermektir — `configuration.nix` içinde
 > `virtualisation.libvirtd.hooks.qemu.vfio` tanımına bir `environment`
 > seçeneği ekleyin (bkz. `nixos/configuration.nix` → `vfioHook`).
-
----
-
-# 🔄 10. Reboot
-
-```bash
-reboot
-```
 
 ---
 
