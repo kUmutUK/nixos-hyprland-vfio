@@ -60,6 +60,15 @@
 
         ({ pkgs, ... }: {
           nixpkgs.config.allowUnfree = true;
+          # ⚠️ CachyOS kernel binary-cache notu:
+          # flake.lock ana sistem nixpkgs'ini 151fa4e, cachyos-kernel girdisinin
+          # kendi nixpkgs'ini ise c51d592 revizyonuna sabitliyor. overlays.default,
+          # kernel paketini ana sistemin nixpkgs'iyle üretir; bu derivation CachyOS
+          # cache'indeki derlemeyle eşleşmeyip cache miss ve yerel LTO kernel
+          # derlemesine yol açabilir (donanım/derleme koşullarına bağlı olarak
+          # 1–2 saat veya daha uzun).
+          # Cache isabeti için upstream overlays.pinned önerir; bu seçenek paket
+          # setini etkileyebileceği için geçiş ayrıca evaluate/build testi gerektirir.
           nixpkgs.overlays = [
             cachyos-kernel.overlays.default
           ];
