@@ -39,7 +39,7 @@ değerinde hook'u çağırır.
 
 ---
 
-## ⚠️ Sorumluluk Reddi
+## Sorumluluk Reddi
 
 Bu config **kişisel bir NixOS kurulumudur** ve belirli bir donanım 
 (AMD Ryzen 5 5600 + AMD RX 6700 XT + tek GPU + UEFI + LUKS2/Btrfs) için 
