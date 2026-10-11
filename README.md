@@ -4,8 +4,10 @@ Tek ekran kartı AMD Radeon'u bir **Windows 10 VM'ine** geçiren, geri kalanı
 gaming odaklı Hyprland masaüstü olan, tamamen **flake** tabanlı bir NixOS
 kurulumu.
 
-> Hedef donanım: AMD Ryzen (desktop) + AMD Radeon RX 6000/7000 · UEFI ·
-> tek ekran kartı. NVIDIA ve Intel için destek yok.
+> **Doğrulanan hedef:** AMD Ryzen 5 5600 + AMD Radeon RX 6700 XT (Navi 22), UEFI,
+> tek ekran kartı. Diğer RX 6000/7000 modelleri otomatik olarak desteklenmiş sayılmaz;
+> PCI/IOMMU grubu, GPU reset davranışı ve ROCm ayarı ayrıca doğrulanmalıdır. NVIDIA
+> ve Intel bu yapılandırmanın hedefi değildir.
 
 ---
 
@@ -34,8 +36,11 @@ Oyun ve günlük masaüstü işi aynı makinede. GPU VM'e geçtiğinde:
 - Bind başarısız olursa hook **rollback** yapar ve VM'nin açılmasını engeller —
   yarım kalmış (ne host'ta ne guest'te GPU) bir sistem bırakmaz.
 
-Elle yapılan hiçbir şey gerekmez; libvirt her `virsh start`/`virsh destroy`
-değerinde hook'u çağırır.
+GPU'nun host ile VM arasında devri normal VM yaşam döngüsünde hook tarafından
+otomatik yönetilir. Ancak ilk kurulumda domain'i `virsh define` ile tanımlamak,
+sanal diski ve ISO yollarını hazırlamak ve GPU host'a devredildiğinde kullanılacak
+klavye/fare girişini yapılandırmak gerekir. Adımlar için [VM'i başlatma](#vmi-başlatma)
+bölümüne bakın.
 
 ---
 
@@ -63,10 +68,10 @@ Lisans: MIT — bkz. `LICENSE` (yasal olarak "as is", garanti yok).
 | | |
 |---|---|
 | **CPU** | AMD Ryzen (desktop). Intel desteklenmiyor — `kvm-amd`, `amd_iommu`, `amd_pstate` sabit kodlanmış. |
-| **GPU** | AMD Radeon RX 6000/7000 (Navi 22/23). Config'de Ollama için `rocmOverrideGfx = "10.3.0"` yazılı. |
+| **GPU** | Doğrulama hedefi RX 6700 XT (Navi 22). Ollama için `rocmOverrideGfx = "10.3.0"` kullanılıyor; diğer modellerde aynı değerin uygun olduğu varsayılmamalı. |
 | **Firmware** | UEFI zorunlu. BIOS'ta IOMMU **açık** olmalı (`amd_iommu=on` etkinleşmesi için). |
 | **Depolama** | ~810 GB boş alan (aşağıdaki bölümlendirmede 1 GiB EFI + 8 GiB swap + 800 GiB LUKS). |
-| **Kernel** | CachyOS BORE 6.18 (önyüklenen flake input'u üzerinden). |
+| **Kernel** | CachyOS BORE-LTO paketi flake input'u üzerinden seçiliyor. Gerçek sürüm, kilitli girdi ve güncellenen paketle değişebilir; çalışan sürümü `uname -r` ile kontrol edin. |
 | **Disk** | LUKS2 + Btrfs (subvolume'lu) + EFI. Swap LUKS'un **dışında**, açık bölümde. |
 
 > **Çok kartlı sistem uyarısı.** Kurulum betiği IOMMU grubunu denetler. Grubun
@@ -146,21 +151,21 @@ kurulumdan sonra uzaktan giriş **kapalıdır**. `configuration.nix` →
 
 ## VM'i başlatma
 
-Önce domain'in libvirt'te tanımlı olması ve sanal diskin var olması gerekir.
+Önce domain'in libvirt'te tanımlı, sanal diskin mevcut ve ISO yollarının doğru olması gerekir. GPU host'a devredildiğinde masaüstü oturumu duracağı için VM'e giriş aygıtı da önceden hazırlanmalıdır. Bu XML'de varsayılan olarak çalışan bir USB klavye/fare aktarımı tanımlı değildir.
 
-Yol B — ./install.sh kullandıysanız: Betik diski oluşturur ve XML'i /var/lib/libvirt/win10.xml konumuna yazar (PCI adresleri hook ile senkronize). Ama virsh define çalıştırmaz — son çıktıda komutu yazdırır. Bu komutu siz elle çalıştırmanız gerekir:
+**Yol B — `./install.sh` kullandıysanız:** Betik diski oluşturur ve XML'i `/var/lib/libvirt/win10.xml` konumuna yazar (PCI adresleri hook ile senkronize). Ancak `virsh define` çalıştırmaz — son çıktıda komutu yazdırır. Bu komutu siz elle çalıştırmanız gerekir:
 
 ```bash
 sudo virsh define /var/lib/libvirt/win10.xml
 ```
 
-Yol A — Elle kurulum yaptıysanız (README → Yol A veya KURULUM.md):
+**Yol A — Elle kurulum yaptıysanız** (README → Yol A veya KURULUM.md):
 
 ```bash
 sudo mkdir -p /var/lib/libvirt/images /var/lib/libvirt/qemu
 sudo cp /etc/nixos/vm-xml/win10.xml /var/lib/libvirt/
 sudo qemu-img create -f qcow2 /var/lib/libvirt/images/win10new.qcow2 120G
-sudo virsh define /var/lib/libvirt/win10.xml 
+sudo virsh define /var/lib/libvirt/win10.xml
 ```
 
 > Sıfırdan kurulum sırasında XML `/mnt/etc/nixos/vm-xml/win10.xml` altındadır;
@@ -168,22 +173,32 @@ sudo virsh define /var/lib/libvirt/win10.xml
 > [`KURULUM.md` §10b](KURULUM.md) bölümündedir. Ayrıca `install.sh`'ı çalıştırmadıysanız
 > XML'deki `<hostdev>` PCI adresleri depodaki varsayılandır — `lspci` ile
 > eşleştirin (`nixos/hooks/qemu` içindeki `GPU_PCI` / `GPU_AUDIO` ile aynı olmalı).
+>
+> **VM'e klavye/fare hazırlığı:** Kendi giriş aygıtınızın VID:PID'sini `lsusb` ile bulun.
+> `virsh define` komutuna vereceğiniz XML dosyasındaki (`/var/lib/libvirt/win10.xml`)
+> yorumlu USB `<hostdev>` örneğini açıp kendi aygıtınıza göre düzenleyin. Kaynak dosyayı
+> (`vm-xml/win10.xml` veya `/etc/nixos/vm-xml/win10.xml`) düzenlediyseniz değişikliği
+> `/var/lib/libvirt/win10.xml` dosyasına da kopyalayın. Bakımcının cihaz kimliklerini olduğu
+> gibi kopyalamayın. Ardından `sudo virsh define /var/lib/libvirt/win10.xml` komutunu
+> çalıştırın. Klavye/fareyi ayrı bir USB denetleyicisiyle geçiriyorsanız tek tek aygıt
+> geçirmek yerine o yöntemin kurulumunu kullanın. Host oturumu durduğunda giriş
+> yapabileceğinizi önceden doğrulayın.
 
 ```bash
 sudo virsh start win10
 ```
 
-> ⚠️ **VM'i masaüstü oturumunuzdan başlatmayın.** Hook, GPU'yu bırakmak için
-> `loginctl terminate-user` çağırır; yani `virsh start` komutunu verdiğiniz
-> oturumun kendisi kapanır. İki güvenli yol:
->
-> ```bash
-> # 1) ayrı TTY'den (Ctrl+Alt+F3)
-> virsh start win10
->
-> # 2) oturumdan bağımsız transient unit
-> systemd-run --scope --unit=vmstart virsh start win10
-> ```
+⚠️ **VM'i masaüstü oturumunuzdan başlatmayın.** Hook, GPU'yu bırakmak için
+`loginctl terminate-user` çağırır; yani `virsh start` komutunu verdiğiniz oturumun
+kendisi kapanır. İki güvenli yol:
+
+```bash
+# 1) ayrı TTY'den (Ctrl+Alt+F3)
+virsh start win10
+
+# 2) oturumdan bağımsız transient unit
+systemd-run --scope --unit=vmstart virsh start win10
+```
 
 VM çalışırken host'ta grafik oturum **yoktur** — yalnızca metin konsolu
 (vt1/vt2) kullanılabilir. Bu, tek kartlı geçişin doğal sonucudur.
@@ -326,22 +341,24 @@ Oyun dışında ppd profilini `balanced`'a çekmeniz önerilir.
   bus'tan düşebilir. Hook bunu öngörüyor: sessiz unbind/rebind yetmezse
   `remove` + `rtcwake` ile kısa uyku + `rescan` deniyor; yine olmazsa
   konsola açık bir mesaj bırakılıp **host reboot** önerilir. Garanti değil.
+  Üretim/günlük kullanım öncesi RX 6700 XT ile en az şu döngüyü doğrulayın:
+  VM başlat → normal kapat → ikinci kez başlat → host grafik oturumuna dönüş.
+  Ayrıca açılışın yarıda kalması ve VM'in zorla kapatılması durumlarını test edin;
+  başarılı CI sonucu bu donanım testlerinin yerine geçmez.
 - **Host'ta GPU yokken grafik yok.** VM çalışırken yalnızca metin konsolu var.
   Acil kurtarma için `Ctrl+Alt+F2` → `systemctl reboot`.
 - **`HOST_USER` sabit.** Hook `localhost`'u sonlandırır. Tek kullanıcılı
   kurulum içindir; `KURULUM.md` §10b'de bu konu ayrıntılı.
-- **VM'e giriş cihazı tanımlı değil.** `vm-xml/win10.xml` içindeki USB hostdev
-  yorum satırında; `<graphics>`/VNC/SPICE elemanı da yok. Yani GPU
-  passthrough'tan sonra host'ta grafik olmaması *beklenen* davranışken, host'a
-  bağlı klavye/farenin guest'e **hiç ulaşmaması** ayrı ve çözülebilir bir eksik:
-  tanımlı tek giriş yolu emüle PS/2 (`virsh console` üzerinden metin). Oyun
-  için düzeltme: kendi cihazınızın VID:PID'sini bulup (host'ta
-  `lsusb` → `idVendor`/`idProduct`) `win10.xml`'deki yorumlu `<hostdev
-  mode="subsystem" type="usb">` bloğunu açın, ardından `virsh define` +
-  `virsh start` gerekir. Hostdev `managed="yes"` olduğu için host'un cihazı
-  VM'e devredilir ve VM kapanınca geri döner.
-  > 💡 `2a7a:8a47` yorumdaki değer **bakımcının kendi CASUE klavyesidir** —
-  > sizin cihazınız değil, kopyalamayın.
+- **VM'e giriş cihazı otomatik yapılandırılmıyor.** `vm-xml/win10.xml` içindeki USB hostdev
+  yorum satırında; `<graphics>`/VNC/SPICE elemanı da yok. GPU passthrough'tan sonra
+  host'ta grafik olmaması beklenir ve host'a bağlı klavye/fare kendiliğinden guest'e
+  geçmez. VM'i kontrol edebilmek için kendi USB klavye/farenizi (veya ayrı USB
+  denetleyicisini) XML'de açıkça guest'e aktarın. Tek tek cihaz aktarımı için `lsusb`
+  çıktısından kendi VID:PID'nizi bulun, yorumlu `<hostdev mode="subsystem" type="usb">`
+  örneğini düzenleyin ve domain'i yeniden `virsh define` edin. `managed="yes"`
+  kullanıldığında libvirt aygıtı VM için ayırmayı ve kapandığında geri vermeyi yönetir.
+  > 💡 `2a7a:8a47` yorumdaki değer bakımcının CASUE klavyesine aittir; aynen kopyalamayın.
+  > Klavye/fareyi host'tan devretmeden önce VM açıkken host oturumunun kapanacağını unutmayın.
 - **swap şifrelenmemiş.** LUKS dışındaki açık bölümde.
 - **CSR (Client-Side Rendering).** Bu bir oyun/gaming config'i; KDE/Wayland
   gibi ağır masaüstü bileşenleri yok.
