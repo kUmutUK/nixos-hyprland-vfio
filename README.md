@@ -12,7 +12,7 @@ kurulumu.
 ## İçindekiler
 
 - [Ne işe yarar](#ne-işe-yarar)
-- [⚠️ Sorumluluk Reddi](#sorumluluk-reddi) 
+- [Sorumluluk Reddi](#sorumluluk-reddi) 
 - [Gereksinimler](#gereksinimler)
 - [Kurulum](#kurulum) — *yeni sistem* ve *mevcut NixOS'a geçiş* olarak iki yol
 - [VM'i başlatma](#vmi-başlatma)
