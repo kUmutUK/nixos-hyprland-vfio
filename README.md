@@ -146,21 +146,21 @@ kurulumdan sonra uzaktan giriş **kapalıdır**. `configuration.nix` →
 
 ## VM'i başlatma
 
-Önce domain'in libvirt'te **tanımlı** olması ve **sanal diskin** var olması gerekir.
-Bu iki adım `./install.sh` tarafından yapılır; elle kurulum yolundaysanız
-(`README` → *Yol A* veya `KURULUM.md`) sizin yapmanız gerekir:
+Önce domain'in libvirt'te tanımlı olması ve sanal diskin var olması gerekir.
+
+Yol B — ./install.sh kullandıysanız: Betik diski oluşturur ve XML'i /var/lib/libvirt/win10.xml konumuna yazar (PCI adresleri hook ile senkronize). Ama virsh define çalıştırmaz — son çıktıda komutu yazdırır. Bu komutu siz elle çalıştırmanız gerekir:
 
 ```bash
-# 1) domain XML'ini libvirt'in dizinine kopyala
+sudo virsh define /var/lib/libvirt/win10.xml
+```
+
+Yol A — Elle kurulum yaptıysanız (README → Yol A veya KURULUM.md):
+
+```bash
 sudo mkdir -p /var/lib/libvirt/images /var/lib/libvirt/qemu
 sudo cp /etc/nixos/vm-xml/win10.xml /var/lib/libvirt/
-
-# 2) sanal diski oluştur — XML bu yolu bekliyor. Oluşturulmazsa `define`
-#    başarılı olur ama `start` "failed to find drive" ile düşer.
 sudo qemu-img create -f qcow2 /var/lib/libvirt/images/win10new.qcow2 120G
-
-# 3) tanımla
-sudo virsh define /var/lib/libvirt/win10.xml    # ilk kez
+sudo virsh define /var/lib/libvirt/win10.xml 
 ```
 
 > Sıfırdan kurulum sırasında XML `/mnt/etc/nixos/vm-xml/win10.xml` altındadır;
