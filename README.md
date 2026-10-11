@@ -38,6 +38,25 @@ değerinde hook'u çağırır.
 
 ---
 
+## ⚠️ Sorumluluk Reddi
+
+Bu config **kişisel bir NixOS kurulumudur** ve belirli bir donanım 
+(AMD Ryzen 5 5600 + AMD RX 6700 XT + tek GPU + UEFI + LUKS2/Btrfs) için 
+yazılmıştır. Başka bir makinede:
+
+- `hardware-configuration.nix`'teki UUID'ler **yanlışsa sistem açılmaz**
+- `sgdisk -Z` komutu **yanlış diski siler** (geri dönüşü yok)
+- VFIO hook'u **GPU'yu host'tan alır**, geri gelmezse host grafik oturumu kapanır
+- Kernel parametreleri **yanlışsa boot fail olur**
+
+Bu config'i kullanmanın **tüm riski size aittir.** Yazar, bu config'in 
+neden olduğu veri kaybı, sistem arızası, donanım hasarı veya başka 
+herhangi bir zarardan **sorumlu tutulamaz.**
+
+Lisans: MIT — bkz. `LICENSE` (yasal olarak "as is", garanti yok).
+
+---
+
 ## Gereksinimler
 
 | | |
