@@ -240,19 +240,28 @@ for src in "$HOME/.config/hypr" "$HOME/.config/waybar" "$HOME/.config/gtk-3.0" "
 done
 log "Backup saved to $BACKUP_DIR"
 
-# Keep the five newest installer backups. Only directories with the exact
-# generated prefix are eligible for removal; user files and other backups are untouched.
-while IFS= read -r old_backup; do
-    [ -n "$old_backup" ] || continue
+# Keep the five newest installer backups. A matching prefix is not enough:
+# only directories created with this script's exact timestamp format qualify.
+# Filter BEFORE sorting so unrelated lookalike directories cannot displace a real
+# backup from the five-entry retention window. NUL delimiters preserve spaces.
+backup_count=0
+while IFS=$'\t' read -r -d '' _backup_mtime old_backup; do
+    ((backup_count += 1))
     [ "$old_backup" = "$BACKUP_DIR" ] && continue
-    case "$old_backup" in
-      "$HOME"/.nixos-config-backup-*)
+    if (( backup_count > 5 )); then
         rm -rf -- "$old_backup"
         log "Removed old installer backup: $old_backup"
-        ;;
-    esac
-done < <(find "$HOME" -mindepth 1 -maxdepth 1 -type d -name '.nixos-config-backup-*' \
-          -printf '%T@ %p\n' | sort -nr | tail -n +6 | cut -d' ' -f2-)
+    fi
+done < <(
+    while IFS= read -r -d '' candidate; do
+        backup_name="${candidate##*/}"
+        [[ "$backup_name" =~ ^\.nixos-config-backup-[0-9]{8}-[0-9]{6}$ ]] || continue
+        backup_mtime="$(stat -c '%Y' -- "$candidate" 2>/dev/null)" || continue
+        printf '%s\t%s\0' "$backup_mtime" "$candidate"
+    done < <(find "$HOME" -mindepth 1 -maxdepth 1 -type d \
+              -name '.nixos-config-backup-*' -print0) \
+    | sort -z -t $'\t' -k1,1nr
+)
 
 # ─── File copy ──────────────────────────────────────────
 step "Copying configuration files"
@@ -277,10 +286,36 @@ done
 # exist" ile düşüyordu — script "Setup complete" dedikten hemen sonra.
 # Depodaki değerler makineye özgü olduğu için kopyalanmıyor; yereldeki sürüm
 # varsa taşınıyor.
+HW_CONFIG_RETAINED=0
 if [ -f "$NIXOS_DIR/hardware-configuration.nix" ]; then
-    sudo cp "$NIXOS_DIR/hardware-configuration.nix" "$NIXOS_FLAKE_DIR/"
+    hw_source="$NIXOS_DIR/hardware-configuration.nix"
+    hw_target="$NIXOS_FLAKE_DIR/hardware-configuration.nix"
+
+    if [ -e "$hw_target" ] && [ ! -f "$hw_target" ]; then
+        error "${hw_target} exists but is not a regular file; inspect it manually."
+    fi
+
+    if [ -f "$hw_target" ] && ! sudo cmp -s -- "$hw_source" "$hw_target"; then
+        warn "The existing flake hardware-configuration.nix differs from the top-level file."
+        warn "The current file may contain intentional machine-specific mount/UUID settings."
+        echo "--- diff (existing flake file -> top-level file) ---"
+        sudo diff -u -- "$hw_target" "$hw_source" || true
+        echo "--- end diff ---"
+        read -rp "Replace the existing flake file with /etc/nixos/hardware-configuration.nix? Type 'yes' to replace [default: no]: " replace_hw_config
+        if [ "$replace_hw_config" = "yes" ]; then
+            sudo cp -- "$hw_source" "$hw_target"
+            log "Replaced hardware-configuration.nix after explicit confirmation."
+        else
+            HW_CONFIG_RETAINED=1
+            warn "Kept the existing flake hardware-configuration.nix; verify its UUIDs and mount points before rebuild."
+        fi
+    elif [ ! -f "$hw_target" ]; then
+        sudo cp -- "$hw_source" "$hw_target"
+        log "Copied hardware-configuration.nix (machine-specific, from $NIXOS_DIR)"
+    else
+        log "The top-level and flake hardware-configuration.nix files are identical; no overwrite needed."
+    fi
     HW_IN_PLACE=1
-    log "Copied hardware-configuration.nix (machine-specific, from $NIXOS_DIR)"
 elif [ -f "$NIXOS_FLAKE_DIR/hardware-configuration.nix" ]; then
     # DÜZELTME: burası önce "HW_IN_PLACE=1" idi ve YANLIŞTI. Bu dal, dizinde
     # duran dosyanın KULLANICININ dosyası olduğunu varsayıyordu — ama
@@ -348,7 +383,7 @@ else
   # eski adresi arıyor → "device not found") kalıyorsun.
   # apply_var() zaten `sudo python3` kullanıyor; aynı desen buraya da uygulanır.
   if sudo mkdir -p /var/lib/libvirt && sudo python3 - "$gpu_pci" "$gpu_audio" "$REPO_DIR/vm-xml/win10.xml" "$PATCHED_XML" <<'PYEOF'
-import os, re, shutil, sys, time, uuid as uuidlib, secrets
+import os, re, shutil, sys, time, uuid as uuidlib, secrets, tempfile, stat
 
 gpu, aud, src, dst = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
 
@@ -416,8 +451,49 @@ if os.path.exists(dst):
     backup = f"{dst}.bak-{int(time.time())}"
     shutil.copy2(dst, backup)
     print(f"NOTE: mevcut XML yedeklendi -> {backup}")
+    previous_stat = os.stat(dst)
+    target_mode = stat.S_IMODE(previous_stat.st_mode)
+else:
+    previous_stat = None
+    # Match the usual mode of a newly-created text file under umask 022.
+    target_mode = 0o644
 
-open(dst, "w", encoding="utf-8").write(new)
+# Write to a temporary file in the destination directory and atomically replace
+# the destination. A failed write leaves the previous XML untouched.
+target_dir = os.path.dirname(dst) or "."
+tmp_path = None
+try:
+    fd, tmp_path = tempfile.mkstemp(
+        dir=target_dir,
+        prefix=f".{os.path.basename(dst)}.",
+        suffix=".tmp",
+    )
+    with os.fdopen(fd, "w", encoding="utf-8") as tmp_file:
+        tmp_file.write(new)
+        tmp_file.flush()
+        os.fsync(tmp_file.fileno())
+    os.chmod(tmp_path, target_mode)
+    if previous_stat is not None:
+        os.chown(tmp_path, previous_stat.st_uid, previous_stat.st_gid)
+    os.replace(tmp_path, dst)
+    tmp_path = None
+    # Best-effort directory sync makes the rename durable across a sudden crash.
+    try:
+        dir_fd = os.open(target_dir, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+        try:
+            os.fsync(dir_fd)
+        finally:
+            os.close(dir_fd)
+    except OSError:
+        pass
+except BaseException:
+    if tmp_path is not None:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+    raise
+
 print(f"OK: {n} hostdev bulundu, {min(n,2)} tanesi güncellendi -> {dst}")
 PYEOF
   then
@@ -430,8 +506,13 @@ PYEOF
 fi
 
 if [ "$HW_IN_PLACE" = "1" ]; then
-  log "hardware-configuration.nix yerinde — aşağıdaki 'elle kopyalayın' adımı gerekmiyor."
-  echo "  Yine de doğrula: lsblk -f  # mount edilen her bölümün UUID'si doğru mu?"
+  if [ "$HW_CONFIG_RETAINED" = "1" ]; then
+    warn "Mevcut flake hardware-configuration.nix korundu; üst dizindeki dosyadan farklı."
+    warn "Rebuild öncesi her bölümün UUID/mount ayarlarını özellikle doğrulayın."
+  else
+    log "hardware-configuration.nix yerinde — aşağıdaki 'elle kopyalayın' adımı gerekmiyor."
+  fi
+  echo "  Doğrula: lsblk -f  # mount edilen her bölümün UUID'si doğru mu?"
 else
 warn "hardware-configuration.nix was NOT copied (machine-specific — UUID'ler size özel)."
 warn "Flake ./hardware-configuration.nix bekliyor, yani dosya şurada olmalı:"
