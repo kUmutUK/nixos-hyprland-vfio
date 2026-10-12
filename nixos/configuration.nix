@@ -150,11 +150,11 @@ in
     # Özellikle README "Reboot etmeden VFIO testi yaparsanız IOMMU açık değildir"
     # gerekçesini bu parametreye bağlıyordu. Belgelerden çıkarmak yerine
     # parametreyi eklemek seçildi, çünkü:
-    #   • Modern Zen'de kernel AMD IOMMU'yu donanım desteklediğinde varsayılan
-    #     olarak açıyor, yani bu parametre IOMMU zaten açıkken SIFIR maliyetli
-    #     bir güvence — no-op.
-    #   • IOMMU kapalıysa da zaten VFIO çalışmıyor; parametre olmadığında hatayı
-    #     ancak "GPU bağlanmadı" belirtisiyle, yani en pahalı anda öğreniyorsun.
+    #   • Modern Zen sistemlerinde kernel, AMD IOMMU'yu çoğunlukla varsayılan
+    #     olarak açar; ancak bu kernel, BIOS/firmware ve platform ayarlarına bağlıdır.
+    #     IOMMU zaten etkinse bu parametre pratikte no-op'tur.
+    #   • "amd_iommu=on" kernel'e IOMMU'yu etkinleştirmesini söyler; firmware desteği
+    #     eksikse veya BIOS IOMMU'yu devre dışı bırakıyorsa bunu tek başına aşamaz.
     #   • Belgeyi "kernel 5.18+ varsayılan" diye sürüm-bağımlı bir iddiaya
     #     çevirmek, eski kernelde veya sürücü/firmware sürprizinde yanlış yönlendirir.
     # NOT: bu bir ALT SİSTEM beyanıdır (IOMMU açık olmalı), bir performans
