@@ -60,45 +60,11 @@ else
 fi
 log "CPU: $CPU_VENDOR"
 
-# DÜZELTME (2026-10-04): `| head -1` erken kapanınca grep'e SIGPIPE (141)
-# gönderiyor; `set -o pipefail` yüzünden betik burada sessizce ölüyordu.
-# `grep -m1` aynı işi yapıp hattı düzgün kapatır.
-gpu_line=$(lspci | grep -im1 -E "vga|3d|display" || true)
-if echo "$gpu_line" | grep -qi "AMD\|ATI\|Radeon"; then
-  GPU_VENDOR="amd"
-elif echo "$gpu_line" | grep -qi "NVIDIA\|GeForce"; then
-  GPU_VENDOR="nvidia"
-elif echo "$gpu_line" | grep -qi "Intel"; then
-  GPU_VENDOR="intel"
-else
-  GPU_VENDOR="unknown"
-fi
-log "GPU: $GPU_VENDOR"
-echo -e "  ${CYAN}$gpu_line${NC}"
+# GPU vendor is determined only after the user selects a concrete PCI address.
+# Do not infer it from the first lspci display adapter: multi-GPU systems often
+# list an iGPU before the dedicated passthrough GPU.
+GPU_VENDOR="unknown"
 echo ""
-
-if [[ "$CPU_VENDOR" != "amd" || "$GPU_VENDOR" != "amd" ]]; then
-  echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-  warn "This configuration is optimized for AMD CPU + AMD GPU."
-  if [[ "$CPU_VENDOR" == "intel" ]]; then
-    echo "  - Switch 'hardware.cpu.amd.updateMicrocode' → 'hardware.cpu.intel.updateMicrocode'"
-    echo "  - Replace 'kvm-amd' → 'kvm-intel'"
-    echo "  - Replace 'amd_iommu=on' → 'intel_iommu=on'"
-    echo "  - Remove 'amd_pstate=active' kernel parameter"
-  fi
-  if [[ "$GPU_VENDOR" == "nvidia" ]]; then
-    echo "  - Bu repo NVIDIA'yı desteklemiyor; amdgpu varsayılan."
-    echo "  - Remove AMD_VULKAN_ICD, RADV_PERFTEST variables"
-    echo "  - Switch ollama package to ollama-cuda"
-  elif [[ "$GPU_VENDOR" == "intel" ]]; then
-    echo "  - Remove AMD-specific env vars and amdgpu.ppfeaturemask"
-    echo "  - Switch ollama to pkgs.ollama (CPU only)"
-  fi
-  echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-  echo ""
-  read -rp "Press Enter to acknowledge these manual changes are needed..."
-fi
-
 # ─── User inputs ─────────────────────────────────────────
 step "Configuration inputs"
 
@@ -146,7 +112,45 @@ if [ -n "$gpu_grp" ] && [ -n "$audio_grp" ] && [ "$gpu_grp" != "$audio_grp" ]; t
   warn "Tek başına passthrough yapılamayabilir; ACS override veya grup kontrolü gerekir."
 fi
 
+# Classify the device the user actually selected, not the first display device
+# reported by lspci. Keep the full PCI address in the selection and validation.
+gpu_line="$(lspci -nn -s "$gpu_pci" 2>/dev/null || true)"
+if echo "$gpu_line" | grep -qiE "AMD|ATI|Radeon"; then
+  GPU_VENDOR="amd"
+elif echo "$gpu_line" | grep -qiE "NVIDIA|GeForce"; then
+  GPU_VENDOR="nvidia"
+elif echo "$gpu_line" | grep -qi "Intel"; then
+  GPU_VENDOR="intel"
+else
+  GPU_VENDOR="unknown"
+fi
+log "Selected GPU: $GPU_VENDOR"
+echo -e "  ${CYAN}$gpu_line${NC}"
 log "GPU PCI: $gpu_pci / Audio: $gpu_audio (biçim ve sysfs varlığı doğrulandı)"
+
+if [[ "$CPU_VENDOR" != "amd" || "$GPU_VENDOR" != "amd" ]]; then
+  echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+  warn "This configuration is optimized for AMD CPU + AMD GPU."
+  if [[ "$CPU_VENDOR" == "intel" ]]; then
+    echo "  - Switch 'hardware.cpu.amd.updateMicrocode' → 'hardware.cpu.intel.updateMicrocode'"
+    echo "  - Replace 'kvm-amd' → 'kvm-intel'"
+    echo "  - Replace 'amd_iommu=on' → 'intel_iommu=on'"
+    echo "  - Remove 'amd_pstate=active' kernel parameter"
+  fi
+  if [[ "$GPU_VENDOR" == "nvidia" ]]; then
+    echo "  - Bu repo NVIDIA'yı desteklemiyor; amdgpu varsayılan."
+    echo "  - Remove AMD_VULKAN_ICD, RADV_PERFTEST variables"
+    echo "  - Switch ollama package to ollama-cuda"
+  elif [[ "$GPU_VENDOR" == "intel" ]]; then
+    echo "  - Remove AMD-specific env vars and amdgpu.ppfeaturemask"
+    echo "  - Switch ollama to pkgs.ollama (CPU only)"
+  elif [[ "$GPU_VENDOR" == "unknown" ]]; then
+    warn "Selected GPU vendor could not be identified from: $gpu_pci"
+  fi
+  echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+  echo ""
+  read -rp "Press Enter to acknowledge these manual changes are needed..."
+fi
 
 # ─── IOMMU group preflight ─────────────────────────────────
 step "IOMMU group check"
@@ -463,20 +467,11 @@ else
 fi
 echo ""
 
-# ─── VM disk image ──────────────────────────────────────
-step "VM disk image"
-sudo mkdir -p /var/lib/libvirt/images /var/lib/libvirt/qemu
-if [ ! -f /var/lib/libvirt/images/win10new.qcow2 ]; then
-  warn "VM diski yok — 120G qcow2 oluşturuluyor."
-  sudo qemu-img create -f qcow2 /var/lib/libvirt/images/win10new.qcow2 120G
-fi
-# qemu.runAsRoot = false: libvirt opens the image as qemu-libvirtd.
-# Fix ownership even when the image predates this installer run.
-sudo chown qemu-libvirtd:qemu-libvirtd /var/lib/libvirt/images/win10new.qcow2
-sudo chmod 0660 /var/lib/libvirt/images/win10new.qcow2
-echo "  ISO dosyalarını /var/lib/libvirt/images/ altına kopyalayın:"
-echo "    Win10_22H2_English_x64v1.iso"
-echo "    virtio-win-0.1.285.iso"
+# VM disk provisioning is deliberately deferred until AFTER nixos-rebuild + reboot.
+# The new libvirt module provides qemu-img and creates qemu-libvirtd; using them
+# before activation can stop a first-time install halfway through.
+step "VM disk image (deferred until after rebuild/reboot)"
+info "No VM disk or qemu-libvirtd ownership changes are made before libvirt is active."
 echo ""
 
 # ─── /nix/persist/home ──────────────────────────────────
@@ -582,8 +577,9 @@ echo -e "  Git:          ${CYAN}${git_name} <${git_email}>${NC}"
 echo ""
 
 echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${RED}  MANUAL STEPS BEFORE REBUILD${NC}"
+echo -e "${RED}  MANUAL STEPS — FOLLOW IN ORDER${NC}"
 echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${YELLOW}DO NOT rebuild until disk UUIDs are correct!${NC}"
 echo ""
 step_num=1
 
@@ -600,26 +596,14 @@ fi
 
 echo ""
 echo -e "${step_num}. Create the hashed password file:"
-echo -e "   ${CYAN}mkpasswd --method yescrypt | sudo tee /etc/nixos/hashedPassword${NC}"
+echo -e "   ${CYAN}HASH=\$(nix-shell -p whois --run 'mkpasswd --method yescrypt')${NC}"
+echo -e "   ${CYAN}printf '%s\\\\n' \"\$HASH\" | sudo tee /etc/nixos/hashedPassword >/dev/null${NC}"
 echo -e "   ${CYAN}sudo chmod 600 /etc/nixos/hashedPassword${NC}   ${YELLOW}(tee 644 acar)${NC}"
-echo -e "   ${YELLOW}(mkpasswd, whois paketiyle gelir)${NC}"
+echo -e "   ${YELLOW}(NixOS bu kurulumda henüz etkin değilse nix-shell whois paketini geçici sağlar.)${NC}"
 ((step_num++))
 
 echo ""
-echo -e "${step_num}. ${CYAN}VM'yi libvirt'e tanıt:${NC}"
-echo -e "   ${CYAN}sudo mkdir -p /var/lib/libvirt/images${NC}"
-echo -e "   ${CYAN}sudo qemu-img create -f qcow2 /var/lib/libvirt/images/win10new.qcow2 120G${NC}"
-echo -e "   ${CYAN}sudo chown qemu-libvirtd:qemu-libvirtd /var/lib/libvirt/images/win10new.qcow2${NC}"
-echo -e "   ${CYAN}sudo chmod 0660 /var/lib/libvirt/images/win10new.qcow2${NC}"
-echo -e "   ${YELLOW}ISO dosyalarını /var/lib/libvirt/images/ altına kopyalayın${NC}"
-echo -e "   ${CYAN}sudo virsh define /var/lib/libvirt/win10.xml${NC}"
-echo -e "   ${CYAN}virsh list --all${NC}   ${YELLOW}→ 'win10' shut off olarak görünmeli${NC}"
-echo -e "   ${CYAN}(XML yukarıdaki adımda zaten /var/lib/libvirt/win10.xml'e yazıldı;${NC}"
-echo -e "    ${CYAN}3+ hostdev varsa UYARI'ya dikkat et — fazlasını elle düzenle.)${NC}"
-((step_num++))
-
-echo ""
-echo -e "${step_num}. Rebuild, then REBOOT:"
+echo -e "${step_num}. Rebuild, then REBOOT before VM disk setup:"
 echo -e "   ${CYAN}sudo nixos-rebuild dry-activate --flake ${NIXOS_FLAKE_DIR}#nixos${NC}"
 echo -e "   ${CYAN}sudo nixos-rebuild switch     --flake ${NIXOS_FLAKE_DIR}#nixos${NC}"
 echo -e "   ${CYAN}sudo reboot${NC}"
@@ -627,6 +611,17 @@ echo -e "   ${YELLOW}REBOOT ZORUNLU: iommu=pt, amd_iommu=on, amdgpu.ppfeaturemas
 ((step_num++))
 
 echo ""
-echo -e "${RED}  DO NOT rebuild until disk UUIDs are correct!${NC}"
+echo -e "${step_num}. After reboot, prepare the VM disk and register the VM:"
+echo -e "   ${CYAN}sudo mkdir -p /var/lib/libvirt/images /var/lib/libvirt/qemu${NC}"
+echo -e "   ${CYAN}if [ ! -f /var/lib/libvirt/images/win10new.qcow2 ]; then sudo qemu-img create -f qcow2 /var/lib/libvirt/images/win10new.qcow2 120G; fi${NC}"
+echo -e "   ${CYAN}sudo chown qemu-libvirtd:qemu-libvirtd /var/lib/libvirt/images/win10new.qcow2${NC}"
+echo -e "   ${CYAN}sudo chmod 0660 /var/lib/libvirt/images/win10new.qcow2${NC}"
+echo -e "   ${YELLOW}ISO dosyalarını /var/lib/libvirt/images/ altına kopyalayın:${NC}"
+echo -e "   ${YELLOW}Win10_22H2_English_x64v1.iso ve virtio-win-0.1.285.iso${NC}"
+echo -e "   ${CYAN}sudo virsh define /var/lib/libvirt/win10.xml${NC}"
+echo -e "   ${CYAN}sudo virsh list --all${NC}   ${YELLOW}→ 'win10' shut off olarak görünmeli${NC}"
+echo -e "   ${YELLOW}3+ hostdev varsa uyarıya dikkat edin; fazlasını elle düzenleyin.${NC}"
+((step_num++))
+
 echo ""
 log "Setup complete."
