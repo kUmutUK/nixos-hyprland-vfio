@@ -108,7 +108,7 @@ Kritik iki nokta:
 - **`hashedPassword` dosyasını oluşturun.** Yoksa `localhost` hesabı
   `!:1:::::` ile kilitlenir ve tuigreet'ten giriş yapamazsınız:
   ```bash
-  HASH=$(mkpasswd --method yescrypt)
+  HASH=$(nix-shell -p whois --run 'mkpasswd --method yescrypt')
   install -d -m 755 /mnt/etc/nixos
   printf '%s\n' "$HASH" | sudo tee /mnt/etc/nixos/hashedPassword >/dev/null
   sudo chmod 600 /mnt/etc/nixos/hashedPassword
@@ -153,15 +153,21 @@ kurulumdan sonra uzaktan giriş **kapalıdır**. `configuration.nix` →
 
 Önce domain'in libvirt'te tanımlı, sanal diskin mevcut ve ISO yollarının doğru olması gerekir. GPU host'a devredildiğinde masaüstü oturumu duracağı için VM'e giriş aygıtı da önceden hazırlanmalıdır. Bu XML'de varsayılan olarak çalışan bir USB klavye/fare aktarımı tanımlı değildir.
 
-**Yol B — `./install.sh` kullandıysanız:** Betik diski oluşturur ve XML'i `/var/lib/libvirt/win10.xml` konumuna yazar (PCI adresleri hook ile senkronize). Ancak `virsh define` çalıştırmaz — son çıktıda komutu yazdırır. Bu komutu siz elle çalıştırmanız gerekir:
+**Yol B — `./install.sh` kullandıysanız:** Betik, ilk rebuild öncesinde VM diski oluşturmuyor.
+Önce disk UUID'lerini/parola dosyasını doğrulayın, `nixos-rebuild switch` uygulayın ve yeniden
+başlatın. Ardından [`KURULUM.md` §10b](KURULUM.md) bölümündeki disk hazırlama/sahiplik
+komutlarını çalıştırın. Betiğin oluşturduğu PCI adresleri senkronize XML'i
+`/var/lib/libvirt/win10.xml` konumundadır; disk hazırlandıktan sonra tanımlayın:
 
 ```bash
 sudo virsh define /var/lib/libvirt/win10.xml
 ```
 
-**Yol A — Elle kurulum yaptıysanız** (README → Yol A veya KURULUM.md):
+**Yol A — Elle kurulum yaptıysanız** (README → Yol A veya KURULUM.md). Bu komutları
+yalnızca `nixos-rebuild switch` ve ilk reboot tamamlandıktan sonra çalıştırın:
 
 ```bash
+# Run after nixos-rebuild switch + reboot, when libvirt and qemu-libvirtd are active.
 sudo mkdir -p /var/lib/libvirt/images /var/lib/libvirt/qemu
 sudo cp /etc/nixos/vm-xml/win10.xml /var/lib/libvirt/
 if [ ! -f /var/lib/libvirt/images/win10new.qcow2 ]; then
@@ -189,8 +195,11 @@ sudo virsh define /var/lib/libvirt/win10.xml
 > yapabileceğinizi önceden doğrulayın.
 
 ```bash
-sudo virsh start win10
+sudo systemd-run --unit=vmstart --collect /run/current-system/sw/bin/virsh start win10
 ```
+
+Bu komut kullanıcı oturumu kapansa da systemd tarafından sürdürülür. İlk açılışta
+boot ekranını gözlemlemek gerekiyorsa aşağıdaki geçici VNC tanılama adımlarını önce uygulayın.
 
 ### İlk açılış için geçici VNC teşhis kanalı
 
@@ -205,6 +214,11 @@ sudo python3 scripts/prepare-vm-diagnostic.py \
 sudo virsh define /var/lib/libvirt/win10-diagnostic.xml
 sudo systemd-run --unit=vmstart --collect /run/current-system/sw/bin/virsh start win10
 ```
+
+**Dikkat:** Tanılama XML'inin içindeki domain adı da `win10` olduğu için `virsh define`
+mevcut `win10` tanımını geçici olarak değiştirir; ikinci bir `win10-diagnostic` VM'i yaratmaz.
+Bu adımı yalnızca tanılama gerektiğinde uygulayın. Test sonrası VM'i kapatın ve üretim XML'ini
+yeniden tanımlayın (aşağıdaki geri dönüş komutu).
 
 Hook, `loginctl terminate-user` ile `localhost` hesabının oturumlarını ve
 `loginctl terminate-seat seat0` ile yerel VT/greeter oturumlarını sonlandırabilir;

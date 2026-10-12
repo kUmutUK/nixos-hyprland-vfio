@@ -261,15 +261,18 @@ nixos-enter --root /mnt -c 'passwd root'
 > # DÜZELTME (2026-10-04): bu komut /mnt içinde çalıştırıldığı için
 > # hedef yol /mnt/etc/nixos DEĞİL, /etc/nixos olmalı. Eski hâliyle
 > # hashedPassword hiç oluşmuyor, localhost hesabı kilitli kalıyordu.
-> nixos-enter --root /mnt -c 'umask 077; mkdir -p /etc/nixos && mkpasswd --method yescrypt > /etc/nixos/hashedPassword'
+> HASH=$(nix-shell -p whois --run 'mkpasswd --method yescrypt')
+> install -d -m 755 /mnt/etc/nixos
+> printf '%s\n' "$HASH" | sudo tee /mnt/etc/nixos/hashedPassword >/dev/null
+> sudo chmod 600 /mnt/etc/nixos/hashedPassword
 > ```
 >
 > `nixos-enter` `nixos-install` öncesinde genelde "NixOS kurulumu değil" diye
 > reddedebilir. O durumda dosyayı ISO tarafından doğrudan yaz:
 >
 > ```bash
-> # 2. adımda mkpasswd çalıştırıp çıktıyı bir değişkene al:
-> HASH=$(mkpasswd --method yescrypt)
+> # whois paketini geçici ortamda çağırıp çıktıyı bir değişkene al:
+> HASH=$(nix-shell -p whois --run 'mkpasswd --method yescrypt')
 > # sonra hedefe yaz ve izinleri 600 yap:
 > install -d -m 755 /mnt/etc/nixos
 > printf '%s\n' "$HASH" | sudo tee /mnt/etc/nixos/hashedPassword >/dev/null
