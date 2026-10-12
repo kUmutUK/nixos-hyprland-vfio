@@ -127,21 +127,29 @@ vendor_reset() {
   fi
 }
 
-# $GPU_PCI'nin hangi /dev/dri/cardN düğümüne karşılık geldiğini sistemden
-# soruyoruz. Öncesinde "card0" sabit varsayılıyordu — iGPU eklenmesi ya da
-# kart numaralandırmasının değişmesi durumunda stop_hyprland() yanlış
-# cihazın kullanımda olup olmadığına bakabilirdi. Bu makinede (iGPU'suz
-# Ryzen 5 5600 + tek RX 6700 XT) pratikte hep card0 çıkıyordu ama bu artık
-# varsayıma değil, gerçek PCI eşleşmesine dayanıyor.
+# $GPU_PCI'nin hangi /dev/dri/cardN düğümüne karşılık geldiğini sysfs'ten
+# bul. card0'a fallback yapmak fail-open olur: çoklu GPU sistemlerinde yanlış
+# kartın kullanımını denetleyebilir. Eşleşme yoksa çağıran işlem durur ve
+# prepare akışı rollback_prepare() ile host'u geri getirmeyi dener.
 gpu_drm_card() {
-  local dev="$1" node
-  node=$(ls -d "/sys/bus/pci/devices/$dev/drm/card"* 2>/dev/null | head -n1)
+  local dev="$1" candidate node=""
+  for candidate in "/sys/bus/pci/devices/$dev/drm"/card[0-9]*; do
+    [ -e "$candidate" ] || continue
+    case "${candidate##*/}" in
+      card[0-9]*)
+        # Connector entries (card0-DP-1, etc.) must not be treated as cardN.
+        [[ "${candidate##*/}" =~ ^card[0-9]+$ ]] || continue
+        node="$candidate"
+        break
+        ;;
+    esac
+  done
   if [ -n "$node" ]; then
-    basename "$node"
-  else
-    log "UYARI: $dev için /sys/.../drm/cardN bulunamadı, card0'a düşülüyor."
-    echo "card0"
+    printf '%s\n' "${node##*/}"
+    return 0
   fi
+  log "HATA: $dev için gerçek /sys/.../drm/cardN eşleşmesi bulunamadı; GPU devri durdurulacak."
+  return 1
 }
 
 stop_hyprland() {
@@ -190,7 +198,10 @@ stop_hyprland() {
   loginctl terminate-seat seat0 2>/dev/null || true
 
   local card nodes
-  card=$(gpu_drm_card "$GPU_PCI")
+  if ! card="$(gpu_drm_card "$GPU_PCI")"; then
+    log "HATA: GPU DRM eşleşmesi doğrulanamadı; stop_hyprland başarısız ve rollback gerekli."
+    return 1
+  fi
   # cardN yaninda renderD* de kontrol edilmeli: ROCm/Ollama yalnizca
   # render node'u acabiliyor, cardN bos gorunuyor.
   nodes=$(ls -d /sys/bus/pci/devices/"$GPU_PCI"/drm/renderD* 2>/dev/null |
