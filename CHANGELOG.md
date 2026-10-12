@@ -1,6 +1,22 @@
 # 📜 Changelog
 
 
+# [1.3.8] - 2026-10-12
+
+## VM kurulum güvenliği ve statik bakım
+
+- `install.sh`: yeni VM XML'lerinde UUID/MAC benzersizleştirildi, yeniden çalıştırmada mevcut kimlikler korundu; qcow2 sahiplik/mod düzeltmesi eklendi; son beş kurulum yedeği tutuluyor.
+- `scripts/prepare-vm-diagnostic.py`: gerçek PCI adreslerini taşıyan XML'in ayrı bir kopyası üzerinden loopback-only VNC ve ikincil virtio video tanılama yolu eklendi.
+- `vm-xml/win10.xml`: GPU HDMI audio passthrough ile yinelenen emüle ICH9 ses aygıtı kaldırıldı.
+- `nixos/configuration.nix`: greetd'in Hyprland sürecine `HYPRLAND_CONFIG` aktarılıyor; gamemode ile mpvpaper watchdog'unun çift yönetimi kaldırıldı; kernel parametresi ve PAM/fail2ban tercihleri yorumlandı.
+- `nixos/home.nix`: WuWa OCR başlangıcında model preflight kontrolü, hyprlock komutlarında sabit Nix store araç yolları; kullanılmayan MPRIS ve battery CSS kayıtları temizlendi.
+- `nixos/hooks/qemu`: fuser durum değişkenleri ayrıldı ve `seat0` sonlandırmasının kapsamı açıklandı.
+- README/KURULUM: qcow2 sahipliği, geçici VNC tanılama, model hazırlama adımları, kernel parametrelerinin maliyeti, CachyOS kernel cache-miss riski ve monitör catch-all sözdizimi düzeltildi.
+- Nix GC'deki açık `keep-outputs`/`keep-derivations` override'ları kaldırıldı; `warn-dirty` davranışı yorumlandı; varsayılan Hyprland paketi override'ı kaldırıldı.
+- Betiklerin çalıştırılabilir modu düzeltildi. Commit yapılmadı; arşivden gelen README/configuration.nix/win10.xml düzenlemeleri korundu ve bu yamayla birleştirildi.
+
+Bu paket için yapılan kontroller statik sözdizimi/ayrıştırma kontrolleridir. Bu ortamda Nix evaluate/build, ShellCheck ve fiziksel VM/GPU passthrough testleri çalıştırılmadı. Canlı inceleme gerektiren `A3`, `C14`, `C17`, `C19` değiştirilmedi.
+
 # [1.3.7] - 2026-10-09
 
 ## VFIO ve kurulum güvenliği

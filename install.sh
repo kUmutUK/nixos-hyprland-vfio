@@ -40,6 +40,9 @@ fi
 if ! command -v lspci &>/dev/null; then
   error "pciutils not found. Install it temporarily: nix-shell -p pciutils"
 fi
+if ! command -v python3 &>/dev/null; then
+  error "python3 yok. Repo dizinine dönüp şu komutla yeniden çalıştırın: nix-shell -p python3 --run 'bash ./install.sh'"
+fi
 log "Environment OK."
 
 read -rp "Do you want to continue? (yes/no): " confirm
@@ -233,6 +236,20 @@ for src in "$HOME/.config/hypr" "$HOME/.config/waybar" "$HOME/.config/gtk-3.0" "
 done
 log "Backup saved to $BACKUP_DIR"
 
+# Keep the five newest installer backups. Only directories with the exact
+# generated prefix are eligible for removal; user files and other backups are untouched.
+while IFS= read -r old_backup; do
+    [ -n "$old_backup" ] || continue
+    [ "$old_backup" = "$BACKUP_DIR" ] && continue
+    case "$old_backup" in
+      "$HOME"/.nixos-config-backup-*)
+        rm -rf -- "$old_backup"
+        log "Removed old installer backup: $old_backup"
+        ;;
+    esac
+done < <(find "$HOME" -mindepth 1 -maxdepth 1 -type d -name '.nixos-config-backup-*' \
+          -printf '%T@ %p\n' | sort -nr | tail -n +6 | cut -d' ' -f2-)
+
 # ─── File copy ──────────────────────────────────────────
 step "Copying configuration files"
 [[ ! -d "$REPO_DIR/nixos" ]] && error "nixos/ directory not found in repository."
@@ -327,7 +344,7 @@ else
   # eski adresi arıyor → "device not found") kalıyorsun.
   # apply_var() zaten `sudo python3` kullanıyor; aynı desen buraya da uygulanır.
   if sudo mkdir -p /var/lib/libvirt && sudo python3 - "$gpu_pci" "$gpu_audio" "$REPO_DIR/vm-xml/win10.xml" "$PATCHED_XML" <<'PYEOF'
-import os, re, shutil, sys, time
+import os, re, shutil, sys, time, uuid as uuidlib, secrets
 
 gpu, aud, src, dst = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
 
@@ -339,6 +356,27 @@ def xml_attrs(addr):
     return f'domain="0x{d}" bus="0x{b}" slot="0x{s}" function="0x{f}"'
 
 data = open(src, encoding="utf-8").read()
+
+# Give a new deployment a unique libvirt UUID and locally administered MAC.
+# If a destination XML already exists, preserve its identity on reruns so DHCP
+# reservations and Windows device identity do not change on every install.
+template_uuid = re.search(r'<uuid>([^<]+)</uuid>', data)
+template_mac = re.search(r'<mac\s+address="([^"]+)"\s*/>', data)
+if not template_uuid or not template_mac:
+    sys.exit("HATA: XML şablonunda UUID veya MAC bulunamadı; dosya yazılmadı.")
+
+old_data = ""
+if os.path.exists(dst):
+    with open(dst, encoding="utf-8") as old_file:
+        old_data = old_file.read()
+old_uuid = re.search(r'<uuid>([^<]+)</uuid>', old_data)
+old_mac = re.search(r'<mac\s+address="([^"]+)"\s*/>', old_data)
+
+vm_uuid = old_uuid.group(1) if old_uuid else str(uuidlib.uuid4())
+vm_mac = old_mac.group(1) if old_mac else "52:54:00:" + ":".join(secrets.token_hex(3)[i:i+2] for i in (0, 2, 4))
+data = re.sub(r'<uuid>[^<]+</uuid>', f'<uuid>{vm_uuid}</uuid>', data, count=1)
+data = re.sub(r'<mac\s+address="[^"]+"\s*/>', f'<mac address="{vm_mac}"/>', data, count=1)
+
 pattern = re.compile(
     r'(<hostdev\b[^>]*>\s*(?:<driver\b[^>]*/>\s*)?<source>\s*<address\s+)([^/]+)(/>)',
     re.DOTALL)
@@ -432,6 +470,10 @@ if [ ! -f /var/lib/libvirt/images/win10new.qcow2 ]; then
   warn "VM diski yok — 120G qcow2 oluşturuluyor."
   sudo qemu-img create -f qcow2 /var/lib/libvirt/images/win10new.qcow2 120G
 fi
+# qemu.runAsRoot = false: libvirt opens the image as qemu-libvirtd.
+# Fix ownership even when the image predates this installer run.
+sudo chown qemu-libvirtd:qemu-libvirtd /var/lib/libvirt/images/win10new.qcow2
+sudo chmod 0660 /var/lib/libvirt/images/win10new.qcow2
 echo "  ISO dosyalarını /var/lib/libvirt/images/ altına kopyalayın:"
 echo "    Win10_22H2_English_x64v1.iso"
 echo "    virtio-win-0.1.285.iso"
@@ -467,13 +509,8 @@ HOME_NIX="$NIXOS_FLAKE_DIR/home.nix"
 # uyarısı sadece haber veriyor; bozuk home.nix diskte kalıyor.
 #
 # Yerine python3: satır bazlı regex değiştirme yapıyor, shell meta karakterleri
-# değer olarak işleniyor, yazma atomik. python3 artık
-# environment.systemPackages'ta olduğu için (XML senkronu düzeltmesiyle)
-# bu sistemde garanti edilebilir.
-if ! command -v python3 >/dev/null 2>&1; then
-    error "python3 gerekli ama PATH'te yok — home.nix güvenle güncellenemez."
-fi
-
+# değer olarak işleniyor, yazma atomik. python3 bütün yan etkili adımlardan önce
+# yukarıdaki preflight'ta doğrulanır; böylece eksik bağımlılık yarım kurulum bırakmaz.
 apply_var() {
   local var_name="$1" new_value="$2"
   if ! grep -qE "^[[:space:]]*${var_name}[[:space:]]*=" "$HOME_NIX"; then
@@ -572,6 +609,8 @@ echo ""
 echo -e "${step_num}. ${CYAN}VM'yi libvirt'e tanıt:${NC}"
 echo -e "   ${CYAN}sudo mkdir -p /var/lib/libvirt/images${NC}"
 echo -e "   ${CYAN}sudo qemu-img create -f qcow2 /var/lib/libvirt/images/win10new.qcow2 120G${NC}"
+echo -e "   ${CYAN}sudo chown qemu-libvirtd:qemu-libvirtd /var/lib/libvirt/images/win10new.qcow2${NC}"
+echo -e "   ${CYAN}sudo chmod 0660 /var/lib/libvirt/images/win10new.qcow2${NC}"
 echo -e "   ${YELLOW}ISO dosyalarını /var/lib/libvirt/images/ altına kopyalayın${NC}"
 echo -e "   ${CYAN}sudo virsh define /var/lib/libvirt/win10.xml${NC}"
 echo -e "   ${CYAN}virsh list --all${NC}   ${YELLOW}→ 'win10' shut off olarak görünmeli${NC}"
