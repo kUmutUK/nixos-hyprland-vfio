@@ -203,22 +203,39 @@ else
 fi
 
 echo ""
-monitor_output="DP-3"
+# Boş varsayılan: monitör adı yalnızca gerçekten algılanırsa otomatik doldurulur.
+# DP-3 gibi belirli bir çıkışı sabit varsaymak başka makinelerde sessiz mpvpaper
+# hatasına neden olabilir.
+monitor_output=""
 if command -v hyprctl &>/dev/null 2>&1 && hyprctl activeworkspace &>/dev/null 2>&1; then
-  monitor_output=$(hyprctl monitors | grep -oPm1 '^Monitor \K\S+')
-  log "Active Hyprland monitor: $monitor_output"
-elif [ -d /sys/class/drm ]; then
+  monitor_output=$(hyprctl monitors 2>/dev/null | grep -oPm1 '^Monitor \K\S+' || true)
+  if [[ -n "$monitor_output" ]]; then
+    log "Active Hyprland monitor: $monitor_output"
+  fi
+fi
+if [[ -z "$monitor_output" ]] && [ -d /sys/class/drm ]; then
   for card in /sys/class/drm/card*-*; do
-    status=$(cat "$card/status" 2>/dev/null)
+    status=$(cat "$card/status" 2>/dev/null || true)
     if [ "$status" = "connected" ]; then
       monitor_output=$(basename "$card" | sed 's/card[0-9]*-//')
-      log "DRM connected monitor: $monitor_output"
-      break
+      if [[ -n "$monitor_output" ]]; then
+        log "DRM connected monitor: $monitor_output"
+        break
+      fi
     fi
   done
 fi
-read -rp "Monitor output name (for mpvpaper) [${monitor_output}]: " input_mon
-[[ -n "$input_mon" ]] && monitor_output="$input_mon"
+read -rp "Monitor output name (for mpvpaper) [${monitor_output:-not detected}]: " input_mon
+if [[ -n "${input_mon//[[:space:]]/}" ]]; then
+  monitor_output="$input_mon"
+fi
+while [[ -z "${monitor_output//[[:space:]]/}" ]]; do
+  warn "Monitor output name cannot be empty. Find the exact name with: hyprctl monitors"
+  read -rp "Enter a non-empty monitor output name (e.g. DP-3): " input_mon
+  if [[ -n "${input_mon//[[:space:]]/}" ]]; then
+    monitor_output="$input_mon"
+  fi
+done
 
 echo ""
 read -rp "Hyprland monitor line (örn. monitor = DP-3,2560x1440@170,auto,1) [monitor = ${input_mon:-$monitor_output},preferred,auto,1]: " hypr_mon_line
