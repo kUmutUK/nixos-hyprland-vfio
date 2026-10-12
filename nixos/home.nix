@@ -3,7 +3,7 @@
 let
   gitName            = "changeme";
   gitEmail           = "you@example.com";
-  monitorOutput      = "DP-3";
+  monitorOutput      = "";
   # Retraction (2026-10-12): eski açıklama yanlıştı. `monitor = ,preferred,auto,1`
   # boş monitor adıyla catch-all kuralıdır; bu satırda workspace/mirror alanı yoktur
   # ve kendi başına workspace 1'e aynalama yapmaz. install.sh gerçek çıkış adını
