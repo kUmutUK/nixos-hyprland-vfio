@@ -421,7 +421,7 @@ Oyun dışında ppd profilini `balanced`'a çekmeniz önerilir.
   basar. `WUWA_GEOMETRY_MAIN` / `WUWA_GEOMETRY_CHOICE` ile geçersiz kılınabilir.
   Boşta kaldığında 3 sn → 30 sn arası kademeli bekler, yani gün boyu sürekli
   OCR yapmaz.
-- **`assets/` klasörü config'e bağlı değil.** Ekran görüntüleridir.
+- **`assets/` klasörü bu sürümde bilerek kaldırılmıştır.** Etkin Nix/Hyprland yapılandırması bu klasöre başvurmaz; eski `CHANGELOG.md` ve `docs/archive/` içindeki atıflar geçmiş sürümlere aittir.
 - **`docs/archive/` arşivdir.** O klasördeki raporlar eski sürümlere karşı
   yazıldı; koda bakarak doğrulama için kullanmayın.
 
@@ -439,7 +439,6 @@ Oyun dışında ppd profilini `balanced`'a çekmeniz önerilir.
 ├── LICENSE                       ← MIT
 │
 ├── .github/workflows/check.yml   ← CI: shellcheck + gömülü script'ler + nix flake check
-├── assets/                       ← ekran görüntüleri (config'e bağlı değil)
 ├── docs/archive/                 ← eski analiz raporları (arşiv — doğrulama için değil)
 ├── scripts/
 │   ├── extract-embedded-scripts.py   ← home.nix'e gömülü bash'i diske çıkarır (CI için)
