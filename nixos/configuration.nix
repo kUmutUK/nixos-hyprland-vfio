@@ -516,6 +516,7 @@ in
     qbittorrent flatpak gnome-software wev pcmanfm
     imagemagick
     btrfs-progs compsize snapper
+    whois # mkpasswd --method yescrypt (password hash setup)
     mpvpaper flatpak-builder psmisc
     apparmor-utils stdenv.cc.cc.lib kdePackages.konsole kdePackages.dolphin
     low-latency-layer vulkan-tools
