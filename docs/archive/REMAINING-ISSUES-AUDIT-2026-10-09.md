@@ -1,5 +1,9 @@
 # Kod incelemesi ve düzeltme durumu — 2026-10-09
 
+> **TARİHSEL SNAPSHOT — 2026-10-12:** Bu metin eski bir kaynak ZIP/commit için yazılmıştır.
+> “Açık bulgu” ifadeleri bugünkü çalışma ağacı için güncel durum garantisi değildir.
+> Güncel durum ve retraction eşlemesi için `HISTORICAL-AUDITS.md` ve güncel kaynak kodu kullanın.
+
 Bu değerlendirme, gönderilen ZIP'in gerçek içeriğine uygulanmıştır. Liste maddelerinin bir kısmı bu arşiv sürümünde zaten düzeltilmiş veya kasıtlı tasarım tercihi olduğu için aynı şekilde uygulanmamıştır.
 
 ## VM'i bloke edebileceği söylenen 6 madde

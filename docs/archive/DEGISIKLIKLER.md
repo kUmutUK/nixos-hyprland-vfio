@@ -2,6 +2,10 @@
 
 Tarih: 2026-10-05 · Baz: commit `af7337f` (belgede geçen `0137b38` ve `602f217` bu repoda yok)
 
+> **TARİHSEL SNAPSHOT — 2026-10-12:** Bu metin eski bir kaynak ZIP/commit için yazılmıştır.
+> “Açık bulgu” ifadeleri bugünkü çalışma ağacı için güncel durum garantisi değildir.
+> Güncel durum ve retraction eşlemesi için `HISTORICAL-AUDITS.md` ve güncel kaynak kodu kullanın.
+
 > **DÜZELTME (2026-10-06):** başlıkta `0137b38` geçiyordu. Depo GitHub web
 > arayüzünden tek commit olarak yükleniyor; o anki gerçek HEAD `af7337f`.
 
