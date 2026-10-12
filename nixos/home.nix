@@ -427,15 +427,11 @@ let
     # wallpaperVideo shell koduna gömülmez; ayrı bir argüman olarak aktarılır.
     # Böylece apostrof, boşluk, $, backtick ve benzeri karakterler komutu bozamaz.
     exec-once = ${pkgs.coreutils}/bin/sh -c '[ -e "$1" ] || notify-send -t 15000 -u critical "mpvpaper" "Canlı duvar kağıdı bulunamadı: $1\nDosyayı indirin veya home.nix içindeki wallpaperVideo değerini değiştirin, sonra: systemctl --user restart mpvpaper mpvpaper-watchdog"' sh ${lib.escapeShellArg wallpaperVideo}
-    # DÜZELTME (2026-10-06): yukarıdaki kontrol SADECE video dosyasının
-    # varlığına bakıyordu. ${monitorOutput} çıkışı yanlışsa — ki varsayılan
-    # "DP-3" başka hiçbir makinede doğru değil — systemd unit'i normal
-    # başlıyor, mpvpaper "output not found" ile ölüyor ve Restart=on-failure
-    # onu 3 saniyede bir yeniden başlatıyor. Kullanıcı yalnızca "duvar
-    # kağıdı yok" görüyor ve gerçek sebebi (yanlış çıkış adı) hiçbir yerde
-    # yazmıyor. Çıkış adı artık oturum açılışında doğrulanıyor.
-    # monitorOutput regex içine gömülmez; sabit metin olarak argümanla taşınır.
-    exec-once = ${pkgs.coreutils}/bin/sh -c 'hyprctl monitors 2>/dev/null | grep -Fq -- "Monitor $1 (" || notify-send -t 15000 -u critical "mpvpaper" "Monitör çıkışı bulunamadı: $1\nhyprctl monitors çıktısından gerçek adı alıp home.nix içindeki monitorOutput değerini düzeltin (örn. DP-1), sonra: systemctl --user restart mpvpaper mpvpaper-watchdog"' sh ${lib.escapeShellArg monitorOutput}
+    # monitorOutput boşsa manuel Home Manager yapılandırmasında mpvpaper
+    # servisi oluşturulmaz ve aşağıdaki doğrulama da sessizce atlanır.
+    # Doluysa çıkış adı oturum açılışında doğrulanır; shell'e gömülmek yerine
+    # ayrı argüman olarak aktarılır, böylece özel karakterler komutu bozamaz.
+    exec-once = ${pkgs.coreutils}/bin/sh -c 'if [ -n "$1" ] && ! hyprctl monitors 2>/dev/null | grep -Fq -- "Monitor $1 ("; then notify-send -t 15000 -u critical "mpvpaper" "Monitör çıkışı bulunamadı: $1\nhyprctl monitors çıktısından gerçek adı alıp home.nix içindeki monitorOutput değerini düzeltin (örn. DP-1), sonra: systemctl --user restart mpvpaper mpvpaper-watchdog"; fi' sh ${lib.escapeShellArg monitorOutput}
   '';
 
   hyprlockConf = ''
@@ -1625,7 +1621,9 @@ done
   };
 
   systemd.user.services = {
-    mpvpaper = {
+    # Boş monitorOutput, manuel yapılandırmada canlı duvar kağıdını devre dışı
+    # bırakır. install.sh gerçek bir monitör adı istemeden kurulumu sürdürmez.
+    mpvpaper = lib.mkIf (monitorOutput != "") {
       Unit = {
         Description = "mpvpaper live wallpaper service (looped)";
         After = [ "graphical-session.target" ];
