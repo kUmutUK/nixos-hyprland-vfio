@@ -4,10 +4,10 @@ let
   gitName            = "changeme";
   gitEmail           = "you@example.com";
   monitorOutput      = "DP-3";
-  # P2-1 (2026-10-05): boş monitör adı pratikte "tüm monitörleri workspace 1'e
-  # aynala" demekti (13. alan preferred, 14. mirror, 15. workspace). Tek
-  # monitörde zararsız, çok monitörde kurulumu bozuyordu. install.sh artık
-  # gerçek çıktıyı yazıyor; buradaki değer yalnızca manuel klonlayanları korur.
+  # Retraction (2026-10-12): eski açıklama yanlıştı. `monitor = ,preferred,auto,1`
+  # boş monitor adıyla catch-all kuralıdır; bu satırda workspace/mirror alanı yoktur
+  # ve kendi başına workspace 1'e aynalama yapmaz. install.sh gerçek çıkış adını
+  # yazar; manuel kurulumda aşağıdaki satırı gerçek monitor adınızla değiştirin.
   hyprlandMonitorLine = "monitor = ,preferred,auto,1";
   wallpaperVideo     = "${config.home.homeDirectory}/Downloads/arthur-leywin-the-beginning-after-the-end.3840x2160.mp4";
 
@@ -491,7 +491,7 @@ let
     }
     label {
         position = 20, 20; halign = right; valign = top;
-        text = cmd[update:5000, ${pkgs.networkmanager}/bin/nmcli -t -f NAME,TYPE,STATE con show --active 2>/dev/null | grep -v loopback | head -1 | cut -d: -f1 | xargs -I{} echo " {}" || echo " Bağlı Değil"];
+        text = cmd[update:5000, ${pkgs.networkmanager}/bin/nmcli -t -f NAME,TYPE,STATE con show --active 2>/dev/null | ${pkgs.gnugrep}/bin/grep -v loopback | ${pkgs.coreutils}/bin/head -1 | ${pkgs.coreutils}/bin/cut -d: -f1 | ${pkgs.findutils}/bin/xargs -I{} echo " {}" || echo " Bağlı Değil"];
         font_family = JetBrainsMono Nerd Font; font_size = 15;
         font_color = rgba(148, 226, 213, 1.0); shadow_passes = 0;
     }
@@ -530,7 +530,7 @@ let
       font-size: 13px; font-weight: 600; color: #ffffff;
       background: #0a0a0a; padding: 4px 14px; border-radius: 10px; margin: 4px;
     }
-    #cpu, #memory, #temperature, #pulseaudio, #network, #gamemode, #battery, #tray, #custom-temperature {
+    #cpu, #memory, #temperature, #pulseaudio, #network, #gamemode, #tray, #custom-temperature {
       padding: 4px 10px; margin: 4px 3px; border-radius: 10px; background: #0a0a0a;
     }
     #cpu.warning { color: #f9e2af; }
@@ -547,7 +547,6 @@ let
     #pulseaudio { color: #f9e2af; }
     #network { color: #94e2d5; }
     #gamemode { color: #cba6f7; font-weight: bold; }
-    #battery { color: #a6e3a1; }
     #custom-power {
       color: #f38ba8; font-size: 15px; font-weight: bold;
       padding: 4px 12px; margin: 4px; background: #0a0a0a; border-radius: 10px;
@@ -690,7 +689,7 @@ let
     tray = { icon-size = 16; spacing = 8; show-passive-icons = true; };
 
     mpris = {
-      player = ["spotify" "spotifyd" "com.spotify.Client" "firefox" "chromium" "brave-browser"];
+      player = ["spotify" "com.spotify.Client" "firefox" "chromium" "brave-browser"];
       format = "{player_icon} {artist} - {title}";
       format-paused = "⏸ {artist} - {title}";
       format-stopped = "";
@@ -995,6 +994,15 @@ in
 # SC2155 (local x=$(cmd) return değerini maskeler) bu dosyada kasıtlı:
 # dört `local`'da da atamanın return değeri zaten kullanılmıyor, `||`/set -e
 # yolu yok. 2026-10-05'te CI'a gömülü script taraması eklenince bu kapıya girdi.
+
+# Gemma modeli elle kurulan, büyük bir indirmedir; model yoksa /api/generate
+# `null` döndürebilir. Her döngü adımında hatalı çıktı üretmek yerine başlamadan dur.
+if ! curl -fsS --connect-timeout 2 --max-time 4 http://localhost:11434/api/tags \
+    | jq -e '.models[]? | select(.name | startswith("wuwa-gemma"))' >/dev/null 2>&1; then
+    notify-send -u critical "WuWa AI" \
+        "wuwa-gemma modeli hazır değil. Önce: sudo systemctl start wuwa-gemma-init" || true
+    exit 1
+fi
 
 # ─── Bölge tanımları ─────────────────────────────────────────────
 # DÜZELTME (2026-10-06): bu koordinatlar 2560x1440'e SABİTLENMİŞTİ ve
