@@ -656,6 +656,19 @@ in
       ExecStart = pkgs.writeShellScript "wuwa-gemma-init" ''
         set -euo pipefail
 
+        # systemd'nin ollama.service'i başlatması, API'nin hazır olduğu anlamına gelmez.
+        for attempt in {1..15}; do
+          if ${cfgpkg}/bin/ollama list >/dev/null 2>&1; then
+            break
+          fi
+          if [ "$attempt" -eq 15 ]; then
+            echo "HATA: Ollama API yaklaşık 30 sn içinde hazır olmadı." >&2
+            exit 1
+          fi
+          echo "Ollama API henüz hazır değil ($attempt/15); 2 sn sonra yeniden denenecek."
+          sleep 2
+        done
+
         if ${cfgpkg}/bin/ollama list | grep -q '^wuwa-gemma'; then
           echo "wuwa-gemma zaten var, atlanıyor."
         else
