@@ -692,9 +692,12 @@ HOME_NIX="$NIXOS_FLAKE_DIR/home.nix"
 # Üstelik sed bozuk dosyayı YAZMIŞ olduğu için sondaki "Failed to verify"
 # uyarısı sadece haber veriyor; bozuk home.nix diskte kalıyor.
 #
-# Yerine python3: satır bazlı regex değiştirme yapıyor, shell meta karakterleri
-# değer olarak işleniyor, yazma atomik. python3 bütün yan etkili adımlardan önce
-# yukarıdaki preflight'ta doğrulanır; böylece eksik bağımlılık yarım kurulum bırakmaz.
+# Yerine python3: satır bazlı regex değiştirme yapıyor ve Nix çift tırnaklı
+# string'ini doğru kaçırarak atomik yazıyor. Bu katmanda tek tırnak özel değildir;
+# özellikle wallpaperVideo systemd tarafından da gerçek dosya yolu olarak kullanılır.
+# POSIX shell kaçışı, değer shell komutuna aktarılırken kullanım noktasında yapılmalıdır
+# (home.nix içindeki exec-once kontrolleri değeri positional argüman olarak geçirir).
+# python3 yan etkili adımlardan önce yukarıdaki preflight'ta doğrulanır.
 apply_var() {
   local var_name="$1" new_value="$2"
   if ! grep -qE "^[[:space:]]*${var_name}[[:space:]]*=" "$HOME_NIX"; then
@@ -709,7 +712,9 @@ path, var, value = sys.argv[1], sys.argv[2], sys.argv[3]
 with open(path, encoding="utf-8") as fh:
     text = fh.read()
 
-escaped = value.replace("\\", "\\\\").replace('"', '\\"').replace("${", "\\${")
+# Serialize for a Nix double-quoted string. A single quote is literal here;
+# shell-specific quoting belongs at the shell call site, not in the stored value.
+escaped = value.replace('\\', '\\\\').replace('"', '\\"').replace('${', '\\${')
 
 pattern = re.compile(
     r'^(?P<indent>[ \t]*)' + re.escape(var) + r'[ \t]*=[ \t]*.*$', re.MULTILINE
