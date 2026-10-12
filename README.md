@@ -55,9 +55,9 @@ yazılmıştır. Başka bir makinede:
 - VFIO hook'u **GPU'yu host'tan alır**, geri gelmezse host grafik oturumu kapanır
 - Kernel parametreleri **yanlışsa boot fail olur**
 
-Bu config'i kullanmanın **tüm riski size aittir.** Yazar, bu config'in
-neden olduğu veri kaybı, sistem arızası, donanım hasarı veya başka
-herhangi bir zarardan **sorumlu tutulamaz.**
+Bu config'i kullanmanın **tüm riski size aittir.** Bu config'in neden
+olduğu veri kaybı, sistem arızası, donanım hasarı veya başka herhangi
+bir zarardan **sorumlu tutulmam.**
 
 Lisans: MIT — bkz. `LICENSE` (yasal olarak "as is", garanti yok).
 
