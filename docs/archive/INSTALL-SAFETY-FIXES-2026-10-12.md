@@ -36,7 +36,7 @@ Sağlanan ZIP'in içindeki Git çalışma ağacı başlangıçta temizdi (`git s
 
 ### N4 — `assets/` klasörü
 
-Sağlanan ZIP'in içindekiler listesinde `assets/`, `kitty-.png` veya `wall-.png` yok. Paketin Git `HEAD` ağacında da bu dosyalar izlenmiyor. README/CHANGELOG ve tarihsel raporlarda adlarının geçmesi, bu dosyaların bu teslim edilen arşivde bulunduğunu göstermiyor. Kaynak PNG'ler bu arşivde olmadığı için sahte/yeniden oluşturulmuş dosyalar eklenmedi.
+Kullanıcı `assets/` klasörünü bilerek sildiğini doğruladı. Bu yüzden PNG’lerin bulunmaması paketleme hatası değil. Aktif yapılandırmada bu klasöre referans bulunmadı; güncel README’de eski klasör girdisi kaldırıldı. CHANGELOG ve `docs/archive/` içindeki tarihsel atıflar geçmiş bağlamında bırakıldı.
 
 ## Canlı sistemde doğrulanmayı bekleyen maddeler
 
