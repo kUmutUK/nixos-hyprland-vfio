@@ -197,7 +197,8 @@
     `virsh start` "no such device" ile düşer.
     Kullanmadan önce: host'ta `lsusb` çalıştırıp kendi cihazınızın
     idVendor/idProduct değerlerini yazın, sonra `virsh define` + `virsh start`.
-    Bu olmadan guest'e tek giriş yolu emüle PS/2'dir (virsh console, metin).
+    Bu olmadan guest'e giriş yolu yoktur. USB hostdev'i kendi VID:PID'nizle
+    açın veya ayrı USB denetleyicisini guest'e passthrough edin.
     Ayrıntı: README → "Bilinen sınırlar".
     <hostdev mode="subsystem" type="usb" managed="yes">
       <source><vendor id="0x2a7a"/><product id="0x8a47"/></source>
