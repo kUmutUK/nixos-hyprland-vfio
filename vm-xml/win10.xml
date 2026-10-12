@@ -11,7 +11,7 @@
   <vcpu placement="static" current="6">6</vcpu>
   <!-- Explicit NixOS OVMF paths: avoid mixing libvirt auto-selection with manual loader/NVRAM. -->
   <os>
-    <type arch="x86_64" machine="pc-q35-10.1">hvm</type>
+    <type arch="x86_64" machine="pc-q35">hvm</type>
     <loader readonly="yes" type="pflash" format="raw">/run/libvirt/nix-ovmf/edk2-x86_64-code.fd</loader>
     <nvram template="/run/libvirt/nix-ovmf/edk2-i386-vars.fd" templateFormat="raw" format="raw">/var/lib/libvirt/qemu/nvram/win10_VARS.fd</nvram>
     <bootmenu enable="yes"/>
