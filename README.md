@@ -14,7 +14,7 @@ kurulumu.
 ## İçindekiler
 
 - [Ne işe yarar](#ne-işe-yarar)
-- [Sorumluluk Reddi](#sorumluluk-reddi) 
+- [Sorumluluk Reddi](#sorumluluk-reddi)
 - [Gereksinimler](#gereksinimler)
 - [Kurulum](#kurulum) — *yeni sistem* ve *mevcut NixOS'a geçiş* olarak iki yol
 - [VM'i başlatma](#vmi-başlatma)
@@ -46,8 +46,8 @@ bölümüne bakın.
 
 ## Sorumluluk Reddi
 
-Bu config **kişisel bir NixOS kurulumudur** ve belirli bir donanım 
-(AMD Ryzen 5 5600 + AMD RX 6700 XT + tek GPU + UEFI + LUKS2/Btrfs) için 
+Bu config **kişisel bir NixOS kurulumudur** ve belirli bir donanım
+(AMD Ryzen 5 5600 + AMD RX 6700 XT + tek GPU + UEFI + LUKS2/Btrfs) için
 yazılmıştır. Başka bir makinede:
 
 - `hardware-configuration.nix`'teki UUID'ler **yanlışsa sistem açılmaz**
@@ -55,8 +55,8 @@ yazılmıştır. Başka bir makinede:
 - VFIO hook'u **GPU'yu host'tan alır**, geri gelmezse host grafik oturumu kapanır
 - Kernel parametreleri **yanlışsa boot fail olur**
 
-Bu config'i kullanmanın **tüm riski size aittir.** Yazar, bu config'in 
-neden olduğu veri kaybı, sistem arızası, donanım hasarı veya başka 
+Bu config'i kullanmanın **tüm riski size aittir.** Yazar, bu config'in
+neden olduğu veri kaybı, sistem arızası, donanım hasarı veya başka
 herhangi bir zarardan **sorumlu tutulamaz.**
 
 Lisans: MIT — bkz. `LICENSE` (yasal olarak "as is", garanti yok).
@@ -85,7 +85,7 @@ Lisans: MIT — bkz. `LICENSE` (yasal olarak "as is", garanti yok).
 Repo kökü `/etc/nixos/`'a karşılık gelir; **flake `/etc/nixos/nixos` altında**
 durur. Bu yüzden tüm komutlarda yol `…/nixos#nixos` biçimindedir.
 
-### Yol A — Sıfırdan (yeni kurulum)
+### **Yol A —** Sıfırdan (yeni kurulum)
 
 Tam rehber: **[`KURULUM.md`](KURULUM.md)** — bölümlendirmeden LUKS'e,
 subvolume'lardan `nixos-install`'a kadar adım adım.
@@ -114,7 +114,7 @@ Kritik iki nokta:
   sudo chmod 600 /mnt/etc/nixos/hashedPassword
   ```
 
-### Yol B — Mevcut NixOS'u bu config'e taşı
+### **Yol B —** Mevcut NixOS'u bu config'e taşı
 
 ```bash
 ./install.sh
@@ -192,13 +192,10 @@ sudo virsh start win10
 `loginctl terminate-user` çağırır; yani `virsh start` komutunu verdiğiniz oturumun
 kendisi kapanır. İki güvenli yol:
 
-```bash
-# 1) ayrı TTY'den (Ctrl+Alt+F3)
-virsh start win10
-
-# 2) oturumdan bağımsız transient unit
-systemd-run --scope --unit=vmstart virsh start win10
-```
+1. **Ayrı TTY:** `Ctrl+Alt+F3` ile metin konsoluna geçin, ardından
+   `virsh start win10` çalıştırın.
+2. **Oturumdan bağımsız transient unit:**
+   `systemd-run --scope --unit=vmstart virsh start win10`
 
 VM çalışırken host'ta grafik oturum **yoktur** — yalnızca metin konsolu
 (vt1/vt2) kullanılabilir. Bu, tek kartlı geçişin doğal sonucudur.
@@ -338,9 +335,13 @@ Oyun dışında ppd profilini `balanced`'a çekmeniz önerilir.
 
 - **Navi 2x GPU reset.** RX 6000 serisi `gnif/vendor-reset`in desteklediği
   "reset bug" listesinde **yok**. VM ikinci kez açılamadığında kart PCIe
-  bus'tan düşebilir. Hook bunu öngörüyor: sessiz unbind/rebind yetmezse
-  `remove` + `rtcwake` ile kısa uyku + `rescan` deniyor; yine olmazsa
-  konsola açık bir mesaj bırakılıp **host reboot** önerilir. Garanti değil.
+  bus'tan düşebilir. Hook'ta sessiz unbind/rebind işe yaramazsa `remove` +
+  `rtcwake` + `rescan` kurtarma yolu bulunur; bu yol **varsayılan olarak kapalıdır**.
+  Opt-in açmak için `configuration.nix`'e
+  `systemd.services.libvirtd.environment.VFIO_ALLOW_SUSPEND_RECOVERY = "1";`
+  ekleyip sistemi yeniden oluşturun. Bu yol host'u kısa süreliğine askıya alır;
+  RTC uyandırma BIOS'ta desteklenmiyorsa kurtarma risklidir. Fallback kapalıyken
+  kurtarma başarısız olursa log'u inceleyin ve gerekirse host'u yeniden başlatın.
   Üretim/günlük kullanım öncesi RX 6700 XT ile en az şu döngüyü doğrulayın:
   VM başlat → normal kapat → ikinci kez başlat → host grafik oturumuna dönüş.
   Ayrıca açılışın yarıda kalması ve VM'in zorla kapatılması durumlarını test edin;
