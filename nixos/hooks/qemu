@@ -146,7 +146,7 @@ gpu_drm_card() {
 
 stop_hyprland() {
   local fuser_cmd="${HOOK_FUSER:-/run/current-system/sw/bin/fuser}"
-  local node fuser_status
+  local node
   local -a node_list
 
   # fuser bulunamazsa (ör. exit 127) bunu "GPU boş" saymak tehlikelidir:
@@ -182,6 +182,11 @@ stop_hyprland() {
   # --all: oturum açık tüm oturumlar.
   log "Kullanıcı oturumları sonlandırılıyor..."
   loginctl terminate-user "${HOST_USER:-localhost}" 2>/dev/null || true
+  # terminate-user yukarıda HOST_USER'ın TÜM oturumlarını (aynı kullanıcıya ait
+  # SSH oturumu dahil) sonlandırabilir. terminate-seat yalnızca seat0'ı hedefler;
+  # yerel VT/greeter oturumları da kapanabilir, fakat tek başına seatless SSH'yi
+  # hedeflemez. VM'i sistem yöneticisinin oluşturduğu detached systemd-run unit'i
+  # ile başlatın; normal shell/virsh istemcisinin yaşayacağını varsaymayın.
   loginctl terminate-seat seat0 2>/dev/null || true
 
   local card nodes
@@ -207,14 +212,14 @@ stop_hyprland() {
   # Bu yüzden non-zero + stderr çıktısını "boş" sayma: tanılama varsa
   # denetim belirsizdir ve prepare rollback'e gitmelidir.
   gpu_nodes_in_use() {
-    local fuser_diagnostic
+    local fuser_diagnostic fuser_exit
     fuser_diagnostic=$("$fuser_cmd" "${node_list[@]}" 2>&1 >/dev/null)
-    fuser_status=$?
-    if [ "$fuser_status" -eq 0 ]; then
+    fuser_exit=$?
+    if [ "$fuser_exit" -eq 0 ]; then
       return 0
     fi
     if [ -n "$fuser_diagnostic" ]; then
-      log "HATA: fuser tanılama verdi (çıkış $fuser_status); GPU boş varsayılmayacak."
+      log "HATA: fuser tanılama verdi (çıkış $fuser_exit); GPU boş varsayılmayacak."
       return 2
     fi
     return 1
@@ -222,14 +227,14 @@ stop_hyprland() {
 
   # Zaman aşımı başarısız sayılmamalı; denetim hataları da GPU'yu boş
   # saymak yerine rollback'e gitmelidir.
-  local waited=0
+  local waited=0 _rc
   for _unused in $(seq 1 40); do
     if gpu_nodes_in_use; then
       sleep 0.5
       waited=$((waited + 1))
     else
-      fuser_status=$?
-      if [ "$fuser_status" -eq 1 ]; then
+      _rc=$?
+      if [ "$_rc" -eq 1 ]; then
         break
       fi
       return 1
@@ -241,8 +246,8 @@ stop_hyprland() {
     log "ps aux | grep -E 'ollama|gamescope|mpv|chrom'  →  sadece o surecler"
     return 1
   else
-    fuser_status=$?
-    if [ "$fuser_status" -ne 1 ]; then
+    _rc=$?
+    if [ "$_rc" -ne 1 ]; then
       return 1
     fi
   fi
