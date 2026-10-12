@@ -168,8 +168,8 @@ in
     # Windows/KVM'de beklenmeyen MSR erişimlerini hata yerine yok sayar; bazı
     # guest uyumluluk sorunlarını önleyebilir, ancak MSR hatalarını gizler.
     "kvm.ignore_msrs=1"
-    # VFIO gecikme denemesi için ASPM devre dışı. Güç tüketimi artabilir;
-    # performans kazancı donanımda ölçülmeden varsayılmamalı.
+    # Güncel çekirdeklerde pcie_aspm=off, ASPM'yi kapatmaz; firmware'in
+    # mevcut ASPM ayarını olduğu gibi bırakır. VFIO gecikme kazancı garanti etmez.
     "pcie_aspm=off"
     # "rcupdate.rcu_expedited=1" 2026-10-09'da KALDIRILDI. Host'u koşulsuz
     # etkiliyordu ve README'deki gerekçesi ("Windows'un RCU bekleme davranışı")
@@ -208,10 +208,6 @@ in
     # disk swap'e geçiş oyun sırasında frametime sıçramaları yaratabilir.
     "vm.swappiness" = 180;
     "kernel.sched_autogroup_enabled" = 0;
-    # Split-lock slowdown mekanizmasını kapatır; bazı iş yüklerinde gecikmeyi
-    # azaltabilir, fakat split-lock kullanan süreçlerde sistem genelinde CPU/DoS
-    # maliyetini artırabilir. Bilinçli performans tercihi, genel öneri değildir.
-    "kernel.split_lock_mitigate" = 0;
     "kernel.perf_event_paranoid" = 1;
     "fs.inotify.max_user_watches" = 524288;
     "fs.inotify.max_user_instances" = 512;
