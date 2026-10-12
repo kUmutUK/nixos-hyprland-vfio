@@ -15,6 +15,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: installer executable mode
+        # Keep README's ./install.sh invocation working in fresh checkouts.
+        run: |
+          test -x install.sh
+          mode="$(git ls-files -s -- install.sh | awk 'NR == 1 { print $1 }')"
+          if [ "$mode" != "100755" ]; then
+            echo "::error::install.sh must be stored in Git with mode 100755 (found: $mode)"
+            exit 1
+          fi
+          echo "  install.sh executable mode OK"
+
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@3138316df39ed29be04236d7ffc686fa525866aa
 
