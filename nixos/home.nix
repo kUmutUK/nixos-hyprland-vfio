@@ -1647,7 +1647,7 @@ done
       Install.WantedBy = [ "graphical-session.target" ];
     };
 
-    mpvpaper-watchdog = {
+    mpvpaper-watchdog = lib.mkIf (monitorOutput != "") {
       Unit = {
         Description = "Brave açıldığında canlı duvar kağıdını durdurur";
         After = [ "graphical-session.target" ];
