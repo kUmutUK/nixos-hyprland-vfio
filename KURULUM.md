@@ -189,7 +189,7 @@ kopyalanır. `install.sh`'ı çalıştırmadığınız için `home.nix` içindek
 
 | # | Değer | Varsayılan | Sonucu |
 |---|-------|-----------|--------|
-| 1 | `hyprlandMonitorLine` | `"monitor = ,preferred,auto,1"` | Monitör adı boş → **tüm çıkışlar** workspace 1'e yansılanır. Tek monitörde zararsız, **çok monitörlü kurulumda bozuk** (ikinci monitör çalışmaz, pencere yönlendirme şaşar). Masaüstü yine açılır. |
+| 1 | `hyprlandMonitorLine` | `"monitor = ,preferred,auto,1"` | Boş monitör adı, açıkça tanımlanmamış çıkışlara uygulanacak catch-all kuralıdır; workspace aynalama kuralı değildir. Çok monitörde her çıkışa `preferred/auto/1` uygulamak istemiyorsanız gerçek çıkış adını yazın. |
 | 2 | `monitorOutput` | `"DP-3"` | Yanlış çıktıysa `mpvpaper` duvar kağıdı çalışmaz (oturum açılışında kritik uyarı çıkar) |
 | 3 | `gitName` | `"changeme"` | Commit'ler sahte isimle etiketlenir |
 | 4 | `gitEmail` | `"you@example.com"` | Commit'ler sahte adresle etiketlenir |
@@ -219,9 +219,9 @@ düzenleyin (satır ~4-12):
   wallpaperVideo     = "${config.home.homeDirectory}/Downloads/duvar-kagidi.mp4";
 ```
 
-> `hyprlandMonitorLine`'daki monitör **adı boş bırakılırsa** tüm monitörler
-> workspace 1'e aynalanır — tek monitörde zararsız, çok monitörde kurulumu
-> bozar. Bu yüzden yukarıda `DP-1` gibi gerçek bir ad yazılıyor.
+> `hyprlandMonitorLine`'daki boş monitör adı bir catch-all kuralıdır; tek başına
+> workspace'leri aynalamaz. Yine de manuel kurulumda hangi çıkışlara kural
+> uygulanacağı açık olsun diye `DP-1` gibi gerçek monitör adını kullanın.
 
 ### `hyprland.lua` gölgelemesi hakkında
 
@@ -297,9 +297,16 @@ flake.nix repo kökünde değil, `nixos/` alt dizininde olduğu için `#nixos`
 öncesindeki yol da buna göre verilmeli:
 
 ```bash
-# ilk çalıştırmada substituters onayı ister: "y" deyin
+# İlk çalıştırmada substituters onayı ister: "y" deyin
 nixos-install --flake /mnt/etc/nixos/nixos#nixos --accept-flake-config
 ```
+
+> **CachyOS kernel cache uyarısı:** ana `nixpkgs` ile CachyOS kernel input'unun
+> kendi `nixpkgs` revizyonları farklıdır. Kernel derivation'ı CachyOS cache girdisiyle
+> eşleşmezse ilk `nixos-install`/`nixos-rebuild` sırasında yerel BORE-LTO kernel
+> derlemesi başlayabilir; donanım ve cache durumuna göre 1–2 saat veya daha uzun
+> sürebilir. Bu bir kesinlik değil, cache-miss riskidir.
+
 
 ---
 
@@ -334,6 +341,9 @@ if [ ! -f /var/lib/libvirt/images/win10new.qcow2 ]; then
 else
   echo "Mevcut VM diski korunuyor: /var/lib/libvirt/images/win10new.qcow2"
 fi
+# qemu.runAsRoot = false olduğundan diskin sahibini ve modunu açıkça ayarla.
+sudo chown qemu-libvirtd:qemu-libvirtd /var/lib/libvirt/images/win10new.qcow2
+sudo chmod 0660 /var/lib/libvirt/images/win10new.qcow2
 
 # install.sh çalışmadıysa kaynak XML'i kopyala. install.sh çalıştıysa
 # /var/lib/libvirt/win10.xml PCI adresleri eşitlenmiş halde bulunabilir;
@@ -348,6 +358,34 @@ sudo virsh define /var/lib/libvirt/win10.xml
 sudo virsh list --all     # 'win10' → "shut off" olarak görünmeli
 ```
 
+### İlk başlatmada geçici görüntü kanalı (isteğe bağlı tanılama)
+
+Üretim XML'i `<video><model type="none"/></video>` kullandığı için VNC konsolu
+sunmaz. İlk başlatmada hata ayıklamak gerekirse depo kök dizininde aşağıdaki
+komutlarla **dağıtılmış ve PCI adresleri senkronize edilmiş XML'in ayrı kopyasını**
+üretin. Ana `/var/lib/libvirt/win10.xml` dosyası değiştirilmez:
+
+```bash
+sudo python3 scripts/prepare-vm-diagnostic.py \
+  --input /var/lib/libvirt/win10.xml \
+  --output /var/lib/libvirt/win10-diagnostic.xml
+sudo virsh define /var/lib/libvirt/win10-diagnostic.xml
+sudo systemd-run --unit=vmstart --collect /run/current-system/sw/bin/virsh start win10
+```
+
+Hook, `localhost` kullanıcısının oturumlarını ve seat0/VT'leri kapatabileceği için
+normal shell'den VM başlatmayın; `systemd-run` sistem yöneticisi tarafından başlatılan
+bağımsız hizmet kullanır. Başka bir oturumdan sonucu ve VNC ekranını kontrol edin:
+
+```bash
+sudo journalctl -u vmstart.service -b --no-pager
+sudo virsh vncdisplay win10
+```
+
+VNC yalnızca `127.0.0.1` adresinde dinler. Test bitince VM'i kapatıp üretim XML'ine
+geri dönün: `sudo virsh define /var/lib/libvirt/win10.xml`. Bu tanılama yalnızca
+başlangıç/teşhis içindir; oyun için kalıcı çözüm değildir.
+
 > ⚠️ **ISO dosyaları:** `virsh start win10` için iki ISO gerekir:
 > `Win10_22H2_English_x64v1.iso` ve `virtio-win-0.1.285.iso` →
 > `sudo cp <iso> /var/lib/libvirt/images/`
@@ -361,16 +399,13 @@ sudo virsh list --all     # 'win10' → "shut off" olarak görünmeli
 > ⚠️ XML'deki disk/NVRAM yolları sabit geliyor. Kendi diskine göre
 > düzenlemezsen `virsh start win10` "disk bulunamadı" ile başarısız olur.
 >
-> ⚠️ **VM'i masaüstü oturumundan başlatmayın.** `hooks/qemu`, GPU'yu bırakmak için
-> `loginctl terminate-user <kullanıcı>` çalıştırıyor — yani `virsh start` komutunu
-> verdiğiniz oturumun **kendisi** kapanıyor (istemci sonucu gösteremeden ölüyor;
-> libvirtd tarafındaki iş devam ediyor). İki güvenli yol:
+> ⚠️ **VM'i normal shell'den başlatmayın.** Hook `loginctl terminate-user` ile
+> `localhost` kullanıcısının oturumlarını, `loginctl terminate-seat seat0` ile yerel
+> VT/greeter oturumlarını sonlandırabilir. Ayrı TTY de aynı kullanıcı/seat kapsamındaysa
+> kapanabilir; sistem yöneticisinin başlattığı detached unit kullanın:
 > ```bash
-> # 1) ayrı TTY'den (Ctrl+Alt+F3)
-> virsh start win10
->
-> # 2) oturumdan bağımsız transient unit
-> systemd-run --scope --unit=vmstart virsh start win10
+> sudo systemd-run --unit=vmstart --collect /run/current-system/sw/bin/virsh start win10
+> sudo journalctl -u vmstart.service -b --no-pager
 > ```
 >
 > Doğrulama: `sudo virsh dominfo win10` → ad, UUID ve PCI hostdev'ler görünmeli.
@@ -411,6 +446,18 @@ sudo nixos-rebuild dry-activate --flake /etc/nixos/nixos#nixos
 ```bash
 sudo nixos-rebuild switch --flake /etc/nixos/nixos#nixos
 ```
+
+## WuWa yerel Gemma modeli (isteğe bağlı, büyük indirme)
+
+Model otomatik indirilmez. WuWa OCR otomatik çevirisini ilk kez kullanmadan önce:
+
+```bash
+sudo systemctl start wuwa-gemma-init
+sudo systemctl status wuwa-gemma-init --no-pager
+```
+
+Servis başarılı bitip `wuwa-gemma` modeli Ollama'da göründükten sonra OCR betiğini
+başlatın. Model yoksa betik artık uyarı gösterip çıkar.
 
 ## Yeniden başlat
 

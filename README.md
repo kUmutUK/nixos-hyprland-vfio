@@ -55,9 +55,9 @@ yazılmıştır. Başka bir makinede:
 - VFIO hook'u **GPU'yu host'tan alır**, geri gelmezse host grafik oturumu kapanır
 - Kernel parametreleri **yanlışsa boot fail olur**
 
-Bu config'i kullanmanın **tüm riski size aittir.** Bu config'in neden
-olduğu veri kaybı, sistem arızası, donanım hasarı veya başka herhangi
-bir zarardan **sorumlu tutulmam.**
+Bu config'i kullanmanın **tüm riski size aittir.** Yazar, bu config'in
+neden olduğu veri kaybı, sistem arızası, donanım hasarı veya başka
+herhangi bir zarardan **sorumlu tutulamaz.**
 
 Lisans: MIT — bkz. `LICENSE` (yasal olarak "as is", garanti yok).
 
@@ -164,7 +164,11 @@ sudo virsh define /var/lib/libvirt/win10.xml
 ```bash
 sudo mkdir -p /var/lib/libvirt/images /var/lib/libvirt/qemu
 sudo cp /etc/nixos/vm-xml/win10.xml /var/lib/libvirt/
-sudo qemu-img create -f qcow2 /var/lib/libvirt/images/win10new.qcow2 120G
+if [ ! -f /var/lib/libvirt/images/win10new.qcow2 ]; then
+  sudo qemu-img create -f qcow2 /var/lib/libvirt/images/win10new.qcow2 120G
+fi
+sudo chown qemu-libvirtd:qemu-libvirtd /var/lib/libvirt/images/win10new.qcow2
+sudo chmod 0660 /var/lib/libvirt/images/win10new.qcow2
 sudo virsh define /var/lib/libvirt/win10.xml
 ```
 
@@ -188,17 +192,38 @@ sudo virsh define /var/lib/libvirt/win10.xml
 sudo virsh start win10
 ```
 
-⚠️ **VM'i masaüstü oturumunuzdan başlatmayın.** Hook, GPU'yu bırakmak için
-`loginctl terminate-user` çağırır; yani `virsh start` komutunu verdiğiniz oturumun
-kendisi kapanır. İki güvenli yol:
+### İlk açılış için geçici VNC teşhis kanalı
 
-1. **Ayrı TTY:** `Ctrl+Alt+F3` ile metin konsoluna geçin, ardından
-   `virsh start win10` çalıştırın.
-2. **Oturumdan bağımsız transient unit:**
-   `systemd-run --scope --unit=vmstart virsh start win10`
+Üretim XML'inde grafik konsolun olmaması, GPU passthrough tasarımının parçasıdır.
+İlk testte boot katmanını gözlemlemek için üretim XML'ini değiştirmeden ayrı bir
+kopya üretin; böylece install.sh'ın yazdığı gerçek PCI adresleri korunur:
 
-VM çalışırken host'ta grafik oturum **yoktur** — yalnızca metin konsolu
-(vt1/vt2) kullanılabilir. Bu, tek kartlı geçişin doğal sonucudur.
+```bash
+sudo python3 scripts/prepare-vm-diagnostic.py \
+  --input /var/lib/libvirt/win10.xml \
+  --output /var/lib/libvirt/win10-diagnostic.xml
+sudo virsh define /var/lib/libvirt/win10-diagnostic.xml
+sudo systemd-run --unit=vmstart --collect /run/current-system/sw/bin/virsh start win10
+```
+
+Hook, `loginctl terminate-user` ile `localhost` hesabının oturumlarını ve
+`loginctl terminate-seat seat0` ile yerel VT/greeter oturumlarını sonlandırabilir;
+bu nedenle `virsh start` komutunu normal shell'inizden çalıştırmayın. Sistem
+systemd'si tarafından başlatılan unit kullanıcı oturumu kapansa da devam eder.
+Komut sonrası ayrı bir oturumdan kontrol edin:
+
+```bash
+sudo journalctl -u vmstart.service -b --no-pager
+sudo virsh vncdisplay win10
+```
+
+VNC yalnızca `127.0.0.1` üzerinde dinler. Uzak istemciden görüntü gerekiyorsa
+SSH tüneli kullanın; VNC'yi tüm ağ arayüzlerine açmayın. Test bitince VM'i kapatıp
+üretim XML'ine geri dönün: `sudo virsh define /var/lib/libvirt/win10.xml`.
+
+`prepare-vm-diagnostic.py`, yalnızca belirtilen XML'in ayrı kopyasını üretir; diski,
+üretim XML'ini veya NixOS yapılandırmasını değiştirmez. VM çalışırken host'ta
+normal grafik oturumu bulunmaz; bu, tek kartlı geçiş tasarımının doğal sonucudur.
 
 Gerekli iki ISO'yu `/var/lib/libvirt/images/` altına kopyalayın:
 `Win10_22H2_English_x64v1.iso` ve `virtio-win-*.iso`.
@@ -268,6 +293,17 @@ sudo journalctl -u libvirtd -f
 > kullanmayın. Çevirinin yerel kalmasını istiyorsanız `trans` çağrısını Ollama
 > tabanlı yerel bir çeviri akışıyla değiştirin.
 
+**WuWa OCR'nin yerel Gemma yedeği:** büyük model indirmesi bilerek otomatik
+başlatılmaz. İlk kullanım öncesi bir kez çalıştırın ve tamamlanmasını bekleyin:
+
+```bash
+sudo systemctl start wuwa-gemma-init
+sudo systemctl status wuwa-gemma-init --no-pager
+```
+
+`wuwa-auto.sh` artık `wuwa-gemma` modeli API'de yoksa açık bildirim vererek
+başlamadan çıkar; `null` sonucu OCR metni olarak işlemez.
+
 Ses seviyesi için `XF86AudioRaiseVolume` / `LowerVolume` / `Mute` çalışır.
 
 > † **`SUPER`+`W` statik duvar kâğıdı içindir, canlı duvar kâğıdı değil.** Masaüstünde
@@ -318,10 +354,13 @@ Bunlar "NixOS'un default'undan farklı ve bilinçli" seçimlerdir:
 | Hook shebang'ı store-path'li | `libvirtd.service`'in PATH'inde bash yok; `#!/usr/bin/env bash` script'i hiç başlatmıyordu. |
 | Hook PATH'i zorlanıyor | `ls` (findutils) ve `sed` (gnused) coreutils'te **değildir**; eksikken `gpu_drm_card()` sessizce hep `card0`'a düşüyordu. |
 | `zramSwap.priority = 100` | Disk swap'in `priority = 10`. Yüksek öncelik önce kullanılır — önceki durumda zram hiç devreye girmiyordu (~8 MiB ölçülmüştü). |
-| `vm.swappiness = 180` | RAM baskınken agresif temizlemeye izin verir. (Öncelik seçmez, **yazma eğilimini** ayarlar.) |
+| `vm.swappiness = 180` | RAM baskınken agresif temizlemeye izin verir. (Öncelik seçmez, **yazma eğilimini** ayarlar.) Bedeli: major page fault/swap baskısı artabilir; zram dolup disk swap devreye girerse oyun frametime'ı sıçrayabilir. |
 | `hypridle` 900 sn → `systemctl suspend` | Suspend öncesi hyprlock **çağrılmaz**: foreground'da bloklar ve arkadaki suspend'e hiç sıra gelmez. Kilit zaten `before_sleep_cmd` ile yapılıyor. |
-| `home.sessionVariables.HYPRLAND_CONFIG` | Hyprland 0.56 `hyprland.lua` varsa `.conf`'u sessizce tamamen yok sayar. Yol sabitlenince bu mekanizma yapısal olarak devre dışı kalır. |
-| `amd_pstate=active`, `pcie_aspm=off` | `amd_pstate=active` AMD P-State sürücüsünü etkinleştirir; `pcie_aspm=off` Linux’un ASPM yönetimini devre dışı bırakıp firmware ayarlarına dokunmamasını söyler. Bu parametre tek başına boşta güç tasarrufu garantilemez. |
+| `HYPRLAND_CONFIG` aktarımı | Home Manager değişkeni olağan kullanıcı oturumlarını kapsar; greetd/tuigreet bu ortamı garanti etmediğinden `configuration.nix` de aynı yolu dışa aktaran bir sarmalayıcı kullanır. Böylece Hyprland `hyprland.lua` dosyasını `.conf` yerine seçmez. |
+| `amd_pstate=active`, `pcie_aspm=off` | `amd_pstate=active` AMD P-State sürücüsünü etkinleştirir. `pcie_aspm=off`, VFIO gecikme denemesi için ASPM yönetimini kapatır; ölçülmüş performans kazancı garanti değildir ve boşta güç tüketimini artırabilir. |
+| `nowatchdog`, `nmi_watchdog=0` | Kernel/NMI watchdog tabanlı lockup teşhisini azaltır veya kapatır; düşük jitter tercihi karşılığında kilitlenme teşhis bilgisi kaybolabilir. |
+| `usbcore.autosuspend=-1` | USB autosuspend'i tamamen kapatır; bazı cihaz/VM passthrough sorunlarını önleyebilir ama boşta USB güç tüketimini artırır. |
+| `kvm.ignore_msrs=1` | Bazı Windows guest MSR erişimlerinin hata üretmesini önler, fakat hatalı/bilinmeyen MSR erişimlerini gizleyebilir. |
 
 **Ayarların sahibi:** üç yazıcı birbiriyle yarışıyor —
 `power-profiles-daemon` (CPU governor), `ananicy-cpp` (nice/ioprio) ve
@@ -389,7 +428,8 @@ Oyun dışında ppd profilini `balanced`'a çekmeniz önerilir.
 ├── assets/                       ← ekran görüntüleri (config'e bağlı değil)
 ├── docs/archive/                 ← eski analiz raporları (arşiv — doğrulama için değil)
 ├── scripts/
-│   └── extract-embedded-scripts.py   ← home.nix'e gömülü bash'i diske çıkarır (CI için)
+│   ├── extract-embedded-scripts.py   ← home.nix'e gömülü bash'i diske çıkarır (CI için)
+│   └── prepare-vm-diagnostic.py      ← ayrı, loopback-only VNC/virtio tanılama XML'i üretir
 ├── vm-xml/
 │   └── win10.xml                 ← libvirt domain tanımı
 │
