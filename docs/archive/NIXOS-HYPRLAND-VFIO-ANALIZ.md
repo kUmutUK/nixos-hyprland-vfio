@@ -3,6 +3,10 @@
 **Tarih:** 2026-10-05 · **Yöntem:** statik okuma + CI kapılarının yerelde yeniden koşumu + gerçek `nix flake check` + gerçek `nix build` (derleme) + upstream kaynak doğrulaması
 **Kapsam:** 22 dosya / ~7 MB · kod ~2.130 satır, dokümantasyon ~2.890 satır
 
+> **TARİHSEL SNAPSHOT — 2026-10-12:** Bu metin eski bir kaynak ZIP/commit için yazılmıştır.
+> “Açık bulgu” ifadeleri bugünkü çalışma ağacı için güncel durum garantisi değildir.
+> Güncel durum ve retraction eşlemesi için `HISTORICAL-AUDITS.md` ve güncel kaynak kodu kullanın.
+
 ---
 
 ## 0. Kısa hüküm

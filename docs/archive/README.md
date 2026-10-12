@@ -1,7 +1,11 @@
-# Arşiv — SÜPERSEDED analizler
+# Arşiv — tarihsel analizler (güncel hata listesi değildir)
 
-Bu klasördeki belgeler **eski sürümlere karşı** yazılmıştır ve artık
-koda bakarak doğrulanmamalıdır.
+**Güncellik notu — 2026-10-12:** Bu klasördeki raporlar farklı ZIP/commit'leri
+inceleyen tarihsel anlık görüntülerdir. Bir raporun içinde “açık” yazması bugünkü
+çalışma ağacında sorunun hâlâ bulunduğu anlamına gelmez. Güncel düzeltme/retrection
+özeti için [`HISTORICAL-AUDITS.md`](HISTORICAL-AUDITS.md) başlangıç noktasıdır.
+Özgün raporlar kaynak izi ve geçmiş retraction'lar korunsun diye silinmedi; yeni
+hata ayıklamada doğrudan uygulanabilir reçete olarak kullanılmamalıdır.
 
 ## `ANALIZ-2026-10-05-ZIP3-SUPERSEDED.md`
 
