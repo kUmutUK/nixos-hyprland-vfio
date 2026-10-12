@@ -179,6 +179,11 @@ in
     # checklist). Bu config'in amacı düşük jitter; parametre tersini yapıyor.
   ];
 
+  # Optional host-graphics convenience: make amdgpu available in the initrd so
+  # the single-GPU host can initialize its Radeon display early in boot. This
+  # is not required for VFIO itself (vfio-pci is configured separately below);
+  # remove only after testing boot display/login and confirming the host still
+  # initializes the GPU reliably without early amdgpu availability.
   boot.initrd.availableKernelModules = lib.mkAfter [ "amdgpu" ];
   boot.initrd.kernelModules = [ "dm-crypt" ];
   # ⚠️ "ashmem_linux" BURADAN KALDIRILDI. ashmem Linux 5.18'de tamamen
