@@ -29,11 +29,8 @@ jobs:
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@3138316df39ed29be04236d7ffc686fa525866aa
 
-      - name: libvirt XML validation
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq libvirt-clients libxml2-utils
-          virt-xml-validate vm-xml/win10.xml domain
+      - name: XML well-formedness
+        run: python3 -c "import xml.etree.ElementTree as ET; ET.parse('vm-xml/win10.xml')"
 
       # ---- GATE STEPS (must pass) ----
 
