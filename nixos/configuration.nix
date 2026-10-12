@@ -1,6 +1,13 @@
 { config, pkgs, lib, ... }:
 
 let
+  # greetd/tuigreet oturumunu environment.d dosyasına veya systemd --user
+  # ortamına bağımlı bırakma: bu küçük sarmalayıcı doğrudan Hyprland sürecine
+  # HYPRLAND_CONFIG aktarır ve greetd/tuigreet oturum akışını korur.
+  greetdHyprlandSession = pkgs.writeShellScript "greetd-hyprland-session" ''
+    export HYPRLAND_CONFIG="/home/localhost/.config/hypr/hyprland.conf"
+    exec ${pkgs.hyprland}/bin/Hyprland "$@"
+  '';
 
   # --------------- low_latency_layer türetmesi ---------------
   low-latency-layer = pkgs.stdenv.mkDerivation rec {
@@ -133,6 +140,9 @@ in
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
   boot.kernelParams = [
+    # Teşhis maliyeti: nowatchdog + nmi_watchdog=0 kernel/NMI watchdog tabanlı
+    # lockup tespitini kapatır. Düşük jitter tercihi; beklenmeyen kilitlenmelerde
+    # tanı imkânı azalır.
     "amd_pstate=active" "nowatchdog" "nmi_watchdog=0"
     # DÜZELTME (2026-10-09): "amd_iommu=on" EKLENDİ — config'te hiç yoktu,
     # ama README, KURULUM.md ve install.sh onu bu config'in bir parametresi
@@ -151,8 +161,15 @@ in
     # dengesi değildir. Aynı sınıftan olmayan "rcupdate.rcu_expedited=1" ile
     # karıştırılmamalı — o, ayrı bir karar (bkz. aşağıdaki not).
     "transparent_hugepage=madvise" "iommu=pt" "amd_iommu=on"
+    # USB autosuspend tamamen kapalı: bazı cihazların uyku/uyanma ve passthrough
+    # sorunlarını azaltabilir, ancak boşta USB güç tüketimini artırabilir.
     "usbcore.autosuspend=-1" "video=efifb:off"
-    "amdgpu.ppfeaturemask=0xfffd7fff" "kvm.ignore_msrs=1"
+    "amdgpu.ppfeaturemask=0xfffd7fff"
+    # Windows/KVM'de beklenmeyen MSR erişimlerini hata yerine yok sayar; bazı
+    # guest uyumluluk sorunlarını önleyebilir, ancak MSR hatalarını gizler.
+    "kvm.ignore_msrs=1"
+    # VFIO gecikme denemesi için ASPM devre dışı. Güç tüketimi artabilir;
+    # performans kazancı donanımda ölçülmeden varsayılmamalı.
     "pcie_aspm=off"
     # "rcupdate.rcu_expedited=1" 2026-10-09'da KALDIRILDI. Host'u koşulsuz
     # etkiliyordu ve README'deki gerekçesi ("Windows'un RCU bekleme davranışı")
@@ -186,9 +203,14 @@ in
     #     disk mi olacağını değil, ne kadar agresif swap'e gidileceğini
     #     ayarlar.
     # Önceki yorum swappiness'nin öncelik seçtiğini söylüyordu; bu yanlıştı.
-    # Buradaki 180, RAM baskınken de agresif temizlemeye izin verir.
+    # Buradaki 180, RAM baskınken de agresif temizlemeye izin verir. Bedeli:
+    # daha erken swap/page reclaim ve olası major page fault'lar; zram dolduğunda
+    # disk swap'e geçiş oyun sırasında frametime sıçramaları yaratabilir.
     "vm.swappiness" = 180;
     "kernel.sched_autogroup_enabled" = 0;
+    # Split-lock slowdown mekanizmasını kapatır; bazı iş yüklerinde gecikmeyi
+    # azaltabilir, fakat split-lock kullanan süreçlerde sistem genelinde CPU/DoS
+    # maliyetini artırabilir. Bilinçli performans tercihi, genel öneri değildir.
     "kernel.split_lock_mitigate" = 0;
     "kernel.perf_event_paranoid" = 1;
     "fs.inotify.max_user_watches" = 524288;
@@ -199,15 +221,23 @@ in
     "net.ipv4.tcp_fastopen" = 3;
   };
 
+  # Bilerek yalnızca ana kullanıcıya uygulanır; root, greeter ve servislerin
+  # sınırları varsayılan kalır. Tüm kullanıcıları kapsamak için domain="*" kullanın.
   security.pam.loginLimits = [
     { domain = "localhost"; item = "nofile"; type = "hard"; value = "65536"; }
     { domain = "localhost"; item = "nofile"; type = "soft"; value = "65536"; }
   ];
 
   security.apparmor.enable = true;
+  # sshd jail, parola doğrulaması kapalı olsa da tekrarlanan başarısız SSH
+  # denemelerini loglardan banlayabilir. AuthorizedKeys şu an boş; SSH erişimi
+  # açıldığında bu koruma kalır, ancak parola brute-force senaryosu yoktur.
   services.fail2ban = {
     enable = true;
     maxretry = 5;
+    # Ev/LAN kolaylığı için RFC1918 ağları muaf tutuluyor. Bu, LAN içindeki
+    # kötü niyetli/ele geçirilmiş istemcilerin fail2ban tarafından banlanmaması
+    # demektir; güvenilmeyen ağlar varsa listeyi daraltın.
     ignoreIP = [
       "127.0.0.0/8" "10.0.0.0/8" "172.16.0.0/12" "192.168.0.0/16"
     ];
@@ -326,7 +356,9 @@ in
   services.greetd = {
     enable = true;
     settings.default_session = {
-      command = "${pkgs.tuigreet}/bin/tuigreet --remember --time --cmd ${pkgs.hyprland}/bin/Hyprland";
+      # The wrapper exports HYPRLAND_CONFIG and execs Hyprland without
+      # replacing/skipping tuigreet; its store path contains no shell quoting.
+      command = "${pkgs.tuigreet}/bin/tuigreet --remember --time --cmd ${greetdHyprlandSession}";
       user = "greeter";
     };
   };
@@ -523,24 +555,8 @@ in
         gpu_device = 0;
         amd_performance_level = "high";
       };
-      custom = {
-        # DÜZELTME (2026-10-09): önceki yorum "oyun sırasında watchdog bir start
-        # atarsa duvar kağıdı oyun bitmeden geri gelebilir" diyordu — bu
-        # YANLIŞTI ve yanlış varsayıma dayanan bir "bilinçli risk" notuydu.
-        # Gerçekte mpvpaper-watchdog başlatmadan önce hem tarayıcı hem de
-        # is_gamemode_active kontrolü yapıyor (home.nix → update_wallpaper),
-        # yani oyun aktifken start atmıyor.
-        #
-        # Gerçekte kalan çakışma: iki ayrı yazıcı var (buradaki gamemode
-        # start/end ve watchdog'un systemctl çağrıları) ve ikisi de aynı unit'i
-        # yönetiyor. Senaryo "oyun sırasında" değil, oyun BİTERKEN bir tarayıcı
-        # açıksa: watchdog mpvpaper'ı durdurmuşken gamemode `end` onu yeniden
-        # başlatır ve bir sonraki pencere olayına kadar duvar kağıdı görünür.
-        # Tek kaynak isterseniz aşağıdaki iki satırı silip yalnızca watchdog'u
-        # bırakın.
-        start = "${pkgs.systemd}/bin/systemctl --user stop mpvpaper.service";
-        end   = "${pkgs.systemd}/bin/systemctl --user start mpvpaper.service";
-      };
+      # mpvpaper-watchdog tek otorite. Gamemode custom.start/end burada
+      # tanımlanırsa iki ayrı süreç aynı servisi yönetir ve oyun bitişinde yarışır.
     };
   };
 
@@ -608,8 +624,9 @@ in
     # tetikleyip ilk `nixos-rebuild`'i uzatıyordu. `nix.optimise` bulunamayan
     # Nix sürümlerinde ise her path eklemede hata logluyordu.
     max-jobs = "auto";
-    keep-outputs = true;
-    keep-derivations = true;
+    # Suppress the warning for dirty local flake trees. This is convenient for
+    # local experimentation, but users must inspect git diff before rebuilding;
+    # it is intentionally a workflow preference, not a reproducibility guarantee.
     warn-dirty = false;
     substituters = [
       "https://cache.nixos.org"

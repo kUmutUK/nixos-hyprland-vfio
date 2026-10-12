@@ -74,8 +74,8 @@
           ];
           boot.kernelPackages = pkgs.cachyosKernels.linuxPackages-cachyos-bore-lto;
           # hyprland, hyprlock, hypridle, hyprpicker, hyprpolkitagent ve
-          # xdg-desktop-portal-hyprland hepsi aynı nixpkgs rev'inden gelir.
-          programs.hyprland.package = pkgs.hyprland;
+          # xdg-desktop-portal-hyprland hepsi aynı nixpkgs rev'inden gelir;
+          # Hyprland paketi nixpkgs varsayılanıyla zaten eşleşir.
           # DÜZELTME (2026-10-06): `environment.systemPackages = [ pkgs.pyprland ]`
           # burada kaldırıldı. pyprland ZATEN `configuration.nix` →
           # `environment.systemPackages` listesinde tanımlıydı; buradaki ikinci
