@@ -105,6 +105,32 @@ for addr in "$gpu_pci" "$gpu_audio"; do
   fi
 done
 
+# Validate PCI class codes as well as address syntax/existence. This prevents
+# an existing but unrelated device (for example, a NIC) being passed to VFIO.
+# `lspci -Dn` prints: <domain:BDF> <class-code>: <vendor>:<device> ...
+pci_class_code() {
+  local addr="$1" line class_code
+  line="$(lspci -Dn -s "$addr" 2>/dev/null)" || return 1
+  [ -n "$line" ] || return 1
+  class_code="$(awk 'NR == 1 { print $2; exit }' <<< "$line")"
+  class_code="${class_code%:}"
+  [[ "$class_code" =~ ^[0-9a-fA-F]{4}$ ]] || return 1
+  printf '%s\n' "${class_code,,}"
+}
+
+gpu_class_code="$(pci_class_code "$gpu_pci")" || error "GPU PCI sınıfı lspci ile doğrulanamadı: $gpu_pci"
+case "$gpu_class_code" in
+  0300|0302|0380) ;;
+  *) error "Seçilen GPU adresi bir görüntü denetleyicisi değil (PCI class $gpu_class_code): $gpu_pci — VGA/3D/display controller adresini girin." ;;
+esac
+
+audio_class_code="$(pci_class_code "$gpu_audio")" || error "GPU ses PCI sınıfı lspci ile doğrulanamadı: $gpu_audio"
+case "$audio_class_code" in
+  0401|0403) ;;
+  *) error "Seçilen ses adresi bir ses denetleyicisi değil (PCI class $audio_class_code): $gpu_audio — GPU HDMI/DisplayPort audio function adresini girin." ;;
+esac
+log "PCI sınıfları doğrulandı: GPU=$gpu_class_code, Audio=$audio_class_code"
+
 gpu_grp=$(basename "$(readlink -f "/sys/bus/pci/devices/${gpu_pci}/iommu_group" 2>/dev/null)" 2>/dev/null)
 audio_grp=$(basename "$(readlink -f "/sys/bus/pci/devices/${gpu_audio}/iommu_group" 2>/dev/null)" 2>/dev/null)
 if [ -n "$gpu_grp" ] && [ -n "$audio_grp" ] && [ "$gpu_grp" != "$audio_grp" ]; then
@@ -263,9 +289,71 @@ done < <(
     | sort -z -t $'\t' -k1,1nr
 )
 
+# Read stateVersion from the existing destination before replacing files.
+# stateVersion is a compatibility baseline, not the target NixOS release; it
+# must not silently advance when this repository is copied over an older system.
+extract_state_version() {
+  python3 - "$1" "$2" <<'PY_STATE_VERSION'
+import re
+import sys
+from pathlib import Path
+
+path, setting = sys.argv[1], sys.argv[2]
+try:
+    content = Path(path).read_text(encoding="utf-8")
+except (OSError, UnicodeError):
+    raise SystemExit(1)
+pattern = re.compile(
+    r"^\s*" + re.escape(setting) +
+    r'\s*=\s*(?:lib\.mkDefault\s*)?"(\d{2}\.\d{2})"\s*;',
+    re.MULTILINE,
+)
+match = pattern.search(content)
+if not match:
+    raise SystemExit(1)
+print(match.group(1))
+PY_STATE_VERSION
+}
+
+read_state_version() {
+  local setting="$1" candidate value="" found_file=0
+  shift
+  for candidate in "$@"; do
+    [ -f "$candidate" ] || continue
+    found_file=1
+    if value="$(extract_state_version "$candidate" "$setting")"; then
+      STATE_VERSION_VALUE="$value"
+      STATE_VERSION_SOURCE="$candidate"
+      return 0
+    fi
+  done
+
+  if [ "$found_file" -eq 1 ]; then
+    warn "${setting} mevcut dosyalarda basit bir sabit olarak bulunamadı. Güvenlik için tahmin etmeyeceğim."
+    read -rp "Mevcut ${setting} değerini girin (örn. 24.11; bilmiyorsanız boş bırakıp kurulumu iptal edin): " value
+    [[ "$value" =~ ^[0-9]{2}\.[0-9]{2}$ ]] || error "${setting} doğrulanamadı; dosyalar değiştirilmeden kurulum durduruldu."
+    STATE_VERSION_VALUE="$value"
+    STATE_VERSION_SOURCE="user input"
+  else
+    # A genuinely new installation has no existing compatibility baseline;
+    # leave the repository template's documented default unchanged.
+    STATE_VERSION_VALUE=""
+    STATE_VERSION_SOURCE="repository default (new install)"
+  fi
+}
+
 # ─── File copy ──────────────────────────────────────────
 step "Copying configuration files"
 [[ ! -d "$REPO_DIR/nixos" ]] && error "nixos/ directory not found in repository."
+
+SYSTEM_STATE_VERSION=""
+HOME_STATE_VERSION=""
+read_state_version "system.stateVersion" "$NIXOS_FLAKE_DIR/configuration.nix" "$NIXOS_DIR/configuration.nix"
+SYSTEM_STATE_VERSION="$STATE_VERSION_VALUE"
+log "system.stateVersion source: $STATE_VERSION_SOURCE${SYSTEM_STATE_VERSION:+ (value $SYSTEM_STATE_VERSION)}"
+read_state_version "home.stateVersion" "$NIXOS_FLAKE_DIR/home.nix" "$NIXOS_DIR/home.nix" "$HOME/.config/home-manager/home.nix"
+HOME_STATE_VERSION="$STATE_VERSION_VALUE"
+log "home.stateVersion source: $STATE_VERSION_SOURCE${HOME_STATE_VERSION:+ (value $HOME_STATE_VERSION)}"
 
 sudo mkdir -p "$NIXOS_FLAKE_DIR"
 for f in configuration.nix home.nix flake.nix flake.lock; do
@@ -276,6 +364,26 @@ for f in configuration.nix home.nix flake.nix flake.lock; do
         warn "Skipping missing file: $f"
     fi
 done
+
+# Apply the previously discovered compatibility baselines to the freshly
+# copied template. The template assignments are expected to occur exactly once.
+apply_state_version() {
+  local file="$1" setting="$2" value="$3" escaped_setting count
+  [ -n "$value" ] || return 0
+  case "$setting" in
+    system.stateVersion) escaped_setting='system\.stateVersion' ;;
+    home.stateVersion) escaped_setting='home\.stateVersion' ;;
+    *) error "Unsupported stateVersion setting: $setting" ;;
+  esac
+  count="$(sudo grep -Ec "^[[:space:]]*${escaped_setting}[[:space:]]*=" "$file" || true)"
+  [ "$count" = "1" ] || error "${file} içinde ${setting} ataması tekil değil; otomatik güncelleme güvenli değil. Yedek: $BACKUP_DIR"
+  sudo sed -i -E "s|^([[:space:]]*${escaped_setting}[[:space:]]*=[[:space:]]*)\"[^\"]+\";|\\1\"${value}\";|" "$file"
+  sudo grep -Eq "^[[:space:]]*${escaped_setting}[[:space:]]*=[[:space:]]*\"${value}\";" "$file" ||
+    error "${setting} korunamadı; yapılandırmayı rebuild etmeyin. Yedek: $BACKUP_DIR"
+  log "Preserved ${setting}=${value} in $file"
+}
+apply_state_version "$NIXOS_FLAKE_DIR/configuration.nix" "system.stateVersion" "$SYSTEM_STATE_VERSION"
+apply_state_version "$NIXOS_FLAKE_DIR/home.nix" "home.stateVersion" "$HOME_STATE_VERSION"
 
 # DÜZELTME: hardware-configuration.nix daha önce HİÇ kopyalanmıyordu, sadece
 # uyarılıyordu. Oysa configuration.nix `imports = [ ./hardware-configuration.nix ]`

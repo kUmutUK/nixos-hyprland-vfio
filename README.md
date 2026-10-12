@@ -24,6 +24,7 @@ kurulumu.
 - [Bilinen sınırlar](#bilinen-sınırlar)
 - [Depo haritası](#depo-haritası)
 - [Doğrulama](#doğrulama)
+- [2026-10-12 düzeltme sonrası canlı sistem kontrol listesi](docs/POST-FIX-VALIDATION-2026-10-12.md)
 
 ---
 
@@ -120,8 +121,16 @@ Kritik iki nokta:
 ./install.sh
 ```
 
-Betik GPU/IOMMU tespiti yapar, GPU PCI adreslerini sorup **hem** hook'a
-**hem** `win10.xml`'e işler, ayarları `home.nix`'e yazar ve yedek alır.
+Arşivden çıkarma/kopyalama sırasında çalıştırma biti kaybolduysa `chmod +x install.sh`
+çalıştırın; izin değiştirmek istemiyorsanız `bash ./install.sh` aynı betiği çalıştırır.
+Betik, mevcut `configuration.nix` ve `home.nix` içindeki `system.stateVersion` /
+`home.stateVersion` değerlerini kopyalama öncesinde korur. Mevcut bir dosyada değeri
+belirleyemezse değer girilmeden devam etmez; yeni kurulumda depo şablonundaki değer kalır.
+
+Betik GPU/IOMMU tespiti yapar, girilen GPU ve GPU ses PCI adreslerinin yalnızca biçimini
+ve varlığını değil PCI sınıfını da kontrol eder; GPU adresi VGA/3D/display controller,
+ses adresi audio controller değilse kurulum durur. Adresleri **hem** hook'a **hem**
+`win10.xml`'e işler, ayarları `home.nix`'e yazar ve yedek alır.
 
 Elle klonluyorsanız (betiği çalıştırmadan) `home.nix` içindeki **5 değeri elle
 doldurmanız gerekir** — `KURULUM.md` §7b'de tablo hâlinde listeli.
@@ -366,7 +375,7 @@ Bunlar "NixOS'un default'undan farklı ve bilinçli" seçimlerdir:
 | `systemd-boot` | UEFI zorunlu; GRUB yok. |
 | `virtualisation.libvirtd.hooks.qemu.vfio` | libvirt hook'u yalnızca `/var/lib/libvirt/hooks/qemu.d/` altını tarar — `/etc/libvirt/hooks` **okunmaz**. NixOS'un `environment.etc` ile `/etc`'ye koyması hook'u sessizce ölü bırakırdı. |
 | Hook shebang'ı store-path'li | `libvirtd.service`'in PATH'inde bash yok; `#!/usr/bin/env bash` script'i hiç başlatmıyordu. |
-| Hook PATH'i zorlanıyor | `ls` (findutils) ve `sed` (gnused) coreutils'te **değildir**; eksikken `gpu_drm_card()` sessizce hep `card0`'a düşüyordu. |
+| Hook PATH'i zorlanıyor | `ls` (findutils) ve `sed` (gnused) coreutils'te **değildir**. PATH eksikliği veya sysfs'te DRM eşleşmesi olmaması artık `card0` varsayımı üretmez; GPU devri fail-closed şekilde iptal edilir. |
 | `zramSwap.priority = 100` | Disk swap'in `priority = 10`. Yüksek öncelik önce kullanılır — önceki durumda zram hiç devreye girmiyordu (~8 MiB ölçülmüştü). |
 | `vm.swappiness = 180` | RAM baskınken agresif temizlemeye izin verir. (Öncelik seçmez, **yazma eğilimini** ayarlar.) Bedeli: major page fault/swap baskısı artabilir; zram dolup disk swap devreye girerse oyun frametime'ı sıçrayabilir. |
 | `hypridle` 900 sn → `systemctl suspend` | Suspend öncesi hyprlock **çağrılmaz**: foreground'da bloklar ve arkadaki suspend'e hiç sıra gelmez. Kilit zaten `before_sleep_cmd` ile yapılıyor. |
