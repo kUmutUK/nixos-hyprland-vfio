@@ -131,6 +131,15 @@ case "$audio_class_code" in
 esac
 log "PCI sınıfları doğrulandı: GPU=$gpu_class_code, Audio=$audio_class_code"
 
+# GPU görüntü ve HDMI/DisplayPort ses fonksiyonları aynı fiziksel PCI
+# aygıtının (domain:bus:slot) fonksiyonları olmalıdır.
+gpu_slot="${gpu_pci%.*}"
+audio_slot="${gpu_audio%.*}"
+if [[ "${gpu_slot,,}" != "${audio_slot,,}" ]]; then
+  error "GPU ve HDMI/DP ses fonksiyonu aynı PCI domain:bus:slot üzerinde olmalı: GPU=$gpu_pci, Audio=$gpu_audio"
+fi
+log "GPU/audio aynı PCI aygıtında: $gpu_slot"
+
 gpu_grp=$(basename "$(readlink -f "/sys/bus/pci/devices/${gpu_pci}/iommu_group" 2>/dev/null)" 2>/dev/null)
 audio_grp=$(basename "$(readlink -f "/sys/bus/pci/devices/${gpu_audio}/iommu_group" 2>/dev/null)" 2>/dev/null)
 if [ -n "$gpu_grp" ] && [ -n "$audio_grp" ] && [ "$gpu_grp" != "$audio_grp" ]; then
@@ -160,7 +169,7 @@ if [[ "$CPU_VENDOR" != "amd" || "$GPU_VENDOR" != "amd" ]]; then
   if [[ "$CPU_VENDOR" == "intel" ]]; then
     echo "  - Switch 'hardware.cpu.amd.updateMicrocode' → 'hardware.cpu.intel.updateMicrocode'"
     echo "  - Replace 'kvm-amd' → 'kvm-intel'"
-    echo "  - Replace 'amd_iommu=on' → 'intel_iommu=on'"
+    echo "  - IOMMU etkinliğini BIOS/UEFI ve kernel parametreleriyle ayrıca doğrulayın (Intel VT-d)."
     echo "  - Remove 'amd_pstate=active' kernel parameter"
   fi
   if [[ "$GPU_VENDOR" == "nvidia" ]]; then
@@ -180,17 +189,31 @@ fi
 
 # ─── IOMMU group preflight ─────────────────────────────────
 step "IOMMU group check"
-short_pci() { echo "$1" | sed -E 's/^0000://'; }
-gpu_short="$(short_pci "$gpu_pci")"
-iommu_dir="/sys/bus/pci/devices/0000:${gpu_short}/iommu_group"
-if [ -e "$iommu_dir" ]; then
-  group_num="$(basename "$(readlink -f "$iommu_dir")")"
-  info "GPU (0000:${gpu_short}) IOMMU group: ${group_num}"
-  echo "Bu gruptaki tüm PCI cihazları:"
+gpu_iommu_dir="/sys/bus/pci/devices/${gpu_pci}/iommu_group"
+audio_iommu_dir="/sys/bus/pci/devices/${gpu_audio}/iommu_group"
+gpu_grp=""
+audio_grp=""
+[ ! -e "$gpu_iommu_dir" ] || gpu_grp="$(basename "$(readlink -f "$gpu_iommu_dir")")"
+[ ! -e "$audio_iommu_dir" ] || audio_grp="$(basename "$(readlink -f "$audio_iommu_dir")")"
+
+show_iommu_group() {
+  local group_num="$1" dev dev_addr
+  [ -n "$group_num" ] || return 0
+  info "IOMMU group ${group_num} üyeleri:"
   for dev in /sys/kernel/iommu_groups/"${group_num}"/devices/*; do
+    [ -e "$dev" ] || continue
     dev_addr="$(basename "$dev")"
-    lspci -nns "${dev_addr#0000:}" | sed 's/^/    /'
+    lspci -nns "$dev_addr" | sed 's/^/    /'
   done
+}
+
+if [ -n "$gpu_grp" ]; then
+  info "GPU ($gpu_pci) IOMMU group: $gpu_grp"
+  show_iommu_group "$gpu_grp"
+  if [ -n "$audio_grp" ] && [ "$audio_grp" != "$gpu_grp" ]; then
+    warn "Ses fonksiyonu ($gpu_audio) farklı IOMMU grubunda: $audio_grp"
+    show_iommu_group "$audio_grp"
+  fi
   echo ""
   warn "Yukarıdaki listede GPU (${gpu_pci}) ve ses fonksiyonu (${gpu_audio})"
   warn "DIŞINDA bir cihaz varsa, o cihaz da VM'e verilmeden GPU'yu tek"
@@ -818,7 +841,7 @@ echo -e "${step_num}. Rebuild, then REBOOT before VM disk setup:"
 echo -e "   ${CYAN}sudo nixos-rebuild dry-activate --flake ${NIXOS_FLAKE_DIR}#nixos${NC}"
 echo -e "   ${CYAN}sudo nixos-rebuild switch     --flake ${NIXOS_FLAKE_DIR}#nixos${NC}"
 echo -e "   ${CYAN}sudo reboot${NC}"
-echo -e "   ${YELLOW}REBOOT ZORUNLU: iommu=pt, amd_iommu=on, amdgpu.ppfeaturemask${NC}"
+echo -e "   ${YELLOW}Yeniden başlatın; IOMMU/AMD-Vi etkinliğini dmesg ve /sys/kernel/iommu_groups ile doğrulayın.${NC}"
 ((step_num++))
 
 echo ""

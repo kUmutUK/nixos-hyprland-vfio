@@ -190,7 +190,7 @@ kopyalanır. `install.sh`'ı çalıştırmadığınız için `home.nix` içindek
 | # | Değer | Varsayılan | Sonucu |
 |---|-------|-----------|--------|
 | 1 | `hyprlandMonitorLine` | `"monitor = ,preferred,auto,1"` | Boş monitör adı, açıkça tanımlanmamış çıkışlara uygulanacak catch-all kuralıdır; workspace aynalama kuralı değildir. Çok monitörde her çıkışa `preferred/auto/1` uygulamak istemiyorsanız gerçek çıkış adını yazın. |
-| 2 | `monitorOutput` | `"DP-3"` | Yanlış çıktıysa `mpvpaper` duvar kağıdı çalışmaz (oturum açılışında kritik uyarı çıkar) |
+| 2 | `monitorOutput` | `""` (boş) | Yanlış çıktıysa `mpvpaper` duvar kağıdı çalışmaz (oturum açılışında kritik uyarı çıkar) |
 | 3 | `gitName` | `"changeme"` | Commit'ler sahte isimle etiketlenir |
 | 4 | `gitEmail` | `"you@example.com"` | Commit'ler sahte adresle etiketlenir |
 | 5 | `wallpaperVideo` | `~/Downloads/arthur-leywin-….mp4` | Dosya yoksa `Unit.ConditionPathExists` servisi başlatmaz; oturum açılışında kritik uyarı gösterilir |
@@ -468,11 +468,11 @@ başlatın. Model yoksa betik artık uyarı gösterip çıkar.
 sudo reboot
 ```
 
-> ⚠️ **Reboot zorunludur.** `iommu=pt`, `amd_iommu=on`, `amdgpu.ppfeaturemask`
-> gibi kernel parametreleri `switch` ile uygulanmaz; yalnızca yeniden
-> başlatınca etkin olur. **Reboot olmadan VFIO testi yapılırsa IOMMU açık
-> değildir ve GPU'yu `vfio-pci`'ye bağlamak mümkün olmaz.** Buna karşılık
-> hook'un çalıştığını `switch`'ten hemen sonra da doğrulayabilirsiniz.
+> ⚠️ Kernel parametreleri ve initrd/VFIO modül değişiklikleri için yeniden
+> başlatma gerekebilir. Bu, IOMMU'nun etkin olduğunu tek başına kanıtlamaz.
+> `dmesg | grep -Ei "AMD-Vi|IOMMU"` ve `/sys/kernel/iommu_groups/` ile kontrol edin;
+> BIOS/UEFI ayarlarında IOMMU/AMD-Vi etkin olmalıdır. Hook'un çalışmasını
+> `switch` sonrasında kontrol etmek, IOMMU'nun etkinliğini doğrulamakla aynı değildir.
 
 ## Log kontrol
 

@@ -24,7 +24,7 @@ kurulumu.
 - [Bilinen sınırlar](#bilinen-sınırlar)
 - [Depo haritası](#depo-haritası)
 - [Doğrulama](#doğrulama)
-- [2026-10-12 düzeltme sonrası canlı sistem kontrol listesi](docs/POST-FIX-VALIDATION-2026-10-12.md)
+- [2026-10-12 düzeltme sonrası canlı sistem kontrol listesi](docs/archive/POST-FIX-VALIDATION-2026-10-12.md)
 
 ---
 
@@ -70,7 +70,7 @@ Lisans: MIT — bkz. `LICENSE` (yasal olarak "as is", garanti yok).
 |---|---|
 | **CPU** | AMD Ryzen (desktop). Intel desteklenmiyor — `kvm-amd`, `amd_iommu`, `amd_pstate` sabit kodlanmış. |
 | **GPU** | Doğrulama hedefi RX 6700 XT (Navi 22). Ollama için `rocmOverrideGfx = "10.3.0"` kullanılıyor; diğer modellerde aynı değerin uygun olduğu varsayılmamalı. |
-| **Firmware** | UEFI zorunlu. BIOS'ta IOMMU **açık** olmalı (`amd_iommu=on` etkinleşmesi için). |
+| **Firmware** | UEFI zorunlu. BIOS/UEFI ayarlarında IOMMU/AMD-Vi etkin olmalı; etkinliği çalışan sistemde `dmesg` ve `/sys/kernel/iommu_groups` ile doğrulayın. |
 | **Depolama** | ~810 GB boş alan (aşağıdaki bölümlendirmede 1 GiB EFI + 8 GiB swap + 800 GiB LUKS). |
 | **Kernel** | CachyOS BORE-LTO paketi flake input'u üzerinden seçiliyor. Gerçek sürüm, kilitli girdi ve güncellenen paketle değişebilir; çalışan sürümü `uname -r` ile kontrol edin. |
 | **Disk** | LUKS2 + Btrfs (subvolume'lu) + EFI. Swap LUKS'un **dışında**, açık bölümde. |
@@ -143,10 +143,11 @@ sudo nixos-rebuild switch     --flake /etc/nixos/nixos#nixos
 sudo reboot            # ZORUNLU
 ```
 
-> 🔴 **Reboot zorunludur.** `iommu=pt`, `amd_iommu=on`,
-> `amdgpu.ppfeaturemask` gibi kernel parametreleri `switch` ile uygulanmaz.
-> **Reboot etmeden VFIO testi yaparsanız IOMMU açık değildir** ve GPU
-> `vfio-pci`'ye bağlanmaz.
+> 🔴 Kernel parametreleri ve initrd/VFIO modül değişiklikleri `switch` ile
+> çalışan kernel üzerinde geriye dönük uygulanmaz; yapılandırma değişikliklerinden
+> sonra yeniden başlatın. Reboot tek başına IOMMU'nun etkin olduğunu kanıtlamaz:
+> `dmesg | grep -Ei "AMD-Vi|IOMMU"` ve `/sys/kernel/iommu_groups/` ile doğrulayın.
+> BIOS/UEFI tarafında IOMMU/AMD-Vi kapalıysa kernel parametresi bunu her sistemde aşamaz.
 
 ### SSH notu
 
