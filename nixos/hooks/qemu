@@ -30,7 +30,7 @@ bind_vfio() {
     if ! echo "$dev" > "/sys/bus/pci/drivers/vfio-pci/bind" 2>/dev/null; then
       log "UYARI: $dev -> vfio-pci bind basarisiz, drivers_probe deneniyor."
       echo "$dev" > /sys/bus/pci/drivers_probe 2>/dev/null ||
-        log "  $dev -> drivers_probe de basarisiz. En olasi nedenler: IOMMU kapali (BIOS'ta amd_iommu=on), ya da kart baska bir surucuye bagli ve IOMMU grubu tek basina degil."
+        log "  $dev -> drivers_probe de basarisiz. En olasi nedenler: IOMMU/AMD-Vi BIOS/UEFI tarafinda kapali olabilir veya kart baska bir surucuye bagli ve IOMMU grubu tek basina olmayabilir."
     fi
   done
 }
