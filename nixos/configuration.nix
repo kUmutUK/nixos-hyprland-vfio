@@ -144,33 +144,12 @@ in
     # lockup tespitini kapatır. Düşük jitter tercihi; beklenmeyen kilitlenmelerde
     # tanı imkânı azalır.
     "amd_pstate=active" "nowatchdog" "nmi_watchdog=0"
-    # DÜZELTME (2026-10-09): "amd_iommu=on" EKLENDİ — config'te hiç yoktu,
-    # ama README, KURULUM.md ve install.sh onu bu config'in bir parametresi
-    # olarak anıyordu (README:45,47,112 · KURULUM.md:374 · install.sh:83,511).
-    # Özellikle README "Reboot etmeden VFIO testi yaparsanız IOMMU açık değildir"
-    # gerekçesini bu parametreye bağlıyordu. Belgelerden çıkarmak yerine
-    # parametreyi eklemek seçildi, çünkü:
-    #   • Modern Zen sistemlerinde kernel, AMD IOMMU'yu çoğunlukla varsayılan
-    #     olarak açar; ancak bu kernel, BIOS/firmware ve platform ayarlarına bağlıdır.
-    #     IOMMU zaten etkinse bu parametre pratikte no-op'tur.
-    #   • "amd_iommu=on" kernel'e IOMMU'yu etkinleştirmesini söyler; firmware desteği
-    #     eksikse veya BIOS IOMMU'yu devre dışı bırakıyorsa bunu tek başına aşamaz.
-    #   • Belgeyi "kernel 5.18+ varsayılan" diye sürüm-bağımlı bir iddiaya
-    #     çevirmek, eski kernelde veya sürücü/firmware sürprizinde yanlış yönlendirir.
-    # NOT: bu bir ALT SİSTEM beyanıdır (IOMMU açık olmalı), bir performans
-    # dengesi değildir. Aynı sınıftan olmayan "rcupdate.rcu_expedited=1" ile
-    # karıştırılmamalı — o, ayrı bir karar (bkz. aşağıdaki not).
-    "transparent_hugepage=madvise" "iommu=pt" "amd_iommu=on"
-    # USB autosuspend tamamen kapalı: bazı cihazların uyku/uyanma ve passthrough
-    # sorunlarını azaltabilir, ancak boşta USB güç tüketimini artırabilir.
-    "usbcore.autosuspend=-1" "video=efifb:off"
-    "amdgpu.ppfeaturemask=0xfffd7fff"
-    # Windows/KVM'de beklenmeyen MSR erişimlerini hata yerine yok sayar; bazı
-    # guest uyumluluk sorunlarını önleyebilir, ancak MSR hatalarını gizler.
-    "kvm.ignore_msrs=1"
-    # Güncel çekirdeklerde pcie_aspm=off, ASPM'yi kapatmaz; firmware'in
-    # mevcut ASPM ayarını olduğu gibi bırakır. VFIO gecikme kazancı garanti etmez.
-    "pcie_aspm=off"
+    # IOMMU etkinliği CPU, kernel ve platform firmware/BIOS ayarlarına bağlıdır.
+    # `iommu=pt` passthrough odaklı DMA eşleme davranışını seçer; IOMMU'nun
+    # donanım/firmware tarafından etkin olduğunun tek başına kanıtı değildir.
+    # `amd_iommu=on` tüm kernel sürümlerinde belgelenmiş bir AMD parametresi
+    # olmadığından burada kullanılmıyor. Çalışma anında dmesg ve
+    # /sys/kernel/iommu_groups ile doğrulayın.
     # "rcupdate.rcu_expedited=1" 2026-10-09'da KALDIRILDI. Host'u koşulsuz
     # etkiliyordu ve README'deki gerekçesi ("Windows'un RCU bekleme davranışı")
     # olgusal olarak yanlıştı — Windows'ta RCU yok. Gerçek etkisi host'ta tüm
