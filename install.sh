@@ -221,7 +221,7 @@ if [ -n "$gpu_grp" ]; then
   read -rp "Devam etmek istiyor musunuz? (yes/no): " iommu_confirm
   [[ "$iommu_confirm" != "yes" ]] && { info "Aborted."; exit 0; }
 else
-  warn "IOMMU group bilgisi okunamadı (${iommu_dir} yok)."
+  warn "GPU IOMMU group bilgisi okunamadı (${gpu_iommu_dir} yok)."
   warn "IOMMU'nun BIOS'ta etkin olduğundan emin olun; kontrol atlanıyor."
 fi
 
