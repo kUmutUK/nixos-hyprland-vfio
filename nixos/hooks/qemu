@@ -53,11 +53,23 @@ release_host_driver() {
   done
 }
 
+# Bağlı PCI sürücüsünün gerçek adını döndür. `readlink -f`, son bileşen
+# mevcut değilken de normalize edilmiş yolu döndürebilir; sürücüsüz cihazda
+# bu yolun basename'i yanlışlıkla "driver" olur. `-L` + `readlink -e`,
+# sürücü symlink'inin gerçekten var ve hedefinin çözümlenebilir olmasını ister.
+device_driver_name() {
+  local dev="$1" devices_root="${2:-/sys/bus/pci/devices}" driver_link resolved
+  driver_link="${devices_root}/${dev}/driver"
+  [ -L "$driver_link" ] || return 1
+  resolved="$(readlink -e -- "$driver_link" 2>/dev/null)" || return 1
+  printf '%s\n' "${resolved##*/}"
+}
+
 # Cihaz gerçek (vfio-pci olmayan, boş olmayan) bir sürücüye bağlanmış mı?
 device_has_real_driver() {
-  local dev="$1" drv
-  drv=$(basename "$(readlink -f "/sys/bus/pci/devices/$dev/driver" 2>/dev/null)" 2>/dev/null)
-  [ -n "$drv" ] && [ "$drv" != "vfio-pci" ]
+  local drv
+  drv="$(device_driver_name "$1" "${2:-/sys/bus/pci/devices}")" || return 1
+  [ "$drv" != "vfio-pci" ]
 }
 
 # TOPLULUK ÇÖZÜMÜ (fallback): RDNA1/RDNA2 (Navi 10-23, RX 6700 XT dahil)
@@ -295,8 +307,8 @@ start_hyprland() {
 # Cihaz gerçekten vfio-pci'ye bağlanmış mı? (bind_vfio'nun sessizce
 # yuttuğu hataları burada gerçek bir kontrolle yakalıyoruz.)
 device_bound_to_vfio() {
-  local dev="$1" drv
-  drv=$(basename "$(readlink -f "/sys/bus/pci/devices/$dev/driver" 2>/dev/null)" 2>/dev/null)
+  local drv
+  drv="$(device_driver_name "$1" "${2:-/sys/bus/pci/devices}")" || return 1
   [ "$drv" = "vfio-pci" ]
 }
 
@@ -304,16 +316,17 @@ device_bound_to_vfio() {
 # düzelt. Canlı sürücü hâlâ host sürücüsüyse onu unbind etme; bind_vfio
 # sürücü değiştiremeden başarısız olmuş olabilir. Yalnızca override'ı temizle.
 restore_prepare_device() {
-  local dev="$1" touched="$2" drv
+  local dev="$1" touched="$2" devices_root="${3:-/sys/bus/pci/devices}" drv
   [ "$touched" = "1" ] || return 0
 
-  drv=$(basename "$(readlink -f "/sys/bus/pci/devices/$dev/driver" 2>/dev/null)" 2>/dev/null)
-  if [ -z "$drv" ] || [ "$drv" = "vfio-pci" ]; then
+  if drv="$(device_driver_name "$dev" "$devices_root")" && [ "$drv" != "vfio-pci" ]; then
+    log "Rollback: $dev hâlâ $drv sürücüsünde; sürücü unbind edilmeyecek."
+    echo "" > "${devices_root}/${dev}/driver_override" 2>/dev/null || true
+  else
+    # Boş/çözülemeyen driver symlink'i sürücüsüz cihaz sayılır; host sürücüsünü
+    # tekrar probelamayı atlama. vfio-pci de host sürücüsü değildir.
     log "Rollback: $dev sürücüsüz/vfio-pci; host sürücüsü geri yükleniyor."
     release_host_driver "$dev"
-  else
-    log "Rollback: $dev hâlâ $drv sürücüsünde; sürücü unbind edilmeyecek."
-    echo "" > "/sys/bus/pci/devices/$dev/driver_override" 2>/dev/null || true
   fi
 }
 
