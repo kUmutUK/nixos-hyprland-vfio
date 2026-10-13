@@ -88,10 +88,15 @@ def extract(lines, index, direct=False):
     # Nix kaçışları: ''${ -> ${ , '' -> boş string
     text = text.replace("''${", "${").replace(CLOSER, "")
 
-    # Do not manufacture a shebang here: the caller uses it to distinguish
-    # actual shell scripts from configuration text matched by a broad marker.
-    # Keep this test meaningful by requiring the source block to carry its own
-    # shebang after Nix interpolation normalization.
+    # `gamemodeNotifyScript` is an explicit `writeShellScriptBin` body. Nix
+    # adds the shebang to its generated executable, so the source block itself
+    # legitimately has none. The extractor's output must still be recognized
+    # as Bash by ShellCheck, so add one for this explicit direct-script marker.
+    # Do not do this for generic markers: their source shebang is how main()
+    # distinguishes shell scripts from config files such as TOML/MangoHud.
+    if direct and not text.startswith("#!"):
+        text = "#!/usr/bin/env bash\n" + text
+
     return text
 
 
