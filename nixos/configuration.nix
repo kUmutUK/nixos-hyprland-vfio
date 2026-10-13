@@ -482,7 +482,7 @@ in
     hyprpolkitagent pyprland waypaper
     networkmanagerapplet brightnessctl playerctl
     pavucontrol cliphist libmtp android-file-transfer
-    ntfs3g exfat gparted crow-translate tesseract translate-shell libnotify
+    ntfs3g exfat android-file-transfer gparted crow-translate tesseract translate-shell libnotify
     steam gamemode gamescope mangohud winetricks procps
     heroic protonup-qt wine nodejs
     virt-manager capitaine-cursors

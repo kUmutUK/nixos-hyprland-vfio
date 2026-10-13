@@ -77,9 +77,10 @@ in
   };
 
   swapDevices = [{
-    device = "/dev/disk/by-uuid/9c308abc-19d2-436e-b283-51256ac32600";
-    priority = 10;
-  }];
+  device = "/dev/disk/by-partuuid/efe099dd-2630-4f9c-802a-25e758815777";
+  randomEncryption.enable = true;
+  priority = 10;
+}];
 
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
   hardware.cpu.amd.updateMicrocode = lib.mkDefault config.hardware.enableRedistributableFirmware;
