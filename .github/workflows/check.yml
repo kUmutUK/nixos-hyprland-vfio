@@ -46,8 +46,11 @@ jobs:
             sudo apt-get update -qq
             sudo apt-get install -y -qq shellcheck
           fi
-          shellcheck -S warning install.sh nixos/hooks/qemu
+          shellcheck -S warning install.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh
           echo "  shellcheck OK"
+
+      - name: VFIO hook driver-state regression tests
+        run: bash scripts/test-vfio-hook-driver-state.sh
 
       - name: ShellCheck of the Nix-generated VFIO hook
         # Kaynak hooks/qemu tek başına denetleniyordu; configuration.nix içindeki
