@@ -88,8 +88,10 @@ def extract(lines, index, direct=False):
     # Nix kaçışları: ''${ -> ${ , '' -> boş string
     text = text.replace("''${", "${").replace(CLOSER, "")
 
-    if not text.startswith("#!"):
-        text = "#!/usr/bin/env bash\n" + text
+    # Do not manufacture a shebang here: the caller uses it to distinguish
+    # actual shell scripts from configuration text matched by a broad marker.
+    # Keep this test meaningful by requiring the source block to carry its own
+    # shebang after Nix interpolation normalization.
     return text
 
 
