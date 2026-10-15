@@ -10,6 +10,17 @@ HOME_CONFIG="$ROOT/nixos/home.nix"
 
 bash -n "$INSTALLER"
 
+# Guard against the former SC2154 typo: the warning must reference the declared
+# gpu_iommu_dir variable, not an undeclared iommu_dir variable.
+if grep -Eq '\$\{iommu_dir\}|\$iommu_dir([^[:alnum:]_]|$)' "$INSTALLER"; then
+  echo "FAIL: undeclared iommu_dir variable reference remains in installer." >&2
+  exit 1
+fi
+if ! grep -Fq '${gpu_iommu_dir} is missing' "$INSTALLER"; then
+  echo "FAIL: IOMMU warning must use the declared gpu_iommu_dir variable." >&2
+  exit 1
+fi
+
 assignment_line="$(awk '/^PATCHED_XML="\/var\/lib\/libvirt\/win10\.xml"$/ { print NR; exit }' "$INSTALLER")"
 first_use_line="$(awk '/\$PATCHED_XML/ { print NR; exit }' "$INSTALLER")"
 if [[ -z "$assignment_line" || -z "$first_use_line" || "$assignment_line" -ge "$first_use_line" ]]; then
@@ -23,9 +34,13 @@ import sys
 
 text = Path(sys.argv[1]).read_text(encoding="utf-8")
 guard = 'if [ ! -f /var/lib/libvirt/win10.xml ]; then'
-copy = 'sudo cp /etc/nixos/vm-xml/win10.xml /var/lib/libvirt/win10.xml'
+copy = 'sudo cp ./vm-xml/win10.xml /var/lib/libvirt/win10.xml'
 if guard not in text or copy not in text or text.index(guard) > text.index(copy):
-    raise SystemExit("FAIL: README must only copy the source VM XML when no deployed XML exists.")
+    raise SystemExit("FAIL: README must only copy the repository VM XML when no deployed XML exists.")
+if "Before rebuilding, make sure `/etc/nixos/hashedPassword` exists" not in text:
+    raise SystemExit("FAIL: README must document hashedPassword as a prerequisite for migration rebuilds.")
+if 'test -s /etc/nixos/hashedPassword' not in text or 'sudo chmod 600 /etc/nixos/hashedPassword' not in text:
+    raise SystemExit("FAIL: README must check hashedPassword and restrict its permissions.")
 PY
 
 if grep -q 'tr_TR\.UTF-8' "$CONFIG" "$HOME_CONFIG"; then
