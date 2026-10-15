@@ -7,7 +7,9 @@ import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-XML_PATH = Path(__file__).resolve().parents[1] / "vm-xml" / "win10.xml"
+ROOT = Path(__file__).resolve().parents[1]
+XML_PATH = ROOT / "vm-xml" / "win10.xml"
+HOOK_PATH = ROOT / "nixos" / "hooks" / "qemu"
 
 
 def fail(message: str) -> int:
@@ -73,12 +75,46 @@ def main() -> int:
     hostdevs = root.findall("./devices/hostdev[@type='pci']")
     if len(hostdevs) < 2:
         return fail("GPU passthrough template must include the GPU and its audio function")
-    for hostdev in hostdevs:
+
+    def source_bdf(hostdev: ET.Element) -> str | None:
         address = hostdev.find("./source/address")
         if address is None or any(address.get(attr) is None for attr in ("domain", "bus", "slot", "function")):
-            return fail("every PCI hostdev must have a complete source address")
+            return None
+        try:
+            domain = int(address.get("domain", ""), 0)
+            bus = int(address.get("bus", ""), 0)
+            slot = int(address.get("slot", ""), 0)
+            function = int(address.get("function", ""), 0)
+        except ValueError:
+            return None
+        return f"{domain:04x}:{bus:02x}:{slot:02x}.{function:x}"
 
-    print("OK: VM XML project invariants passed (well-formedness, Q35 type, CD-ROM priority, and PCI hostdevs).")
+    xml_bdfs = [source_bdf(hostdev) for hostdev in hostdevs]
+    if any(bdf is None for bdf in xml_bdfs):
+        return fail("every PCI hostdev must have a complete, numeric source address")
+
+    try:
+        hook_text = HOOK_PATH.read_text(encoding="utf-8")
+    except OSError as exc:
+        return fail(f"cannot read QEMU hook {HOOK_PATH}: {exc}")
+
+    def hook_pci_value(variable: str) -> str | None:
+        match = re.search(rf'^{re.escape(variable)}="([0-9a-fA-F:_.]+)"$', hook_text, re.MULTILINE)
+        return match.group(1).lower() if match else None
+
+    hook_gpu = hook_pci_value("GPU_PCI")
+    hook_audio = hook_pci_value("GPU_AUDIO")
+    if hook_gpu is None or hook_audio is None:
+        return fail("QEMU hook must declare literal GPU_PCI and GPU_AUDIO defaults")
+    if hook_gpu == hook_audio:
+        return fail("QEMU hook GPU and audio defaults must be different PCI functions")
+    if set(xml_bdfs) != {hook_gpu, hook_audio}:
+        return fail(
+            "VM XML GPU/audio source PCI addresses must match QEMU hook defaults; "
+            f"XML={sorted(xml_bdfs)}, hook={[hook_gpu, hook_audio]}"
+        )
+
+    print("OK: VM XML invariants passed (well-formedness, Q35, boot order, and PCI addresses matching the QEMU hook).")
     print("NOTE: this test does not replace a libvirt/QEMU semantic validation or a real VM boot test.")
     return 0
 

@@ -33,6 +33,16 @@ if grep -q 'tr_TR\.UTF-8' "$CONFIG" "$HOME_CONFIG"; then
   exit 1
 fi
 
+if grep -Rqi waypaper "$CONFIG" "$HOME_CONFIG" "$ROOT/install.sh" "$ROOT/.github" "$README"; then
+  echo "FAIL: Waypaper remains in active configuration, installer, CI, or current README." >&2
+  exit 1
+fi
+
+if grep -Fq '`lspci -nn`' "$INSTALLER"; then
+  echo "FAIL: installer error text must not execute lspci using command substitution." >&2
+  exit 1
+fi
+
 python3 - "$CONFIG" "$HOME_CONFIG" "$INSTALLER" "$ROOT/nixos/hooks/qemu" "$ROOT/vm-xml/win10.xml" <<'PY'
 from pathlib import Path
 import sys
@@ -42,7 +52,7 @@ forbidden = (
     "Bağlı Değil", "Bağlantı yok", "Çeviri:", "Otomatik Çeviri", "Durduruldu",
     "bulunamadı", "Kullanılan:", "Toplam:", "Boş:", "CPU kullanımı:", "Güç Menüsü",
     "Şifre...", "altyazı|", "seçenekler|", "yaninda renderD", "KLAVYE/FARE GİRİŞİ",
-    "GPU PCI adresi:", "GPU Audio PCI adresi:", "tee 644 acar", "Ollama API henüz hazır",
+    "GPU PCI adresi:", "GPU Audio PCI adresi:", "tee 644 acar", "Ollama API henüz hazır", "Renk",
 )
 for name in sys.argv[1:]:
     text = Path(name).read_text(encoding="utf-8")
@@ -51,4 +61,4 @@ for name in sys.argv[1:]:
         raise SystemExit(f"FAIL: Turkish UI/comment strings remain in {name}: {', '.join(found)}")
 PY
 
-echo "OK: installer XML destination, README XML preservation, English locale, and runtime UI invariants passed."
+echo "OK: installer XML destination, Waypaper removal, literal PCI diagnostics, English locale, and runtime UI invariants passed."
