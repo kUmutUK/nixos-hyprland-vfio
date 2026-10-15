@@ -73,8 +73,11 @@ def main() -> int:
         return fail("Windows installation ISO should use the SATA CD-ROM device")
 
     hostdevs = root.findall("./devices/hostdev[@type='pci']")
-    if len(hostdevs) < 2:
-        return fail("GPU passthrough template must include the GPU and its audio function")
+    if len(hostdevs) != 2:
+        return fail(
+            "GPU passthrough template must contain exactly two PCI hostdevs "
+            f"(GPU and audio function); found {len(hostdevs)}"
+        )
 
     def source_bdf(hostdev: ET.Element) -> str | None:
         address = hostdev.find("./source/address")
@@ -93,6 +96,12 @@ def main() -> int:
     if any(bdf is None for bdf in xml_bdfs):
         return fail("every PCI hostdev must have a complete, numeric source address")
 
+    # A set comparison alone can hide duplicate entries: sets collapse repeated
+    # BDFs. Check uniqueness explicitly before comparing with the two hook defaults.
+    normalized_xml_bdfs = [bdf.lower() for bdf in xml_bdfs if bdf is not None]
+    if len(set(normalized_xml_bdfs)) != len(normalized_xml_bdfs):
+        return fail("PCI hostdev source addresses must be unique; duplicate BDF found")
+
     try:
         hook_text = HOOK_PATH.read_text(encoding="utf-8")
     except OSError as exc:
@@ -108,13 +117,13 @@ def main() -> int:
         return fail("QEMU hook must declare literal GPU_PCI and GPU_AUDIO defaults")
     if hook_gpu == hook_audio:
         return fail("QEMU hook GPU and audio defaults must be different PCI functions")
-    if set(xml_bdfs) != {hook_gpu, hook_audio}:
+    if set(normalized_xml_bdfs) != {hook_gpu, hook_audio}:
         return fail(
             "VM XML GPU/audio source PCI addresses must match QEMU hook defaults; "
             f"XML={sorted(xml_bdfs)}, hook={[hook_gpu, hook_audio]}"
         )
 
-    print("OK: VM XML invariants passed (well-formedness, Q35, boot order, and PCI addresses matching the QEMU hook).")
+    print("OK: VM XML invariants passed (well-formedness, Q35, boot order, exactly two unique PCI hostdevs, and addresses matching the QEMU hook).")
     print("NOTE: this test does not replace a libvirt/QEMU semantic validation or a real VM boot test.")
     return 0
 
