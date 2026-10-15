@@ -240,15 +240,13 @@ in
     QT_QPA_PLATFORM = "wayland;xcb";
     XCURSOR_THEME = "capitaine-cursors";
     XCURSOR_SIZE = "16";
-    # Upstream v0.2.0 is opt-in. Keep the layer enabled but leave the default
-    # AMD Anti-Lag 2 interface selected; this is the sensible default for the
-    # AMD RX 6700 XT and native Vulkan games such as CS2. Do NOT set
-    # LOW_LATENCY_LAYER_REFLEX globally: that switches every Vulkan application
-    # to the Reflex interface. For a Proton game that needs Reflex, set it only
-    # in that game's Steam launch options, e.g.:
-    # LOW_LATENCY_LAYER=1 LOW_LATENCY_LAYER_REFLEX=1 %command%
+    # Upstream v0.2.0 is opt-in. Enable the layer and select its Reflex interface
+    # globally. This switches Vulkan applications away from the default AMD
+    # Anti-Lag 2 interface; if a native game such as CS2 behaves worse, remove
+    # LOW_LATENCY_LAYER_REFLEX or set it only in the relevant game's launch options.
     # NVIDIA spoofing is deliberately not enabled; upstream warns it can break FSR4.
     LOW_LATENCY_LAYER = "1";
+    LOW_LATENCY_LAYER_REFLEX = "1";
   };
 
   programs.fish.enable = true;
