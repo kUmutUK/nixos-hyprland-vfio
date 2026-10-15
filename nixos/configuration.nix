@@ -448,26 +448,40 @@ in
     };
   };
 
-  # With `qemu.runAsRoot = false`, libvirt opens disk and NVRAM files as
-  # `qemu-libvirtd`. Existing files created by root can cause `virsh start win10` to
-  # fail with `Permission denied`; the oneshot service fixes ownership before libvirtd.
+  # With `qemu.runAsRoot = false`, QEMU needs access to its disk images and guest
+  # NVRAM/state files. Run after libvirt has created its config directories, and do not
+  # change ownership of qemu.conf, network XML files, hooks, or the libvirt root itself.
   systemd.services.libvirtd-qemu-ownership = {
     description = "Fix ownership of libvirt images/NVRAM for qemu-libvirtd";
     wantedBy = [ "multi-user.target" ];
+    requires = [ "libvirtd-config.service" ];
+    after = [ "libvirtd-config.service" ];
     before = [ "libvirtd.service" ];
     serviceConfig = { Type = "oneshot"; RemainAfterExit = true; };
-    # The libvirtd module creates the `qemu-libvirtd` user/group. Ignore a chown failure
-    # if activation runs before the account exists.
     script = ''
-      # Do not change ownership of `/var/lib/libvirt` itself; it contains privileged
-      # libvirt state and hook files. Fix only the relevant working directories and their
-      # first-level children rather than recursively changing the entire tree.
-      for d in /var/lib/libvirt/images /var/lib/libvirt/qemu /var/lib/libvirt/swtpm; do
-        if [ -d "$d" ]; then
-          chown qemu-libvirtd:qemu-libvirtd "$d" 2>/dev/null || true
-          find "$d" -maxdepth 2 -exec chown -h qemu-libvirtd:qemu-libvirtd {} + 2>/dev/null || true
+      owner="qemu-libvirtd:qemu-libvirtd"
+
+      # libvirtd-config.service prepares /var/lib/libvirt/qemu. Create only the
+      # dedicated NVRAM directory; leave the parent and its config files root-owned.
+      mkdir -p /var/lib/libvirt/qemu/nvram
+      chown "$owner" /var/lib/libvirt/qemu/nvram
+      chmod 0750 /var/lib/libvirt/qemu/nvram
+
+      fix_qemu_data_tree() {
+        path="$1"
+        if [ -d "$path" ]; then
+          chown "$owner" "$path"
+          find "$path" -mindepth 1 -maxdepth 2 -exec chown -h "$owner" {} +
+        elif [ -e "$path" ]; then
+          chown -h "$owner" "$path"
         fi
-      done
+      }
+
+      # These paths contain guest data/state. Do not include /var/lib/libvirt/qemu itself:
+      # it contains root-managed qemu.conf and network XML files.
+      fix_qemu_data_tree /var/lib/libvirt/images
+      fix_qemu_data_tree /var/lib/libvirt/qemu/nvram
+      fix_qemu_data_tree /var/lib/libvirt/swtpm
     '';
   };
 
