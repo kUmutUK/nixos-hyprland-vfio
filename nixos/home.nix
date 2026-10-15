@@ -373,7 +373,7 @@ let
     # The systemd user environment lacked `HYPRLAND_INSTANCE_SIGNATURE`, so the
     # mpvpaper watchdog could not find the Hyprland socket and restarted repeatedly.
     # Import the environment before starting the watchdog.
-    exec-once = ${pkgs.coreutils}/bin/sh -c 'systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE HYPRLAND_INSTANCE_SIGNATURE HYPRLAND_DISPLAY; systemctl --user start mpvpaper-watchdog gamemode-notify'
+    exec-once = ${pkgs.coreutils}/bin/sh -c 'systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE HYPRLAND_INSTANCE_SIGNATURE HYPRLAND_DISPLAY; systemctl --user start gamemode-notify; if [ -n "$1" ]; then systemctl --user start mpvpaper-watchdog; fi' sh ${lib.escapeShellArg monitorOutput}
     # `ConditionPathExists` belongs in the unit section, not the service section. If the
     # wallpaper video is missing, systemd skips the service and the separate `exec-once`
     # check displays a user-visible warning. Pass the path as a separate argument instead
