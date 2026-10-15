@@ -1,41 +1,18 @@
-# Arşiv — tarihsel analizler (güncel hata listesi değildir)
+# Archived audits and historical notes
 
-**Güncellik notu — 2026-10-12:** Bu klasördeki raporlar farklı ZIP/commit'leri
-inceleyen tarihsel anlık görüntülerdir. Bir raporun içinde “açık” yazması bugünkü
-çalışma ağacında sorunun hâlâ bulunduğu anlamına gelmez. Güncel düzeltme/retrection
-özeti için [`HISTORICAL-AUDITS.md`](HISTORICAL-AUDITS.md) başlangıç noktasıdır.
-Özgün raporlar kaynak izi ve geçmiş retraction'lar korunsun diye silinmedi; yeni
-hata ayıklamada doğrudan uygulanabilir reçete olarak kullanılmamalıdır.
+**Status:** historical snapshots only; not a current defect list.
 
-## `ANALIZ-2026-10-05-ZIP3-SUPERSEDED.md`
+The reports in this directory describe older ZIP files or commits and may contain findings that were later fixed, disproved, or superseded. Check the current source before acting on any old recommendation. The Turkish changelog with the original release-by-release history is preserved at the repository root as `DEGISIKLIK_GECMISI.md`.
 
-`nixos-hyprland-vfio(3).zip` @ commit `97a1665` için yazıldı.
-Bu depodaki kod commit `0137b38` ("Add files via upload", zip (4)).
+## Contents
 
-Yani belgedeki satır numaraları ve iki P1 bulgusu **bugün geçerli değil**:
-
-| Bulgu | Bugünkü durum |
-|---|---|
-| #1 `{H:M}` / `{user}` literal metin | **Düzeltildi.** Artık `$TIME` / `$USER`; hyprlock 0.9.6 `IWidget::formatString` bunları substitute eder (`IWidget.cpp:200,208`) ve `updateEveryMs` ile otomatik tazeler. `nixos/home.nix` → `hyprlockConf` bloğunda da `text = $TIME` kullanılıyor. |
-| #2 Hyprland 0.56.2 `hyprland.lua`'ya öncelik veriyor, `.conf` yok sayılıyor | **Fiilen gerçekleşmiyor.** `Jeremy::getMainConfigPath()` önce `findConfig("hyprland","lua")` arar; ama `Hyprutils::Path::findConfig` yalnızca `XDG_CONFIG_HOME`, `XDG_CONFIG_DIRS` ve `/etc/xdg` altına bakar. NixOS'un `environment.pathsToLink = [ "/share/hypr" ]` ile koyduğu stub `/run/current-system/sw/share/hypr/hyprland.lua` bu dizinlerde **değil** → `~/.config/hypr/hyprland.conf` kazanır. |
-
-Kalan maddelerin güncel hâli CHANGELOG'un `[1.3.0]` bölümündedir.
-
-> ⚠️ **Bu klasördeki iki rapor da aynı şeyi söylüyor ve ikisi de arşiv.**
-> `ANALIZ-2026-10-05.md` adıyla gelen asıl dosya, sonradan yeniden adlandırılarak
-> buraya taşındı. Daha önce buradan `FIXES-2026-10-05.md` ve `FIX-MANIFEST.md`
-> dosyalarına atıf yapılıyordu; **o iki dosya repoda hiçbir zaman bulunmadı**
-> (zip'in Windows'ta bozulmuş dosya adından kaynaklandı, bkz. CHANGELOG 1.3.0).
-> Güncel düzeltme kaydı tek yerde: `CHANGELOG.md` → `[1.3.0]`.
-
-> Not: Bu belge ZIP adındaki (3)/(4) farkından dolayı yanıltıcı bir isimle
-> duruyordu (`ANALIZ-2026-10-05.md`, yani en güncel görünen dosya). Arşivdeki
-> ad artık hangi sürüme karşı yazıldığını açıkça söylüyor.
-
-## `nixos-hyprland-vfio-analiz-v2-SUPERSEDED.md`
-
-Bu repo'nun **ilk** bağımsız analiz raporu ("SÜRÜM 2"). Bu raporun devamı
-olması *planlanan* `FIXES-2026-10-05.md` / `FIX-MANIFEST.md` dosyaları
-yazılmamış; aynı düzeltmelerin fiilen uygulanmış hâli `CHANGELOG.md` → `[1.3.0]`
-bölümünde duruyor. Bu klasördeki iki rapor da **arşivdir, koda bakarak
-doğrulama için kullanma.**
+- [`HISTORICAL-AUDITS.md`](HISTORICAL-AUDITS.md): provenance, retractions, and live-only checks.
+- [`ANALYSIS-2026-10-05-ZIP3-SUPERSEDED.md`](ANALYSIS-2026-10-05-ZIP3-SUPERSEDED.md): early ZIP3 snapshot.
+- [`nixos-hyprland-vfio-analysis-v2-SUPERSEDED.md`](nixos-hyprland-vfio-analysis-v2-SUPERSEDED.md): ZIP2 snapshot.
+- [`NIXOS-HYPRLAND-VFIO-ANALYSIS.md`](NIXOS-HYPRLAND-VFIO-ANALYSIS.md): early consolidated static review.
+- [`nixos-hyprland-vfio-review-report.md`](nixos-hyprland-vfio-review-report.md): 2026-10-12 review snapshot.
+- [`FIX-REPORT-2026-10-13.md`](FIX-REPORT-2026-10-13.md): selected fixes described on 2026-10-13.
+- [`INSTALL-SAFETY-FIXES-2026-10-12.md`](INSTALL-SAFETY-FIXES-2026-10-12.md): installer safety notes.
+- [`POST-FIX-VALIDATION-2026-10-12.md`](POST-FIX-VALIDATION-2026-10-12.md): host-only validation checklist.
+- [`REMAINING-ISSUES-AUDIT-2026-10-09.md`](REMAINING-ISSUES-AUDIT-2026-10-09.md): earlier open-issues snapshot.
+- [`APPLIED-FIXES.md`](APPLIED-FIXES.md): historical fix register.
