@@ -5,6 +5,7 @@ This file summarizes notable changes in English. The original detailed Turkish h
 ## Unreleased — 2026-10-15
 
 ### Fixed
+- Clarified single-GPU recovery guidance: the hook can terminate SSH sessions for the default `localhost` user, so the README and Turkish setup guide now require a physical recovery TTY unless a separate, tested administrative session is configured. Removed a duplicate `android-file-transfer` package entry and corrected a stale Home Manager package-list comment.
 - Removed the unused Waypaper package and `SUPER+W` binding, corrected the installer's missing-PCI-device diagnostic so it does not invoke `lspci` a second time, and translated the color notification title to English.
 - Clarified that IOMMU kernel parameters are not enabled by default, corrected the VM input limitation comment, and added a regression check that VM XML GPU/audio PCI addresses match the QEMU hook defaults.
 - Standardized root-required commands in the fresh-install guides and preserved the generated NixOS config as a backup before installing the repository tree.
