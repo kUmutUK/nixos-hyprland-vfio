@@ -405,12 +405,17 @@ başlangıç/teşhis içindir; oyun için kalıcı çözüm değildir.
 >
 > ⚠️ **VM'i normal shell'den başlatmayın.** Hook `loginctl terminate-user` ile
 > `localhost` kullanıcısının oturumlarını, `loginctl terminate-seat seat0` ile yerel
-> VT/greeter oturumlarını sonlandırabilir. Ayrı TTY de aynı kullanıcı/seat kapsamındaysa
-> kapanabilir; sistem yöneticisinin başlattığı detached unit kullanın:
+> VT/greeter oturumlarını sonlandırabilir. Aynı kullanıcıyla açılan SSH oturumu da
+> kapanabilir. Ayrı TTY aynı kullanıcı/seat kapsamındaysa o da kapanabilir; sistem
+> yöneticisinin başlattığı detached unit kullanın:
 > ```bash
 > sudo systemd-run --unit=vmstart --collect /run/current-system/sw/bin/virsh start win10
 > sudo journalctl -u vmstart.service -b --no-pager
 > ```
+>
+> SSH'yi kurtarma kanalı sayacaksanız, hook'un sonlandırmadığı ayrı bir yönetici hesabını
+> ayrıca yapılandırıp önceden test edin. Varsayılan `localhost` SSH oturumuna güvenmeyin;
+> fiziksel bir kurtarma TTY'si hazır bulundurun.
 >
 > Doğrulama: `sudo virsh dominfo win10` → ad, UUID ve PCI hostdev'ler görünmeli.
 > Hook'un çalıştığını `sudo journalctl -u libvirtd -f` ve

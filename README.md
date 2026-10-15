@@ -21,7 +21,7 @@ A flake-based NixOS gaming desktop that passes its single AMD Radeon GPU through
 
 The host is used for gaming and daily desktop work. When the VM starts, the QEMU hook stops the host graphical session and attaches the GPU functions to `vfio-pci`. When the VM stops, the hook attempts to return the GPU to the host drivers and restore the session. A failed preparation step should roll back and prevent the VM from starting.
 
-This is a personal, hardware-specific configuration, not a universal NixOS installer. Incorrect disk identifiers can destroy data; incorrect filesystem UUIDs can prevent boot; and a failed single-GPU reset can leave the host without graphics. Back up important data and keep a recovery TTY or SSH path available before testing.
+This is a personal, hardware-specific configuration, not a universal NixOS installer. Incorrect disk identifiers can destroy data; incorrect filesystem UUIDs can prevent boot; and a failed single-GPU reset can leave the host without graphics. Back up important data and keep a physical recovery TTY available before testing. Count SSH as a recovery path only after key-based access has been configured and tested through an account that the hook will not terminate; the default `localhost` account's SSH sessions can be ended with its graphical sessions.
 
 The repository is MIT-licensed and is provided “as is,” without warranty. Use it at your own risk.
 
@@ -122,7 +122,7 @@ dmesg | grep -Ei 'AMD-Vi|IOMMU'
 find /sys/kernel/iommu_groups/ -maxdepth 2 -type l
 ```
 
-SSH password authentication is disabled, and no public keys are included by default. Add your own public key to `users.users.localhost.openssh.authorizedKeys.keys` in `nixos/configuration.nix`, or disable `services.openssh` if you do not need SSH.
+SSH password authentication is disabled, and no public keys are included by default. Add your own public key to `users.users.localhost.openssh.authorizedKeys.keys` in `nixos/configuration.nix`, or disable `services.openssh` if you do not need SSH. Enabling SSH does not make it a reliable recovery channel during VM startup: the hook runs `loginctl terminate-user` for `HOST_USER` (default `localhost`), which can terminate SSH sessions logged in as that user. Unless you have configured and tested a separate administrative account that the hook will not terminate, use a physical recovery TTY instead.
 
 ## Preparing and starting the VM
 
@@ -160,7 +160,7 @@ Start the VM outside the graphical login session because the hook may terminate 
 sudo systemd-run --unit=vmstart --collect /run/current-system/sw/bin/virsh start win10
 ```
 
-Check the unit and hook logs from a separate TTY or SSH session:
+Check the unit and hook logs from a physical recovery TTY. An SSH session is suitable only if its account is configured and has been tested to remain outside the hook's `loginctl terminate-user` target; the default `localhost` SSH session may be disconnected:
 
 ```bash
 sudo journalctl -u vmstart.service -b --no-pager
@@ -265,7 +265,7 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 ## Known limitations
 
 - **Navi 2x reset behavior:** reliable reset and host rebind cannot be guaranteed from static analysis. The optional `remove`/`rtcwake`/`rescan` recovery path is disabled by default. Enabling `VFIO_ALLOW_SUSPEND_RECOVERY=1` can suspend the host briefly and should only be attempted after checking firmware support and arranging recovery access.
-- **Single-GPU host:** while the VM owns the GPU, the host does not have a normal graphical session. Keep a recovery TTY or SSH session available.
+- **Single-GPU host:** while the VM owns the GPU, the host does not have a normal graphical session. Keep a physical recovery TTY available. The hook may terminate SSH sessions for `HOST_USER` (default `localhost`), so do not rely on SSH unless a separate, tested administrative account is configured outside that target.
 - **Fixed host user:** the hook defaults to `localhost` and terminates that user's graphical sessions. This is designed for this single-user configuration.
 - **No automatic USB input passthrough:** configure your own keyboard/mouse or a dedicated USB controller. Do not copy the maintainer's commented VID:PID example blindly.
 - **Swap outside LUKS2:** the reference `hardware-configuration.nix` enables per-activation random swap encryption (`randomEncryption.enable = true`). A fresh install must preserve this option in the machine-specific generated hardware file. If it is missing or disabled, the disk swap is unencrypted; random swap encryption is not persistent-key LUKS encryption.

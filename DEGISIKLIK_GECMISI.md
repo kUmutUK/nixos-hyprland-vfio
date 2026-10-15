@@ -548,8 +548,11 @@ ve `environment.persistence` iki ayrı option'dır; biri diğerini doldurmaz.
   yorumların tamamı ispatlandı.
 - **CHANGELOG iddiaları tutarlı:** Hyprland ailesi sürümleri (0.56.2 / 0.9.6 /
   0.1.8 / 0.4.7 / 0.1.3) tek nixpkgs rev'inden geliyor; 2 Vulkan katmanı aktif
-  (3 değil); `@gamemode` `loginLimits`'ten kalkmış; paket tekrarları gerçekten
-  temizlenmiş; `HYPRLAND_CONFIG` sabitlenmiş.
+  (3 değil); `@gamemode` `loginLimits`'ten kalkmış; daha önce incelenen
+  `hyprpicker` / `playerctl` / `wev` / `libnotify` / `pyprland` tekrarları temizlenmiş;
+  `HYPRLAND_CONFIG` sabitlenmiş. **Sonraki denetim notu (2026-10-15):** bu ifade
+  tüm paket listelerinde tekrar kalmadığını garanti etmiyordu; `android-file-transfer`
+  ayrıca `configuration.nix` içinde iki kez kalmıştı ve güncel düzeltmede tekilleştirildi.
 - **`install.sh`'in `home.nix` yaması çalışıyor.** Beş değişkenin regex'i gerçek
   dosyada denendi: her biri tam 1 satır eşleşiyor, `monitorOutput` regex'i
   `hyprlandMonitorLine`'i yanlışlıkla yakalamıyor, yamalanmış dosya
