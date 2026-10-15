@@ -34,6 +34,9 @@ jobs:
           python3 -c "import xml.etree.ElementTree as ET; ET.parse('vm-xml/win10.xml')"
           python3 scripts/test-vm-xml.py
 
+      - name: Installer and English-locale regression checks
+        run: bash scripts/test-installer-invariants.sh
+
       # ---- GATE STEPS (must pass) ----
 
       - name: shellcheck
@@ -48,7 +51,7 @@ jobs:
             sudo apt-get update -qq
             sudo apt-get install -y -qq shellcheck
           fi
-          shellcheck -S warning install.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh
+          shellcheck -S warning install.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh
           echo "  shellcheck OK"
 
       - name: VFIO hook driver-state regression tests
