@@ -783,12 +783,17 @@ if [[ "$CPU_VENDOR" != "amd" || "$GPU_VENDOR" != "amd" ]]; then
 fi
 
 echo ""
-echo -e "${step_num}. Create the hashed password file:"
-echo -e "   ${CYAN}HASH=\$(nix-shell -p whois --run 'mkpasswd --method yescrypt')${NC}"
-echo -e "   ${CYAN}printf '%s\\\\n' \"\$HASH\" | sudo tee /etc/nixos/hashedPassword >/dev/null${NC}"
+echo -e "${step_num}. Ensure the hashed password file exists and is secure:"
+echo "   Preserve an existing valid hash; create one only if the file is missing or empty."
+echo -e "   ${CYAN}if [ ! -s /etc/nixos/hashedPassword ]; then${NC}"
+echo -e "   ${CYAN}  HASH=\$(nix-shell -p whois --run 'mkpasswd --method yescrypt')${NC}"
+echo -e "   ${CYAN}  printf '%s\\\\n' \"\$HASH\" | sudo tee /etc/nixos/hashedPassword >/dev/null${NC}"
+echo -e "   ${CYAN}fi${NC}"
 echo -e "   ${CYAN}sudo chown root:root /etc/nixos/hashedPassword${NC}"
 echo -e "   ${CYAN}sudo chmod 600 /etc/nixos/hashedPassword${NC}"
-echo -e "   ${CYAN}sudo test -s /etc/nixos/hashedPassword && sudo stat -c '%U:%G:%a' /etc/nixos/hashedPassword${NC}   ${YELLOW}(expected: root:root:600)${NC}"
+echo -e "   ${CYAN}sudo test -s /etc/nixos/hashedPassword${NC}"
+echo -e "   ${CYAN}password_meta=\$(sudo stat -c '%U:%G:%a' /etc/nixos/hashedPassword)${NC}"
+echo -e "   ${CYAN}[ \"\$password_meta\" = 'root:root:600' ] || { echo 'hashedPassword must be root:root:600' >&2; exit 1; }${NC}"
 echo -e "   ${YELLOW}(If NixOS is not active yet, nix-shell can temporarily provide whois.)${NC}"
 ((step_num++))
 

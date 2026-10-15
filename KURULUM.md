@@ -249,43 +249,32 @@ hyprctl configversion
 
 # 🔑 8. Şifreler (root + localhost)
 
+`configuration.nix`, `localhost` kullanıcısının parolasını
+`hashedPasswordFile = "/etc/nixos/hashedPassword"` üzerinden okur. Temiz kurulumda
+bu dosyayı hedef sistemin kök dizinine, yani `/mnt/etc/nixos/hashedPassword`
+yoluna kurulumdan **önce** yazın. Dosya mevcut ve geçerli bir hash içeriyorsa
+üzerine yazmayın; eksik veya boşsa aşağıdaki komut yeni bir hash oluşturur:
+
 ```bash
-sudo nixos-enter --root /mnt -c 'passwd root'
+sudo install -d -m 755 /mnt/etc/nixos
+if [ ! -s /mnt/etc/nixos/hashedPassword ]; then
+  HASH=$(nix-shell -p whois --run 'mkpasswd --method yescrypt')
+  printf '%s\n' "$HASH" | sudo tee /mnt/etc/nixos/hashedPassword >/dev/null
+fi
+sudo chown root:root /mnt/etc/nixos/hashedPassword
+sudo chmod 600 /mnt/etc/nixos/hashedPassword
+sudo test -s /mnt/etc/nixos/hashedPassword
+password_meta=$(sudo stat -c '%U:%G:%a' /mnt/etc/nixos/hashedPassword)
+[ "$password_meta" = "root:root:600" ] || { echo "hashedPassword must be root:root:600 (found: $password_meta)" >&2; exit 1; }
 ```
 
-> ⚠️ **`hashedPassword` dosyasını da oluşturun.** `configuration.nix`
-> `localhost` kullanıcısını `hashedPasswordFile = "/etc/nixos/hashedPassword"`
-> ile tanımlıyor. Bu dosya `.gitignore`'da (bilinçli olarak) tutulmuyor ve
-> `nixos-install` sırasında **yoksa hata da vermiyor** — sadece activation'da
-> `warning: password file ... does not exist` basıp `/etc/shadow`'a
-> `localhost:!:1:::::` yazıyor, yani masaüstü hesabı kilitleniyor ve
-> tuigreet ile giriş yapılamıyor. Aşağıdaki komutla oluşturun:
+> `tee` tek başına daha gevşek izinlerle dosya oluşturabilir; bu nedenle sahiplik
+> ve `0600` izin adımlarını atlamayın. `nix-shell -p whois` geçici olarak
+> `mkpasswd` sağlar; hash komutu parola girişini etkileşimli biçimde ister.
 >
-> ```bash
-> # The live ISO writes into the installed system mounted at /mnt.
-> # Therefore, the target file must be /mnt/etc/nixos/hashedPassword.
-> HASH=$(nix-shell -p whois --run 'mkpasswd --method yescrypt')
-> sudo install -d -m 755 /mnt/etc/nixos
-> printf '%s\n' "$HASH" | sudo tee /mnt/etc/nixos/hashedPassword >/dev/null
-> sudo chmod 600 /mnt/etc/nixos/hashedPassword
-> ```
->
-> `nixos-enter` `nixos-install` öncesinde genelde "NixOS kurulumu değil" diye
-> reddedebilir. O durumda dosyayı ISO tarafından doğrudan yaz:
->
-> ```bash
-> # Run mkpasswd from a temporary environment and capture its output:
-> HASH=$(nix-shell -p whois --run 'mkpasswd --method yescrypt')
-> # Write the hash to the target system and restrict its permissions:
-> sudo install -d -m 755 /mnt/etc/nixos
-> printf '%s\n' "$HASH" | sudo tee /mnt/etc/nixos/hashedPassword >/dev/null
-> sudo chmod 600 /mnt/etc/nixos/hashedPassword
-> ```
->
-> `tee` tek başına 644 açtığı için `chmod 600` adımı atlanmamalı.
->
-> `localhost` kullanıcısının şifresiyle (greetd/tuigreet) masaüstüne
-> gireceksiniz. Root şifresi ayrıdır ve konsol/acil kip için gereklidir.
+> `localhost` parolası Hyprland/tuigreet masaüstü oturumu içindir. Root parolası
+> ayrıdır ve konsol/acil kip erişiminde kullanılır; root parolasını kurulum
+> başarıyla tamamlandıktan sonra ayarlayın (§9).
 
 > 🔑 **SSH erişimi:** `configuration.nix` `PasswordAuthentication = false`
 > ve `authorizedKeys.keys` boş bırakılmış durumda — yani kurulumdan sonra
@@ -305,6 +294,14 @@ flake.nix repo kökünde değil, `nixos/` alt dizininde olduğu için `#nixos`
 ```bash
 # On the first run, review and accept the configured binary cache if trusted.
 sudo nixos-install --flake /mnt/etc/nixos/nixos#nixos --accept-flake-config
+```
+
+Kurulum başarıyla tamamlandıktan sonra hedef sistem hâlâ `/mnt` altında bağlıyken
+root parolasını ayarlayın veya güncelleyin. `nixos-enter` komutu, kurulum
+başarıyla tamamlanmadan çalıştırılırsa hedef sistemi tanımayı reddedebilir:
+
+```bash
+sudo nixos-enter --root /mnt -c 'passwd root'
 ```
 
 > **CachyOS kernel cache:** the checked-in `flake.lock` already pins the upstream
