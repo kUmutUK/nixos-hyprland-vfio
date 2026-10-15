@@ -83,6 +83,16 @@ valid_pci() {
   [[ "$1" =~ ^[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}\.[0-9a-fA-F]$ ]]
 }
 
+iommu_group_number() {
+  local link="$1" resolved group_num
+  [[ -e "$link" ]] || return 0
+  resolved="$(readlink -e -- "$link" 2>/dev/null)" || return 0
+  [[ "$resolved" =~ ^/sys/kernel/iommu_groups/[0-9]+$ && -d "$resolved" ]] || return 0
+  group_num="${resolved##*/}"
+  [[ "$group_num" =~ ^[0-9]+$ ]] || return 0
+  printf '%s\n' "$group_num"
+}
+
 for _try in 1 2 3; do
   if valid_pci "$gpu_pci"; then break; fi
   warn "'$gpu_pci' is not a valid PCI address; expected format: 0000:0b:00.0"
@@ -138,13 +148,6 @@ if [[ "${gpu_slot,,}" != "${audio_slot,,}" ]]; then
 fi
 log "GPU/audio functions belong to the same PCI device: $gpu_slot"
 
-gpu_grp=$(basename "$(readlink -f "/sys/bus/pci/devices/${gpu_pci}/iommu_group" 2>/dev/null)" 2>/dev/null)
-audio_grp=$(basename "$(readlink -f "/sys/bus/pci/devices/${gpu_audio}/iommu_group" 2>/dev/null)" 2>/dev/null)
-if [ -n "$gpu_grp" ] && [ -n "$audio_grp" ] && [ "$gpu_grp" != "$audio_grp" ]; then
-  warn "GPU and audio functions are in different IOMMU groups ($gpu_grp vs $audio_grp)."
-  warn "Passthrough may not work independently; inspect the IOMMU group and isolation requirements."
-fi
-
 # Classify the device the user actually selected, not the first display device
 # reported by lspci. Keep the full PCI address in the selection and validation.
 gpu_line="$(lspci -nn -s "$gpu_pci" 2>/dev/null || true)"
@@ -189,10 +192,8 @@ fi
 step "IOMMU group check"
 gpu_iommu_dir="/sys/bus/pci/devices/${gpu_pci}/iommu_group"
 audio_iommu_dir="/sys/bus/pci/devices/${gpu_audio}/iommu_group"
-gpu_grp=""
-audio_grp=""
-[ ! -e "$gpu_iommu_dir" ] || gpu_grp="$(basename "$(readlink -f "$gpu_iommu_dir")")"
-[ ! -e "$audio_iommu_dir" ] || audio_grp="$(basename "$(readlink -f "$audio_iommu_dir")")"
+gpu_grp="$(iommu_group_number "$gpu_iommu_dir")"
+audio_grp="$(iommu_group_number "$audio_iommu_dir")"
 
 show_iommu_group() {
   local group_num="$1" dev dev_addr
@@ -219,8 +220,11 @@ if [ -n "$gpu_grp" ]; then
   read -rp "Continue? (type yes to continue; anything else aborts): " iommu_confirm
   [[ "$iommu_confirm" != "yes" ]] && { info "Aborted."; exit 0; }
 else
-  warn "Could not read GPU IOMMU group information (${gpu_iommu_dir} is missing)."
+  warn "Could not resolve GPU IOMMU group information (${gpu_iommu_dir}); the link may be absent or invalid."
   warn "Ensure IOMMU is enabled in firmware; skipping this check."
+fi
+if [ -n "$gpu_grp" ] && [ -z "$audio_grp" ]; then
+  warn "Could not resolve audio-function IOMMU group information (${audio_iommu_dir}); verify isolation manually."
 fi
 
 echo ""
@@ -780,7 +784,9 @@ echo ""
 echo -e "${step_num}. Create the hashed password file:"
 echo -e "   ${CYAN}HASH=\$(nix-shell -p whois --run 'mkpasswd --method yescrypt')${NC}"
 echo -e "   ${CYAN}printf '%s\\\\n' \"\$HASH\" | sudo tee /etc/nixos/hashedPassword >/dev/null${NC}"
-echo -e "   ${CYAN}sudo chmod 600 /etc/nixos/hashedPassword${NC}   ${YELLOW}(created by tee with mode 0644)${NC}"
+echo -e "   ${CYAN}sudo chown root:root /etc/nixos/hashedPassword${NC}"
+echo -e "   ${CYAN}sudo chmod 600 /etc/nixos/hashedPassword${NC}"
+echo -e "   ${CYAN}sudo test -s /etc/nixos/hashedPassword && sudo stat -c '%U:%G:%a' /etc/nixos/hashedPassword${NC}   ${YELLOW}(expected: root:root:600)${NC}"
 echo -e "   ${YELLOW}(If NixOS is not active yet, nix-shell can temporarily provide whois.)${NC}"
 ((step_num++))
 
