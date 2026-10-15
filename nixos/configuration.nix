@@ -9,16 +9,17 @@ let
     exec ${pkgs.hyprland}/bin/Hyprland "$@"
   '';
 
-  # Low-latency layer package derivation.
+  # Low-latency layer package derivation, pinned to upstream's latest published release.
   low-latency-layer = pkgs.stdenv.mkDerivation rec {
     pname = "low_latency_layer";
-    version = "1.0.0";
+    version = "0.2.0";
 
-    src = pkgs.fetchFromGitHub {
-      owner = "Korthos-Software";
-      repo = "low_latency_layer";
-      rev = "948a5611f7c7a0568f1685e82df9f7bfbddb3f18";
-      sha256 = "sha256-iUdcNnmY4NqaEnhoJUn7KEKTFQrlqo4tYOkLwEhmL+s=";
+    # A full commit SHA pins the v0.2.0 release without needing an unverified
+    # fetchFromGitHub source hash. Keep both the tag ref and immutable commit in sync.
+    src = builtins.fetchGit {
+      url = "https://github.com/Korthos-Software/low_latency_layer.git";
+      ref = "refs/tags/v0.2.0";
+      rev = "4e7fe12b797d89be07919acf3d2df5cda3f4d89f";
     };
 
     nativeBuildInputs = with pkgs; [ cmake glslang ];
@@ -36,10 +37,9 @@ let
     # `<source>/build`; an extra `cmake --install build` incorrectly looks for
     # `<source>/build/build/cmake_install.cmake` and breaks the full system build.
     # Upstream install rules place the library in `$out/lib` and the manifest in
-    # `$out/share/vulkan/implicit_layer.d`. The manifest uses an absolute library
-    # path, so no symlinkJoin/runtimePath workaround is needed. `LOW_LATENCY_LAYER_REFLEX=1`
-    # is the relevant runtime setting; the old pinned-revision validation notes are
-    # kept in the historical audit rather than repeated here.
+    # `$out/share/vulkan/implicit_layer.d`. The v0.2.0 layer is opt-in at runtime:
+    # LOW_LATENCY_LAYER=1 enables it; LOW_LATENCY_LAYER_REFLEX=1 selects Reflex
+    # instead of the default AMD Anti-Lag 2 interface.
 
     meta = with lib; {
       description = "Vulkan layer for hardware agnostic input latency reduction (Reflex/Anti-Lag)";
@@ -244,13 +244,12 @@ in
     QT_QPA_PLATFORM = "wayland;xcb";
     XCURSOR_THEME = "capitaine-cursors";
     XCURSOR_SIZE = "16";
-    # The pinned low-latency-layer source reads `LOW_LATENCY_LAYER_REFLEX`,
-    # `LOW_LATENCY_LAYER_SPOOF_NVIDIA`, and `LOW_LATENCY_LAYER_FORCE_DECOUPLED`.
-    # Its manifest uses `DISABLE_LOW_LATENCY_LAYER` as the environment gate and does
-    # not define `enable_environment`, so the layer is enabled by default. There is no
-    # `LOW_LATENCY_LAYER` variable; setting it would be a no-op. Reflex mode uses
-    # `LOW_LATENCY_LAYER_REFLEX`. `SPOOF_NVIDIA` is intentionally not enabled globally;
-    # upstream recommends setting it per game.
+    # Upstream v0.2.0 changed the layer to opt-in. These global values enable
+    # Reflex mode for Vulkan applications system-wide. To reduce compatibility risk,
+    # remove LOW_LATENCY_LAYER below and set both variables per game in Steam instead:
+    # LOW_LATENCY_LAYER=1 LOW_LATENCY_LAYER_REFLEX=1 %command%
+    # Do not enable NVIDIA spoofing globally; upstream warns it can break Proton FSR4.
+    LOW_LATENCY_LAYER = "1";
     LOW_LATENCY_LAYER_REFLEX = "1";
   };
 
