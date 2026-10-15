@@ -49,20 +49,12 @@ in
     options = commonOpts ++ [ "subvol=@snapshots" ];
   };
 
-  # services.snapper.configs.home (SUBVOLUME = "/home") için gerekli:
-  # NixOS snapper modülü, tanımlı her SUBVOLUME'ün içinde ".snapshots" adlı bir
-  # alt hacmin bulunmasını şart koşuyor. /home'da öyle bir alt hacim yoktu →
-  # `snapper -c home list` çalışmıyordu.
-  #
-  # ⚠️ ÖNCE MAKİNEDE OLUŞTURUN (yoksa neededForBoot yüzünden acil
-  #    kipine (emergency mode) düşersiniz):
-  #      sudo btrfs subvolume create /home/.snapshots
-  #
-  # ⚠️ @snapshots'ı /home/.snapshots OLARAK mount ETMEYİN: /home altındaki
-  #    home snapper config'i ile kökteki root snapper config'i aynı dizine
-  #    yazmaya çalışır, çakışır. Bu yüzden @home içine gömülü AYRI bir alt
-  #    hacim (@home/.snapshots) kullanıyoruz — aşağıdaki mount zaten bunu
-  #    yapıyor, yukarıdaki not yalnızca "subvol=@snapshots" yazmayın diye.
+  # Required by `services.snapper.configs.home` for the `/home` subvolume: the NixOS
+  # Snapper module expects a `.snapshots` subvolume inside each configured subvolume.
+  # Create `/home/.snapshots` on the target host before activation, or `neededForBoot`
+  # may send the system to emergency mode. Do not mount the root `@snapshots` subvolume
+  # at `/home/.snapshots`, because that would collide with the root Snapper config; this
+  # configuration uses a separate `@home/.snapshots` subvolume.
   fileSystems."/home/.snapshots" = {
     device  = rootDev;
     fsType  = "btrfs";

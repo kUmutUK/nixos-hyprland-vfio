@@ -17,7 +17,8 @@
       "original": {
         "owner": "xddxdd",
         "repo": "nix-cachyos-kernel",
-        "type": "github"
+        "type": "github",
+        "ref": "release"
       }
     },
     "flake-compat": {
