@@ -99,7 +99,7 @@ valid_pci "$gpu_audio" || error "Invalid GPU audio PCI address after 3 attempts;
 
 for addr in "$gpu_pci" "$gpu_audio"; do
   if [ ! -e "/sys/bus/pci/devices/${addr}" ]; then
-    error "PCI device not found: $addr. Enter the correct address from `lspci -nn`."
+    error "PCI device not found: $addr. Check the address reported by lspci -nn."
   fi
 done
 
