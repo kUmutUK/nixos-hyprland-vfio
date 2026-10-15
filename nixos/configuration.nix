@@ -22,24 +22,20 @@ let
       rev = "4e7fe12b797d89be07919acf3d2df5cda3f4d89f";
     };
 
-    nativeBuildInputs = with pkgs; [ cmake glslang ];
+    nativeBuildInputs = [ pkgs.cmake ];
     buildInputs = with pkgs; [
       vulkan-headers
       vulkan-loader
       vulkan-utility-libraries
-      shaderc
     ];
 
     cmakeFlags = [ "-DCMAKE_BUILD_TYPE=Release" ];
 
-    # Do not add a custom installPhase here. The nixpkgs CMake hook already runs
-    # `cmake --build build --target install` with the working directory set to
-    # `<source>/build`; an extra `cmake --install build` incorrectly looks for
-    # `<source>/build/build/cmake_install.cmake` and breaks the full system build.
-    # Upstream install rules place the library in `$out/lib` and the manifest in
-    # `$out/share/vulkan/implicit_layer.d`. The v0.2.0 layer is opt-in at runtime:
-    # LOW_LATENCY_LAYER=1 enables it; LOW_LATENCY_LAYER_REFLEX=1 selects Reflex
-    # instead of the default AMD Anti-Lag 2 interface.
+    # Let nixpkgs' standard CMake hooks handle configure, build, and install
+    # using the install() rules shipped by upstream. No custom installPhase is
+    # needed. The manifest is installed under $out/share/vulkan/implicit_layer.d.
+    # In v0.2.0 the layer is opt-in: LOW_LATENCY_LAYER=1 enables it. By default
+    # it exposes AMD Anti-Lag 2; LOW_LATENCY_LAYER_REFLEX=1 switches to Reflex.
 
     meta = with lib; {
       description = "Vulkan layer for hardware agnostic input latency reduction (Reflex/Anti-Lag)";
@@ -244,13 +240,15 @@ in
     QT_QPA_PLATFORM = "wayland;xcb";
     XCURSOR_THEME = "capitaine-cursors";
     XCURSOR_SIZE = "16";
-    # Upstream v0.2.0 changed the layer to opt-in. These global values enable
-    # Reflex mode for Vulkan applications system-wide. To reduce compatibility risk,
-    # remove LOW_LATENCY_LAYER below and set both variables per game in Steam instead:
+    # Upstream v0.2.0 is opt-in. Keep the layer enabled but leave the default
+    # AMD Anti-Lag 2 interface selected; this is the sensible default for the
+    # AMD RX 6700 XT and native Vulkan games such as CS2. Do NOT set
+    # LOW_LATENCY_LAYER_REFLEX globally: that switches every Vulkan application
+    # to the Reflex interface. For a Proton game that needs Reflex, set it only
+    # in that game's Steam launch options, e.g.:
     # LOW_LATENCY_LAYER=1 LOW_LATENCY_LAYER_REFLEX=1 %command%
-    # Do not enable NVIDIA spoofing globally; upstream warns it can break Proton FSR4.
+    # NVIDIA spoofing is deliberately not enabled; upstream warns it can break FSR4.
     LOW_LATENCY_LAYER = "1";
-    LOW_LATENCY_LAYER_REFLEX = "1";
   };
 
   programs.fish.enable = true;
