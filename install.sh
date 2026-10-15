@@ -18,6 +18,7 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKUP_DIR="$HOME/.nixos-config-backup-$(date +%Y%m%d-%H%M%S)"
 NIXOS_DIR="/etc/nixos"
 NIXOS_FLAKE_DIR="$NIXOS_DIR/nixos"
+PATCHED_XML="/var/lib/libvirt/win10.xml"
 
 echo ""
 echo -e "${CYAN}==============================================================${NC}"
@@ -85,14 +86,14 @@ valid_pci() {
 for _try in 1 2 3; do
   if valid_pci "$gpu_pci"; then break; fi
   warn "'$gpu_pci' is not a valid PCI address; expected format: 0000:0b:00.0"
-  if [ "$_try" -lt 3 ]; then read -rp "GPU PCI adresi: " gpu_pci; fi
+  if [ "$_try" -lt 3 ]; then read -rp "GPU PCI address: " gpu_pci; fi
 done
 valid_pci "$gpu_pci" || error "Invalid GPU PCI address after 3 attempts; aborting installation."
 
 for _try in 1 2 3; do
   if valid_pci "$gpu_audio"; then break; fi
   warn "'$gpu_audio' is not a valid PCI address; expected format: 0000:0b:00.1"
-  if [ "$_try" -lt 3 ]; then read -rp "GPU Audio PCI adresi: " gpu_audio; fi
+  if [ "$_try" -lt 3 ]; then read -rp "GPU audio PCI address: " gpu_audio; fi
 done
 valid_pci "$gpu_audio" || error "Invalid GPU audio PCI address after 3 attempts; aborting installation."
 
@@ -779,7 +780,7 @@ echo ""
 echo -e "${step_num}. Create the hashed password file:"
 echo -e "   ${CYAN}HASH=\$(nix-shell -p whois --run 'mkpasswd --method yescrypt')${NC}"
 echo -e "   ${CYAN}printf '%s\\\\n' \"\$HASH\" | sudo tee /etc/nixos/hashedPassword >/dev/null${NC}"
-echo -e "   ${CYAN}sudo chmod 600 /etc/nixos/hashedPassword${NC}   ${YELLOW}(tee 644 acar)${NC}"
+echo -e "   ${CYAN}sudo chmod 600 /etc/nixos/hashedPassword${NC}   ${YELLOW}(created by tee with mode 0644)${NC}"
 echo -e "   ${YELLOW}(If NixOS is not active yet, nix-shell can temporarily provide whois.)${NC}"
 ((step_num++))
 

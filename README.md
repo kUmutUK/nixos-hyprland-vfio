@@ -101,11 +101,18 @@ SSH password authentication is disabled, and no public keys are included by defa
 
 The VM domain is named `win10`. Before defining or starting it, ensure that the Windows installation ISO, VirtIO driver ISO, and qcow2 disk exist at the paths referenced by `vm-xml/win10.xml`. The XML uses the SATA bus for both CD-ROM drives; the operating-system disk uses VirtIO and needs the VirtIO storage driver during Windows setup.
 
+> **Windows 10 lifecycle:** Standard support for Windows 10 Home and Pro ended on October 14, 2025 ([Microsoft lifecycle policy](https://learn.microsoft.com/en-us/lifecycle/products/windows-10-home-and-pro)). Before using this guest for network-connected or sensitive activity, verify that the installed edition is covered by applicable Extended Security Updates (ESU) or its own supported lifecycle (for example, an eligible LTSC edition), and that updates are installed. The ISO filename alone does not establish ESU eligibility.
+
 After the first system activation and reboot, prepare the VM disk and define the domain:
 
 ```bash
 sudo mkdir -p /var/lib/libvirt/images /var/lib/libvirt/qemu
-sudo cp /etc/nixos/vm-xml/win10.xml /var/lib/libvirt/win10.xml
+# Preserve an XML already synchronized by install.sh; it contains this host's PCI addresses.
+if [ ! -f /var/lib/libvirt/win10.xml ]; then
+  sudo cp /etc/nixos/vm-xml/win10.xml /var/lib/libvirt/win10.xml
+else
+  echo "Preserving existing deployed VM XML. Verify its GPU/audio PCI addresses before starting the VM."
+fi
 if [ ! -f /var/lib/libvirt/images/win10new.qcow2 ]; then
   sudo qemu-img create -f qcow2 /var/lib/libvirt/images/win10new.qcow2 120G
 fi
@@ -238,7 +245,7 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 - **No automatic USB input passthrough:** configure your own keyboard/mouse or a dedicated USB controller. Do not copy the maintainer's commented VID:PID example blindly.
 - **Unencrypted swap:** the disk swap partition sits outside LUKS2.
 - **OCR display geometry:** default WuWa crop regions target a 2560×1440 display. The script validates configured geometry and can be overridden with `WUWA_GEOMETRY_MAIN` and `WUWA_GEOMETRY_CHOICE`.
-- **Windows 10 lifecycle:** normal Windows 10 Home/Pro support ended on 14 October 2025. Consider your update/support requirements before using it as a networked guest.
+- **Windows 10 lifecycle:** standard support has ended; see the lifecycle warning above and verify the guest edition’s ESU/LTSC status before using it online.
 - `assets/` is intentionally absent; active configuration files do not reference it.
 
 ## Repository map
@@ -259,6 +266,7 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 ├── scripts/
 │   ├── extract-embedded-scripts.py
 │   ├── prepare-vm-diagnostic.py
+│   ├── test-installer-invariants.sh
 │   ├── test-vfio-hook-driver-state.sh
 │   └── test-vm-xml.py
 ├── vm-xml/win10.xml
@@ -280,10 +288,11 @@ Run from the repository root:
 ```bash
 nix develop ./nixos
 nixfmt ./nixos
-shellcheck -S warning install.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh
+shellcheck -S warning install.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh
 python3 scripts/extract-embedded-scripts.py /tmp/embedded-scripts | xargs -0 -r -n1 -- shellcheck -S warning
 python3 scripts/test-vm-xml.py
 bash scripts/test-vfio-hook-driver-state.sh
+bash scripts/test-installer-invariants.sh
 (cd nixos && nix flake check --no-build)
 ```
 
