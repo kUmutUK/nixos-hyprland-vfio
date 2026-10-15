@@ -41,7 +41,7 @@ if ! command -v lspci &>/dev/null; then
   error "pciutils not found. Install it temporarily: nix-shell -p pciutils"
 fi
 if ! command -v python3 &>/dev/null; then
-  error "python3 yok. Repo dizinine dönüp şu komutla yeniden çalıştırın: nix-shell -p python3 --run 'bash ./install.sh'"
+  error "python3 is missing. Return to the repository and rerun with: nix-shell -p python3 --run 'bash ./install.sh'"
 fi
 log "Environment OK."
 
@@ -74,34 +74,31 @@ echo ""
 read -rp "Enter GPU VGA PCI address (e.g. 0000:0b:00.0): " gpu_pci
 read -rp "Enter GPU Audio PCI address (e.g. 0000:0b:00.1): " gpu_audio
 
-# DÜZELTME (2026-10-06): burada doğrulama YOKTU. Aşağıdaki sed, girilen
-# metni olduğu gibi hooks/qemu içindeki GPU_PCI/GPU_AUDIO satırlarına
-# yazıyordu. "0000:0b:00" ya da "gpu" gibi hatalı bir girdi sessizce
-# geçerli bir hook üretiyor, hata ancak çok sonra — VM başlatılırken —
-# sysfs/fuser tarafında ve o zaman da "neden GPU passthrough olmadı"
-# biçiminde çıkıyordu. VM XML senkronundaki Python bloğu zaten regex ile
-# doğruluyordu; hook tarafı da aynı kuralı uyguluyor.
+# Fix (2026-10-06): PCI addresses were not validated here. Invalid input such as
+# `0000:0b:00` or `gpu` could be written into the hook and fail much later when
+# the VM started. The XML synchronization code already used a regex; apply the
+# same validation before writing the hook configuration.
 valid_pci() {
   [[ "$1" =~ ^[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}\.[0-9a-fA-F]$ ]]
 }
 
 for _try in 1 2 3; do
   if valid_pci "$gpu_pci"; then break; fi
-  warn "'$gpu_pci' geçerli bir PCI adresi değil — beklenen biçim: 0000:0b:00.0"
+  warn "'$gpu_pci' is not a valid PCI address; expected format: 0000:0b:00.0"
   if [ "$_try" -lt 3 ]; then read -rp "GPU PCI adresi: " gpu_pci; fi
 done
-valid_pci "$gpu_pci" || error "GPU PCI adresi 3 denemede de geçersiz — kurulum durduruluyor."
+valid_pci "$gpu_pci" || error "Invalid GPU PCI address after 3 attempts; aborting installation."
 
 for _try in 1 2 3; do
   if valid_pci "$gpu_audio"; then break; fi
-  warn "'$gpu_audio' geçerli bir PCI adresi değil — beklenen biçim: 0000:0b:00.1"
+  warn "'$gpu_audio' is not a valid PCI address; expected format: 0000:0b:00.1"
   if [ "$_try" -lt 3 ]; then read -rp "GPU Audio PCI adresi: " gpu_audio; fi
 done
-valid_pci "$gpu_audio" || error "GPU Audio PCI adresi 3 denemede de geçersiz — kurulum durduruluyor."
+valid_pci "$gpu_audio" || error "Invalid GPU audio PCI address after 3 attempts; aborting installation."
 
 for addr in "$gpu_pci" "$gpu_audio"; do
   if [ ! -e "/sys/bus/pci/devices/${addr}" ]; then
-    error "PCI cihazı yok: $addr — lspci -nn çıktısından doğru adresi girin."
+    error "PCI device not found: $addr. Enter the correct address from `lspci -nn`."
   fi
 done
 
@@ -118,33 +115,33 @@ pci_class_code() {
   printf '%s\n' "${class_code,,}"
 }
 
-gpu_class_code="$(pci_class_code "$gpu_pci")" || error "GPU PCI sınıfı lspci ile doğrulanamadı: $gpu_pci"
+gpu_class_code="$(pci_class_code "$gpu_pci")" || error "Could not verify GPU PCI class with lspci: $gpu_pci"
 case "$gpu_class_code" in
   0300|0302|0380) ;;
-  *) error "Seçilen GPU adresi bir görüntü denetleyicisi değil (PCI class $gpu_class_code): $gpu_pci — VGA/3D/display controller adresini girin." ;;
+  *) error "Selected GPU address is not a display controller (PCI class $gpu_class_code): $gpu_pci — enter the VGA/3D/display controller address." ;;
 esac
 
-audio_class_code="$(pci_class_code "$gpu_audio")" || error "GPU ses PCI sınıfı lspci ile doğrulanamadı: $gpu_audio"
+audio_class_code="$(pci_class_code "$gpu_audio")" || error "Could not verify GPU audio PCI class with lspci: $gpu_audio"
 case "$audio_class_code" in
   0401|0403) ;;
-  *) error "Seçilen ses adresi bir ses denetleyicisi değil (PCI class $audio_class_code): $gpu_audio — GPU HDMI/DisplayPort audio function adresini girin." ;;
+  *) error "Selected audio address is not an audio controller (PCI class $audio_class_code): $gpu_audio — enter the GPU HDMI/DisplayPort audio-function address." ;;
 esac
-log "PCI sınıfları doğrulandı: GPU=$gpu_class_code, Audio=$audio_class_code"
+log "PCI classes verified: GPU=$gpu_class_code, Audio=$audio_class_code"
 
-# GPU görüntü ve HDMI/DisplayPort ses fonksiyonları aynı fiziksel PCI
-# aygıtının (domain:bus:slot) fonksiyonları olmalıdır.
+# The GPU display function and its HDMI/DisplayPort audio function must belong
+# to the same physical PCI device (domain:bus:slot).
 gpu_slot="${gpu_pci%.*}"
 audio_slot="${gpu_audio%.*}"
 if [[ "${gpu_slot,,}" != "${audio_slot,,}" ]]; then
-  error "GPU ve HDMI/DP ses fonksiyonu aynı PCI domain:bus:slot üzerinde olmalı: GPU=$gpu_pci, Audio=$gpu_audio"
+  error "The GPU and HDMI/DP audio function must share the same PCI domain:bus:slot: GPU=$gpu_pci, Audio=$gpu_audio"
 fi
-log "GPU/audio aynı PCI aygıtında: $gpu_slot"
+log "GPU/audio functions belong to the same PCI device: $gpu_slot"
 
 gpu_grp=$(basename "$(readlink -f "/sys/bus/pci/devices/${gpu_pci}/iommu_group" 2>/dev/null)" 2>/dev/null)
 audio_grp=$(basename "$(readlink -f "/sys/bus/pci/devices/${gpu_audio}/iommu_group" 2>/dev/null)" 2>/dev/null)
 if [ -n "$gpu_grp" ] && [ -n "$audio_grp" ] && [ "$gpu_grp" != "$audio_grp" ]; then
-  warn "GPU ve ses fonksiyonu farklı IOMMU gruplarında ($gpu_grp vs $audio_grp)."
-  warn "Tek başına passthrough yapılamayabilir; ACS override veya grup kontrolü gerekir."
+  warn "GPU and audio functions are in different IOMMU groups ($gpu_grp vs $audio_grp)."
+  warn "Passthrough may not work independently; inspect the IOMMU group and isolation requirements."
 fi
 
 # Classify the device the user actually selected, not the first display device
@@ -161,7 +158,7 @@ else
 fi
 log "Selected GPU: $GPU_VENDOR"
 echo -e "  ${CYAN}$gpu_line${NC}"
-log "GPU PCI: $gpu_pci / Audio: $gpu_audio (biçim ve sysfs varlığı doğrulandı)"
+log "GPU PCI: $gpu_pci / Audio: $gpu_audio (format and sysfs presence verified)"
 
 if [[ "$CPU_VENDOR" != "amd" || "$GPU_VENDOR" != "amd" ]]; then
   echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -169,11 +166,11 @@ if [[ "$CPU_VENDOR" != "amd" || "$GPU_VENDOR" != "amd" ]]; then
   if [[ "$CPU_VENDOR" == "intel" ]]; then
     echo "  - Switch 'hardware.cpu.amd.updateMicrocode' → 'hardware.cpu.intel.updateMicrocode'"
     echo "  - Replace 'kvm-amd' → 'kvm-intel'"
-    echo "  - IOMMU etkinliğini BIOS/UEFI ve kernel parametreleriyle ayrıca doğrulayın (Intel VT-d)."
+    echo "  - Also verify IOMMU in BIOS/UEFI and kernel parameters (Intel VT-d)."
     echo "  - Remove 'amd_pstate=active' kernel parameter"
   fi
   if [[ "$GPU_VENDOR" == "nvidia" ]]; then
-    echo "  - Bu repo NVIDIA'yı desteklemiyor; amdgpu varsayılan."
+    echo "  - This repository does not support NVIDIA; amdgpu is the default."
     echo "  - Remove AMD_VULKAN_ICD, RADV_PERFTEST variables"
     echo "  - Switch ollama package to ollama-cuda"
   elif [[ "$GPU_VENDOR" == "intel" ]]; then
@@ -199,7 +196,7 @@ audio_grp=""
 show_iommu_group() {
   local group_num="$1" dev dev_addr
   [ -n "$group_num" ] || return 0
-  info "IOMMU group ${group_num} üyeleri:"
+  info "IOMMU group ${group_num} members:"
   for dev in /sys/kernel/iommu_groups/"${group_num}"/devices/*; do
     [ -e "$dev" ] || continue
     dev_addr="$(basename "$dev")"
@@ -211,24 +208,24 @@ if [ -n "$gpu_grp" ]; then
   info "GPU ($gpu_pci) IOMMU group: $gpu_grp"
   show_iommu_group "$gpu_grp"
   if [ -n "$audio_grp" ] && [ "$audio_grp" != "$gpu_grp" ]; then
-    warn "Ses fonksiyonu ($gpu_audio) farklı IOMMU grubunda: $audio_grp"
+    warn "Audio function ($gpu_audio) is in a different IOMMU group: $audio_grp"
     show_iommu_group "$audio_grp"
   fi
   echo ""
-  warn "Yukarıdaki listede GPU (${gpu_pci}) ve ses fonksiyonu (${gpu_audio})"
-  warn "DIŞINDA bir cihaz varsa, o cihaz da VM'e verilmeden GPU'yu tek"
-  warn "başına ayıramazsınız (ACS override gibi ek önlemler gerekir)."
-  read -rp "Devam etmek istiyor musunuz? (yes/no): " iommu_confirm
+  warn "If the list above contains devices other than GPU (${gpu_pci}) and audio function (${gpu_audio}),"
+  warn "the GPU may not be isolated by itself unless those devices are also passed through"
+  warn "(additional measures such as ACS override may be required)."
+  read -rp "Continue? (type yes to continue; anything else aborts): " iommu_confirm
   [[ "$iommu_confirm" != "yes" ]] && { info "Aborted."; exit 0; }
 else
-  warn "GPU IOMMU group bilgisi okunamadı (${gpu_iommu_dir} yok)."
-  warn "IOMMU'nun BIOS'ta etkin olduğundan emin olun; kontrol atlanıyor."
+  warn "Could not read GPU IOMMU group information (${gpu_iommu_dir} is missing)."
+  warn "Ensure IOMMU is enabled in firmware; skipping this check."
 fi
 
 echo ""
-# Boş varsayılan: monitör adı yalnızca gerçekten algılanırsa otomatik doldurulur.
-# DP-3 gibi belirli bir çıkışı sabit varsaymak başka makinelerde sessiz mpvpaper
-# hatasına neden olabilir.
+# Leave the monitor output empty by default and auto-detect it only when a real
+# connected output is found. Hard-coding DP-3 can silently break mpvpaper on
+# systems with a different monitor layout.
 monitor_output=""
 if command -v hyprctl &>/dev/null 2>&1 && hyprctl activeworkspace &>/dev/null 2>&1; then
   monitor_output=$(hyprctl monitors 2>/dev/null | grep -oPm1 '^Monitor \K\S+' || true)
@@ -261,7 +258,7 @@ while [[ -z "${monitor_output//[[:space:]]/}" ]]; do
 done
 
 echo ""
-read -rp "Hyprland monitor line (örn. monitor = DP-3,2560x1440@170,auto,1) [monitor = ${input_mon:-$monitor_output},preferred,auto,1]: " hypr_mon_line
+read -rp "Hyprland monitor line (e.g. monitor = DP-3,2560x1440@170,auto,1) [monitor = ${input_mon:-$monitor_output},preferred,auto,1]: " hypr_mon_line
 hypr_mon_line="${hypr_mon_line:-monitor = ${input_mon:-$monitor_output},preferred,auto,1}"
 
 echo ""
@@ -270,9 +267,9 @@ read -rp "Wallpaper video path [${wallpaper_video}]: " input_video
 [[ -n "$input_video" ]] && wallpaper_video="$input_video"
 
 echo ""
-# DÜZELTME: varsayılanlar bakımcının gerçek kimliğiydi ("Umpug" /
-# 141457520+kUmutUK@...). Enter'a basılırsa tüm commit'ler BAŞKA BİRİYE
-# atfediliyordu. Varsayılan artık home.nix ile aynı: changeme / you@example.com
+# Fix: the previous defaults exposed the maintainer's real identity. Pressing
+# Enter would attribute commits to someone else. Use the same neutral placeholders
+# as home.nix: changeme / you@example.com.
 read -rp "Git user name [changeme]: " git_name
 git_name="${git_name:-changeme}"
 read -rp "Git email [you@example.com]: " git_email
@@ -288,12 +285,9 @@ for src in "$HOME/.config/hypr" "$HOME/.config/waybar" "$HOME/.config/gtk-3.0" "
            "$NIXOS_DIR/hardware-configuration.nix" \
            "$NIXOS_FLAKE_DIR/hardware-configuration.nix"; do
     if [ -e "$src" ]; then
-        # DÜZELTME: düz "$BACKUP_DIR/" hedefi İSİM ÇAKIŞMASI üretiyordu.
-        # `hardware-configuration.nix` listedeki İKİ farklı yoldan geliyor
-        # ($NIXOS_DIR ve $NIXOS_FLAKE_DIR); ikisi de aynı isimle yazıldığı için
-        # ikincisi birincisini sessizce eziyordu — kullanıcı geri dönmek
-        # istediğinde YANLIŞ dosyayı geri yüklüyordu. Yol '/'→'_' ile
-        # düzleştirilerek her kaynak kendi benzersiz adını alıyor.
+        # Fix: writing every backup directly into `$BACKUP_DIR/` caused filename
+        # collisions when two source paths had the same basename. Flatten each
+        # full source path by replacing `/` with `_`, so every backup is unique.
         backup_name="$(echo "$src" | tr '/' '_')"
         if cp -rL "$src" "$BACKUP_DIR/$backup_name" 2>/dev/null; then
             log "Backed up: $backup_name"
@@ -369,9 +363,9 @@ read_state_version() {
   done
 
   if [ "$found_file" -eq 1 ]; then
-    warn "${setting} mevcut dosyalarda basit bir sabit olarak bulunamadı. Güvenlik için tahmin etmeyeceğim."
-    read -rp "Mevcut ${setting} değerini girin (örn. 24.11; bilmiyorsanız boş bırakıp kurulumu iptal edin): " value
-    [[ "$value" =~ ^[0-9]{2}\.[0-9]{2}$ ]] || error "${setting} doğrulanamadı; dosyalar değiştirilmeden kurulum durduruldu."
+    warn "${setting} was not found as a simple literal in existing files. Refusing to guess for safety."
+    read -rp "Enter the existing ${setting} value (e.g. 24.11; leave blank to cancel if unknown): " value
+    [[ "$value" =~ ^[0-9]{2}\.[0-9]{2}$ ]] || error "${setting} could not be validated; installation stopped before files were changed."
     STATE_VERSION_VALUE="$value"
     STATE_VERSION_SOURCE="user input"
   else
@@ -416,24 +410,19 @@ apply_state_version() {
     *) error "Unsupported stateVersion setting: $setting" ;;
   esac
   count="$(sudo grep -Ec "^[[:space:]]*${escaped_setting}[[:space:]]*=" "$file" || true)"
-  [ "$count" = "1" ] || error "${file} içinde ${setting} ataması tekil değil; otomatik güncelleme güvenli değil. Yedek: $BACKUP_DIR"
+  [ "$count" = "1" ] || error "${file} does not have exactly one ${setting} assignment; automatic update is unsafe. Backup: $BACKUP_DIR"
   sudo sed -i -E "s|^([[:space:]]*${escaped_setting}[[:space:]]*=[[:space:]]*)\"[^\"]+\";|\\1\"${value}\";|" "$file"
   sudo grep -Eq "^[[:space:]]*${escaped_setting}[[:space:]]*=[[:space:]]*\"${value}\";" "$file" ||
-    error "${setting} korunamadı; yapılandırmayı rebuild etmeyin. Yedek: $BACKUP_DIR"
+    error "${setting} could not be preserved; do not rebuild the configuration. Backup: $BACKUP_DIR"
   log "Preserved ${setting}=${value} in $file"
 }
 apply_state_version "$NIXOS_FLAKE_DIR/configuration.nix" "system.stateVersion" "$SYSTEM_STATE_VERSION"
 apply_state_version "$NIXOS_FLAKE_DIR/home.nix" "home.stateVersion" "$HOME_STATE_VERSION"
 
-# DÜZELTME: hardware-configuration.nix daha önce HİÇ kopyalanmıyordu, sadece
-# uyarılıyordu. Oysa configuration.nix `imports = [ ./hardware-configuration.nix ]`
-# yapıyor ve './' FLAKE DİZİNİNE göre çözülüyor → yol
-# /etc/nixos/nixos/hardware-configuration.nix olmak zorunda. Standart NixOS
-# kurulumunda dosya /etc/nixos/hardware-configuration.nix'te durduğu için
-# ilk `nixos-rebuild` "path .../nixos/hardware-configuration.nix does not
-# exist" ile düşüyordu — script "Setup complete" dedikten hemen sonra.
-# Depodaki değerler makineye özgü olduğu için kopyalanmıyor; yereldeki sürüm
-# varsa taşınıyor.
+# Fix: hardware-configuration.nix was only warned about, never staged at the
+# flake-relative path imported by configuration.nix. The installer now preserves
+# a machine-specific local copy when one exists; repository hardware values are
+# never treated as valid for the current machine.
 HW_CONFIG_RETAINED=0
 if [ -f "$NIXOS_DIR/hardware-configuration.nix" ]; then
     hw_source="$NIXOS_DIR/hardware-configuration.nix"
@@ -465,23 +454,18 @@ if [ -f "$NIXOS_DIR/hardware-configuration.nix" ]; then
     fi
     HW_IN_PLACE=1
 elif [ -f "$NIXOS_FLAKE_DIR/hardware-configuration.nix" ]; then
-    # DÜZELTME: burası önce "HW_IN_PLACE=1" idi ve YANLIŞTI. Bu dal, dizinde
-    # duran dosyanın KULLANICININ dosyası olduğunu varsayıyordu — ama
-    # /etc/nixos altına klonlanmış bir repoda buradaki dosya BAKIMCININ
-    # UUID'leridir. README Yol A'da `rm -rf /mnt/etc/nixos && cp -r /tmp/repo/.`
-    # yapıldığı için /etc/nixos/hardware-configuration.nix hiç oluşmayabilir
-    # ve ilk dal hiç çalışmazken bu dal tutar: kullanıcı "in place" görür,
-    # "Setup complete" der, sistem yanlış UUID'lerle açılmaz.
-    # Repodan gelen bir dosyayı "doğrulanmış" saymak mümkün değil — bu yüzden
-    # HW_IN_PLACE=0 ve uyarı BASKILANMAZ (1.3.5'te düzeltilen uyarı).
+    # Do not trust a hardware-configuration.nix merely because it is present in
+    # the cloned repository. It may contain another machine's UUIDs. Mark it as
+    # unverified and keep the warning visible until the target host's generated
+    # hardware configuration has been checked.
     HW_IN_PLACE=0
-    warn "hardware-configuration.nix orada ama SADECE repodan gelmiş olabilir —"
-    warn "içindeki UUID'ler büyük olasılıkla BAĞIMCININ, sizin makinenizin değil."
-    warn "Rebuild ÖNCESİ kendi makineniz için 'nixos-generate-config --show-hardware-config'"
-    warn "çıktısıyla değiştirin. Aksi halde sistem açılmaz."
+    warn "hardware-configuration.nix is present but may come ONLY from the repository template."
+    warn "Its UUIDs likely belong to the maintainer, not to this machine."
+    warn "Before rebuilding, regenerate this file for your machine with 'nixos-generate-config --show-hardware-config'."
+    warn "Replace it with that output; otherwise the system may not boot."
 else
     HW_IN_PLACE=0
-    warn "hardware-configuration.nix bulunamadı — rebuild patlayacak (aşağıya bak)."
+    warn "hardware-configuration.nix was not found; a rebuild will fail (see instructions below)."
 fi
 
 if [ -d "$REPO_DIR/nixos/hooks" ]; then
@@ -493,43 +477,28 @@ if [ -d "$REPO_DIR/nixos/hooks" ]; then
     sudo sed -i \
         -e "s|^GPU_PCI=\".*\"|GPU_PCI=\"${gpu_pci}\"|" \
         -e "s|^GPU_AUDIO=\".*\"|GPU_AUDIO=\"${gpu_audio}\"|" \
-        "$NIXOS_FLAKE_DIR/hooks/qemu" && log "Hook script'teki GPU PCI adresleri de güncellendi."
+        "$NIXOS_FLAKE_DIR/hooks/qemu" && log "GPU PCI addresses in the hook were updated too."
 
-    # DÜZELTME (2026-10-05): buradaki `git update-index --skip-worktree`
-    # kaldırıldı. /etc/nixos/nixos genelde bir git deposu DEĞİLDİR ve
-    # olduğunda da skip-worktree, sonraki pull'da merge conflict çıkarır.
+    # Do not use `git update-index --skip-worktree`: /etc/nixos is usually not a
+    # Git checkout, and skip-worktree can cause confusing merge conflicts later.
 else
     error "nixos/hooks/ directory not found — configuration.nix will fail to evaluate without it."
 fi
 
-# ─── VM XML PCI senkronizasyonu (yeni) ──────────────────
-# Installer eskiden sadece hooks/qemu içindeki GPU_PCI/GPU_AUDIO'yu
-# güncelliyordu; win10.xml'deki <hostdev> <source> <address> blokları
-# ise sabit kalıyordu. Sonuç: hook yeni PCI adresini vfio-pci'ye bind
-# ediyor ama libvirt hâlâ eski adresi aradığı için VM "device not found"
-# ile başlamıyordu.
-step "VM XML PCI senkronizasyonu"
+# ─── VM XML PCI synchronization ──────────────────
+# Keep the PCI addresses in the deployed VM XML synchronized with the GPU and
+# audio addresses written to hooks/qemu. Otherwise the hook could bind the new
+# devices while libvirt still tried to open the old PCI addresses.
+step "VM XML PCI synchronization"
 if [ ! -f "$REPO_DIR/vm-xml/win10.xml" ]; then
-  warn "vm-xml/win10.xml bulunamadı — XML'i elle düzenle."
+  warn "vm-xml/win10.xml was not found; edit the XML manually."
 elif ! command -v python3 >/dev/null 2>&1; then
-  warn "python3 yok — vm-xml/win10.xml'i elle düzenle (bus/slot/function)."
+  warn "python3 is missing; edit vm-xml/win10.xml manually (bus/slot/function)."
 else
-  # DÜZELTME (2026-10-05): script daha önce $REPO_DIR/vm-xml/win10.xml dosyasını
-  # YERİNDE değiştirip değişikliği `git update-index --skip-worktree` ile
-  # saklıyordu. Bu, "repo = değişmez şablon" değişmezini bozuyordu: sonraki
-  # `git pull`'da skip-worktree merge conflict üretir, `git status` yalan söyler,
-  # ve kurulum ikinci kez çalıştırılırsa aynı dosya tekrar yazılır.
-  # Artık kaynak dosya SALT-OKUNUR kalıyor; patch'lenmiş XML doğrudan
-  # libvirt'in kendi dizinine yazılıyor.
-  PATCHED_XML="/var/lib/libvirt/win10.xml"
-  # DÜZELTME: burada `sudo` yalnızca mkdir'de vardı; python3 normal kullanıcı
-  # olarak çalışıp root'a ait /var/lib/libvirt/win10.xml'e yazmaya çalışıyordu
-  # ve PermissionError alıyordu. Betik `if ... then` yapısı olduğu için hata
-  # yutuluyor, kullanıcı yalnızca "XML güncellenemedi" uyarısı görüp
-  # akıllıca elle düzenlemeye yöneliyordu — ama tam olarak bu sessiz hatanın
-  # ürettiği felaket senaryosunda (hook yeni PCI adresine bind oluyor, libvirt
-  # eski adresi arıyor → "device not found") kalıyorsun.
-  # apply_var() zaten `sudo python3` kullanıyor; aynı desen buraya da uygulanır.
+  # Keep the repository XML template read-only. Write the synchronized copy to
+  # libvirt's directory instead of modifying the source tree or setting
+  # skip-worktree, which can hide changes and cause later merge conflicts.
+  # Run the XML update as root: the destination is owned by the system.
   if sudo mkdir -p /var/lib/libvirt && sudo python3 - "$gpu_pci" "$gpu_audio" "$REPO_DIR/vm-xml/win10.xml" "$PATCHED_XML" <<'PYEOF'
 import os, re, shutil, sys, time, uuid as uuidlib, secrets, tempfile, stat
 
@@ -538,7 +507,7 @@ gpu, aud, src, dst = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
 def xml_attrs(addr):
     m = re.match(r'^([0-9a-fA-F]{4}):([0-9a-fA-F]{2}):([0-9a-fA-F]{2})\.([0-9a-fA-F])$', addr)
     if not m:
-        sys.exit(f"geçersiz PCI adresi: {addr}")
+        sys.exit(f"invalid PCI address: {addr}")
     d, b, s, f = m.groups()
     return f'domain="0x{d}" bus="0x{b}" slot="0x{s}" function="0x{f}"'
 
@@ -550,7 +519,7 @@ data = open(src, encoding="utf-8").read()
 template_uuid = re.search(r'<uuid>([^<]+)</uuid>', data)
 template_mac = re.search(r'<mac\s+address="([^"]+)"\s*/>', data)
 if not template_uuid or not template_mac:
-    sys.exit("HATA: XML şablonunda UUID veya MAC bulunamadı; dosya yazılmadı.")
+    sys.exit("ERROR: no UUID or MAC address found in the XML template; no file was written.")
 
 old_data = ""
 if os.path.exists(dst):
@@ -578,27 +547,24 @@ def repl(m):
 
 new = pattern.sub(repl, data)
 
-# DÜZELTME (2026-10-05): 0 veya 3+ hostdev durumunda eski kod sessizce
-# sys.exit(1) veriyordu. 2 GPU + NIC geçiren bir kurulumda bu, hook'un yeni
-# PCI adresine bind olup libvirt'ın eski adresi aradığı ("device not found")
-# tam olarak felaket senaryosuydu — ama kullanıcı UYARI bile görmüyordu.
-# Artık: 0 hostdev = gerçek hata (çık); 3+ = UYAR ve İLK 2'yi yaz
-# (kalanları elle düzenlemesi için adreslerini stdout'a bas).
+# Fix (2026-10-05): previously, unexpected hostdev counts failed without a clear
+# explanation. Zero PCI hostdevs is a hard error; three or more produces a warning
+# and updates only the first GPU/audio pair so extra devices can be handled manually.
 n = counter[0]
 if n == 0:
-    sys.exit("HATA: XML'de PCI hostdev bulunamadı (0 eşleşme). Dosya yazılmadı.")
+    sys.exit("ERROR: no PCI hostdev elements found in XML (0 matches). No file was written.")
 if n != 2:
-    print(f"UYARI: XML'de {n} PCI hostdev bulundu, 2 bekleniyordu.", file=sys.stderr)
-    print(f"UYARI: SADECE ilk 2'si yazıldı (GPU={gpu}, Audio={aud}).", file=sys.stderr)
-    print(f"UYARI: {n-2} hostdev elle düzenilmeli — her birinin <source><address>",
+    print(f"WARNING: found {n} PCI hostdev elements in XML; expected 2.", file=sys.stderr)
+    print(f"WARNING: only the first 2 were updated (GPU={gpu}, Audio={aud}).", file=sys.stderr)
+    print(f"WARNING: {n-2} extra hostdev element(s) need manual editing; check each <source><address>",
           file=sys.stderr)
-    print("UYARI: satırı aşağıdaki komutla doğrula:", file=sys.stderr)
+    print("WARNING: verify the address with the command below:", file=sys.stderr)
     print(f"  grep -n -A3 '<hostdev' {dst}", file=sys.stderr)
 
 if os.path.exists(dst):
     backup = f"{dst}.bak-{int(time.time())}"
     shutil.copy2(dst, backup)
-    print(f"NOTE: mevcut XML yedeklendi -> {backup}")
+    print(f"NOTE: existing XML backed up to -> {backup}")
     previous_stat = os.stat(dst)
     target_mode = stat.S_IMODE(previous_stat.st_mode)
 else:
@@ -642,39 +608,39 @@ except BaseException:
             pass
     raise
 
-print(f"OK: {n} hostdev bulundu, {min(n,2)} tanesi güncellendi -> {dst}")
+print(f"OK: found {n} hostdev elements; updated {min(n,2)} -> {dst}")
 PYEOF
   then
     log "vm-xml/win10.xml -> ${PATCHED_XML} (GPU=${gpu_pci}, Audio=${gpu_audio})"
-    log "Kaynak repo dosyası DEĞİŞTİRİLMEDİ."
+    log "The source repository file was NOT modified."
     echo -e "     ${CYAN}sudo virsh define ${PATCHED_XML}${NC}"
   else
-    warn "XML güncellenemedi — win10.xml'i elle düzenle."
+    warn "Could not update the XML; edit win10.xml manually."
   fi
 fi
 
 if [ "$HW_IN_PLACE" = "1" ]; then
   if [ "$HW_CONFIG_RETAINED" = "1" ]; then
-    warn "Mevcut flake hardware-configuration.nix korundu; üst dizindeki dosyadan farklı."
-    warn "Rebuild öncesi her bölümün UUID/mount ayarlarını özellikle doğrulayın."
+    warn "Preserved the existing flake hardware-configuration.nix; it differs from the parent-directory file."
+    warn "Verify every partition UUID and mount setting before rebuilding."
   else
-    log "hardware-configuration.nix yerinde — aşağıdaki 'elle kopyalayın' adımı gerekmiyor."
+    log "hardware-configuration.nix is already in place; the manual copy step below is unnecessary."
   fi
-  echo "  Doğrula: lsblk -f  # mount edilen her bölümün UUID'si doğru mu?"
+  echo "  Verify: lsblk -f  # Are the UUIDs for all mounted partitions correct?"
 else
-warn "hardware-configuration.nix was NOT copied (machine-specific — UUID'ler size özel)."
-warn "Flake ./hardware-configuration.nix bekliyor, yani dosya şurada olmalı:"
+warn "hardware-configuration.nix was NOT copied (machine-specific; UUIDs belong to this host)."
+warn "The flake imports ./hardware-configuration.nix, so the file must be located here:"
 echo -e "     ${CYAN}${NIXOS_FLAKE_DIR}/hardware-configuration.nix${NC}"
 echo ""
-echo "   Mevcut sistemde zaten varsa:"
+echo "   If the file already exists on this system:"
 echo -e "     ${CYAN}sudo cp ${NIXOS_DIR}/hardware-configuration.nix ${NIXOS_FLAKE_DIR}/${NC}"
 echo ""
-echo "   Yeni kurulumda:"
+echo "   For a fresh installation:"
 echo -e "     ${CYAN}sudo cp /mnt/etc/nixos/hardware-configuration.nix ${NIXOS_FLAKE_DIR}/${NC}"
 echo ""
-echo "   Ya da elle oluşturun:"
+echo "   Or create it manually:"
 echo -e "     ${CYAN}sudo nixos-generate-config --root /mnt${NC}"
-echo -e "     ${CYAN}lsblk -f${NC}  # UUID'leri kontrol edin"
+echo -e "     ${CYAN}lsblk -f${NC}  # Verify the UUIDs"
 fi
 
 # ─── Btrfs snapshot subvolume ───────────────────────────
@@ -704,40 +670,21 @@ info "No VM disk or qemu-libvirtd ownership changes are made before libvirt is a
 echo ""
 
 # ─── /nix/persist/home ──────────────────────────────────
-# DÜZELTME (2026-10-09): bu adım KALDIRILDI. Uyarısı artık doğru değildi.
-# `home.persistence` bloğu zaten 2026-10-09'da silinmişti (home.nix →
-# "home.persistence KALDIRILDI", flake.nix → impermanence girdisi + modülü,
-# configuration.nix → /nix/persist/home tmpfiles kuralı). Yani hiçbir bind-mount
-# yok; "bind-mount would fail" uyarısı var olmayan bir mekanizmayı tarif ediyordu.
-# Adım ayrıca /nix/persist altına kullanılmayan boş bir dizin açıp bırakıyordu.
-# CHANGELOG [1.3.4] impermanence'i "üç yerden" kaldırdığını yazıyordu; dördüncüsü
-# bu dosyaydı ve atlanmıştı.
-#
-# Daha önce çalıştırmışsanız /nix/persist/home boş bir dizin olarak duruyor olabilir.
-# Zararsızdır ve config onu kullanmıyor; silmek isterseniz: sudo rmdir /nix/persist/home
+# The old impermanence/persistent-home step was removed because this configuration
+# no longer defines a home bind mount. Do not create an unused directory here.
+# If a previous run left an empty directory, it is harmless; remove it manually
+# only if empty: `sudo rmdir /nix/persist/home`.
 
 # ─── Variable substitution ──────────────────────────────
 step "Applying safe variable substitutions"
 
 HOME_NIX="$NIXOS_FLAKE_DIR/home.nix"
 
-# DÜZELTME (2026-10-05): bu fonksiyon kullanıcı girdisini doğrudan `sed -E`
-# ifadesine gömerdi. Gerçek test sonuçları:
-#   git name "DP-3 & HDMI" -> home.nix'in içine eşleşen satır KOPYALANIYOR
-#                             (& sed'de "eşleşen metin" anlamına gelir) ve
-#                             geçersiz Nix metni oluşuyor.
-#   herhangi bir "|"      -> `sed: unknown option to 's'` ve set -e yüzünden
-#                             script tam da bu adımda ÖLÜYOR.
-#   "C:\path"             -> sessizce "C:path" oluyor, backslash yutuluyor.
-# Üstelik sed bozuk dosyayı YAZMIŞ olduğu için sondaki "Failed to verify"
-# uyarısı sadece haber veriyor; bozuk home.nix diskte kalıyor.
-#
-# Yerine python3: satır bazlı regex değiştirme yapıyor ve Nix çift tırnaklı
-# string'ini doğru kaçırarak atomik yazıyor. Bu katmanda tek tırnak özel değildir;
-# özellikle wallpaperVideo systemd tarafından da gerçek dosya yolu olarak kullanılır.
-# POSIX shell kaçışı, değer shell komutuna aktarılırken kullanım noktasında yapılmalıdır
-# (home.nix içindeki exec-once kontrolleri değeri positional argüman olarak geçirir).
-# python3 yan etkili adımlardan önce yukarıdaki preflight'ta doğrulanır.
+# Fix: never interpolate user input directly into a `sed -E` replacement. Values
+# containing `&` or `|` can corrupt the file or terminate the script. Python
+# performs a line-based replacement, correctly escapes the Nix string, and writes
+# atomically. Single quotes are valid data here; shell escaping belongs at the
+# point where a value is passed to a command. Python is checked before side effects.
 apply_var() {
   local var_name="$1" new_value="$2"
   if ! grep -qE "^[[:space:]]*${var_name}[[:space:]]*=" "$HOME_NIX"; then
@@ -781,16 +728,16 @@ except BaseException:
     raise
 PYEOF
   then
-    warn "Failed to substitute '${var_name}' — home.nix DEĞİŞTİRİLMEDİ."
+    warn "Failed to substitute '${var_name}' — home.nix was NOT modified."
     return 1
   fi
   log "Set ${var_name}."
 }
 
 if [ "$git_name" = "changeme" ] || [ "$git_email" = "you@example.com" ]; then
-  warn "Git kimliği 'changeme'/'you@example.com' olarak kaldı — commit'ler"
-  warn "bu sahte kimlikle etiketlenecek. Kendi bilgilerini girmek için"
-  warn "home.nix içindeki gitName / gitEmail değerlerini elle değiştir."
+  warn "Git identity is still 'changeme'/'you@example.com'; commits will"
+  warn "be attributed to these placeholders. To use your own identity, edit"
+  warn "the gitName / gitEmail values in home.nix."
 fi
 apply_var "gitName" "$git_name"
 apply_var "gitEmail" "$git_email"
@@ -833,7 +780,7 @@ echo -e "${step_num}. Create the hashed password file:"
 echo -e "   ${CYAN}HASH=\$(nix-shell -p whois --run 'mkpasswd --method yescrypt')${NC}"
 echo -e "   ${CYAN}printf '%s\\\\n' \"\$HASH\" | sudo tee /etc/nixos/hashedPassword >/dev/null${NC}"
 echo -e "   ${CYAN}sudo chmod 600 /etc/nixos/hashedPassword${NC}   ${YELLOW}(tee 644 acar)${NC}"
-echo -e "   ${YELLOW}(NixOS bu kurulumda henüz etkin değilse nix-shell whois paketini geçici sağlar.)${NC}"
+echo -e "   ${YELLOW}(If NixOS is not active yet, nix-shell can temporarily provide whois.)${NC}"
 ((step_num++))
 
 echo ""
@@ -841,7 +788,7 @@ echo -e "${step_num}. Rebuild, then REBOOT before VM disk setup:"
 echo -e "   ${CYAN}sudo nixos-rebuild dry-activate --flake ${NIXOS_FLAKE_DIR}#nixos${NC}"
 echo -e "   ${CYAN}sudo nixos-rebuild switch     --flake ${NIXOS_FLAKE_DIR}#nixos${NC}"
 echo -e "   ${CYAN}sudo reboot${NC}"
-echo -e "   ${YELLOW}Yeniden başlatın; IOMMU/AMD-Vi etkinliğini dmesg ve /sys/kernel/iommu_groups ile doğrulayın.${NC}"
+echo -e "   ${YELLOW}Reboot, then verify IOMMU/AMD-Vi in dmesg and /sys/kernel/iommu_groups.${NC}"
 ((step_num++))
 
 echo ""
@@ -850,11 +797,11 @@ echo -e "   ${CYAN}sudo mkdir -p /var/lib/libvirt/images /var/lib/libvirt/qemu${
 echo -e "   ${CYAN}if [ ! -f /var/lib/libvirt/images/win10new.qcow2 ]; then sudo qemu-img create -f qcow2 /var/lib/libvirt/images/win10new.qcow2 120G; fi${NC}"
 echo -e "   ${CYAN}sudo chown qemu-libvirtd:qemu-libvirtd /var/lib/libvirt/images/win10new.qcow2${NC}"
 echo -e "   ${CYAN}sudo chmod 0660 /var/lib/libvirt/images/win10new.qcow2${NC}"
-echo -e "   ${YELLOW}ISO dosyalarını /var/lib/libvirt/images/ altına kopyalayın:${NC}"
-echo -e "   ${YELLOW}Win10_22H2_English_x64v1.iso ve virtio-win-0.1.285.iso${NC}"
+echo -e "   ${YELLOW}Copy the ISO files into /var/lib/libvirt/images/:${NC}"
+echo -e "   ${YELLOW}Win10_22H2_English_x64v1.iso and virtio-win-0.1.285.iso${NC}"
 echo -e "   ${CYAN}sudo virsh define /var/lib/libvirt/win10.xml${NC}"
-echo -e "   ${CYAN}sudo virsh list --all${NC}   ${YELLOW}→ 'win10' shut off olarak görünmeli${NC}"
-echo -e "   ${YELLOW}3+ hostdev varsa uyarıya dikkat edin; fazlasını elle düzenleyin.${NC}"
+echo -e "   ${CYAN}sudo virsh list --all${NC}   ${YELLOW}→ 'win10' should appear as shut off${NC}"
+echo -e "   ${YELLOW}If there are 3+ hostdev elements, review the warning and edit extras manually.${NC}"
 ((step_num++))
 
 echo ""

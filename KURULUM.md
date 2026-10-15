@@ -45,7 +45,7 @@ lsblk -o NAME,SIZE,MODEL,SERIAL,FSTYPE,MOUNTPOINTS
 
 ```bash
 DISK=/dev/nvme0n1    # ← BURAYI DEĞİŞTİRİN
-# NVMe disklerde bölüm adı p1/p2; SATA/SCSI disklerde sda1/sda2 olur.
+# NVMe partition names use p1/p2; SATA/SCSI names look like sda1/sda2.
 case "$DISK" in
   *[0-9]) PART_PREFIX="${DISK}p" ;;
   *)      PART_PREFIX="$DISK" ;;
@@ -103,9 +103,9 @@ btrfs subvolume create /mnt/@home
 btrfs subvolume create /mnt/@nix
 btrfs subvolume create /mnt/@log
 btrfs subvolume create /mnt/@snapshots
-# NOT: @home/.snapshots alt hacmi BURADA oluşturulamaz — @home henüz mount
-# edilmedi. services.snapper.configs.home (SUBVOLUME="/home") için gereken
-# alt hacim, aşağıda @home mount edildikten SONRA oluşturulur (bkz. §6).
+# NOTE: @home/.snapshots cannot be created here because @home is not mounted yet.
+# The subvolume required by services.snapper.configs.home (SUBVOLUME="/home")
+# must be created after @home is mounted below (see Section 6).
 
 umount /mnt
 ```
@@ -119,11 +119,11 @@ mount -o subvol=@,noatime,compress=zstd:1,ssd,discard=async /dev/mapper/cryptroo
 
 mkdir -p /mnt/{boot,home,nix,var/log,.snapshots}
 
-# @home mount EDİLDİKTEN SONRA oluşturulur (aşağıda)
+# Create this only AFTER mounting @home (below).
 
 mount -o subvol=@home,noatime,compress=zstd:1,ssd,discard=async /dev/mapper/cryptroot /mnt/home
 
-# @home mount edildi → şimdi home snapper alt hacmini oluştur ve bağla
+# @home is mounted; create and mount the Home Snapper subvolume now.
 btrfs subvolume create /mnt/home/.snapshots
 mount -o subvol=@home/.snapshots,noatime,compress=zstd:1,ssd,discard=async /dev/mapper/cryptroot /mnt/home/.snapshots
 
@@ -138,14 +138,7 @@ mount "${PART_PREFIX}1" /mnt/boot
 
 swapon "${PART_PREFIX}2"
 
-# ⚠️ `/mnt/nix/persist/home` artık GEREKMIYOR (2026-10-09).
-# Bu blok daha önce `home.nix` → `home.persistence."/nix/persist/home"`
-# kalıcılık katmanını varsayıyordu; o katman KALDIRILDI. Bu config artık
-# impermanence kullanmıyor — `~/.config/lsfg-vk/conf.toml` doğrudan
-# `home.nix` → `xdg.configFile` üzerinden yazılıyor ve /nix altında hiçbir
-# şey kalıcılaştırılmıyor. Gerekçe: CHANGELOG [1.3.4].
-# Aşağıdaki satır güvenli ama gereksiz; silmek de serbest:
-mkdir -p /mnt/nix/persist/home
+# Impermanence is not enabled in this configuration; no persistent-home directory is needed.
 ```
 
 ---
@@ -200,9 +193,9 @@ doldurur (monitörü `hyprctl`/`/sys/class/drm`'den okur). Yeni kurulumda elle
 yazın:
 
 ```bash
-# Monitör adını öğrenin
+# Find the monitor output name.
 hyprctl monitors | grep -oPm1 '^Monitor \K\S+'
-# ya da DRM'den
+# Or read it from DRM.
 for c in /sys/class/drm/card*-*; do
   [ "$(cat $c/status 2>/dev/null)" = connected ] && basename $c | sed 's/card[0-9]*-//'
 done
@@ -214,8 +207,8 @@ düzenleyin (satır ~4-12):
 ```nix
   gitName            = "Adınız";
   gitEmail           = "siz@ornek.com";
-  monitorOutput      = "DP-1";                              # yukarıdan bulduğunuz
-  hyprlandMonitorLine = "monitor = DP-1,preferred,auto,1";  # boş monitör ADI olmasın
+  monitorOutput      = "DP-1";                              # Output name found above
+  hyprlandMonitorLine = "monitor = DP-1,preferred,auto,1";  # Use an explicit output name
   wallpaperVideo     = "${config.home.homeDirectory}/Downloads/duvar-kagidi.mp4";
 ```
 
@@ -258,9 +251,8 @@ nixos-enter --root /mnt -c 'passwd root'
 > tuigreet ile giriş yapılamıyor. Aşağıdaki komutla oluşturun:
 >
 > ```bash
-> # DÜZELTME (2026-10-04): bu komut /mnt içinde çalıştırıldığı için
-> # hedef yol /mnt/etc/nixos DEĞİL, /etc/nixos olmalı. Eski hâliyle
-> # hashedPassword hiç oluşmuyor, localhost hesabı kilitli kalıyordu.
+> # The live ISO writes into the installed system mounted at /mnt.
+> # Therefore, the target file must be /mnt/etc/nixos/hashedPassword.
 > HASH=$(nix-shell -p whois --run 'mkpasswd --method yescrypt')
 > install -d -m 755 /mnt/etc/nixos
 > printf '%s\n' "$HASH" | sudo tee /mnt/etc/nixos/hashedPassword >/dev/null
@@ -271,9 +263,9 @@ nixos-enter --root /mnt -c 'passwd root'
 > reddedebilir. O durumda dosyayı ISO tarafından doğrudan yaz:
 >
 > ```bash
-> # whois paketini geçici ortamda çağırıp çıktıyı bir değişkene al:
+> # Run mkpasswd from a temporary environment and capture its output:
 > HASH=$(nix-shell -p whois --run 'mkpasswd --method yescrypt')
-> # sonra hedefe yaz ve izinleri 600 yap:
+> # Write the hash to the target system and restrict its permissions:
 > install -d -m 755 /mnt/etc/nixos
 > printf '%s\n' "$HASH" | sudo tee /mnt/etc/nixos/hashedPassword >/dev/null
 > sudo chmod 600 /mnt/etc/nixos/hashedPassword
@@ -300,15 +292,22 @@ flake.nix repo kökünde değil, `nixos/` alt dizininde olduğu için `#nixos`
 öncesindeki yol da buna göre verilmeli:
 
 ```bash
-# İlk çalıştırmada substituters onayı ister: "y" deyin
+# On the first run, review and accept the configured binary cache if trusted.
 nixos-install --flake /mnt/etc/nixos/nixos#nixos --accept-flake-config
 ```
 
-> **CachyOS kernel cache uyarısı:** ana `nixpkgs` ile CachyOS kernel input'unun
-> kendi `nixpkgs` revizyonları farklıdır. Kernel derivation'ı CachyOS cache girdisiyle
-> eşleşmezse ilk `nixos-install`/`nixos-rebuild` sırasında yerel BORE-LTO kernel
-> derlemesi başlayabilir; donanım ve cache durumuna göre 1–2 saat veya daha uzun
-> sürebilir. Bu bir kesinlik değil, cache-miss riskidir.
+> **CachyOS kernel cache:** the flake now selects the upstream `release` branch
+> and pinned overlay. Before the first build, refresh only this input so the lock
+> file points to a revision published to the binary cache:
+>
+> ```bash
+> cd /mnt/etc/nixos/nixos
+> nix flake lock --update-input cachyos-kernel
+> ```
+>
+> If the cache is unavailable or the kernel derivation does not match, Nix may
+> still attempt a local BORE-LTO build. Do not treat a successful evaluation as
+> proof that the kernel will download from cache; inspect the build log.
 
 
 ---
@@ -334,23 +333,23 @@ reboot
 > VFIO sistemi sessizce hiç çalışmaz.
 
 ```bash
-# Bu komutları canlı ISO'da değil, kurulumun ilk reboot'undan sonra çalıştırın.
-# Kaynak XML hedef sistemde /etc/nixos/vm-xml/win10.xml yolundadır.
+# Run these commands after the first reboot, not from the live ISO.
+# The source XML is at /etc/nixos/vm-xml/win10.xml on the target system.
 sudo mkdir -p /var/lib/libvirt/images /var/lib/libvirt/qemu
 
-# XML'deki disk yolu için qcow2 oluştur. Var olan diske dokunma.
+# Create the qcow2 disk referenced by the XML. Do not overwrite an existing disk.
 if [ ! -f /var/lib/libvirt/images/win10new.qcow2 ]; then
   sudo qemu-img create -f qcow2 /var/lib/libvirt/images/win10new.qcow2 120G
 else
   echo "Mevcut VM diski korunuyor: /var/lib/libvirt/images/win10new.qcow2"
 fi
-# qemu.runAsRoot = false olduğundan diskin sahibini ve modunu açıkça ayarla.
+# qemu.runAsRoot = false, so set the disk owner and mode explicitly.
 sudo chown qemu-libvirtd:qemu-libvirtd /var/lib/libvirt/images/win10new.qcow2
 sudo chmod 0660 /var/lib/libvirt/images/win10new.qcow2
 
-# install.sh çalışmadıysa kaynak XML'i kopyala. install.sh çalıştıysa
-# /var/lib/libvirt/win10.xml PCI adresleri eşitlenmiş halde bulunabilir;
-# mevcut dosyanın üzerine kaynak şablonu yazma.
+# If install.sh was not run, copy the source XML. If it was run,
+# /var/lib/libvirt/win10.xml may already contain synchronized PCI addresses;
+# do not overwrite an existing deployed file with the source template.
 if [ ! -f /var/lib/libvirt/win10.xml ]; then
   sudo cp /etc/nixos/vm-xml/win10.xml /var/lib/libvirt/
 else

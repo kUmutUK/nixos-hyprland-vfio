@@ -1,185 +1,111 @@
 # NixOS · Hyprland · AMD GPU Passthrough (VFIO)
 
-Tek ekran kartı AMD Radeon'u bir **Windows 10 VM'ine** geçiren, geri kalanı
-gaming odaklı Hyprland masaüstü olan, tamamen **flake** tabanlı bir NixOS
-kurulumu.
+A flake-based NixOS gaming desktop that passes its single AMD Radeon GPU through to a Windows 10 virtual machine, while using Hyprland for the host desktop.
 
-> **Doğrulanan hedef:** AMD Ryzen 5 5600 + AMD Radeon RX 6700 XT (Navi 22), UEFI,
-> tek ekran kartı. Diğer RX 6000/7000 modelleri otomatik olarak desteklenmiş sayılmaz;
-> PCI/IOMMU grubu, GPU reset davranışı ve ROCm ayarı ayrıca doğrulanmalıdır. NVIDIA
-> ve Intel bu yapılandırmanın hedefi değildir.
+> **Target platform:** AMD Ryzen 5 5600 + AMD Radeon RX 6700 XT (Navi 22), UEFI, and a single physical GPU. Other RX 6000/7000 cards are not automatically supported: PCI/IOMMU grouping, GPU reset behavior, and ROCm settings must be verified separately. Intel CPUs and NVIDIA GPUs are outside this configuration's target scope.
 
----
+## Contents
 
-## İçindekiler
+- [Purpose and safety](#purpose-and-safety)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Preparing and starting the VM](#preparing-and-starting-the-vm)
+- [Keyboard shortcuts](#keyboard-shortcuts)
+- [Gaming stack](#gaming-stack)
+- [Important configuration decisions](#important-configuration-decisions)
+- [Known limitations](#known-limitations)
+- [Repository map](#repository-map)
+- [Validation](#validation)
 
-- [Ne işe yarar](#ne-işe-yarar)
-- [Sorumluluk Reddi](#sorumluluk-reddi)
-- [Gereksinimler](#gereksinimler)
-- [Kurulum](#kurulum) — *yeni sistem* ve *mevcut NixOS'a geçiş* olarak iki yol
-- [VM'i başlatma](#vmi-başlatma)
-- [Tuş kısayolları](#tuş-kısayolları)
-- [Grafik ve oyun](#grafik-ve-oyun)
-- [Bu config'in özel ayarları](#bu-configin-özel-ayarları)
-- [Bilinen sınırlar](#bilinen-sınırlar)
-- [Depo haritası](#depo-haritası)
-- [Doğrulama](#doğrulama)
-- [2026-10-12 düzeltme sonrası canlı sistem kontrol listesi](docs/archive/POST-FIX-VALIDATION-2026-10-12.md)
+## Purpose and safety
 
----
+The host is used for gaming and daily desktop work. When the VM starts, the QEMU hook stops the host graphical session and attaches the GPU functions to `vfio-pci`. When the VM stops, the hook attempts to return the GPU to the host drivers and restore the session. A failed preparation step should roll back and prevent the VM from starting.
 
-## Ne işe yarar
+This is a personal, hardware-specific configuration, not a universal NixOS installer. Incorrect disk identifiers can destroy data; incorrect filesystem UUIDs can prevent boot; and a failed single-GPU reset can leave the host without graphics. Back up important data and keep a recovery TTY or SSH path available before testing.
 
-Oyun ve günlük masaüstü işi aynı makinede. GPU VM'e geçtiğinde:
+The repository is MIT-licensed and is provided “as is,” without warranty. Use it at your own risk.
 
-- Masaüstü oturumu (greetd) durdurulur, GPU `vfio-pci`'ye bind edilir.
-- VM kapanınca GPU host'a geri verilir, oturumlar geri açılır.
-- Bind başarısız olursa hook **rollback** yapar ve VM'nin açılmasını engeller —
-  yarım kalmış (ne host'ta ne guest'te GPU) bir sistem bırakmaz.
+## Requirements
 
-GPU'nun host ile VM arasında devri normal VM yaşam döngüsünde hook tarafından
-otomatik yönetilir. Ancak ilk kurulumda domain'i `virsh define` ile tanımlamak,
-sanal diski ve ISO yollarını hazırlamak ve GPU host'a devredildiğinde kullanılacak
-klavye/fare girişini yapılandırmak gerekir. Adımlar için [VM'i başlatma](#vmi-başlatma)
-bölümüne bakın.
-
----
-
-## Sorumluluk Reddi
-
-Bu config **kişisel bir NixOS kurulumudur** ve belirli bir donanım
-(AMD Ryzen 5 5600 + AMD RX 6700 XT + tek GPU + UEFI + LUKS2/Btrfs) için
-yazılmıştır. Başka bir makinede:
-
-- `hardware-configuration.nix`'teki UUID'ler **yanlışsa sistem açılmaz**
-- `sgdisk -Z` komutu **yanlış diski siler** (geri dönüşü yok)
-- VFIO hook'u **GPU'yu host'tan alır**, geri gelmezse host grafik oturumu kapanır
-- Kernel parametreleri **yanlışsa boot fail olur**
-
-Bu config'i kullanmanın **tüm riski size aittir.** Yazar, bu config'in
-neden olduğu veri kaybı, sistem arızası, donanım hasarı veya başka
-herhangi bir zarardan **sorumlu tutulamaz.**
-
-Lisans: MIT — bkz. `LICENSE` (yasal olarak "as is", garanti yok).
-
----
-
-## Gereksinimler
-
-| | |
+| Component | Target / notes |
 |---|---|
-| **CPU** | AMD Ryzen (desktop). Intel desteklenmiyor — `kvm-amd`, `amd_iommu`, `amd_pstate` sabit kodlanmış. |
-| **GPU** | Doğrulama hedefi RX 6700 XT (Navi 22). Ollama için `rocmOverrideGfx = "10.3.0"` kullanılıyor; diğer modellerde aynı değerin uygun olduğu varsayılmamalı. |
-| **Firmware** | UEFI zorunlu. BIOS/UEFI ayarlarında IOMMU/AMD-Vi etkin olmalı; etkinliği çalışan sistemde `dmesg` ve `/sys/kernel/iommu_groups` ile doğrulayın. |
-| **Depolama** | ~810 GB boş alan (aşağıdaki bölümlendirmede 1 GiB EFI + 8 GiB swap + 800 GiB LUKS). |
-| **Kernel** | CachyOS BORE-LTO paketi flake input'u üzerinden seçiliyor. Gerçek sürüm, kilitli girdi ve güncellenen paketle değişebilir; çalışan sürümü `uname -r` ile kontrol edin. |
-| **Disk** | LUKS2 + Btrfs (subvolume'lu) + EFI. Swap LUKS'un **dışında**, açık bölümde. |
+| CPU | AMD Ryzen desktop CPU. Intel is not supported by this configuration: `kvm-amd`, `amd_iommu`, and `amd_pstate` are AMD-oriented. |
+| GPU | AMD Radeon RX 6700 XT (Navi 22) is the documented target. `rocmOverrideGfx = "10.3.0"` is configured for the target system; do not assume it is appropriate for another GPU. |
+| Firmware | UEFI. Enable IOMMU / AMD-Vi in firmware and verify it after boot with `dmesg` and `/sys/kernel/iommu_groups/`. |
+| Storage | About 810 GiB allocated: 1 GiB EFI, 8 GiB swap, and an 800 GiB LUKS2/Btrfs volume in the reference layout. |
+| Filesystems | LUKS2 + Btrfs subvolumes + EFI. The configured disk swap is outside the LUKS volume and is therefore not encrypted. |
+| Kernel | CachyOS BORE-LTO selected through a flake input. The exact kernel version follows the locked kernel input. |
 
-> **Çok kartlı sistem uyarısı.** Kurulum betiği IOMMU grubunu denetler. Grubun
-> tamamını VM'e veremiyorsanız ek önlemler (ACS override) gerekir; bu config
-> tek kartlıdır.
+The installer checks the GPU's IOMMU group. If unrelated devices share that group, the GPU may not be safely passed through without additional isolation measures. ACS override is not enabled by default.
 
----
+## Installation
 
-## Kurulum
+The repository root is intended to become `/etc/nixos/`, while the flake lives in `/etc/nixos/nixos/`.
 
-Repo kökü `/etc/nixos/`'a karşılık gelir; **flake `/etc/nixos/nixos` altında**
-durur. Bu yüzden tüm komutlarda yol `…/nixos#nixos` biçimindedir.
+### Path A — Fresh installation
 
-### **Yol A —** Sıfırdan (yeni kurulum)
+Follow the Turkish step-by-step guide in [`KURULUM.md`](KURULUM.md) for disk partitioning, LUKS2, Btrfs subvolumes, generating the machine-specific hardware file, setting passwords, and installing NixOS.
 
-Tam rehber: **[`KURULUM.md`](KURULUM.md)** — bölümlendirmeden LUKS'e,
-subvolume'lardan `nixos-install`'a kadar adım adım.
-
-Özet akış:
+The high-level flow is:
 
 ```bash
-nixos-generate-config --root /mnt                      # donanım dosyası
+nixos-generate-config --root /mnt
+
 git clone https://github.com/kUmutUK/nixos-hyprland-vfio.git /tmp/repo
-cp /mnt/etc/nixos/hardware-configuration.nix /tmp/repo/nixos/   # kendi UUID'lerin
-rm -rf /mnt/etc/nixos && mkdir -p /mnt/etc/nixos && cp -r /tmp/repo/. /mnt/etc/nixos/
+cp /mnt/etc/nixos/hardware-configuration.nix /tmp/repo/nixos/hardware-configuration.nix
+rm -rf /mnt/etc/nixos
+mkdir -p /mnt/etc/nixos
+cp -r /tmp/repo/. /mnt/etc/nixos/
+
+cd /mnt/etc/nixos/nixos
+nix flake lock --update-input cachyos-kernel
 nixos-install --flake /mnt/etc/nixos/nixos#nixos --accept-flake-config
 ```
 
-Kritik iki nokta:
+**Before installing:**
 
-- **`hardware-configuration.nix` elle doldurulmalı.** Depodaki değerler
-  bakımcının kendi makinesine ait. Kurağı dağıtıyorsanız `nixos-generate-config`
-  çıktısıyla değiştirin; aksi halde yanlış diski göstermiş olursunuz.
-- **`hashedPassword` dosyasını oluşturun.** Yoksa `localhost` hesabı
-  `!:1:::::` ile kilitlenir ve tuigreet'ten giriş yapamazsınız:
-  ```bash
-  HASH=$(nix-shell -p whois --run 'mkpasswd --method yescrypt')
-  install -d -m 755 /mnt/etc/nixos
-  printf '%s\n' "$HASH" | sudo tee /mnt/etc/nixos/hashedPassword >/dev/null
-  sudo chmod 600 /mnt/etc/nixos/hashedPassword
-  ```
+- Replace `nixos/hardware-configuration.nix` with the file generated for the target machine. The repository's original UUIDs and device paths are machine-specific; never use them blindly.
+- Create `/mnt/etc/nixos/hashedPassword` as explained in `KURULUM.md`, and restrict its permissions to `0600`. Do not commit this file.
+- Review the CachyOS binary-cache trust prompt before accepting it. The flake uses the upstream `release` branch and pinned overlay. The command above updates only the CachyOS input; it does not update every flake input.
+- Verify the target disk before running any partitioning command. The installation guide contains destructive operations.
 
-### **Yol B —** Mevcut NixOS'u bu config'e taşı
+### Path B — Migrate an existing NixOS installation
+
+Run the installer as a normal user with `sudo` privileges:
 
 ```bash
+chmod +x install.sh  # only needed if the archive lost the executable bit
 ./install.sh
 ```
 
-Arşivden çıkarma/kopyalama sırasında çalıştırma biti kaybolduysa `chmod +x install.sh`
-çalıştırın; izin değiştirmek istemiyorsanız `bash ./install.sh` aynı betiği çalıştırır.
-Betik, mevcut `configuration.nix` ve `home.nix` içindeki `system.stateVersion` /
-`home.stateVersion` değerlerini kopyalama öncesinde korur. Mevcut bir dosyada değeri
-belirleyemezse değer girilmeden devam etmez; yeni kurulumda depo şablonundaki değer kalır.
+The script backs up existing configuration files, asks for the selected GPU/audio PCI addresses and host-specific values, updates the deployed hook and VM XML, and preserves existing `system.stateVersion` and `home.stateVersion` values when it can identify them. Inspect any warnings before rebuilding. The script deliberately does not overwrite an existing machine-specific hardware configuration without confirmation.
 
-Betik GPU/IOMMU tespiti yapar, girilen GPU ve GPU ses PCI adreslerinin yalnızca biçimini
-ve varlığını değil PCI sınıfını da kontrol eder; GPU adresi VGA/3D/display controller,
-ses adresi audio controller değilse kurulum durur. Adresleri **hem** hook'a **hem**
-`win10.xml`'e işler, ayarları `home.nix`'e yazar ve yedek alır.
-
-Elle klonluyorsanız (betiği çalıştırmadan) `home.nix` içindeki **5 değeri elle
-doldurmanız gerekir** — `KURULUM.md` §7b'de tablo hâlinde listeli.
-
-### Ortak son adımlar
+### Activate and reboot
 
 ```bash
 sudo nixos-rebuild dry-activate --flake /etc/nixos/nixos#nixos
-sudo nixos-rebuild switch     --flake /etc/nixos/nixos#nixos
-sudo reboot            # ZORUNLU
+sudo nixos-rebuild switch --flake /etc/nixos/nixos#nixos
+sudo reboot
 ```
 
-> 🔴 Kernel parametreleri ve initrd/VFIO modül değişiklikleri `switch` ile
-> çalışan kernel üzerinde geriye dönük uygulanmaz; yapılandırma değişikliklerinden
-> sonra yeniden başlatın. Reboot tek başına IOMMU'nun etkin olduğunu kanıtlamaz:
-> `dmesg | grep -Ei "AMD-Vi|IOMMU"` ve `/sys/kernel/iommu_groups/` ile doğrulayın.
-> BIOS/UEFI tarafında IOMMU/AMD-Vi kapalıysa kernel parametresi bunu her sistemde aşamaz.
-
-### SSH notu
-
-`PasswordAuthentication = false` ve `authorizedKeys` **boş** bırakılmıştır —
-kurulumdan sonra uzaktan giriş **kapalıdır**. `configuration.nix` →
-`users.users.localhost.openssh.authorizedKeys.keys` listesine kendi
-`ed25519` public key'inizi ekleyin. SSH kullanmayacaksanız
-`services.openssh.enable = false` yapmak daha temiz.
-
----
-
-## VM'i başlatma
-
-Önce domain'in libvirt'te tanımlı, sanal diskin mevcut ve ISO yollarının doğru olması gerekir. GPU host'a devredildiğinde masaüstü oturumu duracağı için VM'e giriş aygıtı da önceden hazırlanmalıdır. Bu XML'de varsayılan olarak çalışan bir USB klavye/fare aktarımı tanımlı değildir.
-
-**Yol B — `./install.sh` kullandıysanız:** Betik, ilk rebuild öncesinde VM diski oluşturmuyor.
-Önce disk UUID'lerini/parola dosyasını doğrulayın, `nixos-rebuild switch` uygulayın ve yeniden
-başlatın. Ardından [`KURULUM.md` §10b](KURULUM.md) bölümündeki disk hazırlama/sahiplik
-komutlarını çalıştırın. Betiğin oluşturduğu PCI adresleri senkronize XML'i
-`/var/lib/libvirt/win10.xml` konumundadır; disk hazırlandıktan sonra tanımlayın:
+Reboot after changing kernel parameters, initrd modules, or VFIO binding configuration. A reboot alone does not prove that IOMMU is enabled; verify it with:
 
 ```bash
-sudo virsh define /var/lib/libvirt/win10.xml
+dmesg | grep -Ei 'AMD-Vi|IOMMU'
+find /sys/kernel/iommu_groups/ -maxdepth 2 -type l
 ```
 
-**Yol A — Elle kurulum yaptıysanız** (README → Yol A veya KURULUM.md). Bu komutları
-yalnızca `nixos-rebuild switch` ve ilk reboot tamamlandıktan sonra çalıştırın:
+SSH password authentication is disabled, and no public keys are included by default. Add your own public key to `users.users.localhost.openssh.authorizedKeys.keys` in `nixos/configuration.nix`, or disable `services.openssh` if you do not need SSH.
+
+## Preparing and starting the VM
+
+The VM domain is named `win10`. Before defining or starting it, ensure that the Windows installation ISO, VirtIO driver ISO, and qcow2 disk exist at the paths referenced by `vm-xml/win10.xml`. The XML uses the SATA bus for both CD-ROM drives; the operating-system disk uses VirtIO and needs the VirtIO storage driver during Windows setup.
+
+After the first system activation and reboot, prepare the VM disk and define the domain:
 
 ```bash
-# Run after nixos-rebuild switch + reboot, when libvirt and qemu-libvirtd are active.
 sudo mkdir -p /var/lib/libvirt/images /var/lib/libvirt/qemu
-sudo cp /etc/nixos/vm-xml/win10.xml /var/lib/libvirt/
+sudo cp /etc/nixos/vm-xml/win10.xml /var/lib/libvirt/win10.xml
 if [ ! -f /var/lib/libvirt/images/win10new.qcow2 ]; then
   sudo qemu-img create -f qcow2 /var/lib/libvirt/images/win10new.qcow2 120G
 fi
@@ -188,34 +114,27 @@ sudo chmod 0660 /var/lib/libvirt/images/win10new.qcow2
 sudo virsh define /var/lib/libvirt/win10.xml
 ```
 
-> Sıfırdan kurulum sırasında XML `/mnt/etc/nixos/vm-xml/win10.xml` altındadır;
-> ilk reboot sonrası hedef sistemde `/etc/nixos/vm-xml/win10.xml` olur. Tam VM hazırlığı
-> [`KURULUM.md` §10b](KURULUM.md) bölümündedir. Ayrıca `install.sh`'ı çalıştırmadıysanız
-> XML'deki `<hostdev>` PCI adresleri depodaki varsayılandır — `lspci` ile
-> eşleştirin (`nixos/hooks/qemu` içindeki `GPU_PCI` / `GPU_AUDIO` ile aynı olmalı).
->
-> **VM'e klavye/fare hazırlığı:** Kendi giriş aygıtınızın VID:PID'sini `lsusb` ile bulun.
-> `virsh define` komutuna vereceğiniz XML dosyasındaki (`/var/lib/libvirt/win10.xml`)
-> yorumlu USB `<hostdev>` örneğini açıp kendi aygıtınıza göre düzenleyin. Kaynak dosyayı
-> (`vm-xml/win10.xml` veya `/etc/nixos/vm-xml/win10.xml`) düzenlediyseniz değişikliği
-> `/var/lib/libvirt/win10.xml` dosyasına da kopyalayın. Bakımcının cihaz kimliklerini olduğu
-> gibi kopyalamayın. Ardından `sudo virsh define /var/lib/libvirt/win10.xml` komutunu
-> çalıştırın. Klavye/fareyi ayrı bir USB denetleyicisiyle geçiriyorsanız tek tek aygıt
-> geçirmek yerine o yöntemin kurulumunu kullanın. Host oturumu durduğunda giriş
-> yapabileceğinizi önceden doğrulayın.
+Use the disk and ISO filenames that actually exist on your host. The XML's PCI addresses must match `GPU_PCI` and `GPU_AUDIO` in `/etc/nixos/nixos/hooks/qemu`; `install.sh` performs this synchronization when run successfully. If you configured the VM manually, verify both PCI host devices with `lspci` and edit the deployed XML accordingly.
+
+The default XML does not configure USB keyboard/mouse passthrough, and it intentionally has no emulated graphics console. Before handing the only GPU to the guest, configure a USB input device or a separate USB controller and verify that you can control the VM without the host desktop.
+
+Start the VM outside the graphical login session because the hook may terminate that session:
 
 ```bash
 sudo systemd-run --unit=vmstart --collect /run/current-system/sw/bin/virsh start win10
 ```
 
-Bu komut kullanıcı oturumu kapansa da systemd tarafından sürdürülür. İlk açılışta
-boot ekranını gözlemlemek gerekiyorsa aşağıdaki geçici VNC tanılama adımlarını önce uygulayın.
+Check the unit and hook logs from a separate TTY or SSH session:
 
-### İlk açılış için geçici VNC teşhis kanalı
+```bash
+sudo journalctl -u vmstart.service -b --no-pager
+sudo cat /var/log/libvirt/vfio.log
+sudo journalctl -u libvirtd -f
+```
 
-Üretim XML'inde grafik konsolun olmaması, GPU passthrough tasarımının parçasıdır.
-İlk testte boot katmanını gözlemlemek için üretim XML'ini değiştirmeden ayrı bir
-kopya üretin; böylece install.sh'ın yazdığı gerçek PCI adresleri korunur:
+### Temporary VNC diagnostics for the first boot
+
+The helper generates a separate diagnostic XML with loopback-only VNC and a VirtIO video device. It does not overwrite the production XML, qcow2 disk, or NixOS configuration:
 
 ```bash
 sudo python3 scripts/prepare-vm-diagnostic.py \
@@ -225,277 +144,151 @@ sudo virsh define /var/lib/libvirt/win10-diagnostic.xml
 sudo systemd-run --unit=vmstart --collect /run/current-system/sw/bin/virsh start win10
 ```
 
-**Dikkat:** Tanılama XML'inin içindeki domain adı da `win10` olduğu için `virsh define`
-mevcut `win10` tanımını geçici olarak değiştirir; ikinci bir `win10-diagnostic` VM'i yaratmaz.
-Bu adımı yalnızca tanılama gerektiğinde uygulayın. Test sonrası VM'i kapatın ve üretim XML'ini
-yeniden tanımlayın (aşağıdaki geri dönüş komutu).
-
-Hook, `loginctl terminate-user` ile `localhost` hesabının oturumlarını ve
-`loginctl terminate-seat seat0` ile yerel VT/greeter oturumlarını sonlandırabilir;
-bu nedenle `virsh start` komutunu normal shell'inizden çalıştırmayın. Sistem
-systemd'si tarafından başlatılan unit kullanıcı oturumu kapansa da devam eder.
-Komut sonrası ayrı bir oturumdan kontrol edin:
+**Important:** the diagnostic XML retains the domain name `win10`, so `virsh define` temporarily replaces the existing domain definition rather than creating a second VM. Once testing is complete, shut down the VM and restore the production definition:
 
 ```bash
-sudo journalctl -u vmstart.service -b --no-pager
-sudo virsh vncdisplay win10
+sudo virsh define /var/lib/libvirt/win10.xml
 ```
 
-VNC yalnızca `127.0.0.1` üzerinde dinler. Uzak istemciden görüntü gerekiyorsa
-SSH tüneli kullanın; VNC'yi tüm ağ arayüzlerine açmayın. Test bitince VM'i kapatıp
-üretim XML'ine geri dönün: `sudo virsh define /var/lib/libvirt/win10.xml`.
+VNC listens only on `127.0.0.1`. Use an SSH tunnel for remote viewing; do not expose VNC on all interfaces.
 
-`prepare-vm-diagnostic.py`, yalnızca belirtilen XML'in ayrı kopyasını üretir; diski,
-üretim XML'ini veya NixOS yapılandırmasını değiştirmez. VM çalışırken host'ta
-normal grafik oturumu bulunmaz; bu, tek kartlı geçiş tasarımının doğal sonucudur.
+## Keyboard shortcuts
 
-Gerekli iki ISO'yu `/var/lib/libvirt/images/` altına kopyalayın:
-`Win10_22H2_English_x64v1.iso` ve `virtio-win-*.iso`.
+`SUPER` is the physical Super key (the `$mainMod` modifier).
 
-Hook'un ne yaptığını izlemek için:
-
-```bash
-sudo cat /var/log/libvirt/vfio.log      # bağlama, reset, kurtarma adımları
-sudo journalctl -u libvirtd -f
-```
-
----
-
-## Tuş kısayolları
-
-`SUPER` = Ana Mod (`$mainMod`, fiziksel olarak **Super** tuşu).
-
-### Uygulamalar
-
-| Tuş | İşlev |
+| Shortcut | Action |
 |---|---|
-| `SUPER` + `Return` / `SUPER` + `C` | kitty terminal |
-| `SUPER` + `A` | rofi uygulama başlatıcı |
-| `SUPER` + `S` / `SHIFT S` / `CTRL S` | pypr scratchpad: terminal / müzik / dosya yöneticisi |
-| `SUPER` + `Q` | aktif pencereyi kapat |
-| `SUPER` + `F` | tam ekran |
-| `SUPER` + `V` | yüzen pencere |
-| `SUPER` + `W` | waypaper (statik duvar kâğıdı) † |
-| `SUPER` + `Escape` | hyprlock (kilitle) |
-| `SUPER` + `SHIFT E` | oturumu kapat |
-| `SUPER` + `SHIFT C` | hyprpicker renk seçici |
-| `SUPER` + `G` | pencere grubu |
-| `SUPER` + `Tab` | önceki çalışma alanı |
+| `SUPER` + `Return` / `C` | Kitty terminal |
+| `SUPER` + `A` | Rofi application launcher |
+| `SUPER` + `S` / `SHIFT+S` / `CTRL+S` | Pypr scratchpads: terminal / music / file manager |
+| `SUPER` + `Q` | Close active window |
+| `SUPER` + `F` | Toggle fullscreen |
+| `SUPER` + `V` | Toggle floating window |
+| `SUPER` + `W` | Waypaper (static wallpaper selector) |
+| `SUPER` + `Escape` | Lock screen with Hyprlock |
+| `SUPER` + `SHIFT+E` | Exit session |
+| `SUPER` + `SHIFT+C` | Hyprpicker color picker |
+| `SUPER` + `G` | Toggle window group |
+| `SUPER` + `Tab` | Previous workspace |
+| `SUPER` + arrow keys / `H J K L` | Move focus between windows |
+| `SUPER` + `SHIFT` + arrows / `H J K L` | Move a window |
+| `SUPER` + `CTRL` + arrows / `H J K L` | Resize a window |
+| `SUPER` + mouse wheel | Cycle windows |
+| `SUPER` + left-drag | Move a window |
+| `SUPER` + right-drag | Resize a window |
+| `SUPER` + `1`…`9`, `0` | Switch to workspaces 1–10 |
+| `SUPER` + `SHIFT` + `1`…`0` | Move the active window to a workspace |
+| `SUPER` + `P` | Select a region and copy it |
+| `SUPER` + `SHIFT+P` | Select a region, annotate with Satty, then copy |
+| `SUPER` + `Y` | Toggle WuWa AI automatic translation |
+| `SUPER` + `SHIFT+T` | One-shot OCR and Turkish translation |
+| `SUPER` + `ALT+T` | Toggle mouse-selection translation |
 
-### Pencere yönetimi
+`SUPER+W` selects a static wallpaper; the desktop's video wallpaper is managed by `mpvpaper.service` and its watchdog. Waypaper does not control `mpvpaper`.
 
-| Tuş | İşlev |
-|---|---|
-| `SUPER` + `←↑↓→` veya `H J K L` | oda değiştir |
-| `SUPER` + `SHIFT` + `←↑↓→` / `H J K L` | pencereyi taşı |
-| `SUPER` + `CTRL` + `←↑↓→` / `H J K L` | boyutlandır |
-| `SUPER` + tekerlek ↓ / ↑ | sonraki / önceki pencene geç |
-| `SUPER` + sol tuş (basılı tutup sürükle) | pencereyi sürükle |
-| `SUPER` + sağ tuş (basılı tutup sürükle) | boyutlandır |
+The mouse-selection and one-shot translation scripts use `translate-shell` (`trans`) with a Google Translate backend by default. Selected text is sent over the network; do not use these shortcuts for sensitive text unless you replace the backend with a local workflow.
 
-> Tekerlek binding'leri `SUPER` ile **fare tekerleğinde** çalışır; dokunmatik
-> panelde `onAxisEvent` tetiklenmediği için karşılığı yoktur.
-
-### Çalışma alanları
-
-`SUPER` + `1…9` → workspace'e geç · `SUPER` + `0` → workspace 10
-`SUPER` + `SHIFT` + `1…0` → pencereyi workspace'e taşı
-
-### Ekran görüntüsü ve çeviri
-
-| Tuş | İşlev |
-|---|---|
-| `SUPER` + `P` | bölge seç → panoya kopyala |
-| `SUPER` + `SHIFT P` | bölge seç → `satty` ile düzenle → panoya |
-| `SUPER` + `Y` | WuWa AI otomatik çeviri toggle'ı |
-| `SUPER` + `SHIFT T` | tek seferlik OCR + çeviri (Türkçe) |
-| `SUPER` + `ALT T` | fare seçimini otomatik çevir toggle'ı |
-
-> ⚠️ `auto-translate.sh` ve `SUPER`+`SHIFT`+`T` komutu `translate-shell`
-> (`trans`) kullanır ve varsayılan olarak Google Translate backend'ine bağlanır.
-> Fareyle seçtiğiniz metin çeviri için ağa gönderilir; hassas metinlerde
-> kullanmayın. Çevirinin yerel kalmasını istiyorsanız `trans` çağrısını Ollama
-> tabanlı yerel bir çeviri akışıyla değiştirin.
-
-**WuWa OCR'nin yerel Gemma yedeği:** büyük model indirmesi bilerek otomatik
-başlatılmaz. İlk kullanım öncesi bir kez çalıştırın ve tamamlanmasını bekleyin:
+The WuWa OCR fallback requires the locally installed `wuwa-gemma` model. Start setup manually and wait for it to finish:
 
 ```bash
 sudo systemctl start wuwa-gemma-init
 sudo systemctl status wuwa-gemma-init --no-pager
 ```
 
-`wuwa-auto.sh` artık `wuwa-gemma` modeli API'de yoksa açık bildirim vererek
-başlamadan çıkar; `null` sonucu OCR metni olarak işlemez.
+The OCR script now checks that the model is available before beginning; it reports an error instead of treating a `null` response as translated text.
 
-Ses seviyesi için `XF86AudioRaiseVolume` / `LowerVolume` / `Mute` çalışır.
+## Gaming stack
 
-> † **`SUPER`+`W` statik duvar kâğıdı içindir, canlı duvar kâğıdı değil.** Masaüstünde
-> asıl olarak `mpvpaper` (video) çalışıyor; `mpvpaper.service` + `mpvpaper-watchdog`
-> onu yönetiyor. `waypaper`'ın kendi yapılandırılmış duvar kağıdı yok, dolayısıyla
-> bu tuş pratikte boş bir seçici açıyor ve mpvpaper'a dokunmuyor. Binding'i
-> tamamen kaldırmak isterseniz: `nixos/home.nix` → `bind = $mainMod, W, …` satırı.
-> İki aracı birlikte kullanacaksanız sıralamanın fark ettiğini bilin — mpvpaper
-> video layer'ı, waypaper ise arka plan resmini yazar.
-
----
-
-## Grafik ve oyun
-
-| Bileşen | Ne yapar |
+| Component | Role |
 |---|---|
-| **RADV** | Vulkan sürücüsü. `AMD_VULKAN_ICD=RADV`, `RADV_PERFTEST=gpl`. |
-| **lsfg-vk** | Vulkan katmanı — kare üretimi (lossless scaling tabanlı). Oyun başına çarpanlar `~/.config/lsfg-vk/conf.toml` içinde. |
-| **low_latency_layer** | Vulkan katmanı — `VK_AMD_anti_lag`, yani NVIDIA Reflex karşılığı. `LOW_LATENCY_LAYER_REFLEX=1` ile etkin. |
-| **GameMode** | Oyun başlarken `renice -10`, `ioprio 0`, `amd_performance_level=high`. |
-| **Gamescope** | Oyun penceresine tam ekran + düşük gecikme kuralı (`windowrule`). |
-| **MangoHud** | `~/.config/MangoHud/MangoHud.conf` — FPS/frametime/GPU-CPU sıcaklık. |
-| **Ananicy-cpp** | Öncelik kuralları (CachyOS rules). |
-| **power-profiles-daemon** | CPU governor. |
-| **Steam / Proton / Wine** | `steam`, `protonup-qt`, `wine`, `winetricks`, `heroic`. |
+| RADV | AMD Vulkan driver; `AMD_VULKAN_ICD=RADV`, `RADV_PERFTEST=gpl` |
+| `lsfg-vk` | Vulkan frame-generation layer; per-game settings in `~/.config/lsfg-vk/conf.toml` |
+| `low_latency_layer` | Vulkan layer using `VK_AMD_anti_lag`, enabled with `LOW_LATENCY_LAYER_REFLEX=1` |
+| GameMode | Applies the configured game-time priority and performance settings |
+| Gamescope | Fullscreen and window rules for games |
+| MangoHud | FPS, frametime, GPU/CPU, and temperature overlay |
+| Ananicy-cpp | Process priority rules |
+| power-profiles-daemon | Power profile / CPU governor management |
+| Steam / Proton / Wine | Windows game compatibility tools |
 
-İki Vulkan katmanı da `enable_environment` içermez; ikisi de varsayılan olarak
-açıktır. Doğrulama:
+Both Vulkan layers are configured without an explicit `enable_environment` restriction. Inspect the active layers with:
 
 ```bash
-VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE "korthos|lsl"
+VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 ```
 
-> **Guest tarafı ayarlı.** `vm-xml/win10.xml` bir **Windows 10** domain'idir;
-> `kvm.ignore_msrs=1` Windows 10'un bozuk MSR raporlamasını bastırmak için var.
-> Linux guest kullanırsanız gereksizdir, çıkarın.
+## Important configuration decisions
 
----
+- `systemd-boot` is used; UEFI is required.
+- The QEMU hook is installed via `virtualisation.libvirtd.hooks.qemu.vfio`. The path is supplied by NixOS to libvirt's hook mechanism.
+- The hook uses an explicit store-path Bash interpreter and controlled `PATH`, since libvirt service environments are minimal.
+- `zramSwap.priority = 100` is higher than disk swap priority `10`, so zram is preferred.
+- `vm.swappiness = 180` is an intentional aggressive swap tendency, not a priority setting. It can increase major page faults and frametime spikes if disk swap is used.
+- `hypridle` requests suspend after 900 seconds; Hyprlock is invoked through the configured pre-sleep command.
+- `HYPRLAND_CONFIG` is passed through the greetd environment wrapper, preventing Hyprland from accidentally selecting a different configuration format.
+- `nowatchdog` and `nmi_watchdog=0` reduce watchdog-based lockup diagnostics in exchange for less diagnostic data.
+- `usbcore.autosuspend=-1` disables USB autosuspend and may increase idle power consumption.
+- `kvm.ignore_msrs=1` suppresses failures from some unknown MSR accesses but can hide guest MSR problems.
 
-## Bu config'in özel ayarları
+## Known limitations
 
-Bunlar "NixOS'un default'undan farklı ve bilinçli" seçimlerdir:
+- **Navi 2x reset behavior:** reliable reset and host rebind cannot be guaranteed from static analysis. The optional `remove`/`rtcwake`/`rescan` recovery path is disabled by default. Enabling `VFIO_ALLOW_SUSPEND_RECOVERY=1` can suspend the host briefly and should only be attempted after checking firmware support and arranging recovery access.
+- **Single-GPU host:** while the VM owns the GPU, the host does not have a normal graphical session. Keep a recovery TTY or SSH session available.
+- **Fixed host user:** the hook defaults to `localhost` and terminates that user's graphical sessions. This is designed for this single-user configuration.
+- **No automatic USB input passthrough:** configure your own keyboard/mouse or a dedicated USB controller. Do not copy the maintainer's commented VID:PID example blindly.
+- **Unencrypted swap:** the disk swap partition sits outside LUKS2.
+- **OCR display geometry:** default WuWa crop regions target a 2560×1440 display. The script validates configured geometry and can be overridden with `WUWA_GEOMETRY_MAIN` and `WUWA_GEOMETRY_CHOICE`.
+- **Windows 10 lifecycle:** normal Windows 10 Home/Pro support ended on 14 October 2025. Consider your update/support requirements before using it as a networked guest.
+- `assets/` is intentionally absent; active configuration files do not reference it.
 
-| Ayar | Neden |
-|---|---|
-| `systemd-boot` | UEFI zorunlu; GRUB yok. |
-| `virtualisation.libvirtd.hooks.qemu.vfio` | libvirt hook'u yalnızca `/var/lib/libvirt/hooks/qemu.d/` altını tarar — `/etc/libvirt/hooks` **okunmaz**. NixOS'un `environment.etc` ile `/etc`'ye koyması hook'u sessizce ölü bırakırdı. |
-| Hook shebang'ı store-path'li | `libvirtd.service`'in PATH'inde bash yok; `#!/usr/bin/env bash` script'i hiç başlatmıyordu. |
-| Hook PATH'i zorlanıyor | `ls` (findutils) ve `sed` (gnused) coreutils'te **değildir**. PATH eksikliği veya sysfs'te DRM eşleşmesi olmaması artık `card0` varsayımı üretmez; GPU devri fail-closed şekilde iptal edilir. |
-| `zramSwap.priority = 100` | Disk swap'in `priority = 10`. Yüksek öncelik önce kullanılır — önceki durumda zram hiç devreye girmiyordu (~8 MiB ölçülmüştü). |
-| `vm.swappiness = 180` | RAM baskınken agresif temizlemeye izin verir. (Öncelik seçmez, **yazma eğilimini** ayarlar.) Bedeli: major page fault/swap baskısı artabilir; zram dolup disk swap devreye girerse oyun frametime'ı sıçrayabilir. |
-| `hypridle` 900 sn → `systemctl suspend` | Suspend öncesi hyprlock **çağrılmaz**: foreground'da bloklar ve arkadaki suspend'e hiç sıra gelmez. Kilit zaten `before_sleep_cmd` ile yapılıyor. |
-| `HYPRLAND_CONFIG` aktarımı | Home Manager değişkeni olağan kullanıcı oturumlarını kapsar; greetd/tuigreet bu ortamı garanti etmediğinden `configuration.nix` de aynı yolu dışa aktaran bir sarmalayıcı kullanır. Böylece Hyprland `hyprland.lua` dosyasını `.conf` yerine seçmez. |
-| `amd_pstate=active`, `pcie_aspm=off` | `amd_pstate=active` AMD P-State sürücüsünü etkinleştirir. Güncel çekirdeklerde `pcie_aspm=off`, ASPM'yi kapatmaz; firmware'in mevcut ASPM ayarını değiştirmeden bırakır. Bu seçenek tek başına VFIO gecikme kazancı sağlamayı garanti etmez. |
-| `nowatchdog`, `nmi_watchdog=0` | Kernel/NMI watchdog tabanlı lockup teşhisini azaltır veya kapatır; düşük jitter tercihi karşılığında kilitlenme teşhis bilgisi kaybolabilir. |
-| `usbcore.autosuspend=-1` | USB autosuspend'i tamamen kapatır; bazı cihaz/VM passthrough sorunlarını önleyebilir ama boşta USB güç tüketimini artırır. |
-| `kvm.ignore_msrs=1` | Bazı Windows guest MSR erişimlerinin hata üretmesini önler, fakat hatalı/bilinmeyen MSR erişimlerini gizleyebilir. |
+## Repository map
 
-**Ayarların sahibi:** üç yazıcı birbiriyle yarışıyor —
-`power-profiles-daemon` (CPU governor), `ananicy-cpp` (nice/ioprio) ve
-`gamemode` (`renice -10`). ppd yalnız governor'a dokunmalı, ananicy scheduler
-otoritesi olmalı. Oyun sırasında gamemode ikisini de ezmekte; bu bilinçli.
-Oyun dışında ppd profilini `balanced`'a çekmeniz önerilir.
-
----
-
-## Bilinen sınırlar
-
-- **Navi 2x GPU reset.** RX 6000 serisi `gnif/vendor-reset`in desteklediği
-  "reset bug" listesinde **yok**. VM ikinci kez açılamadığında kart PCIe
-  bus'tan düşebilir. Hook'ta sessiz unbind/rebind işe yaramazsa `remove` +
-  `rtcwake` + `rescan` kurtarma yolu bulunur; bu yol **varsayılan olarak kapalıdır**.
-  Opt-in açmak için `configuration.nix`'e
-  `systemd.services.libvirtd.environment.VFIO_ALLOW_SUSPEND_RECOVERY = "1";`
-  ekleyip sistemi yeniden oluşturun. Bu yol host'u kısa süreliğine askıya alır;
-  RTC uyandırma BIOS'ta desteklenmiyorsa kurtarma risklidir. Fallback kapalıyken
-  kurtarma başarısız olursa log'u inceleyin ve gerekirse host'u yeniden başlatın.
-  Üretim/günlük kullanım öncesi RX 6700 XT ile en az şu döngüyü doğrulayın:
-  VM başlat → normal kapat → ikinci kez başlat → host grafik oturumuna dönüş.
-  Ayrıca açılışın yarıda kalması ve VM'in zorla kapatılması durumlarını test edin;
-  başarılı CI sonucu bu donanım testlerinin yerine geçmez.
-- **Host'ta GPU yokken grafik yok.** VM çalışırken yalnızca metin konsolu var.
-  Acil kurtarma için `Ctrl+Alt+F2` → `systemctl reboot`.
-- **`HOST_USER` sabit.** Hook `localhost`'u sonlandırır. Tek kullanıcılı
-  kurulum içindir; `KURULUM.md` §10b'de bu konu ayrıntılı.
-- **VM'e giriş cihazı otomatik yapılandırılmıyor.** `vm-xml/win10.xml` içindeki USB hostdev
-  yorum satırında; `<graphics>`/VNC/SPICE elemanı da yok. GPU passthrough'tan sonra
-  host'ta grafik olmaması beklenir ve host'a bağlı klavye/fare kendiliğinden guest'e
-  geçmez. VM'i kontrol edebilmek için kendi USB klavye/farenizi (veya ayrı USB
-  denetleyicisini) XML'de açıkça guest'e aktarın. Tek tek cihaz aktarımı için `lsusb`
-  çıktısından kendi VID:PID'nizi bulun, yorumlu `<hostdev mode="subsystem" type="usb">`
-  örneğini düzenleyin ve domain'i yeniden `virsh define` edin. `managed="yes"`
-  kullanıldığında libvirt aygıtı VM için ayırmayı ve kapandığında geri vermeyi yönetir.
-  > 💡 `2a7a:8a47` yorumdaki değer bakımcının CASUE klavyesine aittir; aynen kopyalamayın.
-  > Klavye/fareyi host'tan devretmeden önce VM açıkken host oturumunun kapanacağını unutmayın.
-- **swap şifrelenmemiş.** LUKS dışındaki açık bölümde.
-- **CSR (Client-Side Rendering).** Bu bir oyun/gaming config'i; KDE/Wayland
-  gibi ağır masaüstü bileşenleri yok.
-- **`wuwa-auto.sh` ekran koordinatları.** Varsayılanları 2560×1440'e göre
-  yazıldı; başka çözünürlükte ekrana sığmıyorsa döngüye girmeden uyarı
-  basar. `WUWA_GEOMETRY_MAIN` / `WUWA_GEOMETRY_CHOICE` ile geçersiz kılınabilir.
-  Boşta kaldığında 3 sn → 30 sn arası kademeli bekler, yani gün boyu sürekli
-  OCR yapmaz.
-- **`assets/` klasörü bu sürümde bilerek kaldırılmıştır.** Etkin Nix/Hyprland yapılandırması bu klasöre başvurmaz; eski `CHANGELOG.md` ve `docs/archive/` içindeki atıflar geçmiş sürümlere aittir.
-- **`docs/archive/` arşivdir.** O klasördeki raporlar eski sürümlere karşı
-  yazıldı; koda bakarak doğrulama için kullanmayın.
-
----
-
-## Depo haritası
-
-```
+```text
 .
-├── README.md                     ← bu dosya
-├── KURULUM.md                    ← sıfırdan kurulum (yeni sistem)
-├── CONTRIBUTING.md               ← katkı akışı + doğrulama komutları
-├── CHANGELOG.md                  ← sürüm geçmişi ve düzeltme kayıtları
-├── install.sh                    ← mevcut NixOS'a taşıma / güncelleme
-├── LICENSE                       ← MIT
-│
-├── .github/workflows/check.yml   ← CI: shellcheck + gömülü script'ler + nix flake check
-├── docs/archive/                 ← eski analiz raporları (arşiv — doğrulama için değil)
+├── README.md
+├── KURULUM.md                      # Turkish fresh-install guide
+├── DEGISIKLIK_GECMISI.md           # Turkish detailed legacy changelog
+├── CONTRIBUTING.md
+├── CHANGELOG.md
+├── LICENSE
+├── install.sh                      # migration/update helper for an existing NixOS host
+├── .github/workflows/check.yml
+├── docs/
+│   ├── REPAIR-AND-VALIDATION-REPORT.md
+│   └── archive/                    # English historical audit summaries
 ├── scripts/
-│   ├── extract-embedded-scripts.py   ← home.nix'e gömülü bash'i diske çıkarır (CI için)
-│   └── prepare-vm-diagnostic.py      ← ayrı, loopback-only VNC/virtio tanılama XML'i üretir
-├── vm-xml/
-│   └── win10.xml                 ← libvirt domain tanımı
-│
-└── nixos/                        ← /etc/nixos'a kopyalanır
-    ├── flake.nix                 ← nixosSystem + devShell
-    ├── flake.lock                ← kilitli girdiler
-    ├── configuration.nix         ← sistem: kernel, VFIO, servisler, paketler
-    ├── home.nix                  ← Home Manager: Hyprland, Waybar, kabuk, betikler
-    ├── hardware-configuration.nix ← ⚠️ MAKİNEYE ÖZGÜ — başka bir makineye kopyalıyorsanız değiştirin
-    └── hooks/qemu                ← libvirt VFIO hook'u (configuration.nix içine gömülür)
+│   ├── extract-embedded-scripts.py
+│   ├── prepare-vm-diagnostic.py
+│   ├── test-vfio-hook-driver-state.sh
+│   └── test-vm-xml.py
+├── vm-xml/win10.xml
+└── nixos/
+    ├── flake.nix
+    ├── flake.lock
+    ├── configuration.nix
+    ├── home.nix
+    ├── hardware-configuration.nix   # machine-specific: replace for another host
+    └── hooks/qemu
 ```
 
-`nixos/` içinde ikinci bir doğruluk kaynağı yoktur: Hyprland/Hyprlock/Waybar
-configleri, pyprland, MangoHud, lsfg-vk ve tüm yardımcı betikler `home.nix`
-içinde **inline** tanımlıdır.
+Hyprland, Hyprlock, Waybar, Pyprland, MangoHud, lsfg-vk, and helper scripts are declared inline in `nixos/home.nix`; there is no parallel config tree for those entries.
 
----
+## Validation
 
-## Doğrulama
-
-Değişiklikten önce:
+Run from the repository root:
 
 ```bash
-nix develop ./nixos                    # nixfmt, statix, deadnix, shellcheck, jq, pciutils
-nixfmt .                               # biçimlendir
-
-shellcheck -S warning install.sh nixos/hooks/qemu
-python3 scripts/extract-embedded-scripts.py /tmp/emb | xargs -0 -r -n1 -- shellcheck -S warning
-
-cd nixos && nix flake check --no-build
+nix develop ./nixos
+nixfmt ./nixos
+shellcheck -S warning install.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh
+python3 scripts/extract-embedded-scripts.py /tmp/embedded-scripts | xargs -0 -r -n1 -- shellcheck -S warning
+python3 scripts/test-vm-xml.py
+bash scripts/test-vfio-hook-driver-state.sh
+(cd nixos && nix flake check --no-build)
 ```
 
-`nix flake check --no-build` yalnızca **değerlendirir**, derlemez. Yanlış yazılmış
-bir option adı (`xwaylan.enable` gibi) sessizce merge olup sisteminizi kırmak
-yerine burada düşer. Tam doğrulama:
+`nix flake check --no-build` evaluates the flake but does not build the complete system or kernel. It does not replace a full build, libvirt domain validation, or the physical GPU lifecycle test: start the VM, shut it down normally, start it a second time, and verify that the host graphical session recovers.
 
-```bash
-nix eval .#nixosConfigurations.nixos.config.system.build.toplevel.drvPath
-sudo nixos-rebuild dry-activate --flake /etc/nixos/nixos#nixos
-```
+## License
 
----
-
-## Lisans
-
-MIT — bkz. [`LICENSE`](LICENSE).
+MIT. See [`LICENSE`](LICENSE).
