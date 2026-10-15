@@ -62,7 +62,10 @@ sudo cp -r /tmp/repo/. /mnt/etc/nixos/
 sudoedit /mnt/etc/nixos/nixos/hardware-configuration.nix
 HASH=$(nix-shell -p whois --run 'mkpasswd --method yescrypt')
 printf '%s\n' "$HASH" | sudo tee /mnt/etc/nixos/hashedPassword >/dev/null
+sudo chown root:root /mnt/etc/nixos/hashedPassword
 sudo chmod 600 /mnt/etc/nixos/hashedPassword
+sudo test -s /mnt/etc/nixos/hashedPassword || { echo "hashedPassword is missing or empty" >&2; exit 1; }
+[ "$(sudo stat -c '%U:%G:%a' /mnt/etc/nixos/hashedPassword)" = "root:root:600" ] || { echo "hashedPassword must be root:root mode 600" >&2; exit 1; }
 cd /mnt/etc/nixos/nixos
 sudo nixos-install --flake /mnt/etc/nixos/nixos#nixos --accept-flake-config
 ```
@@ -99,7 +102,9 @@ if [ ! -s /etc/nixos/hashedPassword ]; then
 fi
 sudo chown root:root /etc/nixos/hashedPassword
 sudo chmod 600 /etc/nixos/hashedPassword
-test -s /etc/nixos/hashedPassword || { echo "hashedPassword is missing or empty" >&2; exit 1; }
+sudo test -s /etc/nixos/hashedPassword || { echo "hashedPassword is missing or empty" >&2; exit 1; }
+password_meta=$(sudo stat -c '%U:%G:%a' /etc/nixos/hashedPassword) || { echo "Cannot inspect hashedPassword metadata" >&2; exit 1; }
+[ "$password_meta" = "root:root:600" ] || { echo "hashedPassword must be owned by root:root with mode 600 (found: $password_meta)" >&2; exit 1; }
 ```
 
 Then activate and reboot:
