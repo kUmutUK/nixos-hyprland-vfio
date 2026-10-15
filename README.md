@@ -87,6 +87,23 @@ The script backs up existing configuration files, asks for the selected GPU/audi
 
 ### Activate and reboot
 
+Before rebuilding, make sure `/etc/nixos/hashedPassword` exists and contains a
+valid password hash. `localhost` uses this file via `hashedPasswordFile`; if it is
+missing, the account can remain locked and Hyprland login will fail. Preserve an
+existing valid hash. Only create a new one if the file is missing or empty:
+
+```bash
+if [ ! -s /etc/nixos/hashedPassword ]; then
+  HASH=$(nix-shell -p whois --run 'mkpasswd --method yescrypt')
+  printf '%s\n' "$HASH" | sudo tee /etc/nixos/hashedPassword >/dev/null
+fi
+sudo chown root:root /etc/nixos/hashedPassword
+sudo chmod 600 /etc/nixos/hashedPassword
+test -s /etc/nixos/hashedPassword || { echo "hashedPassword is missing or empty" >&2; exit 1; }
+```
+
+Then activate and reboot:
+
 ```bash
 sudo nixos-rebuild dry-activate --flake /etc/nixos/nixos#nixos
 sudo nixos-rebuild switch --flake /etc/nixos/nixos#nixos
@@ -112,9 +129,11 @@ After the first system activation and reboot, prepare the VM disk and define the
 
 ```bash
 sudo mkdir -p /var/lib/libvirt/images /var/lib/libvirt/qemu
+# Run this block from the repository root if install.sh did not create the deployed XML.
 # Preserve an XML already synchronized by install.sh; it contains this host's PCI addresses.
 if [ ! -f /var/lib/libvirt/win10.xml ]; then
-  sudo cp /etc/nixos/vm-xml/win10.xml /var/lib/libvirt/win10.xml
+  sudo cp ./vm-xml/win10.xml /var/lib/libvirt/win10.xml
+  echo "Source XML copied. Verify/update its GPU/audio PCI addresses before starting the VM."
 else
   echo "Preserving existing deployed VM XML. Verify its GPU/audio PCI addresses before starting the VM."
 fi

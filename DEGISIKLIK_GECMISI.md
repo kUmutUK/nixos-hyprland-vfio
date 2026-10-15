@@ -28,7 +28,7 @@ Bu paket için yapılan kontroller statik sözdizimi/ayrıştırma kontrolleridi
 - `install.sh`: var olan yapılandırmaların herhangi bir yedeği başarısızsa kurulum yıkıcı kopyalama adımlarına geçmeden duruyor. `hooks/` yedekleme listesinde zaten vardı.
 - `nixos/home.nix`: Hypridle bloğunun girintisi düzenlendi; davranış değişmedi.
 - `README.md`: `pcie_aspm=off` açıklaması güç tasarrufu garantisi vermeyecek şekilde düzeltildi.
-- Çalıştırılabilir modlar `install.sh`, `nixos/hooks/qemu` ve `scripts/extract-embedded-scripts.py` dosyalarına verildi.
+- `install.sh` çalıştırılabilir (`100755`) olmalıdır. `nixos/hooks/qemu` dosyası kurulum sırasında hedefe `0755` moduyla kopyalanır; `scripts/extract-embedded-scripts.py` ise `python3` ile çağrıldığı için kaynak dosyada çalıştırma biti zorunlu değildir.
 
 Statik doğrulama, VM'nin gerçek donanımda açıldığını kanıtlamaz. Bu ortamda NixOS değerlendirmesi/build'i ve GPU passthrough çalışma zamanı testi yapılmadı.
 
@@ -307,21 +307,24 @@ yanına `.backup` uzantısıyla düşürür. Yani ilk `nixos-rebuild switch` son
 (impermanence) dosyanın kendisidir, silinebilir. Üstünde şüphe etmenize gerek
 yoktur; sürpriz olmaması için burada yazıyoruz.
 
-## 🟠 Fixed — `win10.xml` OVMF template mimari uyuşmazlığı (P2)
+## ⚠️ Retracted — `win10.xml` OVMF template mimari uyuşmazlığı iddiası yanlıştı
+
+Önceki denetimde aşağıdaki değişiklik önerilmişti; bu öneri **geri çekilmiştir**:
 
 ```diff
 - <nvram template="/run/libvirt/nix-ovmf/edk2-i386-vars.fd" …>
 + <nvram template="/run/libvirt/nix-ovmf/edk2-x86_64-vars.fd" …>
 ```
 
-Kod 64-bit (`edk2-x86_64-code.fd`), değişken deposu şablonu IA32 build'idir;
-`arch="x86_64"` ile eşleşmiyor. **Severity P2, "VM açılmaz" değil:** değişken
-deposu başlığı mimariden bağımsız olduğu için çoğu durumda açılır. Klasik
-belirti misafirin kendini *"yeni kurulum"* sanması / değişken kaybı. Secure Boot
-bu config'de kapalı. Her iki dosya da `/run/libvirt/nix-ovmf` altında zaten var
-(`libvirtd-config` firmware JSON'larından kopyalıyor) — dosya eksik değil,
-**yanlış** dosyaydı. `docs/archive/ANALIZ-2026-10-05-ZIP3-SUPERSEDED.md:278`
-zaten P2 olarak işaretlemiş, kodda uygulanmamıştı.
+Bu bir hata değildi. NixOS'un libvirt/OVMF geçiş notları eski
+`OVMF_CODE.fd` yolunu `edk2-x86_64-code.fd`, eski `OVMF_VARS.fd` yolunu ise
+`edk2-i386-vars.fd` olarak eşler. Bu nedenle mevcut XML'deki
+`edk2-x86_64-code.fd` + `edk2-i386-vars.fd` çifti, NixOS tarafından belgelenen
+karşılıktır; yalnızca dosya adındaki `i386` nedeniyle `x86_64-vars.fd` ile
+değiştirilmemelidir. Gerçek hedefte her iki dosyanın mevcutluğu yine kontrol
+edilmelidir.
+
+Kaynak: [NixOS Release Notes — libvirtd OVMF path changes](https://nixos.org/manual/nixos/stable/release-notes).
 
 ## ✅ Retracted — `hooks/qemu` polkit'i geri açmıyor (GERÇEK DEĞİL)
 
@@ -422,7 +425,7 @@ modül sistemini değerlendireceğiz"tir.
 > güncel HEAD değildir. Depo GitHub web arayüzünden tek commit olarak yükleniyor,
 > bu yüzden hash her yüklemede değişir; aşağıda geçen `0137b38`, `24cd1ca`,
 > `97a1665`, `b993f54`, `602f217`, `0d35833`, `4bc1258d` değerleri **yazıldıkları
-> andaki** commit'leri gösterir. Güncel HEAD: **`af7337f`** ("Add files via upload").
+> andaki** commit'leri gösterir. O tarihteki HEAD: **`af7337f`** ("Add files via upload"); bu güncel HEAD bilgisi değildir.
 > Bu not, geçmiş bölümlerin **anlatı olarak** doğru, ama hash olarak güncelliğini
 > yitirmiş olduğunu belgeler; geçmiş kayıtları yeniden yazmadık.
 
@@ -498,7 +501,7 @@ ve `environment.persistence` iki ayrı option'dır; biri diğerini doldurmaz.
 
 ## 🟡 Fixed — doküman hataları
 
-- **Üç farklı commit hash'i "güncel kod" diye geçiyordu.** Gerçek HEAD `af7337f`
+- **Üç farklı commit hash'i "güncel kod" diye geçiyordu.** O denetim anındaki HEAD `af7337f`
   ("Add files via upload"); `docs/archive/README.md` ve `DEGISIKLIKLER.md`
   `0137b38`, `CHANGELOG [1.3.2]` ise `24cd1ca` diyordu. Depo GitHub web
   arayüzünden tek commit olarak yüklendiği için hash her yüklemede değişiyor —
