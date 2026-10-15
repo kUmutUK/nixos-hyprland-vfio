@@ -11,7 +11,7 @@ Reviewed the uploaded source archive and modified source files, configuration, V
 - Changed the CachyOS flake input from the default `master` branch to `github:xddxdd/nix-cachyos-kernel/release`. [Upstream documentation](https://github.com/xddxdd/nix-cachyos-kernel/blob/release/README.md) says this branch contains a kernel built by its Hydra CI and published to its binary cache.
 - Changed `cachyos-kernel.overlays.default` to `cachyos-kernel.overlays.pinned`, which selects packages from the kernel flake's pinned nixpkgs revision. See the [upstream overlay definition](https://github.com/xddxdd/nix-cachyos-kernel/blob/release/flake.nix). This can avoid a local ThinLTO build when a matching cached derivation exists.
 - Replaced the previous CachyOS cache entry with the Attic substituter and public key documented by upstream in both the flake `nixConfig` and system Nix settings. [Upstream cache configuration](https://github.com/xddxdd/nix-cachyos-kernel/blob/release/flake.nix).
-- Updated the input's `original.ref` in `flake.lock`, but the locked revision/hash has not been regenerated in this environment. **Before building, run** `sudo nix flake lock --update-input cachyos-kernel` from `nixos/`, review the resulting lock diff, and commit it. A cache miss can still trigger a local build; the configuration changes cannot repair an upstream source-level linker regression if the cache is unavailable.
+- In this archive, `flake.lock` already pins the CachyOS input to release commit `873c5a2a40575b880a962aaade19afbb572adf92` with the corresponding NAR hash. No lock refresh is required just to apply the fixes in this report. A cache miss can still trigger a local build; the configuration changes cannot repair an upstream source-level linker regression if the cache is unavailable.
 
 ### Windows VM XML
 
@@ -29,14 +29,15 @@ Reviewed the uploaded source archive and modified source files, configuration, V
 
 - Rewrote the English-named `README.md`, `CONTRIBUTING.md`, and `CHANGELOG.md` in English. Preserved the full historical Turkish changelog in the Turkish-named `DEGISIKLIK_GECMISI.md`.
 - Kept `KURULUM.md` in Turkish and translated comments embedded in its command examples into English.
-- Translated installer prompts, warnings, and code comments into English; translated VFIO hook log/recovery messages and comments into English. Turkish notifications inside the OCR translation utility remain Turkish intentionally because they are end-user UI text for an English-to-Turkish workflow.
+- Translated installer prompts, warnings, code comments, desktop labels, status messages, notifications, service descriptions, and VFIO hook comments into English. The translation result itself remains Turkish by design because the OCR utility translates English game text into Turkish.
 - Renamed archived reports with English filenames and replaced obsolete Turkish audit snapshots with English historical summaries. The current audit scope and known limitations are documented here.
 
 ## Checks performed in this environment
 
 | Check | Result |
 |---|---|
-| `bash -n install.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh` | Passed |
+| `bash -n install.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh` | Passed |
+| `bash scripts/test-installer-invariants.sh` | Passed |
 | `python3 -m py_compile` for repository Python scripts | Passed |
 | `python3 scripts/test-vm-xml.py` | Passed |
 | `bash scripts/test-vfio-hook-driver-state.sh` | Passed |
@@ -45,18 +46,27 @@ Reviewed the uploaded source archive and modified source files, configuration, V
 | `shellcheck`, `xmllint`, `virt-xml-validate` | Not run: tools are unavailable in this environment |
 | Real RX 6700 XT VM start/shutdown/driver restoration | Not run: requires the target host and hardware |
 
-The environment used to prepare this archive does not have Nix or network access from the container, so it was not possible to regenerate and verify the new CachyOS release input lock node here. The source requests the `release` branch, but `flake.lock` still points to the previously locked kernel commit until the explicit lock refresh below is run. Treat that refresh as a required part of applying this repair; the ZIP is not claiming that the kernel rebuild has already been proven successful.
+The checked-in `flake.lock` in this archive already points to the CachyOS `release` commit listed above. Nix is unavailable in the preparation environment, so neither flake evaluation nor a kernel build was run here. The lock state is therefore verified from the file contents, but successful cache substitution and kernel compilation still need to be checked on the target host.
 
 ## Required checks on the target NixOS host
 
 From `/etc/nixos/nixos/`:
 
 ```bash
-sudo nix flake lock --update-input cachyos-kernel
 sudo nix flake check --no-build --show-trace --no-update-lock-file
 sudo nixos-rebuild dry-activate --flake .#nixos -L
 ```
 
-Watch whether the kernel is substituted from cache or built locally. If the same `tools/bpf/resolve_btfids` `ld.lld: undefined symbol` error recurs after cache refresh, capture the full derivation log with `nix log /nix/store/<kernel-derivation>.drv`; a lock/cache change does not itself fix a linker bug in source. Keep the currently working system generation until the candidate generation succeeds.
+Watch whether the kernel is substituted from cache or built locally. If the same `tools/bpf/resolve_btfids` `ld.lld: undefined symbol` error recurs, capture the full derivation log with `nix log /nix/store/<kernel-derivation>.drv`; a lock/cache change does not itself fix a linker bug in source. Keep the currently working system generation until the candidate generation succeeds.
 
 Before relying on single-GPU passthrough, test VM startup from a separate TTY/SSH session, a clean guest shutdown, GPU and audio driver restoration, host compositor recovery, and a second VM start. XML parsing is not a substitute for libvirt/QEMU validation or a real boot.
+
+
+## Follow-up fixes in the reviewed archive
+
+- Defined `PATCHED_XML=/var/lib/libvirt/win10.xml` before its first use in `install.sh`, translated the remaining installer prompt/help strings, and preserved the installer's executable mode in the delivered patch archive.
+- Changed the English README's XML-copy instructions to preserve an already-deployed file generated by the installer, which may contain host-specific PCI addresses and VM identity values.
+- Set all configured locale categories and the supported generated locale to `en_US.UTF-8`. The Turkish Q keyboard mapping remains intentionally configured as a physical keyboard-layout choice, not as the system language.
+- Translated remaining Waybar/Hyprlock labels, notifications, service descriptions, runtime errors, hook comments, and the commented USB-input XML notes into English. Translation output from the OCR/game translation feature remains Turkish intentionally.
+- Added `scripts/test-installer-invariants.sh` and connected it to CI to guard the XML destination, preservation of deployed XML, English locale, and known user-visible strings.
+- Added a Windows 10 lifecycle warning to the README; standard Home/Pro support ended on October 14, 2025.
