@@ -430,8 +430,10 @@ if [ "$ACTION" = "release" ]; then
     for tty in /dev/tty1 /dev/tty2; do
       [ -w "$tty" ] && printf '%s\n' "No GPU driver is bound; a black screen is expected. Recovery: systemctl reboot" > "$tty" 2>/dev/null || true
     done
+  elif ! device_has_real_driver "$GPU_AUDIO"; then
+    log "WARNING: GPU display function restored, but $GPU_AUDIO (HDMI/DP audio) has no normal host driver. Starting the desktop; GPU audio may remain unavailable."
   else
-    log "GPU restored to the host; starting the desktop."
+    log "GPU display and audio functions restored to the host; starting the desktop."
   fi
 
   # The text console/framebuffer rebind already runs above the warning. Do not exit 1 here:
