@@ -29,7 +29,7 @@ Reviewed the uploaded source archive and modified source files, configuration, V
 
 - Rewrote the English-named `README.md`, `CONTRIBUTING.md`, and `CHANGELOG.md` in English. Preserved the full historical Turkish changelog in the Turkish-named `DEGISIKLIK_GECMISI.md`.
 - Kept `KURULUM.md` in Turkish and translated comments embedded in its command examples into English.
-- Translated installer prompts, warnings, code comments, desktop labels, status messages, notifications, service descriptions, and VFIO hook comments into English. The translation result itself remains Turkish by design because the OCR utility translates English game text into Turkish.
+- Translated installer prompts, warnings, desktop labels, status messages, notifications, service descriptions, and VFIO hook comments into English; translated the remaining LLM-fallback comment in `nixos/home.nix` as well. The translation result itself remains Turkish by design because the OCR utility translates English game text into Turkish.
 - Renamed archived reports with English filenames and replaced obsolete Turkish audit snapshots with English historical summaries. The current audit scope and known limitations are documented here.
 
 ## Checks performed in this environment
@@ -66,7 +66,7 @@ Before relying on single-GPU passthrough, test VM startup from a separate TTY/SS
 
 - Defined `PATCHED_XML=/var/lib/libvirt/win10.xml` before its first use in `install.sh` and translated the remaining installer prompt/help strings. The input ZIP did not encode Unix permission bits for `install.sh`, so extraction produced mode `0644` even though the Git index records `100755`. This follow-up fix bundle explicitly stores `install.sh` as mode `100755`.
 - Kept an already-deployed VM XML intact and corrected the README fallback to copy `vm-xml/win10.xml` from the repository root only when no deployed XML exists. The manual-copy path warns that host-specific PCI addresses must be checked.
-- Added a migration prerequisite check for `/etc/nixos/hashedPassword`, including root ownership and mode `0600`, before the rebuild commands. Added a regression assertion that rejects the former undeclared `iommu_dir` spelling; the checked-in installer already uses the declared `gpu_iommu_dir`.
+- Documented a manual migration prerequisite check for `/etc/nixos/hashedPassword` in `README.md`, including non-empty content, root ownership, and mode `0600`, before rebuild commands. The installer prints the same checks as follow-up commands; it does not independently inspect the deployed password file. Its example creates a hash only when the file is missing or empty, preserving an existing valid hash. Added a regression assertion that rejects the former undeclared `iommu_dir` spelling; the checked-in installer already uses the declared `gpu_iommu_dir`.
 - Retracted the false OVMF template-architecture finding, corrected historical HEAD wording, and removed stale advice to refresh the CachyOS lock during routine installation.
 - Set all configured locale categories and the supported generated locale to `en_US.UTF-8`. The Turkish Q keyboard mapping remains intentionally configured as a physical keyboard-layout choice, not as the system language.
 - Translated remaining Waybar/Hyprlock labels, notifications, service descriptions, runtime errors, hook comments, and the commented USB-input XML notes into English. Translation output from the OCR/game translation feature remains Turkish intentionally.
@@ -76,9 +76,10 @@ Before relying on single-GPU passthrough, test VM startup from a separate TTY/SS
 - Replaced the ambiguous `nixfmt ./nixos` README command with a `find`/`xargs` pipeline that invokes `nixfmt` separately on each `.nix` file.
 - Hardened `scripts/test-vm-xml.py`: the checked-in template must contain exactly two PCI `hostdev` elements, their source addresses must be unique, and they must match the two distinct hook defaults.
 - Clarified the VFIO release log so it distinguishes restoration of the GPU display function from restoration of the HDMI/DP audio function; a restored display GPU no longer implies that both functions recovered.
+- Made the installer checklist non-destructive for `hashedPassword`, translated the final remaining Turkish source comment, and moved the `nixos-enter ... passwd root` instruction to after successful `nixos-install` in `KURULUM.md`.
 
 ## Follow-up validation of this fix bundle
 
-- `install.sh` is packaged with Unix mode `100755`, consistent with the Git index and the README's direct `./install.sh` invocation.
+- The corrected ZIP stores `install.sh` with Unix mode `100755`, consistent with the Git index and the README's direct `./install.sh` invocation. ZIP mode is verified on the produced archive, not inferred from the Git index.
 - Passed after these edits: `bash -n` for the installer, QEMU hook, and regression tests; `scripts/test-installer-invariants.sh`; `scripts/test-vfio-hook-driver-state.sh`; `scripts/test-vm-xml.py`; Python compilation for the repository scripts; and XML parsing. Negative tests also confirmed that duplicate PCI addresses and a third PCI `hostdev` are rejected.
 - `shellcheck`, Nix evaluation/build, libvirt validation, and real hardware lifecycle checks remain unrun because the required tools or target hardware are unavailable in this preparation environment.
