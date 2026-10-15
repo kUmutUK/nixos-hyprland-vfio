@@ -24,6 +24,14 @@ if ! grep -Fq 'readlink -e -- "$link"' "$INSTALLER"; then
   echo "FAIL: IOMMU group resolution must require an existing canonical sysfs target." >&2
   exit 1
 fi
+if ! grep -Fq 'Preserve an existing valid hash; create one only if the file is missing or empty.' "$INSTALLER"; then
+  echo "FAIL: installer checklist must preserve existing valid password hashes." >&2
+  exit 1
+fi
+if ! grep -Fq 'if [ ! -s /etc/nixos/hashedPassword ]; then' "$INSTALLER"; then
+  echo "FAIL: installer password instructions must only create the hash when missing or empty." >&2
+  exit 1
+fi
 if ! grep -Fq '[[ "$group_num" =~ ^[0-9]+$ ]]' "$INSTALLER"; then
   echo "FAIL: IOMMU group IDs must be validated as numeric before use." >&2
   exit 1
@@ -55,6 +63,13 @@ if 'sudo test -s /etc/nixos/hashedPassword' not in text or 'sudo chmod 600 /etc/
     raise SystemExit("FAIL: README must check hashedPassword with sufficient privilege and restrict its permissions.")
 if "sudo stat -c '%U:%G:%a' /etc/nixos/hashedPassword" not in text or 'root:root:600' not in text:
     raise SystemExit("FAIL: README must validate hashedPassword owner, group, and mode.")
+
+install_guide = Path(sys.argv[1]).parent / "KURULUM.md"
+guide_text = install_guide.read_text(encoding="utf-8")
+install_command = guide_text.index("sudo nixos-install --flake /mnt/etc/nixos/nixos#nixos")
+root_pass_command = guide_text.index("sudo nixos-enter --root /mnt -c 'passwd root'")
+if root_pass_command < install_command:
+    raise SystemExit("FAIL: KURULUM.md must place root password setup after successful nixos-install.")
 
 config = Path(sys.argv[1]).parent / "nixos" / "configuration.nix"
 config_text = config.read_text(encoding="utf-8")
@@ -102,4 +117,4 @@ for name in sys.argv[1:]:
         raise SystemExit(f"FAIL: Turkish UI/comment strings remain in {name}: {', '.join(found)}")
 PY
 
-echo "OK: installer XML destination, Waypaper removal, literal PCI diagnostics, English locale, and runtime UI invariants passed."
+echo "OK: installer XML destination, password-hash preservation, setup-guide ordering, Waypaper removal, PCI diagnostics, locale, and runtime UI invariants passed."
