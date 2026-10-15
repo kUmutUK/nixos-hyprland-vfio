@@ -33,7 +33,7 @@ The repository is MIT-licensed and is provided “as is,” without warranty. Us
 | GPU | AMD Radeon RX 6700 XT (Navi 22) is the documented target. `rocmOverrideGfx = "10.3.0"` is configured for the target system; do not assume it is appropriate for another GPU. |
 | Firmware | UEFI. Enable IOMMU / AMD-Vi in firmware and verify it after boot with `dmesg` and `/sys/kernel/iommu_groups/`. |
 | Storage | About 810 GiB allocated: 1 GiB EFI, 8 GiB swap, and an 800 GiB LUKS2/Btrfs volume in the reference layout. |
-| Filesystems | LUKS2 + Btrfs subvolumes + EFI. The configured disk swap is outside the LUKS volume and is therefore not encrypted. |
+| Filesystems | LUKS2 + Btrfs subvolumes + EFI. Disk swap sits outside the LUKS volume; the reference config encrypts it with a per-activation random key using `randomEncryption.enable = true`. Preserve that option in the generated hardware file for fresh installs. |
 | Kernel | CachyOS BORE-LTO selected through a flake input. The exact kernel version follows the locked kernel input. |
 
 The installer checks the GPU's IOMMU group. If unrelated devices share that group, the GPU may not be safely passed through without additional isolation measures. ACS override is not enabled by default.
@@ -49,24 +49,29 @@ Follow the Turkish step-by-step guide in [`KURULUM.md`](KURULUM.md) for disk par
 The high-level flow is:
 
 ```bash
-nixos-generate-config --root /mnt
+sudo nixos-generate-config --root /mnt
 
 git clone https://github.com/kUmutUK/nixos-hyprland-vfio.git /tmp/repo
 cp /mnt/etc/nixos/hardware-configuration.nix /tmp/repo/nixos/hardware-configuration.nix
-rm -rf /mnt/etc/nixos
-mkdir -p /mnt/etc/nixos
-cp -r /tmp/repo/. /mnt/etc/nixos/
+sudo mv /mnt/etc/nixos /mnt/etc/nixos-generated-backup
+sudo mkdir -p /mnt/etc/nixos
+sudo cp -r /tmp/repo/. /mnt/etc/nixos/
 
+# Preserve the generated swap device path and add randomEncryption.enable = true
+# inside its swapDevices entry, then save and exit the editor.
+sudoedit /mnt/etc/nixos/nixos/hardware-configuration.nix
+HASH=$(nix-shell -p whois --run 'mkpasswd --method yescrypt')
+printf '%s\n' "$HASH" | sudo tee /mnt/etc/nixos/hashedPassword >/dev/null
+sudo chmod 600 /mnt/etc/nixos/hashedPassword
 cd /mnt/etc/nixos/nixos
-nix flake lock --update-input cachyos-kernel
-nixos-install --flake /mnt/etc/nixos/nixos#nixos --accept-flake-config
+sudo nixos-install --flake /mnt/etc/nixos/nixos#nixos --accept-flake-config
 ```
 
 **Before installing:**
 
 - Replace `nixos/hardware-configuration.nix` with the file generated for the target machine. The repository's original UUIDs and device paths are machine-specific; never use them blindly.
-- Create `/mnt/etc/nixos/hashedPassword` as explained in `KURULUM.md`, and restrict its permissions to `0600`. Do not commit this file.
-- Review the CachyOS binary-cache trust prompt before accepting it. The flake uses the upstream `release` branch and pinned overlay. The command above updates only the CachyOS input; it does not update every flake input.
+- Confirm the password hash created by the command sequence above exists at `/mnt/etc/nixos/hashedPassword` with permissions `0600`. Do not commit this file.
+- Review the CachyOS binary-cache trust prompt before accepting it. The flake uses the upstream `release` branch and pinned overlay. The checked-in `flake.lock` already pins that input, so leave it unchanged for a reproducible install. Run `nix flake lock --update-input cachyos-kernel` only when intentionally updating the kernel source, then review and keep the lock-file diff.
 - Verify the target disk before running any partitioning command. The installation guide contains destructive operations.
 
 ### Path B — Migrate an existing NixOS installation
@@ -234,8 +239,7 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 - `hypridle` requests suspend after 900 seconds; Hyprlock is invoked through the configured pre-sleep command.
 - `HYPRLAND_CONFIG` is passed through the greetd environment wrapper, preventing Hyprland from accidentally selecting a different configuration format.
 - `nowatchdog` and `nmi_watchdog=0` reduce watchdog-based lockup diagnostics in exchange for less diagnostic data.
-- `usbcore.autosuspend=-1` disables USB autosuspend and may increase idle power consumption.
-- `kvm.ignore_msrs=1` suppresses failures from some unknown MSR accesses but can hide guest MSR problems.
+- `usbcore.autosuspend=-1` and `kvm.ignore_msrs=1` are **not enabled by default** in `nixos/configuration.nix`. The former disables USB autosuspend and may increase idle power consumption; the latter suppresses some unknown MSR access failures and can hide guest problems. Add either only when the target hardware/guest needs it and after considering the trade-offs.
 
 ## Known limitations
 
@@ -243,7 +247,7 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 - **Single-GPU host:** while the VM owns the GPU, the host does not have a normal graphical session. Keep a recovery TTY or SSH session available.
 - **Fixed host user:** the hook defaults to `localhost` and terminates that user's graphical sessions. This is designed for this single-user configuration.
 - **No automatic USB input passthrough:** configure your own keyboard/mouse or a dedicated USB controller. Do not copy the maintainer's commented VID:PID example blindly.
-- **Unencrypted swap:** the disk swap partition sits outside LUKS2.
+- **Swap outside LUKS2:** the reference `hardware-configuration.nix` enables per-activation random swap encryption (`randomEncryption.enable = true`). A fresh install must preserve this option in the machine-specific generated hardware file. If it is missing or disabled, the disk swap is unencrypted; random swap encryption is not persistent-key LUKS encryption.
 - **OCR display geometry:** default WuWa crop regions target a 2560×1440 display. The script validates configured geometry and can be overridden with `WUWA_GEOMETRY_MAIN` and `WUWA_GEOMETRY_CHOICE`.
 - **Windows 10 lifecycle:** standard support has ended; see the lifecycle warning above and verify the guest edition’s ESU/LTSC status before using it online.
 - `assets/` is intentionally absent; active configuration files do not reference it.
