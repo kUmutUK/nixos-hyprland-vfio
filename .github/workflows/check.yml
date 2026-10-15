@@ -29,17 +29,19 @@ jobs:
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@3138316df39ed29be04236d7ffc686fa525866aa
 
-      - name: XML well-formedness
-        run: python3 -c "import xml.etree.ElementTree as ET; ET.parse('vm-xml/win10.xml')"
+      - name: XML well-formedness and VM invariants
+        run: |
+          python3 -c "import xml.etree.ElementTree as ET; ET.parse('vm-xml/win10.xml')"
+          python3 scripts/test-vm-xml.py
 
       # ---- GATE STEPS (must pass) ----
 
       - name: shellcheck
-        # install.sh ve VFIO hook'u tarar. 2026-10-04'te gate'e alındı.
-        # Önceden "REPORT STEPS" altında continue-on-error: true ile çalışıyordu,
-        # yani bir regresyon CI'yi kırmıyordu. Gate'e çevirilmeden önce hook'taki
-        # iki uyarı giderildi: kullanılmayan VFIO_PATH değişkeni (SC2034) ve
-        # kullanılmayan döngü sayacı (SC2034).
+        # Checks install.sh and the VFIO hook. Promoted to a required gate on 2026-10-04.
+        # It previously ran under "REPORT STEPS" with continue-on-error: true,
+        # so regressions did not fail CI. Before making it a gate, the hook's
+        # two ShellCheck warnings were fixed: unused VFIO_PATH (SC2034) and
+        # an unused loop counter (SC2034).
         run: |
           if ! command -v shellcheck >/dev/null 2>&1; then
             echo "shellcheck not preinstalled, installing…"
@@ -53,9 +55,9 @@ jobs:
         run: bash scripts/test-vfio-hook-driver-state.sh
 
       - name: ShellCheck of the Nix-generated VFIO hook
-        # Kaynak hooks/qemu tek başına denetleniyordu; configuration.nix içindeki
-        # Nix interpolasyonlu writeShellScript sarmalayıcısı ayrıca kontrol edilir.
-        # Yalnızca küçük hook derivation'ı derlenir; tüm NixOS sistemi build edilmez.
+        # The source hooks/qemu was checked separately; this also checks the
+        # Nix-interpolated writeShellScript wrapper from configuration.nix.
+        # Only the small hook derivation is built, not the full NixOS system.
         working-directory: nixos
         run: |
           hook_path="$(nix build --no-link --no-update-lock-file --print-out-paths \
@@ -65,119 +67,119 @@ jobs:
           echo "  generated VFIO hook OK"
 
       - name: Embedded home.nix scripts (shellcheck)
-        # home.nix içine GÖMÜLÜ bash script'leri var (wuwa-auto.sh, auto-translate.sh,
+        # home.nix contains embedded Bash scripts (wuwa-auto.sh, auto-translate.sh,
         # toggle-*.sh, mpvpaper-watchdog, waybar-temperature.sh, gamemode-notify).
-        # Bunlar hiç taranmıyordu; 2026-10-05'te düzeltilen iki sessiz hata tam
-        # olarak bu boşluktan geçti (Nix kaçışı -> `tr -d 'f'`, git'in okumadığı
-        # MANPAGER). scripts/extract-embedded-scripts.py Nix indented-string'lerini
-        # çözüp betikleri diske yazar.
+        # They were not checked previously; two silent regressions fixed on 2026-10-05
+        # came through this gap (Nix escaping changed `tr -d '\f'`, and Git ignored
+        # MANPAGER). scripts/extract-embedded-scripts.py resolves Nix indented strings
+        # and writes the scripts to disk.
         run: |
-          # ⚠️ `-r` (--no-run-if-empty) ZORUNLU. GNU xargs boş girdide komutu
-          # ARGÜMANSIZ bir kez çalıştırır. Ölçüldü (GNU xargs 4.9.0, shellcheck 0.9.0):
+          # `-r` (--no-run-if-empty) is required: GNU xargs runs the command with no arguments
+          # once when input is empty. Measured with GNU xargs 4.9.0 and ShellCheck 0.9.0:
           #   printf '' | xargs -0    -n1 -- shellcheck  → exit 123
-          #     (shellcheck dosya argümanı yok diye usage basıp exit 3 verir;
-          #      yani tuzak "sessiz yeşil" DEĞİL, "gürültülü kırmızı"dır)
-          #   printf '' | xargs -0 -r -n1 -- shellcheck  → hiç çalışmaz, exit 0
-          # Yani bugünkü shellcheck'te bu tuzak kapıyı sessizce değil, gürültüyle
-          # kırıyor. Yine de bu adımın var olma sebebi o boşluğu KAPATMAK: betik
-          # çıkarımı bozulursa adım "yeşil ama hiçbir şey denetlememiş" olmamalı.
-          # NOT: eski yorumda "shellcheck stdin'den boş okur, 0 döner, CI yeşil
-          # kalır" deniyordu; bu shellcheck sürüm bağımlı ve ölçülmüş hali YANLIŞTIR.
-          # Davranış sürüme göre değişirse tekrar doğrula.
+          #     (ShellCheck prints usage and exits 3 when no file argument is supplied;
+          #      this fails loudly rather than being a silent false positive)
+          #   printf '' | xargs -0 -r -n1 -- shellcheck  → no invocation, exit 0
+          # With this ShellCheck version the empty-input trap fails loudly, not silently.
+          # This step still closes the coverage gap: if extraction breaks, it must not
+          # report success without checking any scripts.
+          # The old comment claimed ShellCheck read empty stdin and returned 0, leaving CI green.
+          # That claim was version-dependent and is false for the measured version.
+          # Re-check if this behavior changes in a future tool version.
           python3 scripts/extract-embedded-scripts.py /tmp/emb \
             | xargs -0 -r -n1 -- shellcheck -S warning
-          # Sabit beklenen sayı, extractor bir MARKER'ı kaçırırsa CI'ın yeşil kalmasını önler.
-          # Yeni bir gömülü betik bilinçli olarak eklenir/silinirse bu sayıyı güncelleyin.
+          # This expected count prevents CI passing if the extractor misses a marker.
+          # Update the expected count whenever an embedded script is intentionally added or removed.
           n=$(find /tmp/emb -maxdepth 1 -name '*.sh' -type f 2>/dev/null | wc -l)
           if [ "$n" -ne 7 ]; then
-            echo "::error::home.nix içinden 7 gömülü betik bekleniyordu, $n bulundu. Extractor marker'larını ve beklenen sayıyı kontrol edin."
+            echo "::error::Expected 7 embedded scripts in home.nix, found $n. Check extractor markers and the expected count."
             exit 1
           fi
-          echo "  embedded scripts OK ($n/7 betik)"
+          echo "  embedded scripts OK ($n/7)"
 
       # ---- THE GATE THIS REPO WAS ACTUALLY MISSING ----
-      # Workflow'un adı "Nix Flake Check" idi ama içinde TEK SATIR Nix yoktu:
-      # yalnızca shellcheck çalışıyordu. Bu repo'nun CHANGELOG'unun tamamı
-      # option seviyesinde düzeltmelerden oluşuyor (olmayan option, yanlış yol,
-      # ABI/sürüm kayması) ve HİÇBİRİ kapı altında değildi. Tek bir yazım
-      # hatası -- `xwayland.enable` yerine `xwaylan.enable` gibi -- sessizce
-      # merge olup kullanıcının rebuild'ini kırıyordu.
+      # The workflow was named "Nix Flake Check" but did not invoke Nix at all:
+      # it ran only ShellCheck. Many changelog fixes concern Nix options, paths,
+      # and ABI/version mismatches, but none were gated by evaluation.
+      # A single typo such as `xwayland.enable` vs `xwaylan.enable` could
+      # therefore merge and break a user's rebuild.
+
       #
-      # Nix zaten yukarıda kuruluyordu, sadece hiç çağrılmıyordu.
-      # --no-build: derleme yapmaz, yalnızca tüm modül sistemini EVAL eder.
-      #   Bu repo için doğru seçim: low_latency_layer cachix'te yok, ilk
-      #   kurulumda kaynaktan derlendiği için full build CI'ı dakikalarca
-      #   meşgul ederdi ve option hatalarını yakalamazdı.
+      # Nix is already installed above; this step now actually invokes it.
+      # --no-build evaluates the module system without building outputs.
+      #   This is appropriate here: low_latency_layer may require a local build,
+      #   making a full system build slow without adding value to option checks.
+
       - name: nix flake check (eval only)
         working-directory: nixos
         run: |
-          # DÜZELTME: burada `--accept-flake-config` vardı. O bayrak, flake'in
-          # nixConfig.extra-substituters / extra-trusted-public-keys ayarlarını
-          # uygularken LOCK DOSYASINI DA yeniden yazıyordu. Gözlemlenen yan etki:
+          # `--accept-flake-config` was removed here because it can cause the flake's
+          # nixConfig.extra-substituters / extra-trusted-public-keys settings to be
+          # applied while rewriting the lock file. Observed side effects included:
           #   • Updated input 'impermanence/home-manager' → follows 'home-manager'
-          #   node isimleri kayıyor (nixpkgs_3 → nixpkgs_2)
-          #   gösterim biçimi değişiyor ("home-manager": "home-manager"
+          #   - Node names shifting (nixpkgs_3 → nixpkgs_2)
+          #   - Input syntax changing ("home-manager": "home-manager"
           #     → ["home-manager"])
-          # `--option warn-dirty false` bunu sessizce bastırdığı için kimse
-          # fark etmiyordu — CI her çalışmada repo'yu kirli bırakıyordu.
+          # `--option warn-dirty false` hid the warning, so the mutation
+          # was not obvious and left the checkout dirty after each run.
           #
-          # ⚠️ `--accept-flake-config` KALDIRILMASI TEK BAŞINA YETMEZ.
-          # Asıl kök neden: commit'lenmiş flake.lock KANONİK DEĞİLDİ.
-          # impermanence.inputs içinde aynı kayıt iki FARKLI biçimde yazılmıştı:
-          #     "nixpkgs":     ["nixpkgs"]   ← follows formu (doğru)
-          #     "home-manager": "home-manager" ← string formu (yanlış)
-          # Nix her değerlendirmede lock'u kanonikleştirdiği için, yeni bir
-          # `nix flake check` ÇALIŞTIRILDIĞI AN dosya değişiyordu.
-          # Kalıcı çözüm: lock'u kanonik hale getirip commit'lemek (aşağıdaki
-          # commit'te yapıldı). Aşağıdaki guard step, ileride tekrar bozulursa
-          # sessizce kaymasını yakalar.
+          # Removing `--accept-flake-config` alone is not sufficient.
+          # The root cause was a non-canonical committed flake.lock.
+          # The same impermanence input was represented in two different forms:
+          #     "nixpkgs":     ["nixpkgs"]   (follows form)
+          #     "home-manager": "home-manager" (string form)
+          # Nix canonicalizes the lock during evaluation, so running
+          # `nix flake check` changed the file.
+          # The fix was to canonicalize and commit the lock file; the guard below
+          # detects future regressions.
+
           #
-          # substituters/trusted-keys BURAYA gerekmez: --no-build yalnızca
-          # EVAL eder, indirme yapmaz. (Ayrıca --accept-flake-config olmadan
-          # flake'in nixConfig'i zaten "untrusted" sayılıp yok sayılıyor.)
+          # Substituters and trusted keys are unnecessary here: --no-build only
+          # evaluates the flake and does not download build inputs. Without
+          # `--accept-flake-config`, the flake nixConfig is treated as untrusted.
           nix flake check --no-build --show-trace \
             --no-update-lock-file \
             --option warn-dirty false
           echo "  flake evaluates OK"
 
-      # ℹ️ BU ADIM GATE DEĞİL, BİLGİLENDİRMEDİR. Yakalayan kapılar şunlardır:
-      #   1) shellcheck (install.sh + nixos/hooks/qemu)
-      #   2) embedded home.nix script taraması
-      #   3) nix flake check (eval only)  ← option hatalarını asıl o yakalar
+      # This is an informational step, not a required gate. Required gates are:
+      #   1) ShellCheck (install.sh + nixos/hooks/qemu)
+      #   2) embedded home.nix script checks
+      #   3) nix flake check (evaluation only), which catches option errors
       #   4) flake.lock unchanged
-      # statix ve deadnix BULGULARI LOG'A YAZAR, workflow'u KIRMaz. Bu kasıtlı:
-      # statix her bulguda PR'ı bloklardı, bu da bir config reposu için gürültü.
-      # `|| echo` yüzünden her zaman exit 0 — bu bir PIPELINE değil (pipefail'ın
-      # burada ilgisi yok), `cmd || echo` ifadesinin kendisi exit kodunu yutar.
-      # NOT: buradaki `nix develop` `--no-build` DEĞİLDİR ve olması da gerekmez.
-      # devShell paketleri (nixfmt, statix, deadnix, shellcheck, jq, …) hepsi
-      # cache'te; `low_latency_layer` gibi kaynak derlemesi bu adımda olmuyor.
-      # `--no-build` yalnızca bir ÖNCEKİ adımda anlamlı: `nix flake check` orada
-      # sistem build'ini istemiyor, sadece modül sistemini değerlendirmek istiyor.
-      - name: statix / deadnix (repo kökü .nix dosyaları) — BİLGİLENDİRME
+      # statix and deadnix findings are logged but do not fail the workflow by design:
+      # failing a PR on every advisory finding would be noisy for a configuration repository.
+      # `|| echo` returns success after an advisory warning; this is not a pipeline,
+      # so `pipefail` is irrelevant and the fallback masks the command exit code.
+      # `nix develop` here intentionally is not `--no-build`.
+      # The devShell tools (nixfmt, statix, deadnix, ShellCheck, jq, etc.) are
+      # cached; this step does not build custom kernel or low-latency-layer sources.
+      # `--no-build` is used in the previous step because `nix flake check` only
+      # needs to evaluate the module system there.
+      - name: statix / deadnix (repository .nix files) - informational
         run: |
-          # P3: önceki hâli KİLİTLENMEMİŞ nixpkgs çekiyordu (nixpkgs#statix),
-          # yani aynı commit'te farklı sonuç verebilirdi. Artık flake'in kendi
-          # devShell'inden, kilitli rev ile çalışıyor.
+          # P3: the previous version used an unlocked nixpkgs (nixpkgs#statix),
+          # potentially producing different results for the same commit. It now uses
+          # the flake devShell and its locked revision.
           nix --extra-experimental-features "nix-command flakes" \
             develop ./nixos --no-update-lock-file --command statix check . \
-            || echo "::warning::statix bulguları var (gate değil)"
+            || echo "::warning::statix findings present (informational only)"
           nix --extra-experimental-features "nix-command flakes" \
             develop ./nixos --no-update-lock-file --command deadnix . \
-            || echo "::warning::deadnix bulguları var (gate değil)"
+            || echo "::warning::deadnix findings present (informational only)"
 
-      # ── KİLİT SÜRÜKLENMESİNİ KALICI OLARAK YAKALA ──────────────────
-      # DİKKAT: bu adım bilerek EN SONDA. Aynı flake'i eval eden her adım
-      # lock'u değiştirebilir (`nix develop` dahil — `--no-update-lock-file`
-      # eklediğimiz için artık yazmıyorlar, ama bu güveneceğimiz tek şey
-      # değil: yeni bir nix adımı ekleyen unutabilir). Gate kendisinden SONRA
-      # lock'u bozabilecek bir adım varsa, kanonik olmayan lock ilk eval'de
-      # fark edilmez ve sessizce geçer. Bu yüzden kapanış her zaman buradadır.
+      # Detect lock-file drift permanently
+      # Keep this step last. Any step that evaluates the flake, including `nix develop`,
+      # could rewrite the lock file. `--no-update-lock-file` is set on current Nix steps,
+      # but future workflow edits may forget it. If a later step can mutate the lock,
+      # the guard must run after it; otherwise non-canonical state can be missed.
+
+
       - name: flake.lock unchanged
         working-directory: nixos
         run: |
           if ! git diff --quiet -- flake.lock; then
-            echo "::error::flake.lock CI çalışması sırasında değişti — lock kanonik değil. 'nix flake lock' çalıştırıp commit'leyin."
+            echo "::error::flake.lock changed during CI; lock file is not canonical. Run `nix flake lock` and commit the result."
             git --no-pager diff -- flake.lock
             exit 1
           fi
