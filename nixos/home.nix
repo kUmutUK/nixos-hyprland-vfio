@@ -22,13 +22,13 @@ let
       "type='signal',interface='com.feralinteractive.GameMode'" |
     while read -r line; do
       if echo "$line" | grep -q 'GameRegistered'; then
-        $NOTIFY_SEND -i games "🎮 GameMode" "Aktif – yüksek performans" -t 3000
+        $NOTIFY_SEND -i games "🎮 GameMode" "Active — high performance" -t 3000
       elif echo "$line" | grep -q 'GameUnregistered'; then
         count=$(${pkgs.systemd}/bin/busctl --user get-property com.feralinteractive.GameMode \
                   /com/feralinteractive/GameMode com.feralinteractive.GameMode ClientCount \
                   2>/dev/null | cut -d' ' -f2)
         if [ "$count" = "0" ]; then
-          $NOTIFY_SEND -i games "🎮 GameMode" "Devre dışı – normal mod" -t 3000
+          $NOTIFY_SEND -i games "🎮 GameMode" "Disabled — normal mode" -t 3000
         fi
       fi
     done
@@ -248,7 +248,7 @@ let
     bind = $mainMod, V, togglefloating
     bind = $mainMod, P, exec, grim -g "$(slurp)" - | wl-copy
     bind = $mainMod SHIFT, P, exec, grim -g "$(slurp)" - | satty -f - | wl-copy
-    bind = $mainMod, Escape, exec, ${pkgs.hyprlock}/bin/hyprlock          # ← hyprlock yeni tuş
+    bind = $mainMod, Escape, exec, ${pkgs.hyprlock}/bin/hyprlock          # Hyprlock lock-screen shortcut
     bind = $mainMod, W, exec, ${pkgs.waypaper}/bin/waypaper
 
     bind = $mainMod, S, exec, pypr toggle term
@@ -341,7 +341,7 @@ let
 
     # Manual OCR translation (SHIFT+T). Capture all output rather than using `read -r`,
     # which reads only the first line and discards the rest of a multiline translation.
-    bind = $mainMod SHIFT, T, exec, sh -c 'T=$(grim -g "$(slurp)" - | tesseract - stdout -l eng 2>/dev/null | trans -b :tr); [ -n "$T" ] && notify-send -t 10000 "Çeviri" "$T"'
+    bind = $mainMod SHIFT, T, exec, sh -c 'T=$(grim -g "$(slurp)" - | tesseract - stdout -l eng 2>/dev/null | trans -b :tr); [ -n "$T" ] && notify-send -t 10000 "Translation" "$T"'
 
     # Continuous clipboard translation toggle (ALT+T). The script existed in the
     # repository but was not bound to a shortcut; a dedicated toggle also avoids the
@@ -378,11 +378,11 @@ let
     # wallpaper video is missing, systemd skips the service and the separate `exec-once`
     # check displays a user-visible warning. Pass the path as a separate argument instead
     # of embedding it in shell code to handle spaces, quotes, `$`, and backticks safely.
-    exec-once = ${pkgs.coreutils}/bin/sh -c '[ -e "$1" ] || notify-send -t 15000 -u critical "mpvpaper" "Canlı duvar kağıdı bulunamadı: $1\nDosyayı indirin veya home.nix içindeki wallpaperVideo değerini değiştirin, sonra: systemctl --user restart mpvpaper mpvpaper-watchdog"' sh ${lib.escapeShellArg wallpaperVideo}
+    exec-once = ${pkgs.coreutils}/bin/sh -c '[ -e "$1" ] || notify-send -t 15000 -u critical "mpvpaper" "Live wallpaper file not found: $1\nDownload it or change wallpaperVideo in home.nix, then run: systemctl --user restart mpvpaper mpvpaper-watchdog"' sh ${lib.escapeShellArg wallpaperVideo}
     # When `monitorOutput` is empty, manual Home Manager configuration does not create
     # the mpvpaper service and skips monitor validation. When set, verify the output name
     # at session startup and pass it as a separate argument for safe shell handling.
-    exec-once = ${pkgs.coreutils}/bin/sh -c 'if [ -n "$1" ] && ! hyprctl monitors 2>/dev/null | grep -Fq -- "Monitor $1 ("; then notify-send -t 15000 -u critical "mpvpaper" "Monitör çıkışı bulunamadı: $1\nhyprctl monitors çıktısından gerçek adı alıp home.nix içindeki monitorOutput değerini düzeltin (örn. DP-1), sonra: systemctl --user restart mpvpaper mpvpaper-watchdog"; fi' sh ${lib.escapeShellArg monitorOutput}
+    exec-once = ${pkgs.coreutils}/bin/sh -c 'if [ -n "$1" ] && ! hyprctl monitors 2>/dev/null | grep -Fq -- "Monitor $1 ("; then notify-send -t 15000 -u critical "mpvpaper" "Monitor output not found: $1\nGet the exact name from hyprctl monitors, update monitorOutput in home.nix (e.g. DP-1), then run: systemctl --user restart mpvpaper mpvpaper-watchdog"; fi' sh ${lib.escapeShellArg monitorOutput}
   '';
 
   hyprlockConf = ''
@@ -404,7 +404,7 @@ let
         # or `fail_transition`; these keys were silently ignored. `check_symbol` maps to
         # `check_text`; font sizing and placeholder color are derived automatically, and the
         # supported fade options replace the removed transition option.
-        placeholder_text = Şifre...; font_family = JetBrainsMono Nerd Font;
+        placeholder_text = Password...; font_family = JetBrainsMono Nerd Font;
         dots_size = 0.55; dots_spacing = 0.15; check_text = ✓;
         font_color = rgba(255, 255, 255, 1.0);
         check_color = rgba(166, 227, 161, 1.0); fail_color = rgba(243, 139, 168, 1.0);
@@ -419,7 +419,7 @@ let
     }
     label {
         position = 0, 60; halign = center; valign = center;
-        text = cmd[update:60000, LC_TIME=tr_TR.UTF-8 ${pkgs.coreutils}/bin/date +"%d %B %Y"];
+        text = cmd[update:60000, LC_TIME=en_US.UTF-8 ${pkgs.coreutils}/bin/date +"%d %B %Y"];
         font_family = JetBrainsMono Nerd Font; font_size = 20;
         font_color = rgba(255, 255, 255, 0.6); shadow_passes = 0;
     }
@@ -436,13 +436,13 @@ let
     }
     label {
         position = 20, 20; halign = right; valign = top;
-        text = cmd[update:5000, ${pkgs.networkmanager}/bin/nmcli -t -f NAME,TYPE,STATE con show --active 2>/dev/null | ${pkgs.gnugrep}/bin/grep -v loopback | ${pkgs.coreutils}/bin/head -1 | ${pkgs.coreutils}/bin/cut -d: -f1 | ${pkgs.findutils}/bin/xargs -I{} echo " {}" || echo " Bağlı Değil"];
+        text = cmd[update:5000, ${pkgs.networkmanager}/bin/nmcli -t -f NAME,TYPE,STATE con show --active 2>/dev/null | ${pkgs.gnugrep}/bin/grep -v loopback | ${pkgs.coreutils}/bin/head -1 | ${pkgs.coreutils}/bin/cut -d: -f1 | ${pkgs.findutils}/bin/xargs -I{} echo " {}" || echo " Disconnected"];
         font_family = JetBrainsMono Nerd Font; font_size = 15;
         font_color = rgba(148, 226, 213, 1.0); shadow_passes = 0;
     }
     label {
         position = 0, -260; halign = center; valign = center;
-        text = oturumu kapatmak icin: SUPER + SHIFT + E
+        text = Press SUPER + SHIFT + E to exit the session
         font_family = JetBrainsMono Nerd Font; font_size = 14;
         font_color = rgba(255, 255, 255, 0.35); shadow_passes = 0;
     }
@@ -542,7 +542,7 @@ let
       icon-spacing = 4;
       icon-size = 16;
       tooltip = true;
-      tooltip-format = "GameMode aktif: {count} oyun";
+      tooltip-format = "GameMode active: {count} games";
     };
 
     cpu = {
@@ -551,7 +551,7 @@ let
       format-icons = ["▁" "▂" "▃" "▄" "▅" "▆" "▇" "█"];
       format-alt = "⚡ {usage}%";
       tooltip = true;
-      tooltip-format = "CPU kullanımı: {usage}%\nFrequency: {frequency} GHz";
+      tooltip-format = "CPU usage: {usage}%\nFrequency: {frequency} GHz";
       on-click = "kitty -e btop";
       states = { warning = 70; critical = 90; };
     };
@@ -561,7 +561,7 @@ let
       format = " {}%";
       format-alt = "🧠 {used:0.1f}G / {total:0.1f}G";
       tooltip = true;
-      tooltip-format = "Kullanılan: {used:0.1f} GiB\nToplam: {total:0.1f} GiB\nBoş: {avail:0.1f} GiB";
+      tooltip-format = "Used: {used:0.1f} GiB\nTotal: {total:0.1f} GiB\nAvailable: {avail:0.1f} GiB";
       on-click = "kitty -e btop";
       states = { warning = 70; critical = 90; };
     };
@@ -589,7 +589,7 @@ let
       on-scroll-up = "pactl set-sink-volume @DEFAULT_SINK@ +5%";
       on-scroll-down = "pactl set-sink-volume @DEFAULT_SINK@ -5%";
       tooltip = true;
-      tooltip-format = "Ses: {volume}%\nÇıkış: {desc}";
+      tooltip-format = "Volume: {volume}%\nOutput: {desc}";
       states = { muted = 0; };
     };
 
@@ -597,18 +597,18 @@ let
       interval = 10;
       format-wifi = "📶 {signalStrength}%";
       format-ethernet = "🌐 {ipaddr}";
-      format-disconnected = "⚠️ Bağlı Değil";
+      format-disconnected = "⚠️ Disconnected";
       format-linked = "🌐 (No IP)";
       tooltip-format-wifi = "{essid} ({signalStrength}%)\nIP: {ipaddr}\n↑ {bandwidthUpBytes} ↓ {bandwidthDownBytes}";
       tooltip-format-ethernet = "Ethernet\nIP: {ipaddr}\n↑ {bandwidthUpBytes} ↓ {bandwidthDownBytes}";
-      tooltip-format-disconnected = "Bağlantı yok";
+      tooltip-format-disconnected = "Disconnected";
       on-click = "nm-connection-editor";
     };
 
     clock = {
       interval = 60;
       format = " {:%H:%M}";
-      format-alt = "📅 {:%d/%m/%Y %H:%M}";
+      format-alt = "📅 {:%m/%d/%Y %H:%M}";
       tooltip-format = "<big>{:%Y %B}</big>\n{calendar}";
       calendar = {
         mode = "month";
@@ -645,7 +645,7 @@ let
     "custom/power" = {
       format = "⏻";
       tooltip = true;
-      tooltip-format = "Güç Menüsü (wlogout)";
+      tooltip-format = "Power menu (wlogout)";
       on-click = "wlogout";
       on-click-right = "wlogout";
     };
@@ -714,7 +714,7 @@ in
         #!${pkgs.bash}/bin/bash
         if pgrep -f "hypr/scripts/wuwa-auto[.]sh" >/dev/null 2>&1; then
           pkill -f "hypr/scripts/wuwa-auto[.]sh"
-          notify-send "WuWa AI" "Durduruldu" -t 2000
+          notify-send "WuWa AI" "Stopped" -t 2000
         else
           exec "$HOME/.config/hypr/scripts/wuwa-auto.sh"
         fi
@@ -727,7 +727,7 @@ in
         #!${pkgs.bash}/bin/bash
         if pgrep -f "hypr/scripts/auto-translate[.]sh" >/dev/null 2>&1; then
           pkill -f "hypr/scripts/auto-translate[.]sh"
-          notify-send "Otomatik Çeviri" "Durduruldu" -t 2000
+          notify-send "Automatic Translation" "Stopped" -t 2000
         else
           exec "$HOME/.config/hypr/scripts/auto-translate.sh"
         fi
@@ -890,7 +890,7 @@ in
 if ! curl -fsS --connect-timeout 2 --max-time 4 http://localhost:11434/api/tags \
     | jq -e '.models[]? | select(.name | startswith("wuwa-gemma"))' >/dev/null 2>&1; then
     notify-send -u critical "WuWa AI" \
-        "wuwa-gemma modeli hazır değil. Önce: sudo systemctl start wuwa-gemma-init" || true
+        "The wuwa-gemma model is not ready. Start it first: sudo systemctl start wuwa-gemma-init" || true
     exit 1
 fi
 
@@ -930,12 +930,12 @@ geometry_fits() {
 # Hyprland reports monitor position as well as dimensions, but this check compares
 # only width/height. This is exact for a single monitor and may be conservative for
 # multi-monitor layouts.
-for _region in "altyazı|$GEOMETRY_MAIN" "seçenekler|$GEOMETRY_CHOICE"; do
+for _region in "captions|$GEOMETRY_MAIN" "choices|$GEOMETRY_CHOICE"; do
     _label=$(echo "$_region" | cut -d'|' -f1)
     _geom=$(echo "$_region" | cut -d'|' -f2)
     if ! geometry_fits "$_geom"; then
         notify-send -t 25000 -u critical "WuWa AI" \
-            "$_label bölgesi ($_geom) ekrana sığmıyor (ekran: $MON_W x$MON_H). Çeviri bu bölgeyi tarayamayacak. home.nix'deki wuwa-auto.sh değerlerini ya da WUWA_GEOMETRY_MAIN / WUWA_GEOMETRY_CHOICE ortam değişkenini düzelt." || true
+            "The $_label region ($_geom) does not fit on the screen ($MON_W x $MON_H). Translation cannot scan this region. Adjust the wuwa-auto.sh values in home.nix or the WUWA_GEOMETRY_MAIN / WUWA_GEOMETRY_CHOICE environment variable." || true
         exit 1
     fi
 done
@@ -1055,7 +1055,7 @@ while true; do
             LAST_MAIN="$TEXT_MAIN"
             CHANGED=1
             TRANSLATION_MAIN=$(translate "$TEXT_MAIN")
-            [ -n "$TRANSLATION_MAIN" ] && notify-send -r 9999 "💬 Wuwa AI (Altyazı)" "$TRANSLATION_MAIN"
+            [ -n "$TRANSLATION_MAIN" ] && notify-send -r 9999 "💬 Wuwa AI (Captions)" "$TRANSLATION_MAIN"
         fi
     else
         [ -n "$LAST_MAIN" ] && { LAST_MAIN=""; dunstctl close 9999 2>/dev/null || true; }
@@ -1082,7 +1082,7 @@ while true; do
             LAST_CHOICE="$TEXT_CHOICE"
             CHANGED=1
             TRANSLATION_CHOICE=$(translate "$TEXT_CHOICE")
-            [ -n "$TRANSLATION_CHOICE" ] && notify-send -r 9998 "💡 Wuwa AI (Seçenekler)" "$TRANSLATION_CHOICE"
+            [ -n "$TRANSLATION_CHOICE" ] && notify-send -r 9998 "💡 Wuwa AI (Choices)" "$TRANSLATION_CHOICE"
         fi
     else
         [ -n "$LAST_CHOICE" ] && { LAST_CHOICE=""; dunstctl close 9998 2>/dev/null || true; }
@@ -1110,7 +1110,7 @@ done
 # Remember the previous selection to avoid translating the same text repeatedly.
 LAST_SELECTION=""
 
-echo "Anlık çeviri modu aktif... Seçtiğiniz metinler otomatik çevrilecek."
+echo "Live translation mode is active. Selected text will be translated automatically."
 
 # Poll the primary selection (the text highlighted with the mouse) in a lightweight
 # loop instead of relying on `wl-paste --watch`.
@@ -1129,7 +1129,7 @@ while true; do
         # Display successful translations using Dunst.
         if [ -n "$TRANSLATION" ]; then
             # Reuse notification ID 9999 so the notification is updated instead of stacked.
-            notify-send -r 9997 "Çeviri:" "$TRANSLATION"
+            notify-send -r 9997 "Translation:" "$TRANSLATION"
         fi
     fi
     # Poll every half second to keep CPU usage low.
@@ -1223,7 +1223,7 @@ done
           esac
         done
       else
-        echo "Hyprland socket bulunamadı" >&2
+        echo "Hyprland socket not found." >&2
         exit 1
       fi
     '';
@@ -1493,7 +1493,7 @@ done
 
     mpvpaper-watchdog = lib.mkIf (monitorOutput != "") {
       Unit = {
-        Description = "Brave açıldığında canlı duvar kağıdını durdurur";
+        Description = "Stop the live wallpaper when Brave starts.";
         After = [ "graphical-session.target" ];
         PartOf = [ "graphical-session.target" ];
       };
@@ -1509,7 +1509,7 @@ done
 
     gamemode-notify = {
       Unit = {
-        Description = "Gamemode durum değişikliklerini Dunst ile bildir";
+        Description = "Notify about GameMode state changes through Dunst.";
         After = [ "graphical-session-pre.target" ];
         PartOf = [ "graphical-session.target" ];
       };

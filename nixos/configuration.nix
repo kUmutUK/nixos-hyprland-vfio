@@ -201,19 +201,23 @@ in
   networking.hostName = "nixos-workstation";
   networking.networkmanager.enable = true;
   time.timeZone = "Europe/Istanbul";
-  i18n.supportedLocales = [ "en_US.UTF-8/UTF-8" "tr_TR.UTF-8/UTF-8" ];
+  i18n.supportedLocales = [ "en_US.UTF-8/UTF-8" ];
   i18n.defaultLocale = "en_US.UTF-8";
   i18n.extraLocaleSettings = {
-    LC_TIME = "tr_TR.UTF-8";
-    LC_NUMERIC = "tr_TR.UTF-8";
-    LC_MONETARY = "tr_TR.UTF-8";
-    LC_PAPER = "tr_TR.UTF-8";
-    LC_NAME = "tr_TR.UTF-8";
-    LC_ADDRESS = "tr_TR.UTF-8";
-    LC_TELEPHONE = "tr_TR.UTF-8";
-    LC_MEASUREMENT = "tr_TR.UTF-8";
-    LC_IDENTIFICATION = "tr_TR.UTF-8";
+    LC_CTYPE = "en_US.UTF-8";
+    LC_COLLATE = "en_US.UTF-8";
+    LC_MESSAGES = "en_US.UTF-8";
+    LC_TIME = "en_US.UTF-8";
+    LC_NUMERIC = "en_US.UTF-8";
+    LC_MONETARY = "en_US.UTF-8";
+    LC_PAPER = "en_US.UTF-8";
+    LC_NAME = "en_US.UTF-8";
+    LC_ADDRESS = "en_US.UTF-8";
+    LC_TELEPHONE = "en_US.UTF-8";
+    LC_MEASUREMENT = "en_US.UTF-8";
+    LC_IDENTIFICATION = "en_US.UTF-8";
   };
+  # Keep the Turkish Q keyboard layout; this does not change the system language.
   console.keyMap = "trq";
 
   networking.firewall = {
@@ -535,10 +539,10 @@ in
   # and verify `grep sys.use_memfd=true /var/lib/waydroid/waydroid_base.prop`.
 
   systemd.services.wuwa-gemma-init = {
-    description = "Ollama için wuwa-gemma modelini oluşturur (elle çalıştırılır)";
+    description = "Create the wuwa-gemma Ollama model (manual invocation).";
     after = [ "ollama.service" ];
     wants = [ "ollama.service" ];
-    wantedBy = [ ];               # otomatik başlatMA
+    wantedBy = [ ];               # Do not start automatically.
     serviceConfig = {
       Type = "oneshot";
       Environment = "HOME=/root";
@@ -551,23 +555,23 @@ in
             break
           fi
           if [ "$attempt" -eq 15 ]; then
-            echo "HATA: Ollama API yaklaşık 30 sn içinde hazır olmadı." >&2
+            echo "ERROR: The Ollama API did not become ready within approximately 30 seconds." >&2
             exit 1
           fi
-          echo "Ollama API henüz hazır değil ($attempt/15); 2 sn sonra yeniden denenecek."
+          echo "Ollama API is not ready yet ($attempt/15); retrying in 2 seconds."
           sleep 2
         done
 
         if ${cfgpkg}/bin/ollama list | grep -q '^wuwa-gemma'; then
-          echo "wuwa-gemma zaten var, atlanıyor."
+          echo "wuwa-gemma already exists; skipping."
         else
-          echo "aya-expanse:8b çekiliyor (yaklaşık 8 GB)…"
+          echo "Pulling aya-expanse:8b (approximately 8 GB)…"
           if ! ${cfgpkg}/bin/ollama pull aya-expanse:8b; then
-            echo "HATA: aya-expanse:8b indirilemedi; wuwa-gemma oluşturulmadı." >&2
+            echo "ERROR: Failed to download aya-expanse:8b; wuwa-gemma was not created." >&2
             exit 1
           fi
           ${cfgpkg}/bin/ollama create wuwa-gemma -f ${wuwaGemmaModelfile}
-          echo "wuwa-gemma hazır."
+          echo "wuwa-gemma is ready."
         fi
       '';
     };
