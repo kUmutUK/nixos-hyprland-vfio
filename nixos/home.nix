@@ -1016,7 +1016,7 @@ translate() {
         return
     fi
 
-    # Yedek olarak LLM'ye (Aya/Gemma) sor
+    # Ask the LLM fallback (Aya/Gemma) if the fast backend fails.
     local llm=$(translate_llm "$raw")
     if [ -n "$llm" ]; then
         printf '%s\t%s\n' "$raw" "$llm" >> "$CACHE_FILE"
