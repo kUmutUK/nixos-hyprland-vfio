@@ -1,48 +1,42 @@
 #!/usr/bin/env python3
-"""home.nix içine gömülü bash script'lerini diske çıkarır.
+"""Extract Bash scripts embedded in nixos/home.nix into standalone files.
 
-Nix'in `'' … ''` indented-string sözdizimini bilmeden, `text = ''` ile başlayıp
-tek başına `''` ile kapanan blokları toplar, Nix kaçışlarını (\\${pkgs.x}/bin/,
-''${, '' ) çözer ve bash betiği olarak yazar.
+The extractor recognizes selected Nix indented-string blocks without requiring
+a Nix parser, resolves the relevant Nix escapes, and writes each script to the
+requested output directory. It prints each emitted path to stdout, separated by
+NUL bytes, so the output can be piped safely into ShellCheck with `xargs -0`.
 
-Kullanım:
-    python3 scripts/extract-embedded-scripts.py <çıktı-dizini>
+Usage:
+    python3 scripts/extract-embedded-scripts.py <output-directory>
 
-Çıktı dizinine yazdığı her betiğin yolunu NUL ayırıcıyla stdout'a basar, böylece
-şu şekilde shellcheck'e zincirlenebilir:
-
-    python3 scripts/extract-embedded-scripts.py /tmp/emb \
-        | xargs -0 -n1 shellcheck -S warning
-
-Neden var: 2026-10-05'te düzeltilen iki sessiz hata tam olarak bu boşluktan
-geçti — (1) Nix'in unescapeStr'ı tanımadığı `\\f` kaçışı `tr -d 'f'` haline
-geliyordu, (2) git'in okumadığı MANPAGER ayarlanıyordu. home.nix'e gömülü
-script'ler CI'da hiç taranmıyordu.
+This tool exists because embedded scripts previously escaped CI coverage. Earlier
+regressions included a Nix escape turning `\\f` into `tr -d 'f'`, and a MANPAGER
+setting that Git did not read.
 """
 
 import os
 import re
 import sys
 
-# home.nix içinde bash betiği gömülü olan yerler. Satır DÜZENİ (regex) önemli:
-# düz string eşleşmesi betiğin İÇİNDE geçen `pgrep -f "hypr/scripts/..."`
-# satırlarını da yakalıyor ve bir sonraki bloğu yanlışlıkla çıkarıyordu.
+# Locations of embedded Bash scripts in home.nix. Regex structure matters:
+# A plain string match also matches `pgrep -f "hypr/scripts/..."` inside a script
+# and can incorrectly extract the next block.
 MARKERS = [
     re.compile(r'^\s*"hypr/scripts/[^"]+"\s*=\s*\{'),
     re.compile(r'^\s*home\.file\."[^"]+"\s*=\s*\{'),
 ]
 
 # `gamemodeNotifyScript = pkgs.writeShellScriptBin "gamemode-notify" ''`
-# biçimindedir: `text = ''` YOK, gövde doğrudan atama satırından sonra başlar.
+# form: there is no `text = ''`; the body begins after the assignment line.
 DIRECT_MARKER = re.compile(r'^\s*gamemodeNotifyScript\s*=')
 
 CLOSER = "''"
 
 
 def extract(lines, index, direct=False):
-    """index'teki marker satırından sonraki indented-string gövdesini döndürür."""
+    """Return the indented-string body associated with the marker at index."""
     if direct:
-        start = index  # gövde, atama satırından hemen sonra başlar
+        start = index  # The body starts immediately after the assignment line.
     else:
         start = next(
             (k for k in range(index, len(lines)) if "text = ''" in lines[k]), None
@@ -59,33 +53,33 @@ def extract(lines, index, direct=False):
     if not body:
         return None
 
-    # Nix indented-string, gövdedeki ortak girintiyi siler
+    # Nix indented strings remove the common indentation from the body.
     indent = min(
         (len(x) - len(x.lstrip()) for x in body if x.strip()), default=0
     )
     text = "\n".join(x[indent:] if x.strip() else "" for x in body)
 
-    # Nix interpolasyonlarını sade kabuk komutlarına indirge
-    # Kaynakta shebang '#!${pkgs.bash}/bin/bash' biçimindedir; '#!' zaten
-    # satırın başında olduğu için sadece yolu değiştiriyoruz.
+    # Reduce Nix interpolations to plain executable command names.
+    # The source shebang is `#!${pkgs.bash}/bin/bash`; because `#!` is at
+    # the beginning of the line, only replace the path.
     text = text.replace("${pkgs.bash}/bin/bash", "/usr/bin/env bash", 1)
     text = text.replace("${config.home.homeDirectory}", "/home/localhost")
-    # DÜZELTME: eski desen `\$\{pkgs\.([\w.-]+)\}/bin/` yalnızca paket adını
-    # yakalıyor, `/bin/` ve binary adını düşürüyordu:
+    # Fix: the old pattern `\$\{pkgs\.([\w.-]+)\}/bin/` captured only the package name
+    # and dropped `/bin/` and the executable name:
     #     ${pkgs.libnotify}/bin/notify-send  ->  "libnotifynotify-send"
     #     ${pkgs.dbus}/bin/dbus-monitor      ->  "dbusdbus-monitor"
     #     ${pkgs.systemd}/bin/busctl         ->  "systemdbusctl"
-    # Bunlar geçerli komut adları olmadığı için shellcheck bunları hiç
-    # denetlemiyordu; yani CI yeşil görünürken gerçekte hiçbir şey
-    # kontrol edilmiyordu. İkinci grup eklenerek binary adı korunur:
+    # These were not valid command names, so ShellCheck never
+    # checked them; CI looked green while the scripts were not actually
+    # being checked. The second capture group preserves the executable name:
     #     ${pkgs.libnotify}/bin/notify-send  ->  notify-send
-    # Böylece çıkarılan betik gerçekten çalıştırılabilir bir kabuk betiğidir.
+    # The extracted output is therefore a valid executable shell script.
     text = re.sub(
         r"\$\{pkgs\.[\w.-]+\}/bin/([\w.+-]+)",
         lambda m: m.group(1),
         text,
     )
-    # Nix kaçışları: ''${ -> ${ , '' -> boş string
+    # Nix escapes: `''${` becomes `${`; a standalone `''` becomes an empty string.
     text = text.replace("''${", "${").replace(CLOSER, "")
 
     # `gamemodeNotifyScript` is an explicit `writeShellScriptBin` body. Nix
@@ -126,8 +120,8 @@ def main():
 
     for idx, line in enumerate(lines):
         if DIRECT_MARKER.match(line):
-            # P3: lines.index() dosyada İLK eşleşen satırı döndürür; aynı
-            # isimli ikinci bir script eklenirse yanlış blok çıkarılırdı.
+            # P3: `lines.index()` returns the first matching line; if a second
+            # script with the same name were added, it would extract the wrong block.
             text = extract(lines, idx, direct=True)
             if text:
                 emit(text)
@@ -137,8 +131,8 @@ def main():
             if not marker.match(line):
                 continue
             text = extract(lines, idx)
-            # Gerçek bash betiği mi? Hepsi shebang ile başlar. MangoHud.conf /
-            # lsfg-vk conf.toml gibi yapılandırma dosyaları böyle elenir.
+            # Is it a real Bash script? These begin with a shebang. Config files such as
+            # MangoHud.conf and lsfg-vk conf.toml are excluded this way.
             if text and text.lstrip().startswith("#!"):
                 emit(text)
             break
