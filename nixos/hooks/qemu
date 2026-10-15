@@ -189,8 +189,8 @@ stop_hyprland() {
     log "ERROR: GPU DRM mapping could not be verified; stop_hyprland failed and rollback is required."
     return 1
   fi
-  # cardN yaninda renderD* de kontrol edilmeli: ROCm/Ollama yalnizca
-  # render node'u acabiliyor, cardN bos gorunuyor.
+  # Check renderD* nodes alongside cardN: ROCm/Ollama may open only the
+  # render node, leaving cardN apparently unused.
   nodes=$(ls -d /sys/bus/pci/devices/"$GPU_PCI"/drm/renderD* 2>/dev/null |
          sed 's|.*/||' | sed 's|^|/dev/dri/|')
   nodes="/dev/dri/$card ${nodes:-}"
