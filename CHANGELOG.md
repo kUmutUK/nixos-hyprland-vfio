@@ -5,6 +5,8 @@ This file summarizes notable changes in English. The original detailed Turkish h
 ## Unreleased — 2026-10-15
 
 ### Fixed
+- Removed the unused Waypaper package and `SUPER+W` binding, corrected the installer's missing-PCI-device diagnostic so it does not invoke `lspci` a second time, and translated the color notification title to English.
+- Clarified that IOMMU kernel parameters are not enabled by default, corrected the VM input limitation comment, and added a regression check that VM XML GPU/audio PCI addresses match the QEMU hook defaults.
 - Standardized root-required commands in the fresh-install guides and preserved the generated NixOS config as a backup before installing the repository tree.
 - Fixed the Home Manager startup command so it starts `mpvpaper-watchdog` only when the optional `monitorOutput` is configured; documented the disabled-by-default kernel parameters and correct per-activation swap encryption behavior.
 - Removed stale advice to refresh the CachyOS lock for every install and corrected the English changelog's claim about historical version coverage.
