@@ -105,8 +105,10 @@ in
     # information if the host unexpectedly locks up.
     "amd_pstate=active" "nowatchdog" "nmi_watchdog=0"
     # IOMMU activation depends on the CPU, kernel, and platform firmware/BIOS.
-    # `iommu=pt` selects passthrough-oriented DMA mapping; it does not prove that IOMMU
-    # is enabled by firmware. Verify at runtime using `dmesg` and `/sys/kernel/iommu_groups`.
+    # Neither `amd_iommu=on` nor `iommu=pt` is set by this configuration. If you choose
+    # to add an optional kernel parameter, understand its platform-specific effect; it
+    # does not replace enabling IOMMU / AMD-Vi in firmware. Verify runtime support using
+    # `dmesg` and `/sys/kernel/iommu_groups`.
     # The host-wide `rcupdate.rcu_expedited=1` parameter was removed because the old
     # Windows/RCU rationale was incorrect: Windows has no RCU. The parameter affects
     # host grace periods and works against the low-jitter goal of this configuration.
@@ -389,7 +391,7 @@ in
     # package: `wuwa-auto.sh` checks for the command and falls back to Ollama if absent.
     # An external flake can be added if Argos support is required.
     hyprlock hypridle wlogout hyprpicker
-    hyprpolkitagent pyprland waypaper
+    hyprpolkitagent pyprland
     networkmanagerapplet brightnessctl playerctl
     pavucontrol cliphist libmtp android-file-transfer
     ntfs3g exfat android-file-transfer gparted crow-translate tesseract translate-shell libnotify
