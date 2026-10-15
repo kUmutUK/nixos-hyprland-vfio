@@ -4,16 +4,15 @@ let
   gitName            = "changeme";
   gitEmail           = "you@example.com";
   monitorOutput      = "";
-  # Retraction (2026-10-12): eski açıklama yanlıştı. `monitor = ,preferred,auto,1`
-  # boş monitor adıyla catch-all kuralıdır; bu satırda workspace/mirror alanı yoktur
-  # ve kendi başına workspace 1'e aynalama yapmaz. install.sh gerçek çıkış adını
-  # yazar; manuel kurulumda aşağıdaki satırı gerçek monitor adınızla değiştirin.
+  # Retraction (2026-10-12): the earlier explanation was incorrect. `monitor = ,preferred,auto,1`
+  # is a catch-all rule with an empty monitor name; it does not set a workspace or mirror.
+  # The installer writes the actual output name. For manual setups, replace it below.
   hyprlandMonitorLine = "monitor = ,preferred,auto,1";
   wallpaperVideo     = "${config.home.homeDirectory}/Downloads/arthur-leywin-the-beginning-after-the-end.3840x2160.mp4";
 
-  # systemd ExecStart için her argümanı systemd kurallarına göre quote et.
-  # JSON quoting boşluk/özel karakterleri korur; % ve $ da specifier ve
-  # environment-variable genişletmesini engellemek için escape edilir.
+  # Quote every argument passed to systemd `ExecStart` using systemd's escaping rules.
+  # JSON quoting preserves spaces/special characters and escapes `%` and `$` to prevent
+  # specifier and environment-variable expansion.
   escapeSystemdExecArg = arg:
     lib.replaceStrings [ "%" "$" ] [ "%%" "$$" ] (builtins.toJSON arg);
 
@@ -239,8 +238,8 @@ let
 
     $mainMod = SUPER
 
-    # Rofi teması (arthur) repoda hiçbir yerde bulunmuyordu; bu satır
-    # rofi'yi temalı başlatmaya çalışıp düşüyordu. Varsayılan temaya dönüldü.
+    # The referenced Rofi theme (`arthur`) is not present in this repository. Use the
+    # default theme rather than starting Rofi with a missing theme.
     bind = $mainMod, A, exec, ${pkgs.rofi}/bin/rofi -show drun
     bind = $mainMod, C, exec, kitty
     bind = $mainMod, Q, killactive
@@ -256,45 +255,20 @@ let
     bind = $mainMod SHIFT, S, exec, pypr toggle music
     bind = $mainMod CTRL, S, exec, pypr toggle filemanager
 
-    # ── Tekerlekle oda değiştirme ───────────────────────────────────
-    # DÜZELTME (2026-10-05): yorumlarda v0.55.0 ve 407-434 satırları yazıyordu;
-    # kilitli nixpkgs Hyprland 0.56.2 veriyor. Mekanizma AYNI, satırlar KAYDI:
-    # KeybindManager::onAxisEvent artık KeybindManager.cpp:446-470.
-    # ⚠️ SINIRLAMA: onAxisEvent yalnızca
-    #   e.source == WL_POINTER_AXIS_SOURCE_WHEEL && axis == VERTICAL
-    # için ateşlenir (KeybindManager.cpp:459). Yani bu iki binding SADECE
-    # faresel tekerlekte çalışır; dokunmatik panelde (touchpad) SUPER+tekerlek
-    # hiçbir şey yapmaz.
-    #
-    # Eski not (v0.55.0): tekerlek artık tuş değil EKSEN (axis) olayı
-    # üretiyor. KeybindManager::onAxisEvent
-    # dikey eksende e.delta<0 için "mouse_down", e.delta>0 için "mouse_up"
-    # ismiyle handleKeybinds() çağırıyor. "scroll:down" / "scroll:up" isimleri
-    # HİÇ üretilmiyor → eski satırlar config yüklenirken hatasız geçiyor,
-    # basılınca da hiçbir şey olmuyordu.
-    #
-    # İkinci hata aynı satırlardaydı: "layoutmsg, cyclenext scroll".
-    #   * "scroll" argümanı geçersiz;
-    #   * dwindle'in layoutmsg alt komutları YALNIZCA togglesplit /
-    #     swapsplit / rotatesplit / movetoroot / preselect / splitratio
-    #     (DwindleAlgorithm.cpp:640-733) — "cyclenext" aralarında değil;
-    #   * "cycleprev" ise hiçbir dispatcher değil; v0.55.0 listesinde yalnız
-    #     "cyclenext" var (KeybindManager.cpp:37-105).
-    # Doğru biçim `cyclenext` dispatcher'ı: argümansız = sonraki pencere,
-    # "prev" = önceki (DispatcherTranslator.cpp:471-489).
+    ## Workspace cycling with the mouse wheel
+    # The bindings use Hyprland's `mouse_down`/`mouse_up` axis-event names; the older
+    # `scroll:down`/`scroll:up` bindings did nothing. `cyclenext` is the dispatcher for
+    # cycling windows (`prev` selects the previous window); `layoutmsg, cyclenext scroll`
+    # is not a valid layout command. Wheel events are distinct from BTN_LEFT/BTN_RIGHT
+    # mouse-button events, so the drag bindings below remain separate. Touchpad behavior
+    # depends on the event source and should be checked on the target Hyprland version.
     bind = $mainMod, mouse_down, cyclenext
     bind = $mainMod, mouse_up, cyclenext, prev
 
-    # ⚠️ $mainMod + M (monocle) BİLEREK BAĞLI DEĞİL.
-    # Eski satır `hyprctl dispatch layoutmsg set monocle` idi ve dwindle'da
-    # "Unknown dwindle layoutmsg: set monocle" hatası veriyordu. v0.55.0'in
-    # legacy dispatcher listesinde çalışma zamanında layout değiştiren hiçbir
-    # komut yok; monocle yalnızca çalışma zamanı DIŞINDA, kural ile seçilir:
-    #
-    #     workspace = 1, layout:monocle
-    #
-    # (kalıcı, workspace başına) ya da hyprwm-community/workspacelayout
-    # plugin'i ile. İkisi de bu config'te bilerek yok.
+    # The `$mainMod + M` monocle binding is intentionally disabled. The former
+    # `hyprctl dispatch layoutmsg set monocle` command is invalid for the configured
+    # layout. Monocle requires a workspace rule or a dedicated plugin, neither of which
+    # is enabled in this configuration.
 
     bind = $mainMod SHIFT, left,  movewindow, l
     bind = $mainMod SHIFT, right, movewindow, r
@@ -360,36 +334,22 @@ let
 
     bind = $mainMod SHIFT, E, exit
 
-    # WuWa otomatik çeviri toggle (Y tuşu).
-    # ESKİ HALİ: pkill -f wuwa-auto.sh || ~/.config/.../wuwa-auto.sh
-    # Bu kalıp ÇALIŞMIYORDU: Hyprland exec'i "/bin/sh -c '<satır>'" ile
-    # çalıştırıyor, kabuğun komut satırı "wuwa-auto.sh" metnini içeriyor ve
-    # pkill -f kendi üst kabuğunu öldürüyordu → || fallback'i asla çalışmıyor,
-    # tuşa basmak hiçbir şey yapmıyordu. Sandbox'ta yeniden üretildi.
-    # Çözüm: ayrı bir toggle betiği. Betiğin kendi yolu "toggle-wuwa.sh"
-    # olduğu için "wuwa-auto[.]sh" deseni onu EŞLEŞTİRMEZ.
+    # WuWa automatic-translation toggle (Y). The old `pkill -f wuwa-auto.sh || ...`
+    # command ran through `sh -c`; `pkill -f` matched and killed its own wrapper, so the
+    # fallback never ran. A dedicated `toggle-wuwa.sh` avoids matching itself.
     bind = $mainMod, Y, exec, ~/.config/hypr/scripts/toggle-wuwa.sh
 
-    # Manuel OCR çeviri (SHIFT+T)
-    # DÜZELTME (2026-10-05): eski hâl `| { read -r _t; notify-send ... "$_t"; }`
-    # idi. `read -r` SADECE İLK satırı okur ve gerisini atar; çok satırlı bir
-    # çevirinin tamamı kayboluyordu. Artık tüm çıktı değişkende toplanıyor.
-    # Bash değişkeni varsayılan olarak yeni satırları korur.
+    # Manual OCR translation (SHIFT+T). Capture all output rather than using `read -r`,
+    # which reads only the first line and discards the rest of a multiline translation.
     bind = $mainMod SHIFT, T, exec, sh -c 'T=$(grim -g "$(slurp)" - | tesseract - stdout -l eng 2>/dev/null | trans -b :tr); [ -n "$T" ] && notify-send -t 10000 "Çeviri" "$T"'
 
-    # Sürekli panoya-göre otomatik çeviri toggle (ALT+T) — daha önce
-    # scripts/auto-translate.sh repo'da vardı ama hiçbir kısayola
-    # bağlı değildi, artık gerçekten kullanılabilir.
-    # Aynı pkill -f kendini-kill sorunu burada da vardı → ayrı toggle betiği.
+    # Continuous clipboard translation toggle (ALT+T). The script existed in the
+    # repository but was not bound to a shortcut; a dedicated toggle also avoids the
+    # self-killing `pkill -f` pattern.
     bind = $mainMod ALT, T, exec, ~/.config/hypr/scripts/toggle-auto-translate.sh
 
-    # SUPER + sol/sağ tuşla sürükleme. 272/273 = BTN_LEFT / BTN_RIGHT
-    # (0x110 / 0x111) — bunlar GERÇEK buton kodlarıdır, tekerlek ekseni
-    # değil; onMouseEvent() (KeybindManager.cpp:477-488) onları
-    # "mouse:<code>" adıyla tetikliyor. Bu iki satır ÇALIŞIYOR ve yukarıdaki
-    # tekerlek binding'leriyle karışmıyor, çünkü anahtar adları farklı
-    # ("mouse:272" ≠ "mouse_down") ve handleKeybinds m_keybinds'i ortak
-    # haritada, yalnız ad+modmask eşleştiriyor.
+    # Super + left/right mouse-button drag. BTN_LEFT/BTN_RIGHT (272/273) are actual
+    # mouse-button codes, not wheel-axis events, so these bindings remain independent.
     bindm = $mainMod, mouse:272, movewindow
     bindm = $mainMod, mouse:273, resizewindow
 
@@ -399,11 +359,8 @@ let
     windowrule = match:class ^(nm-connection-editor)$, float on
     windowrule = match:title ^(scratchterm)$, float on, size 60% 60%
 
-    # ÇİFT BAŞLATMA TEMİZLİĞİ:
-    # mpvpaper, mpvpaper-watchdog ve gamemode-notify artık yalnızca systemd
-    # user unit'lerinden başlatılıyor. Eskiden hem hyprland exec-once hem
-    # systemd aynı servisi tetikliyordu (watchdog için iki instance, yarış
-    # koşulu; mpvpaper ve gamemode-notify için gereksiz tekrar).
+    # Avoid duplicate service startup: mpvpaper, its watchdog, and gamemode-notify are
+    # started only by their systemd user units, not by both Hyprland and systemd.
     exec-once = ${pkgs.pcmanfm}/bin/pcmanfm --desktop
     exec-once = hyprctl setcursor capitaine-cursors 16
     exec-once = waybar
@@ -413,33 +370,25 @@ let
     exec-once = ${pkgs.hyprpolkitagent}/bin/hyprpolkitagent
     exec-once = dbus-update-activation-environment --systemd DISPLAY
     exec-once = pypr
-    # Düzeltme (2026-10-04): import-environment ÜÇ değişkenle sınırlıydı.
-    # HYPRLAND_INSTANCE_SIGNATURE aktarılmadığı için mpvpaper-watchdog
-    # (bkz. aşağıdaki HYPR_SOCK) soketi bulamıyor, exit 1 ile çıkıyor ve
-    # systemd 3 saniyede bir yeniden başlatıyordu → duvar kağıdı hiç açılmıyor.
-    # AYRICA bu satır mpvpaper-watchdog'u BAŞLATAN satırın ALTINDAYDI;
-    # import önce, başlatma sonra olacak şekilde sıralandı.
+    # The systemd user environment lacked `HYPRLAND_INSTANCE_SIGNATURE`, so the
+    # mpvpaper watchdog could not find the Hyprland socket and restarted repeatedly.
+    # Import the environment before starting the watchdog.
     exec-once = ${pkgs.coreutils}/bin/sh -c 'systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE HYPRLAND_INSTANCE_SIGNATURE HYPRLAND_DISPLAY; systemctl --user start mpvpaper-watchdog gamemode-notify'
-    # DÜZELTME (2026-10-09): ConditionPathExists daha önce mpvpaper.service'in
-    # Service bölümündeydi; systemd bu konumda anahtarı yok sayıyordu. Artık
-    # Unit bölümünde doğru tanımlı: video yoksa servis başlatılmaz. Aşağıdaki
-    # exec-once kontrolü ayrıca kullanıcıya görünür bir uyarı gösterir.
-    # wallpaperVideo shell koduna gömülmez; ayrı bir argüman olarak aktarılır.
-    # Böylece apostrof, boşluk, $, backtick ve benzeri karakterler komutu bozamaz.
+    # `ConditionPathExists` belongs in the unit section, not the service section. If the
+    # wallpaper video is missing, systemd skips the service and the separate `exec-once`
+    # check displays a user-visible warning. Pass the path as a separate argument instead
+    # of embedding it in shell code to handle spaces, quotes, `$`, and backticks safely.
     exec-once = ${pkgs.coreutils}/bin/sh -c '[ -e "$1" ] || notify-send -t 15000 -u critical "mpvpaper" "Canlı duvar kağıdı bulunamadı: $1\nDosyayı indirin veya home.nix içindeki wallpaperVideo değerini değiştirin, sonra: systemctl --user restart mpvpaper mpvpaper-watchdog"' sh ${lib.escapeShellArg wallpaperVideo}
-    # monitorOutput boşsa manuel Home Manager yapılandırmasında mpvpaper
-    # servisi oluşturulmaz ve aşağıdaki doğrulama da sessizce atlanır.
-    # Doluysa çıkış adı oturum açılışında doğrulanır; shell'e gömülmek yerine
-    # ayrı argüman olarak aktarılır, böylece özel karakterler komutu bozamaz.
+    # When `monitorOutput` is empty, manual Home Manager configuration does not create
+    # the mpvpaper service and skips monitor validation. When set, verify the output name
+    # at session startup and pass it as a separate argument for safe shell handling.
     exec-once = ${pkgs.coreutils}/bin/sh -c 'if [ -n "$1" ] && ! hyprctl monitors 2>/dev/null | grep -Fq -- "Monitor $1 ("; then notify-send -t 15000 -u critical "mpvpaper" "Monitör çıkışı bulunamadı: $1\nhyprctl monitors çıktısından gerçek adı alıp home.nix içindeki monitorOutput değerini düzeltin (örn. DP-1), sonra: systemctl --user restart mpvpaper mpvpaper-watchdog"; fi' sh ${lib.escapeShellArg monitorOutput}
   '';
 
   hyprlockConf = ''
-    # DÜZELTME: `general { grace = 0; disable_loading_bar = false; }` buradaydı.
-    # hyprlock 0.9.6'da NE grace NE disable_loading_bar kayıtlı option değil
-    # (grace artık `--grace` CLI bayrağı, loading bar tamamen kaldırıldı) ->
-    # "Proceeding ignoring faulty entries" ile sessizce yok sayılıyordu.
-    # 0 zaten varsayılan olduğu için davranış değişmiyor, hata gürültüsü gider.
+    # Hyprlock 0.9.6 no longer accepts the old `grace` and `disable_loading_bar` options.
+    # They were ignored with a warning. Grace is a CLI option and the loading bar was
+    # removed; the previous zero grace value did not change the effective behavior.
     general {
         hide_cursor = 0
     }
@@ -451,13 +400,10 @@ let
     }
     input-field {
         position = 0, -120; size = 300, 50; halign = center; valign = center;
-        # DÜZELTME (hyprlock 0.9.6 şeması): font_size, check_symbol,
-        # placeholder_color ve fail_transition artık KAYITLI DEĞİL -> hepsi
-        # sessizce yok sayılıyordu. Karşılıkları:
-        #   check_symbol      -> check_text (0.9.6'da bu, onay işareti)
-        #   font_size         -> yok; alan yüksekliğinden otomatik hesaplanır
-        #   placeholder_color -> yok; placeholder font_color'dan türetilir
-        #   fail_transition   -> yok; fade_on_empty / fade_timeout var
+        # Hyprlock 0.9.6 no longer registers `font_size`, `check_symbol`, `placeholder_color`,
+        # or `fail_transition`; these keys were silently ignored. `check_symbol` maps to
+        # `check_text`; font sizing and placeholder color are derived automatically, and the
+        # supported fade options replace the removed transition option.
         placeholder_text = Şifre...; font_family = JetBrainsMono Nerd Font;
         dots_size = 0.55; dots_spacing = 0.15; check_text = ✓;
         font_color = rgba(255, 255, 255, 1.0);
@@ -500,13 +446,9 @@ let
         font_family = JetBrainsMono Nerd Font; font_size = 14;
         font_color = rgba(255, 255, 255, 0.35); shadow_passes = 0;
     }
-    # DÜZELTME: burada iki `button { ... on_click = wlogout / systemctl suspend }`
-    # bloğu vardı. hyprlock 0.9.6'da `button` WIDGET'I TAMAMEN KALDIRILMIŞ
-    # (addSpecialCategory listesinde yalnızca background/shape/image/input-field/label
-    # var) -> iki buton hiç render edilmiyordu; sadece "Proceeding ignoring faulty
-    # entries" logu basılıyordu. Karşılık gelen kısayol zaten var:
-    #   SUPER+SHIFT+E -> hyprctl exit   (hyprland.conf:351)
-    # Butonları geri istiyorsan hyprlock'u 0.9.x'ten eski bir sürüme sabitle.
+    # Hyprlock 0.9.6 removed the `button` widget, so the old wlogout/suspend buttons
+    # were never rendered. The configured `SUPER+SHIFT+E` shortcut still exits Hyprland.
+    # Use an older hyprlock release if clickable widgets are required.
   '';
 
   waybarStyle = ''
@@ -714,44 +656,18 @@ in
   home.homeDirectory = "/home/localhost";
   home.stateVersion = "26.05";
 
-  # ─── Hyprland config yönlendirmesini AÇIKÇA sabitle ──────────────
-  # DÜZELTME (2026-10-06). Bu, README'de yıllardır "⚠️ ÖNEMLİ" diye
-  # duran ama hiçbir zaman kapatılmayan tuzağın kalıcı çözümü.
-  #
-  # Gerçek davranış (Hyprland v0.56.2,
-  # src/config/supplementary/jeremy/Jeremy.cpp → getMainConfigPath()):
-  #   1. $HYPRLAND_CONFIG                      ← EXPLICIT, en yüksek öncelik
-  #   2. findConfig("hyprland","lua")  → $XDG_CONFIG_HOME/hypr/hyprland.lua
-  #   3. findConfig("hyprland","conf") → $XDG_CONFIG_HOME/hypr/hyprland.conf
-  #   4. $XDG_CONFIG_DIRS/.../hyprland.lua
-  #   ve İLK bulunan kazanır.
-  #
-  # Yani `~/.config/hypr/hyprland.lua` dosyası bir gün var olursa, aşağıdaki
-  # `xdg.configFile."hypr/hyprland.conf"` sessizce TAMAMEN yok sayılır:
-  # hata yok, uyarı yok, masaüstü Hyprland'ın varsayılanına döner.
-  #
-  # README'in "PATH'te hyprland.lua olmamalı" ifadesi de yanlıştı —
-  # `findConfig` PATH'e bakmaz, yalnızca XDG_CONFIG_HOME / XDG_CONFIG_DIRS /
-  # /etc/xdg altına bakar. (Bu yüzden NixOS'un /run/current-system/sw/share
-  # altına koyduğu stub, docs/archive/README.md'nin dediği gibi gölgeleme
-  # YAPMIYOR — o iddia bu satırın teknik olarak doğru kısmıydı.)
-  #
-  # Oysa asıl tehlike oluşturulmadığında: Home Manager activasyonu henüz
-  # çalışmamışken Hyprland bir kez başlatılırsa (kurulum sırasında, ya da
-  # config silinip yeniden açıldığında), Hyprland eksik config'i görüp kendi
-  # ÖRNEK hyprland.lua dosyasını ~/.config/hypr/ altına üretir — ve bir sonraki
-  # açılışta bütün config gölgelenir. Hiçbir belgede bahsedilmemişti.
-  #
-  # Çözüm: yolu environment'e açıkça yaz. HYPRLAND_CONFIG tanımlıyken
-  # findConfig hiç çalışmaz, yani gölgeleme mekanizması yapısal olarak
-  # devre dışı kalır. Bu config zaten .conf tabanlı olduğu için sabitlemek
-  # doğru davranış; ileride Lua'ya geçilirse bu satır kaldırılmalıdır.
+  # Explicitly set `HYPRLAND_CONFIG` so Hyprland never silently selects a generated
+  # `hyprland.lua` ahead of the declarative `hyprland.conf`. Search precedence favors an
+  # explicit environment variable, then XDG config files; PATH is not searched. Without
+  # the explicit variable, starting Hyprland before Home Manager activation could create
+  # a sample Lua config that shadows the managed configuration. Remove this setting only
+  # if the system intentionally migrates to Lua.
   home.sessionVariables.HYPRLAND_CONFIG =
     "${config.home.homeDirectory}/.config/hypr/hyprland.conf";
 
-  # Doğrulama: `hyprctl configversion` ve
-  # `test -e ~/.config/hypr/hyprland.lua && echo "⚠️ gölgeleme riski"`
-  # (artık etkisiz olmalı — yine de izlemek için).
+  # Verify the active config with `hyprctl configversion`. Check for
+  # `~/.config/hypr/hyprland.lua`; with `HYPRLAND_CONFIG` set, it should not shadow the
+  # managed `.conf` file.
 
   dconf.settings = {
     "org/gnome/desktop/interface" = {
@@ -788,15 +704,10 @@ in
     "waybar/style.css".text = waybarStyle;
     "waybar/config.jsonc".text = waybarConfig;
 
-    # ── Toggle betikleri (P0-6) ──────────────────────────────────────
-    # Hyprland exec'i "/bin/sh -c '<satır>'" ile çalıştırır. Satırın İÇİNDE
-    # "pkill -f wuwa-auto.sh || …/wuwa-auto.sh" yazılıydı; pkill -f komut
-    # satırının tamamını aradığı için kendi üst kabuğunu öldürüyor, || fallback'i
-    # hiç çalışmıyor ve tuş hiçbir şey yapmıyordu.
-    # Ayrı betiğe taşınca sorun yok: betiğin kendi yolu "toggle-wuwa.sh" olduğu
-    # için "wuwa-auto[.]sh" deseni onu eşleştirmiyor.
-    # Bu desen sandbox'ta T1/T2/T3 olarak test edildi: başlatıyor, durduruyor ve
-    # sh -c üzerinden (Hyprland'ın gerçek çağrı yolu) de çalışıyor.
+    # Toggle scripts are used because an inline `pkill -f ... || ...` command matches and
+    # kills its own `sh -c` wrapper. The separate `toggle-wuwa.sh` does not match the
+    # `wuwa-auto[.]sh` pattern. Its start/stop behavior and the real `sh -c` call path were
+    # checked in a sandbox.
     "hypr/scripts/toggle-wuwa.sh" = {
       executable = true;
       text = ''
@@ -823,9 +734,9 @@ in
       '';
     };
 
-    # ── Daha önce hiçbir yere deploy edilmeyen dosyalar ───────────────
-    # MangoHud.conf ve conf.toml (lsfg-vk) repoda duruyordu ama hiçbir modül
-    # onları kullanmıyordu; oyunlarda o ayarlar hiç uygulanmıyordu.
+    # These files had been stored in the repository but were never deployed. The
+    # Home Manager definitions below now put MangoHud and lsfg-vk configuration in the
+    # user's active configuration directory.
     "MangoHud/MangoHud.conf".text = ''
       ###############################
       # MangoHud - Catppuccin Mocha
@@ -882,8 +793,8 @@ in
 
       [global]
 
-      # Oyun başına kare üretim çarpanı. exe alanı süreç adıyla eşleşir.
-      # (Eski değerde "Genshin" yazıyordu; süreç adı GenshinImpact.)
+      # The frame-generation multiplier is selected per executable; the `exe` field must
+      # match the actual process name (for example, `GenshinImpact`, not `Genshin`).
       [[game]]
       exe = "GenshinImpact"
       multiplier = 3
@@ -925,24 +836,11 @@ in
       experimental_present_mode = "fifo"
     '';
 
-    # pyprland kurulu ama config'i yoktu; hyprland.conf'taki
-    # "pypr toggle term/music/filemanager" bağlantıları tanımsızdı.
-    #
-    # pyprland 3.4.4 (kök nixpkgs rev'i 151fa4e8ddfd) üç yol tanıyor
-    # (src/constants.py:45-47):
-    #   CONFIG_FILE        = ~/.config/pypr/config.toml     ← KANONİK
-    #   LEGACY_CONFIG_FILE = ~/.config/hypr/pyprland.toml  ← ESKİ
-    #   OLD_CONFIG_FILE    = ~/.config/hypr/pyprland.json   ← çok eski
-    # Daha önce LEGACY yola yazılıyordu. Önceki yorum "pypr/config.toml
-    # pyprland tarafından okunmaz" diyordu; bu TERSİNE DOĞRUYDU — okunan
-    # legacy yoldu. Legacy dosya yine de okunur, ama her açılışta
-    # "Config at legacy location. Move to: …/pypr/config.toml" uyarısı
-    # basılır ve ekranda migration bildirimi gösterilir
-    # (src/config_loader.py:173-185). Artık kanonik yola yazılıyor.
-    #
-    # Bölüm formatı:
-    #   [pyprland] plugins = [...]  +  [scratchpads.<ad>]
-    # [[pypr.apps]] / useOn / [pypr] pyprland tarafından hiç okunmaz.
+    # Pyprland was installed but lacked a valid configuration for the scratchpad keybinds.
+    # The canonical config path is `~/.config/pypr/config.toml`; the older
+    # `~/.config/hypr/pyprland.toml` is still read but causes a migration warning. The
+    # config uses `[pyprland]` plus `[scratchpads.<name>]`; the older `[[pypr.apps]]` layout
+    # is not read by pyprland.
     "pypr/config.toml".text = ''
       [pyprland]
       plugins = [ "scratchpads" ]
@@ -955,9 +853,8 @@ in
       size = "70% 60%"
       margin = 50
 
-      # bind = $mainMod SHIFT, S, exec, pypr toggle music
-      # playerctl'ın pencereesi yok; bu bir medya oynatıcı (mpv, zaten kurulu).
-      # Farklı bir oynatıcı isterseniz command/class değerlerini değiştirin.
+      # The music scratchpad launches `mpv`. `playerctl` has no window of its own because
+      # it controls a media player. Change the command/class values if you prefer another player.
       [scratchpads.music]
       animation = "fromRight"
       command = "mpv --class pypr-music --no-config --idle"
@@ -975,27 +872,21 @@ in
       lazy = true
     '';
 
-    # Bu iki script daha önce ../.config/hypr/scripts/*.sh şeklinde repo
-    # köküne göreli bir "source" yolu ile deploy ediliyordu. install.sh ise
-    # /etc/nixos altına sadece configuration.nix/home.nix/flake*/hooks
-    # dosyalarını kopyalıyor, .config/ dizinini KOPYALAMIYOR — bu yüzden
-    # install.sh ile kurulan bir sistemde bu göreli yol
-    # (/etc/.config/hypr/scripts/...) hiç var olmuyordu ve nixos-rebuild
-    # "path does not exist" hatasıyla patlıyordu. Harici bir dosyaya
-    # bağımlı olmamak için script içerikleri artık doğrudan burada,
-    # inline metin olarak gömülü — home.nix nereye kopyalanırsa
-    # kopyalansın çalışır.
+    # These scripts used repository-relative `../.config/hypr/scripts/*.sh` paths, but
+    # `install.sh` copies Nix configuration and hooks, not the repository's `.config/`
+    # directory. Such paths did not exist after installation. Embed scripts in this Nix
+    # file so they are deployed regardless of where `home.nix` is copied.
     "hypr/scripts/wuwa-auto.sh" = {
       executable = true;
       text = ''
 #!${pkgs.bash}/bin/bash
 # shellcheck disable=SC2155
-# SC2155 (local x=$(cmd) return değerini maskeler) bu dosyada kasıtlı:
-# dört `local`'da da atamanın return değeri zaten kullanılmıyor, `||`/set -e
-# yolu yok. 2026-10-05'te CI'a gömülü script taraması eklenince bu kapıya girdi.
+# SC2155 is intentional here: the four local assignments do not use their return
+# status, and the script does not enable `set -e`. Embedded-script scanning was added
+# to CI on 2026-10-05.
 
-# Gemma modeli elle kurulan, büyük bir indirmedir; model yoksa /api/generate
-# `null` döndürebilir. Her döngü adımında hatalı çıktı üretmek yerine başlamadan dur.
+# The Gemma model is a large manual download. If it is missing, `/api/generate` may
+# return `null`; stop before entering the OCR loop instead of emitting invalid output.
 if ! curl -fsS --connect-timeout 2 --max-time 4 http://localhost:11434/api/tags \
     | jq -e '.models[]? | select(.name | startswith("wuwa-gemma"))' >/dev/null 2>&1; then
     notify-send -u critical "WuWa AI" \
@@ -1003,30 +894,24 @@ if ! curl -fsS --connect-timeout 2 --max-time 4 http://localhost:11434/api/tags 
     exit 1
 fi
 
-# ─── Bölge tanımları ─────────────────────────────────────────────
-# DÜZELTME (2026-10-06): bu koordinatlar 2560x1440'e SABİTLENMİŞTİ ve
-# başka bir çözünürlükte ekranın dışına taşabiliyordu. Taştığında grim ya
-# hata veriyor ya da alakasız bir bölgeyi tarıyor; kullanıcı "çeviri
-# çalışmıyor" deyip gerçek sebebi göremiyordu. Artık:
-#   (1) WUWA_GEOMETRY_MAIN / WUWA_GEOMETRY_CHOICE ile geçersiz kılınabilir,
-#   (2) bölge ekrana sığmıyorsa döngüye girmeden UYARI basılıyor.
+## OCR region definitions
+# The former coordinates were hard-coded for 2560x1440 and could lie outside other
+# resolutions. `WUWA_GEOMETRY_MAIN` and `WUWA_GEOMETRY_CHOICE` can override them; the
+# script now warns and exits if a region does not fit the detected display.
 DEFAULT_GEOMETRY_MAIN="0,971 2560x438"
 DEFAULT_GEOMETRY_CHOICE="1561,513 916x585"
 
 GEOMETRY_MAIN="''${WUWA_GEOMETRY_MAIN:-$DEFAULT_GEOMETRY_MAIN}"
 GEOMETRY_CHOICE="''${WUWA_GEOMETRY_CHOICE:-$DEFAULT_GEOMETRY_CHOICE}"
 
-# Ekran çözünürlüğü. hyprctl yoksa/okunamazsa boş kalır ve doğrulama
-# atlanır (eskiden de doğrulama yoktu, en azından artık çalışmıyor demeyecek).
-#
-# DÜZELTME: `hyprctl monitors` "2560x1440@170.00" biçiminde YENİLEME HIZI da
-# basıyor; doğrudan cut edilirse MON_H "1440@170.00" olur ve tüm karşılaştırmalar
-# "integer expression expected" hatasına düşer. Önce @ ile bölüp boyut alınıyor.
+# Read the display size from `hyprctl`. If it is missing or unreadable, geometry
+# validation is skipped. `hyprctl monitors` includes a refresh rate such as
+# `2560x1440@170.00`; strip the `@...` suffix before parsing the height.
 MON_SIZE=$(hyprctl monitors 2>/dev/null | grep -oPm1 '[0-9]+x[0-9]+@[0-9.]+' | head -n1 | cut -d@ -f1)
 MON_W=$(echo "$MON_SIZE" | cut -dx -f1)
 MON_H=$(echo "$MON_SIZE" | cut -dx -f2)
 
-# "X,Y WxH" biçimindeki bölge çalışma alanına sığıyor mu?
+# Check whether an `X,Y WxH` rectangle fits within the display dimensions.
 geometry_fits() {
     [ -n "$MON_W" ] && [ -n "$MON_H" ] || return 0
     local pos size x y w h
@@ -1036,14 +921,15 @@ geometry_fits() {
     y=$(echo "$pos" | cut -d, -f2)
     w=$(echo "$size" | cut -dx -f1)
     h=$(echo "$size" | cut -dx -f2)
-    # Sayı olmayan bir şey varsa (yazım hatası) sessizce geç, eski davranış.
+    # For non-numeric geometry (for example, a typo), preserve the earlier permissive
+    # behavior and skip the fit check.
     case "$x$y$w$h" in *[!0-9]*) return 0 ;; esac
     [ $(( x + w )) -le "$MON_W" ] && [ $(( y + h )) -le "$MON_H" ]
 }
 
-# NOT: çoklu monitör düzeninde hyprctl "at X,Y" konumu da raporlar; burada
-# yalnızca boyut karşılaştırılıyor. Tek monitörde tam doğru, çoklu
-# monitörde kullanıcıyı yanlış alarmdan koruyan bir üst sınır.
+# Hyprland reports monitor position as well as dimensions, but this check compares
+# only width/height. This is exact for a single monitor and may be conservative for
+# multi-monitor layouts.
 for _region in "altyazı|$GEOMETRY_MAIN" "seçenekler|$GEOMETRY_CHOICE"; do
     _label=$(echo "$_region" | cut -d'|' -f1)
     _geom=$(echo "$_region" | cut -d'|' -f2)
@@ -1054,7 +940,7 @@ for _region in "altyazı|$GEOMETRY_MAIN" "seçenekler|$GEOMETRY_CHOICE"; do
     fi
 done
 
-# Ekran görüntüleri her çalıştırma için ayrı ve yalnız kullanıcıya açık dizinde.
+# Create screenshots in a unique per-run temporary directory with user-only permissions.
 umask 077
 TMPD=$(mktemp -d -t wuwa-XXXXXX) || exit 1
 trap 'rm -rf "$TMPD"' EXIT
@@ -1066,63 +952,64 @@ IMAGE_CHOICE="$TMPD/choice.png"
 LAST_MAIN=""
 LAST_CHOICE=""
 
-# ─── Tesseract en iyi model dizini ───
+# ─── Preferred Tesseract model directory ───
 TESSDATA_DIR="$HOME/.local/share/tessdata"
 
-# Eğer dizin yoksa Tesseract'ın sistemdeki ana yoluna düşmesi için bir kontrol
+# If the local Tesseract data directory is absent, fall back to the system tessdata path.
 [ ! -d "$TESSDATA_DIR" ] && TESSDATA_DIR="/run/current-system/sw/share/tessdata"
 
-# ─── Çeviri önbelleği ───
+# Translation cache.
 CACHE_HOME="''${XDG_CACHE_HOME:-$HOME/.cache}"
 CACHE_FILE="$CACHE_HOME/wuwa_translate_cache"
 mkdir -p "$CACHE_HOME" || exit 1
 touch "$CACHE_FILE" && chmod 600 "$CACHE_FILE" || exit 1
 
-# ─── Hızlı çeviri (Argos Translate) ───
+# Fast translation (Argos Translate).
 translate_fast() {
-    # DÜZELTME (2026-10-04): nixpkgs'te `argos-translate` paketi yok
-    # (sadece python3XXPackages.argos-translate-files var, binary vermiyor).
-    # Önceden `2>/dev/null` ile hata yutuluyor, argos yokken her çağrı boşa
-    # çalışıp Ollama'ya düşüyordu. Artık varlık kontrolü yapılıyor; yoksa
-    # çağıran taraf doğrudan Ollama'ya gider (bkz. translate_choose).
+    # The `argos-translate` binary is not available in nixpkgs (only the Python
+    # `argos-translate-files` package exists). Previously the failure was hidden and every
+    # request fell through to Ollama. Check command availability and fall back explicitly.
     command -v argos-translate >/dev/null 2>&1 || return 1
     echo "$1" | argos-translate --from-lang en --to-lang tr 2>/dev/null
 }
 
-# ─── Yedek çeviri (Ollama LLM - Güvenli JSON formatı ile) ───
+# Fallback translation via Ollama using a JSON request.
 translate_llm() {
     local text="$1"
-    # DÜZELTME (2026-10-05): eski hâli `--arg pr "EN: $text\nTR:"` idi.
-    # jq'nin --arg'ı C kaçışlarını YORUMLAMAZ; "\n" modele literal
-    # backslash-n olarak gider ve istemci tek satırlık "EN: ...\nTR:" görür.
-    #
-    # Burada dikkat: bu satır bir Nix indented string'in İÇİNDE, yani Nix
-    # önce kaçışları çözüyor. Nix `\n`'i GERÇEK satır sonuna çevirdiği için
-    # printf formatında kaçış bırakmak Nix sürümüne göre farklı sonuç verir.
-    # Belirsizliği tamamen kaldırmak için bash ANSI-C quoting ($'…') kullanılıyor:
-    # Nix'te dolar işareti tek başına özel değildir; süslü parantezle birleşince interpolasyon açar.
-    # $'\n' Nix'ten geçer ve bash'ta kesin olarak gerçek satır sonu üretir.
+    # `jq --arg` does not interpret C-style escapes; a literal `\n` was sent to the model.
+    # The shell code is embedded in a Nix indented string, so use Bash ANSI-C quoting
+    # (`$'\n'`) to guarantee a real line break in the prompt after Nix interpolation.
     local json_payload
     json_payload=$(jq -n --arg mod "wuwa-gemma" \
                          --arg pr "EN: ''${text}"$'\n'"TR:" \
                          '{model: $mod, prompt: $pr, stream: false, options: {temperature: 0.0, num_predict: 80}}')
 
-    curl -s --connect-timeout 2 --max-time 10 \
-         http://localhost:11434/api/generate -d "$json_payload" \
-         | jq -r '.response' 2>/dev/null | xargs
+    local response translated
+    response="$(curl --fail --silent --show-error \
+        --connect-timeout 2 --max-time 10 \
+        -H 'Content-Type: application/json' \
+        http://localhost:11434/api/generate -d "$json_payload")" || return 1
+
+    translated="$(jq -er '.response | select(type == "string" and length > 0)' \
+        <<< "$response")" || return 1
+    # Trim surrounding whitespace without interpreting quotes or backslashes.
+    translated="''${translated#"''${translated%%[![:space:]]*}"}"
+    translated="''${translated%"''${translated##*[![:space:]]}"}"
+    [ -n "$translated" ] || return 1
+    printf '%s\n' "$translated"
 }
 
-# ─── Genel çeviri (önbellek + Argos → Ollama) ───
+# General translation flow: cache, then Argos, then Ollama.
 translate() {
     local raw="$1"
     local letter_count=$(echo "$raw" | tr -cd 'a-zA-Z' | wc -c)
     [ "$letter_count" -lt 5 ] && { echo ""; return; }
 
-    # Önbellek anahtarını ilk TAB alanıyla tam karşılaştır; substring eşleşmesi yapma.
+    # Match the cache key against the complete first TAB-delimited field, not a substring.
     local cached=$(awk -F '\t' -v k="$raw" '$1 == k { print $2; exit }' "$CACHE_FILE" 2>/dev/null)
     [ -n "$cached" ] && { echo "$cached"; return; }
 
-    # Hızlı çeviriyi dene
+    # Try the fast translation backend first.
     local fast=$(translate_fast "$raw")
     if [ -n "$fast" ] && [ "''${#fast}" -gt 2 ]; then
         printf '%s\t%s\n' "$raw" "$fast" >> "$CACHE_FILE"
@@ -1139,19 +1026,15 @@ translate() {
     fi
 }
 
-# ─── Ana döngü ───
-# DÜZELTME (2026-10-05): döngü koşulsuz 3 saniyede bir 2× grim + 2× mogrify +
-# 2× tesseract çalıştırıyordu — TÜM gün, sonsuza kadar, oyun oynanırken bile.
-# Tesseract ağır bir CPU yükü ve GPU'ya (VRAM/host bellek) bant genişliği
-# yiyor; oyunla yarışması kare düşmesi demek. Artık hiçbir bölgede değişiklik
-# yoksa bekleme süresi kademeli olarak 3s → 30s'e çıkıyor, ilk değişiklikte
-# anında 3s'ye dönüyor.
+# Main loop. The old fixed 3-second loop ran two `grim`, two `mogrify`, and two
+# Tesseract processes even when the screen did not change. Back off gradually from
+# 3 to 30 seconds when both regions remain unchanged, and return to 3 seconds on change.
 IDLE_TICKS=0
 MAX_IDLE_SLEEP=30
 
 while true; do
     CHANGED=0
-    # 1. Ana altyazı
+    # 1. Main subtitle region.
     grim -g "$GEOMETRY_MAIN" "$IMAGE_MAIN" 2>/dev/null
     mogrify -resize 200% \
             -modulate 100,0 \
@@ -1162,13 +1045,9 @@ while true; do
             "$IMAGE_MAIN" 2>/dev/null
 
     RAW_MAIN=$(tesseract "$IMAGE_MAIN" stdout -l eng --psm 6 --tessdata-dir "$TESSDATA_DIR" 2>/dev/null)
-    # DÜZELTME: burada `tr -d '\f'` vardı ve Nix kaçışı yüzünden `tr -d 'f'`
-    # haline geliyordu -> tesseract çıktısındaki TÜM "f" harfleri siliniyordu
-    # ("The final" -> "The inal"). Nix'in unescapeStr'ı yalnız \n \r \t tanır;
-    # \f için backslash'i sessizce düşürür. `tr -d '\014'` de DOĞRU DEĞİL:
-    # aynı sebepten '014' olur ve 0/1/4 rakamlarını silmeye başlar.
-    # Doğrusu: form-feed zaten bir sonraki sed tarafından siliniyor
-    # ([^a-zA-Z0-9.,!? ] negated class'ı FF'yi de eler) — tr'e gerek yok.
+    # Do not use `tr -d \f`: Nix unescaping turned it into `tr -d f`, removing every
+    # letter `f` from OCR results; `\014` similarly became the characters `014`. The
+    # following `sed` filter already removes form-feed characters, so `tr` is unnecessary.
     TEXT_MAIN=$(echo "$RAW_MAIN" | sed 's/[^a-zA-Z0-9.,!? ]//g' | xargs)
 
     if [ ''${#TEXT_MAIN} -gt 5 ]; then
@@ -1183,7 +1062,7 @@ while true; do
     fi
     rm -f "$IMAGE_MAIN" 2>/dev/null
 
-    # 2. Seçenek/cevap alanı
+    # 2. Choice/answer region.
     grim -g "$GEOMETRY_CHOICE" "$IMAGE_CHOICE" 2>/dev/null
     mogrify -resize 200% \
             -modulate 100,0 \
@@ -1194,7 +1073,8 @@ while true; do
             "$IMAGE_CHOICE" 2>/dev/null
 
     RAW_CHOICE=$(tesseract "$IMAGE_CHOICE" stdout -l eng --psm 6 --tessdata-dir "$TESSDATA_DIR" 2>/dev/null)
-    # DÜZELTME: yukarıdaki nedenle tr -d '\f' kaldırıldı (sed FF'yi zaten eler).
+    # The `tr -d \f` filter was removed for the same Nix escaping reason; `sed` already
+    # filters form-feed characters.
     TEXT_CHOICE=$(echo "$RAW_CHOICE" | sed 's/[^a-zA-Z0-9.,!? ]//g' | xargs)
 
     if [ ''${#TEXT_CHOICE} -gt 5 ]; then
@@ -1209,7 +1089,7 @@ while true; do
     fi
     rm -f "$IMAGE_CHOICE" 2>/dev/null
 
-    # Kademeli geri çekilme: 3s, 6s, 9s ... en fazla 30s.
+    # Increase the retry delay gradually (3, 6, 9 seconds, up to 30 seconds).
     if [ "$CHANGED" -eq 1 ]; then
         IDLE_TICKS=0
         sleep 3
@@ -1227,32 +1107,32 @@ done
       text = ''
 #!${pkgs.bash}/bin/bash
 
-# Önceki seçimi hafızada tutmak için değişken
+# Remember the previous selection to avoid translating the same text repeatedly.
 LAST_SELECTION=""
 
 echo "Anlık çeviri modu aktif... Seçtiğiniz metinler otomatik çevrilecek."
 
-# wl-paste --watch yerine primary selection'ı (farenin seçtiği metni) 
-# sürekli kontrol eden hafif bir döngü kuruyoruz.
+# Poll the primary selection (the text highlighted with the mouse) in a lightweight
+# loop instead of relying on `wl-paste --watch`.
 while true; do
-    # Fareyle seçilen güncel metni al
+    # Read the current mouse-selected text.
     CURRENT_SELECTION=$(wl-paste -p 2>/dev/null)
 
-    # Eğer seçim boş değilse ve bir önceki seçimden farklıysa işlem yap
+    # Proceed only when the selection is non-empty and differs from the previous value.
     if [ -n "$CURRENT_SELECTION" ] && [ "$CURRENT_SELECTION" != "$LAST_SELECTION" ]; then
         LAST_SELECTION="$CURRENT_SELECTION"
         
-        # Seçilen metni translate-shell ile hızlıca Türkçeye çevir (:tr)
-        # Sadece çeviriyi almak için -b (brief) modunu kullanıyoruz
+        # Use `translate-shell` to translate the selected text to Turkish (`:tr`); `-b` keeps
+        # only the translated output.
         TRANSLATION=$(trans -b :tr "$CURRENT_SELECTION" 2>/dev/null)
 
-        # Eğer çeviri başarılıysa Dunst vasıtasıyla ekranda göster
+        # Display successful translations using Dunst.
         if [ -n "$TRANSLATION" ]; then
-            # -r 9999 parametresi bildirimlerin üst üste binmesini engeller, sürekli günceller
+            # Reuse notification ID 9999 so the notification is updated instead of stacked.
             notify-send -r 9997 "Çeviri:" "$TRANSLATION"
         fi
     fi
-    # İşlemciyi yormamak için her yarım saniyede bir kontrol et
+    # Poll every half second to keep CPU usage low.
     sleep 0.5
 done
 '';
@@ -1299,7 +1179,7 @@ done
     '';
   };
 
-  # mpvpaper watchdog (BindsTo kaldırıldı)
+  # mpvpaper watchdog unit; `BindsTo` was removed.
   home.file.".local/bin/mpvpaper-watchdog" = {
     executable = true;
     text = ''
@@ -1349,53 +1229,21 @@ done
     '';
   };
 
-  # home.persistence KALDIRILDI (2026-10-09) — bu config kalıcı depolama
-  # (impermanence) KULLANMIYOR, kasıtlı olarak.
-  #
-  # Geçmiş: burada `home.persistence."/nix/persist/home" = { files =
-  # [ ".config/lsfg-vk/conf.toml" ]; }` vardı ama YORUMDAYDI, yani hiç
-  # çalışmıyordu; buna rağmen yorumun kendisi mekanizmayı aktif anlatıyordu
-  # ("bu yol artık impermanence'in yönetimindedir"). Aynı anda flake.nix
-  # impermanence modülünü import ediyor, configuration.nix de
-  # /nix/persist/home için bir tmpfiles kuralı açıyordu. Üçü de ölüydü;
-  # kalıcılık mekanizması hiç işlemiyordu.
-  #
-  # Neden açılmadı: `.config/lsfg-vk/conf.toml` bir ÖNBELLEK değil,
-  # lsfg-vk'nın YAPILANDIRMA dosyası (upstream `lsfg-vk-flake/module.nix`,
-  # `configFile` seçeneği tam olarak bu yolu bekliyor; shader önbelleği
-  # ~/.cache altında). Kalıcılaştırılsaydı, persist deposu bir kez yazıldıktan
-  # sonra buradaki her değişiklik `rm -f /nix/persist/home/.config/lsfg-vk/
-  # conf.toml` adımı atlanmadan uygulanmayacaktı — declarative kontrol
-  # sessizce kaybolurdu. Bu, configuration.nix'in /etc/vulkan için kendi
-  # not düştüğü "ilk açılışta boş persist dizini mount noktasını gölgeler"
-  # tuzağının aynısı, sadece bu kez gölgelenecek şey bir cache değil config.
-  # Gerçekte korunacak bir şey yok: /nix/persist altında hiçbir veri yaşamıyor.
-  #
-  # Geri açmak isterseniz: flake.nix'e impermanence girdisi + modülünü,
-  # configuration.nix'e `environment.persistence` ve `/nix/persist/home`
-  # tmpfiles kuralını, buraya da aşağıdaki bloğu geri koyun — HEPSİ aynı
-  # committe. Yarısı açık yarısı kapalı bir mekanizma en kötü durumdur.
-  #
+  # Home Manager persistence is intentionally disabled because this configuration does
+  # not use impermanence and no data is stored under `/nix/persist`. The former commented
+  # `home.persistence` entry never ran, while the flake/module/tmpfiles configuration had
+  # also been inactive. Do not persist the declarative `lsfg-vk/conf.toml`: doing so can
+  # shadow future Nix-generated changes. To re-enable persistence, restore the input,
+  # NixOS `environment.persistence`/tmpfiles rules, and this Home Manager block together.
   #home.persistence."/nix/persist/home" = {
   #  files = [ ".config/lsfg-vk/conf.toml" ];
   #};
 
   programs = {
-    # ⚠️ `programs.home-manager.enable = true;` KALDIRILDI.
-    # Bu satır option olarak VAR (modules/programs/home-manager.nix) ve ayrı
-    # (standalone) HM kurulumunda "HM kendini yönetsin" anlamına gelir —
-    # yani NixOS modülü üzerinden değil, HM'yi kullanıcı profili paketi
-    # olarak kurmak için. Burada HM zaten NixOS modülü olarak import edildi
-    # (flake.nix → home-manager.nixosModules.home-manager) ve kullanıcı
-    # home.nix modülü içinden geçiyor; o modülün kendi satırı tam olarak
-    # şunu koşulluyor:
-    #     config = lib.mkIf (cfg.enable && !config.submoduleSupport.enable)
-    # Yani NixOS modülü üzerinden çalışırken bu enable BİLEREK etkisizdir
-    # (submoduleSupport.enable = true). Hata vermez, sessizce hiçbir şey
-    # yapmaz. Zararsızdı; yanıltıcı olduğu için silindi.
-    #
-    # HM'i standalone kullanırsanız (bu modülü NixOS'a değil doğrudan
-    # HM çalıştırırsanız) satırı geri getirmeniz gerekir.
+    # `programs.home-manager.enable = true` applies to standalone Home Manager usage.
+    # This configuration imports Home Manager as a NixOS module, where that option is
+    # intentionally ineffective; keeping it here would be misleading. Restore it only if
+    # Home Manager is run standalone rather than through NixOS.
 
     fish = {
       enable = true;
@@ -1420,13 +1268,11 @@ done
         gm-status = "gamemoded -s";
       };
       interactiveShellInit = ''
-  # PAGER: normal dosyalar için düz less.
+  # PAGER: use plain `less` for ordinary files.
   set -gx PAGER 'less -R'
 
-    # MANPAGER: bat ile renklendirme NixOS man-db + groff kombinasyonunda
-  # bozuk ANSI kodları üretiyor (ESC + [ karakterleri kayboluyor, `4mLS`
-  # gibi metin çıkıyor). En güvenilir seçenek less -R — man-db zaten
-  # varsayılan olarak bunu kullanır, ANSI renkleri doğru yorumlar.
+    # MANPAGER: `bat` produced broken ANSI sequences with the NixOS man-db/groff setup.
+    # Use `less -R`, which supports the ANSI colors generated by man-db.
   set -gx MANPAGER 'less -R'
 '';
       shellInit = ''
@@ -1608,11 +1454,9 @@ done
           on-timeout = "${pkgs.hyprlock}/bin/hyprlock";
         }
         {
-          # ÖNEMLİ: burada hyprlock ÇAĞRILMAZ. hyprlock foreground'da
-          # bloklar; kullanıcı şifre girene kadar süreç çıkmaz, dolayısıyla
-          # arkasındaki `systemctl suspend` hiç çalışmazdı. Üstelik
-          # general.before_sleep_cmd zaten hyprlock'ı çağırıyor, yani
-          # ikinci kez kilitleme de oluyordu. Tek görevi suspend.
+          # Do not call hyprlock here: it blocks in the foreground until the password is entered,
+          # so a following `systemctl suspend` would never execute. `general.before_sleep_cmd`
+          # already locks the screen; this command should only suspend.
           timeout = 900;
           on-timeout = "${pkgs.systemd}/bin/systemctl suspend";
         }
@@ -1621,8 +1465,8 @@ done
   };
 
   systemd.user.services = {
-    # Boş monitorOutput, manuel yapılandırmada canlı duvar kağıdını devre dışı
-    # bırakır. install.sh gerçek bir monitör adı istemeden kurulumu sürdürmez.
+    # An empty `monitorOutput` disables live wallpaper for a manual Home Manager setup.
+    # The installer requires a real output name before continuing.
     mpvpaper = lib.mkIf (monitorOutput != "") {
       Unit = {
         Description = "mpvpaper live wallpaper service (looped)";
@@ -1683,19 +1527,14 @@ done
   };
 
   home.packages = with pkgs; [
-    # P1-2 (2026-10-05): pypr müzik scratchpad'ı `mpv` çağırıyordu ama mpv ne
-    # systemPackages'ta ne home.packages'ta vardı (yorum "kurulu" diyordu).
-    # mpvpaper kendi unit PATH'inde mpv taşıdığı için duvar kağıdı çalışıyor,
-    # SUPER+SHIFT+S ise sessizce boş dönüyordu.
+    # P1-2 history: the music scratchpad previously invoked `mpv`, but the package was not
+    # installed in either package list; mpvpaper's private PATH did not make it available
+    # to the scratchpad. `mpv` is now included in the Home Manager package list.
     mpv
     fd ripgrep jq wget curl file tree
-    # DÜZELTME (2026-10-06): `playerctl`, `wev` ve `libnotify` burada YİNE DE
-    # vardı; üçü de `configuration.nix` → `environment.systemPackages` altında
-    # zaten tanımlıydı. CHANGELOG [1.3.1] bu tekrarın "temizlendiğini"
-    # kaydetmişti ama yalnızca `hyprpicker` gerçekten kaldırılmıştı; geri kalan
-    # üçü duruyordu. Zararsız (her ikisi de aynı store yolunu PATH'e ekler) ama
-    # "home.nix tek doğruluk kaynağı" ilkesine aykırıydı. Kaldırıldı: kullanıcı
-    # PATH'inde zaten systemPackages üzerinden mevcutlar.
+    # `playerctl`, `wev`, and `libnotify` are already installed in `configuration.nix`.
+    # Duplicating them here was harmless but contradicted the single-source-of-truth policy;
+    # only `hyprpicker` needed to remain in this list.
     pamixer
     nano satty socat
   ];

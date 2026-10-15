@@ -1,15 +1,15 @@
 { config, pkgs, lib, ... }:
 
 let
-  # greetd/tuigreet oturumunu environment.d dosyasına veya systemd --user
-  # ortamına bağımlı bırakma: bu küçük sarmalayıcı doğrudan Hyprland sürecine
-  # HYPRLAND_CONFIG aktarır ve greetd/tuigreet oturum akışını korur.
+  # Pass HYPRLAND_CONFIG directly to the Hyprland process through this wrapper.
+  # Do not depend on environment.d or a systemd user environment being imported
+  # before greetd/tuigreet starts the session.
   greetdHyprlandSession = pkgs.writeShellScript "greetd-hyprland-session" ''
     export HYPRLAND_CONFIG="/home/localhost/.config/hypr/hyprland.conf"
     exec ${pkgs.hyprland}/bin/Hyprland "$@"
   '';
 
-  # --------------- low_latency_layer türetmesi ---------------
+  # Low-latency layer package derivation.
   low-latency-layer = pkgs.stdenv.mkDerivation rec {
     pname = "low_latency_layer";
     version = "1.0.0";
@@ -31,37 +31,15 @@ let
 
     cmakeFlags = [ "-DCMAKE_BUILD_TYPE=Release" ];
 
-    # ⚠️ DÜZELTME (2026-10-05, gerçek `nix build` ile doğrulandı):
-    #
-    # Burada ASLA özel `installPhase` tanımlanmamalı. nixpkgs'in cmake setup
-    # hook'u zaten `cmake --build build --target install` çalıştırıyor ve
-    # installPhase başladığında cwd = <source>/build'dir. Özel installPhase
-    # `cmake --install build` dediği için <source>/build/build arıyor ve
-    # build ŞU HATAYLA ÖLÜYOR:
-    #     CMake Error: Not a file: .../source/build/build/cmake_install.cmake
-    #
-    # Bu paket environment.systemPackages'te olduğu için hata TEK BAŞINA
-    # TÜM `nixos-rebuild`i düşürüyordu (aşağıdaki doğrulama notu).
-    # Kaldırıldı; stdenv'in varsayılan davranışı upstream install kurallarını
-    # zaten tam olarak uyguluyor.
-    #
-    # Upstream'in kendi install kuralları DOĞRU çalışıyor:
-    #   • .so        -> $out/lib/libVkLayer_KORTHOS_LowLatency.so
-    #   • manifest   -> $out/share/vulkan/implicit_layer.d/low_latency_layer.json
-    # CMakeLists.txt: install(TARGETS ... DESTINATION ${CMAKE_INSTALL_LIBDIR})
-    #                 install(FILES ... DESTINATION ${CMAKE_INSTALL_DATADIR}/vulkan/implicit_layer.d/)
-    # nixpkgs cmake hook'u CMAKE_INSTALL_LIBDIR'ı mutlak store yoluna çözüyor;
-    # DATADIR ise göreli kalıyor ("share") — yani yol tam olarak yukarıdaki gibi.
-    # Manifest içindeki library_path mutlak store yoludur, RPATH'li .so da
-    # libvulkan'ı kendi çözer; symlinkJoin/runtimePath'e gerek yoktur.
-    #
-    # Doğrulama (pinned nixpkgs 151fa4e8 + bu rev):
-    #   • sha256 doğrulandı: iUdcNnmY4NqaEnhoJUn7KEKTFQrlqo4tYOkLwEhmL+s= ✔
-    #   • installPhase'li hâli: derleme %100, installPhase'de PATLADI ✘
-    #   • installPhase'siz hâli: başarılı, manifest üretilen tam yolda ✔
-    #   • manifest'te enable_environment YOK, disable_environment VAR ✔
-    #     (yani katman varsayılan olarak etkin — configuration.nix'teki
-    #      LOW_LATENCY_LAYER_REFLEX=1 yeterli, ayrıca ENABLE_* gerekmiyor)
+    # Do not add a custom installPhase here. The nixpkgs CMake hook already runs
+    # `cmake --build build --target install` with the working directory set to
+    # `<source>/build`; an extra `cmake --install build` incorrectly looks for
+    # `<source>/build/build/cmake_install.cmake` and breaks the full system build.
+    # Upstream install rules place the library in `$out/lib` and the manifest in
+    # `$out/share/vulkan/implicit_layer.d`. The manifest uses an absolute library
+    # path, so no symlinkJoin/runtimePath workaround is needed. `LOW_LATENCY_LAYER_REFLEX=1`
+    # is the relevant runtime setting; the old pinned-revision validation notes are
+    # kept in the historical audit rather than repeated here.
 
     meta = with lib; {
       description = "Vulkan layer for hardware agnostic input latency reduction (Reflex/Anti-Lag)";
@@ -70,35 +48,18 @@ let
     };
   };
 
-  # ─── libvirt VFIO hook ──────────────────────────────────────────────
-  # libvirt, hook'u SADECE $SYSCONFDIR/libvirt/hooks altından arar. nixpkgs
-  # libvirt'i --sysconfdir=/var/lib ile derdiği için bu yol
-  # /var/lib/libvirt/hooks olur; libvirt bu dizini ve <dizini>/qemu.d/
-  # içindeki dosyaları tarar. /etc/libvirt/hooks HİÇ okunmaz.
-  #
-  # Daha önce environment.etc."libvirt/hooks/qemu" ile /etc'ye kopyalanıyordu;
-  # libvirt onu görmüyor, hook hiç çalışmıyor, GPU vfio-pci'ye hiç bağlanmıyordu.
-  #
-  # Shebang de ayrı bir sorundu: libvirtd.service'in PATH'i yalnızca
-  # qemu + netcat + swtpm içeriyor, bash yok. Bu yüzden bash ve coreutils
-  # store yolundan garanti ediliyor.
-  #
-  # psmisc/pciutils/util-linux de PATH'e ekleniyor: hook'ta üç ayrı araç
-  # çağrılıyor ve bunları /run/current-system/sw/bin üzerinden çağırmak,
-  # yani environment.systemPackages'a bağımlı kılmak kırılgan idi —
-  # systemPackages'tan biri düşerse (ör. psmisc) hook sessizce fuser'ı
-  # bulamaz ve stop_hyprland() bekleme döngüsü anında çöker. Artık store
-  # yolları aşağıda HOOK_* değişkenleri olarak enjekte ediliyor; hook bu
-  # değişkenleri kullanıyor, tanımlı değillerse /run/current-system/sw/bin'e düşüyor.
+  ## libvirt VFIO hook
+  # NixOS packages libvirt with `--sysconfdir=/var/lib`, so libvirt reads hooks
+  # from `/var/lib/libvirt/hooks` and its `qemu.d` directory, not `/etc/libvirt/hooks`.
+  # The old `environment.etc` deployment path meant the hook never ran and the GPU
+  # was never bound to vfio-pci. Inject Bash and the required utilities by store path:
+  # the libvirtd service PATH does not necessarily include them, and relying on
+  # `environment.systemPackages` could make a missing utility silently break the hook.
   vfioHook = pkgs.writeShellScript "libvirt-vfio-hook" ''
-    # DÜZELTME: burada yalnızca coreutils + systemd enjekte ediliyordu.
-    # libvirtd'in PATH'i qemu+netcat+swtpm (nixpkgs virtualisation/libvirtd.nix)
-    # ve NixOS `path` listesi PATH'i DEĞİŞTİRİR (Environment="PATH=...").
-    # Hook iki komutu da çağırıyordu ve ikisi de eksikti:
-    #   ls  -> GNU findutils'te (coreutils DEĞİL)
-    #   sed -> GNU sed'de (coreutils DEĞİL)
-    # 2>/dev/null "command not found" hatasını yuttuğu için gpu_drm_card() her
-    # seferinde sessizce card0'a düşüyor ve renderD* taraması hiç yapılmıyordu.
+    # The libvirtd service PATH replaces the default PATH with its configured tool
+    # list. The hook also calls `ls` (findutils) and `sed` (gnused); without those
+    # runtime inputs, errors could be hidden and DRM-card detection could silently
+    # fall back to card0. Include the required store paths explicitly.
     export PATH="${lib.makeBinPath [ pkgs.coreutils pkgs.systemd pkgs.findutils pkgs.gnused ]}:$PATH"
     export HOOK_SETPCI="${lib.getExe' pkgs.pciutils "setpci"}"
     export HOOK_FUSER="${lib.getExe' pkgs.psmisc "fuser"}"
@@ -109,8 +70,8 @@ let
     ${builtins.readFile ./hooks/qemu}
   '';
 
-  # wuwa-auto.sh, Ollama'dan "wuwa-gemma" modelini istiyor. Modelfile içeriği
-  # burada Nix'e gömülüyor; systemd servisi bunu kullanarak modeli oluşturur.
+  # `wuwa-auto.sh` requests the `wuwa-gemma` Ollama model. The model definition is
+  # embedded here and used by the systemd service to create the model.
   cfgpkg = pkgs.ollama-rocm;
   wuwaGemmaModelfile = pkgs.writeText "wuwa-gemma.modelfile" ''
     FROM aya-expanse:8b
@@ -132,30 +93,23 @@ in
     nerd-fonts.jetbrains-mono
   ];
 
-  # ESKİ YOL (KALDIRILDI): environment.etc."libvirt/hooks/qemu" = { … };
-  # libvirt /etc/libvirt/hooks dizinini okumaz; hook aşağıdaki
-  # virtualisation.libvirtd.hooks.qemu ile /var/lib/libvirt/hooks/qemu.d/
-  # altına symlink olarak kurulur.
+  # Deprecated hook deployment path. libvirt does not read `/etc/libvirt/hooks` in
+  # this NixOS configuration; `virtualisation.libvirtd.hooks.qemu` installs the hook
+  # under `/var/lib/libvirt/hooks/qemu.d/` instead.
 
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
   boot.kernelParams = [
-    # Teşhis maliyeti: nowatchdog + nmi_watchdog=0 kernel/NMI watchdog tabanlı
-    # lockup tespitini kapatır. Düşük jitter tercihi; beklenmeyen kilitlenmelerde
-    # tanı imkânı azalır.
+    # Diagnostic trade-off: `nowatchdog` and `nmi_watchdog=0` disable kernel/NMI
+    # watchdog-based lockup detection. This favors lower jitter but reduces diagnostic
+    # information if the host unexpectedly locks up.
     "amd_pstate=active" "nowatchdog" "nmi_watchdog=0"
-    # IOMMU etkinliği CPU, kernel ve platform firmware/BIOS ayarlarına bağlıdır.
-    # `iommu=pt` passthrough odaklı DMA eşleme davranışını seçer; IOMMU'nun
-    # donanım/firmware tarafından etkin olduğunun tek başına kanıtı değildir.
-    # `amd_iommu=on` tüm kernel sürümlerinde belgelenmiş bir AMD parametresi
-    # olmadığından burada kullanılmıyor. Çalışma anında dmesg ve
-    # /sys/kernel/iommu_groups ile doğrulayın.
-    # "rcupdate.rcu_expedited=1" 2026-10-09'da KALDIRILDI. Host'u koşulsuz
-    # etkiliyordu ve README'deki gerekçesi ("Windows'un RCU bekleme davranışı")
-    # olgusal olarak yanlıştı — Windows'ta RCU yok. Gerçek etkisi host'ta tüm
-    # grace period primitive'lerini expedited gibi davrandırmak, ki bu
-    # "pahalı ve gerçek zamanlı iş yüklerine düşman" (kernel.org RCU
-    # checklist). Bu config'in amacı düşük jitter; parametre tersini yapıyor.
+    # IOMMU activation depends on the CPU, kernel, and platform firmware/BIOS.
+    # `iommu=pt` selects passthrough-oriented DMA mapping; it does not prove that IOMMU
+    # is enabled by firmware. Verify at runtime using `dmesg` and `/sys/kernel/iommu_groups`.
+    # The host-wide `rcupdate.rcu_expedited=1` parameter was removed because the old
+    # Windows/RCU rationale was incorrect: Windows has no RCU. The parameter affects
+    # host grace periods and works against the low-jitter goal of this configuration.
   ];
 
   # Optional host-graphics convenience: make amdgpu available in the initrd so
@@ -165,31 +119,20 @@ in
   # initializes the GPU reliably without early amdgpu availability.
   boot.initrd.availableKernelModules = lib.mkAfter [ "amdgpu" ];
   boot.initrd.kernelModules = [ "dm-crypt" ];
-  # ⚠️ "ashmem_linux" BURADAN KALDIRILDI. ashmem Linux 5.18'de tamamen
-  # kaldırıldı; CachyOS BORE 6.18'de modprobe ashmem_linux her boot'ta
-  # "FATAL: Module not found" veriyor. Waydroid 5.18+ ashmem yerine memfd
-  # kullanıyor. `sudo waydroid init` sonrası şunu bir kez doğrula:
-  #   grep sys.use_memfd=true /var/lib/waydroid/waydroid_base.prop
-  # yoksa: echo sys.use_memfd=true | sudo tee -a /var/lib/waydroid/waydroid_base.prop
+  # Waydroid on Linux 5.18 and newer uses memfd rather than the removed
+  # `ashmem_linux` module. Do not attempt to load `ashmem_linux`; after `waydroid init`,
+  # verify `sys.use_memfd=true` in `/var/lib/waydroid/waydroid_base.prop`.
   boot.kernelModules = [ "kvm-amd" "binder_linux" "vfio-pci" ];
 
   boot.kernel.sysctl = {
     "vm.max_map_count" = 1048576;
     "vm.nr_hugepages" = 0;
-    # DÜZELTME (2026-10-05): ÖNCEKİ AÇIKLAMA İKİ MEKANİZMAYI KARIŞTIRIYORDU.
-    # Gerçek durum:
-    #   • HANGİ swap alanının kullanılacağına "priority" karar verir
-    #     (yüksek priority = önce o). zramSwap.priority = 100 (aşağıda)
-    #     > disk swap priority = 10 (hardware-configuration.nix) olduğu için
-    #     kernel önce zram'ı tercih eder. ESKİ DEĞER 10 İDİ, TAM DA BU
-    #     YÜZDEN ZRAM KULLANILMIYORDU (~8 MiB ölçüldü) — düzeltme doğru.
-    #   • vm.swappiness ise "swap'e YAZMA eğilimini" belirler; zram mı
-    #     disk mi olacağını değil, ne kadar agresif swap'e gidileceğini
-    #     ayarlar.
-    # Önceki yorum swappiness'nin öncelik seçtiğini söylüyordu; bu yanlıştı.
-    # Buradaki 180, RAM baskınken de agresif temizlemeye izin verir. Bedeli:
-    # daha erken swap/page reclaim ve olası major page fault'lar; zram dolduğunda
-    # disk swap'e geçiş oyun sırasında frametime sıçramaları yaratabilir.
+    # Swap priority selects which swap device is used first: higher values take
+    # precedence. `zramSwap.priority = 100` is above the disk-swap priority of 10 in
+    # `hardware-configuration.nix`, so the kernel prefers zram. `vm.swappiness` instead
+    # controls how aggressively memory pages are swapped; it does not choose between
+    # zram and disk. A high value can trigger earlier reclaim and, once zram fills,
+    # disk-swap activity that may cause gaming frametime spikes.
     "vm.swappiness" = 180;
     "kernel.sched_autogroup_enabled" = 0;
     "kernel.perf_event_paranoid" = 1;
@@ -201,23 +144,23 @@ in
     "net.ipv4.tcp_fastopen" = 3;
   };
 
-  # Bilerek yalnızca ana kullanıcıya uygulanır; root, greeter ve servislerin
-  # sınırları varsayılan kalır. Tüm kullanıcıları kapsamak için domain="*" kullanın.
+  # These limits intentionally apply only to the primary user; root, greeter, and
+  # service limits retain their defaults. Use `domain = "*"` to apply them to all users.
   security.pam.loginLimits = [
     { domain = "localhost"; item = "nofile"; type = "hard"; value = "65536"; }
     { domain = "localhost"; item = "nofile"; type = "soft"; value = "65536"; }
   ];
 
   security.apparmor.enable = true;
-  # sshd jail, parola doğrulaması kapalı olsa da tekrarlanan başarısız SSH
-  # denemelerini loglardan banlayabilir. AuthorizedKeys şu an boş; SSH erişimi
-  # açıldığında bu koruma kalır, ancak parola brute-force senaryosu yoktur.
+  # The sshd fail2ban jail can ban repeated failed SSH attempts from logs even when
+  # password authentication is disabled. No authorized keys are configured by default,
+  # so enabling SSH does not automatically create password-based access.
   services.fail2ban = {
     enable = true;
     maxretry = 5;
-    # Ev/LAN kolaylığı için RFC1918 ağları muaf tutuluyor. Bu, LAN içindeki
-    # kötü niyetli/ele geçirilmiş istemcilerin fail2ban tarafından banlanmaması
-    # demektir; güvenilmeyen ağlar varsa listeyi daraltın.
+    # RFC1918 home/LAN ranges are exempt for convenience. This also means compromised
+    # or hostile devices on the local network will not be banned by fail2ban; narrow
+    # the exception if the LAN is not trusted.
     ignoreIP = [
       "127.0.0.0/8" "10.0.0.0/8" "172.16.0.0/12" "192.168.0.0/16"
     ];
@@ -251,16 +194,10 @@ in
   };
 
   services.power-profiles-daemon.enable = true;
-  # ⚠️ CPU önceliğinde ÜÇ yazıcı var ve aralarında sıra garantisi yok:
-  #   • power-profiles-daemon → CPU governor (performance/balanced/...)
-  #   • ananicy-cpp          → nice + ioprio (CVE kuralları)
-  #   • gamemode             → renice -10 (oyun başlarken)
-  # ppd yalnızca governor'a dokunmalı, ananicy scheduler otoritesi olmalı. Gamemode
-  # oyun sırasında ikisini de eziyor; bu kasıtlı. ppd'nin "performance"
-  # profilini oyun dışında "balanced"a çekmen önerilir — aksi halde masaüstü
-  # de masaüstü olmayan bir güç profilinde çalışır.
-  # Alternatif: ananicy'yi kaldırıp sadece gamemode + ppd bırakmak.
-  # Karar: ikisi de kalsın, çakışma kabul ediliyor.
+  # Three components can change CPU scheduling/priority, and their order is not
+  # guaranteed: power-profiles-daemon controls the governor, ananicy-cpp applies
+  # nice/ioprio rules, and GameMode renices games to -10. This configuration accepts
+  # the overlap; consider using a balanced desktop power profile outside games.
   networking.hostName = "nixos-workstation";
   networking.networkmanager.enable = true;
   time.timeZone = "Europe/Istanbul";
@@ -282,9 +219,8 @@ in
   networking.firewall = {
     enable = true;
     allowedTCPPorts = [ 22 ];
-    # 1714-1764 aralığı (51 port) açıktı. Bu, bir "güvenlik" bölümü olan
-    # config için gereksiz bir genişleme. P2P/seed istiyorsanız tek port
-    # açın (örn. 51413). Şimdilik kaldırıldı.
+    # The previous broad TCP/UDP range 1714–1764 (51 ports) has been removed. If you
+    # need P2P/seed traffic, open only the required port (for example, 51413).
     # allowedTCPPortRanges = [ { from = 1714; to = 1764; } ];
     # allowedUDPPortRanges = [ { from = 1714; to = 1764; } ];
     allowPing = true;
@@ -294,31 +230,21 @@ in
   hardware.graphics.enable32Bit = true;
   environment.variables = {
     AMD_VULKAN_ICD = "RADV";
-    # "nggc" kaldırıldı: NGG culling GFX10.3'te (RX 6700 XT) Mesa'da zaten
-    # varsayılan olarak açık, bayrak etkisizdi. Geriye yalnızca gpl kalır.
+    # The `nggc` flag was removed because NGG culling is already enabled by default
+    # in Mesa for GFX10.3 (RX 6700 XT); the flag had no effect. The `gpl` setting remains.
     RADV_PERFTEST = "gpl";
     NIXOS_OZONE_WL = "1";
     MOZ_ENABLE_WAYLAND = "1";
     QT_QPA_PLATFORM = "wayland;xcb";
     XCURSOR_THEME = "capitaine-cursors";
     XCURSOR_SIZE = "16";
-    # Pinned low_latency_layer rev'inde (948a561) upstream yalnızca şu üç
-    # değişkeni okuyor (src/layer_context.hh:52-61):
-    #   LOW_LATENCY_LAYER_REFLEX          → VK_AMD_anti_lag sunulur mu
-    #   LOW_LATENCY_LAYER_SPOOF_NVIDIA
-    #   LOW_LATENCY_LAYER_FORCE_DECOUPLED
-    # Upstream manifestindeki tek çevresel kapı ise
-    # DISABLE_LOW_LATENCY_LAYER (low_latency_layer.json.in) ve bu rev'de
-    # enable_environment YOKTUR → katman varsayılan olarak etkindir.
-    #
-    # ⚠️ "LOW_LATENCY_LAYER" diye bir değişken YOKTUR. Buraya daha önce
-    # `LOW_LATENCY_LAYER = "1";` eklenmişti; hiçbir kod onu okumuyordu,
-    # yani sessiz bir no-op'tu (config'in kendi düzelttiği
-    # ENABLE_LOW_LATENCY_LAYER hatasının aynısı). Tekrar eklenmemeli.
-    #
-    # Reflex modu için gereken tek değişken LOW_LATENCY_LAYER_REFLEX.
-    # SPOOF_NVIDIA bilinçli olarak sistem genelinde ayarlanmıyor: upstream
-    # bunu oyun bazında öneriyor (README §Reflex → Steam başlatma seçeneği).
+    # The pinned low-latency-layer source reads `LOW_LATENCY_LAYER_REFLEX`,
+    # `LOW_LATENCY_LAYER_SPOOF_NVIDIA`, and `LOW_LATENCY_LAYER_FORCE_DECOUPLED`.
+    # Its manifest uses `DISABLE_LOW_LATENCY_LAYER` as the environment gate and does
+    # not define `enable_environment`, so the layer is enabled by default. There is no
+    # `LOW_LATENCY_LAYER` variable; setting it would be a no-op. Reflex mode uses
+    # `LOW_LATENCY_LAYER_REFLEX`. `SPOOF_NVIDIA` is intentionally not enabled globally;
+    # upstream recommends setting it per game.
     LOW_LATENCY_LAYER_REFLEX = "1";
   };
 
@@ -412,10 +338,9 @@ in
   zramSwap = {
     enable = true;
     algorithm = "zstd";
-    # Kernel swap önceliğinde yükseği önce kullanır. Bu, zram'ı disk
-    # swap'ten (priority = 10, hardware-configuration.nix) ÖNCE konumlandırır.
-    # Doğrulandı: nix eval ile zramSwap.priority = 5 iken kernel önce disk
-    # swap'i kullanıyordu, yani zram hiç devreye girmiyordu.
+    # Higher swap priority is preferred by the kernel. The zram priority is higher
+    # than the disk swap priority (10, declared in `hardware-configuration.nix`), so
+    # zram is selected first.
     priority = 100;
   };
 
@@ -429,21 +354,13 @@ in
       "gamemode" "libvirtd" "kvm" "input" "render"
     ];
     openssh.authorizedKeys.keys = [
-      # ⚠️ ÖNCEKİ HALİNDE proje bakımcısının (kUmutUK) açık anahtarı buradaydı.
-      # Böylece bu configi kuran herkes, kendi anahtarı olmadan da o anahtarla
-      # uzaktan giriş yapabiliyordu; kendi anahtarınız yoksa da SSH erişiminiz
-      # kapalı kalıyordu (PasswordAuthentication = false).
-      # Kendi anahtarınızı ekleyin:
-      #   ssh-keygen -t ed25519
-      #   cat ~/.ssh/id_ed25519.pub
-      # ardından aşağıya yapıştırın.
-      #
-      # ⚠️ DİKKAT: liste BOŞ olduğu için (PasswordAuthentication = false,
-      #    PermitRootLogin = "no" ile birlikte) uzaktan giriş TAMAMEN
-      #    kapalıdır. Config'i güncelledikten sonra ssh ile bağlanmayı
-      #    denemeden önce bir anahtar ekleyin. SSH kullanmayacaksanız
-      #    services.openssh.enable = false yapmak daha temiz.
-      # "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... sizin@makine"
+      # The previous configuration embedded the maintainer's public SSH key, which could
+      # authorize remote access for every installation while blocking the new owner's key.
+      # Add your own key with `ssh-keygen -t ed25519` and copy the `.pub` value below.
+      # The list is intentionally empty by default and password/root SSH login is disabled;
+      # remote SSH stays unavailable until you add a key. Disable `services.openssh` if
+      # remote access is not needed.
+      # Example: "ssh-ed25519 AAAA... user@host"
     ];
   };
 
@@ -453,31 +370,20 @@ in
   hardware.uinput.enable = true;
   services.udev.packages = [ pkgs.libinput ];
 
-  # Düzeltme (2026-10-04): hyprlock yalnızca systemPackages'ta vardı, PAM
-  # servisi tanımlı değildi → kilit ekranı parolayı kabul etmeyebiliyordu.
-  #
-  # Boş attrset'in sebebi: /etc/pam.d/hyprlock dosyasını `security.pam` modülü
-  # üretir, hyprlock'un systemd servisi DEĞİL (ve bu config'te
-  # programs.hyprlock enable edilmediği için systemd.services.hyprlock diye
-  # bir şey de yok). hyprlock 0.9.6'da auth:pam:module varsayılanı zaten
-  # "hyprlock" (ConfigManager.cpp:252) — yani tam olarak bu dosya okunur.
-  # Varsayılan stack, pam alt modülünün useDefaultRules=true + unixAuth=true
-  # varsayılanlarından gelir; "{}" yazmanın "doldurma" anlamı yoktur, sadece
-  # modülün çalışmasını tetikler.
-  # Daha önce denenmiş: backend = "pam_unix.so" → CI'da "The option
-  # `security.pam.services.hyprlock.backend' does not exist" hatası.
-  # Doğrula: ls -l /etc/pam.d/hyprlock && grep -c pam_unix /etc/pam.d/hyprlock
+  # Hyprlock needs a PAM service so the lock screen can authenticate. The NixOS
+  # `security.pam` module generates `/etc/pam.d/hyprlock`; there is no systemd
+  # `hyprlock.service` in this configuration. The empty service definition activates
+  # the generated PAM file and uses the module defaults. A custom `backend = "pam_unix.so"`
+  # was rejected because that option does not exist. Verify with `ls -l /etc/pam.d/hyprlock`
+  # and `grep -c pam_unix /etc/pam.d/hyprlock`.
   security.pam.services.hyprlock = { };
 
   environment.systemPackages = with pkgs; [
     kitty waybar rofi dunst grim slurp wl-clipboard
-    # DÜZELTME (2026-10-04): `argos-translate` binary paketi nixpkgs'te
-    # YOK (search.nixos.org'da sadece python313/314Packages.argos-translate-files
-    # var) — eklemek build'i kırıyordu. Bu yüzden paket EKLENMEDİ; bunun yerine
-    # home.nix'deki wuwa-auto.sh artık `command -v` ile varlık kontrolü yapıyor
-    # ve argos yoksa doğrudan Ollama'ya düşüyor. Argos istersen ayrı flake:
-    #   inputs.argos.url = "github:argosopentech/argos-translate";
-    #   packages = [ inputs.argos.packages.${system}.argos-translate ];
+    # The `argos-translate` binary is not available as a nixpkgs package (only the
+    # `argos-translate-files` Python package is present). Do not add a nonexistent binary
+    # package: `wuwa-auto.sh` checks for the command and falls back to Ollama if absent.
+    # An external flake can be added if Argos support is required.
     hyprlock hypridle wlogout hyprpicker
     hyprpolkitagent pyprland waypaper
     networkmanagerapplet brightnessctl playerctl
@@ -500,23 +406,18 @@ in
     mpvpaper flatpak-builder psmisc
     apparmor-utils stdenv.cc.cc.lib kdePackages.konsole kdePackages.dolphin
     low-latency-layer vulkan-tools
-    # P1-1 (2026-10-05): install.sh'ın win10.xml PCI senkronizasyonu
-    # `command -v python3` ile korunuyor; python3 kurulu değilken XML
-    # senkronu HER ZAMAN "python3 yok" uyarısına düşüyor, yani hook yeni
-    # PCI adresine bind olup libvirt eski adresi arıyordu (device not found).
+    # The installer synchronizes the PCI addresses in `win10.xml` with the QEMU hook.
+    # If Python 3 is unavailable, synchronization cannot run; ensure the installer warns
+    # about this rather than silently deploying mismatched hostdev addresses.
     python3
-    # wuwa-auto.sh "argos-translate" çağırıyordu ama paket hiçbir yerde
-    # tanımlı değildi → translate_fast() her zaman sessizce başarısız oluyor,
-    # her çeviri Ollama'ya düşüyordu. translate-shell (`trans`) bunun yerine geçmez.
+    # `wuwa-auto.sh` previously tried to call an undefined `argos-translate` command,
+    # so fast translation always failed and every request fell back to Ollama. The
+    # `translate-shell` command (`trans`) is not a drop-in replacement for Argos.
   ];
 
-  # systemd.tmpfiles: /nix/persist/home kuralı KALDIRILDI (2026-10-09).
-  # Kural, home.nix'teki `home.persistence."/nix/persist/home"` bloğuyla
-  # birlikte çalışacak biçimde yazılmıştı; ancak o blok yorumdaydı ve
-  # impermanence modülü de kaldırıldığı için kural hiçbir şeyin altını
-  # hazırlamıyordu — boot başında boş bir dizin açıp bırakıyordu.
-  # Kalıcı depolama geri gelirse bu kural da geri gelmeli (bkz. aşağıdaki
-  # "Kalıcı depolama" notu); tek başına, mekanizmasız bir dizin şart değil.
+  # The `/nix/persist/home` tmpfiles rule was removed because Home Manager persistence
+  # and the impermanence module are disabled. On its own, the rule created an unused
+  # empty directory. Restore it only together with a complete persistence configuration.
 
   environment.etc."vulkan/implicit_layer.d/low_latency_layer.json".source =
     "${low-latency-layer}/share/vulkan/implicit_layer.d/low_latency_layer.json";
@@ -536,28 +437,25 @@ in
         gpu_device = 0;
         amd_performance_level = "high";
       };
-      # mpvpaper-watchdog tek otorite. Gamemode custom.start/end burada
-      # tanımlanırsa iki ayrı süreç aynı servisi yönetir ve oyun bitişinde yarışır.
+      # Keep `mpvpaper-watchdog` as the single authority for this service. Defining the
+      # same GameMode start/end actions here would make two processes race to manage it.
     };
   };
 
-  # qemu.runAsRoot = false iken libvirt, disk/NVRAM dosyalarını
-  # `qemu-libvirtd` kullanıcısıyla açmak zorunda. NixOS'un kendi uyarısı:
-  # "Changing this option to false may cause file permission issues for
-  # existing guests." Daha önce root iken oluşturulmuş dosyalar root'a ait
-  # kalırsa `virsh start win10` "Permission denied" ile başlamaz.
-  # Aşağıdaki oneshot, libvirtd'den ÖNCE sahipliği düzeltir.
+  # With `qemu.runAsRoot = false`, libvirt opens disk and NVRAM files as
+  # `qemu-libvirtd`. Existing files created by root can cause `virsh start win10` to
+  # fail with `Permission denied`; the oneshot service fixes ownership before libvirtd.
   systemd.services.libvirtd-qemu-ownership = {
     description = "Fix ownership of libvirt images/NVRAM for qemu-libvirtd";
     wantedBy = [ "multi-user.target" ];
     before = [ "libvirtd.service" ];
     serviceConfig = { Type = "oneshot"; RemainAfterExit = true; };
-    # qemu-libvirtd kullanıcı/grubu libvirtd modülü tarafından oluşturulur;
-    # activation sırasında henüz yoksa chown hata vermesin diye `|| true`.
+    # The libvirtd module creates the `qemu-libvirtd` user/group. Ignore a chown failure
+    # if activation runs before the account exists.
     script = ''
-      # Ana /var/lib/libvirt dizininin sahibini değiştirme: burası libvirt'in
-      # ayrıcalıklı durum/hook alanı. Yalnız ilgili çalışma dizinlerini ve ilk
-      # iki seviyedeki öğeleri düzelt; tüm ağacı özyinelemeli dolaşma.
+      # Do not change ownership of `/var/lib/libvirt` itself; it contains privileged
+      # libvirt state and hook files. Fix only the relevant working directories and their
+      # first-level children rather than recursively changing the entire tree.
       for d in /var/lib/libvirt/images /var/lib/libvirt/qemu /var/lib/libvirt/swtpm; do
         if [ -d "$d" ]; then
           chown qemu-libvirtd:qemu-libvirtd "$d" 2>/dev/null || true
@@ -574,13 +472,12 @@ in
   virtualisation.libvirtd = {
     enable = true;
     qemu.swtpm.enable = true;
-    # ⚠️ runAsRoot = false → libvirt qemu'yu `qemu-libvirtd` kullanıcısıyla
-    # çalıştırır. Daha önce root iken oluşturulmuş disk/NVRAM dosyaları
-    # root'a ait kalırsa `virsh start win10` "Permission denied" ile başlamaz.
-    # Aşağıdaki oneshot servisi her boot'ta sahipliği düzeltir.
+    # When `runAsRoot = false`, QEMU runs as `qemu-libvirtd`. Disk/NVRAM files left
+    # owned by root can prevent the guest from starting, so the oneshot service repairs
+    # ownership at each boot.
     qemu.runAsRoot = false;
 
-    # libvirt'in gerçekten taradığı yer: /var/lib/libvirt/hooks/qemu.d/vfio
+    # libvirt scans this hook directory: `/var/lib/libvirt/hooks/qemu.d/vfio`.
     hooks.qemu.vfio = vfioHook;
   };
   programs.virt-manager.enable = true;
@@ -598,12 +495,9 @@ in
 
   nix.settings = {
     experimental-features = [ "nix-command" "flakes" ];
-    # DÜZELTME (2026-10-06): `auto-optimise-store = true` kaldırıldı.
-    # Nix >= 2.19'da store zaten zstd ile sıkıştırılıyor ve `nix.optimise`
-    # varsayılan olarak zstd'yi kullanıyor; bu satır pratikte hiçbir şey
-    # kazandırmıyordu, yalnızca store path'lerinin yeniden yazılmasını
-    # tetikleyip ilk `nixos-rebuild`'i uzatıyordu. `nix.optimise` bulunamayan
-    # Nix sürümlerinde ise her path eklemede hata logluyordu.
+    # `auto-optimise-store = true` was removed because modern Nix already compresses
+    # store contents and `nix.optimise` uses zstd by default. The option added no useful
+    # compression here, could rewrite store paths, and is not available in every Nix version.
     max-jobs = "auto";
     # Suppress the warning for dirty local flake trees. This is convenient for
     # local experimentation, but users must inspect git diff before rebuilding;
@@ -611,12 +505,12 @@ in
     warn-dirty = false;
     substituters = [
       "https://cache.nixos.org"
-      "https://xddxdd.cachix.org"
+      "https://attic.xuyh0120.win/lantian"
       "https://nix-community.cachix.org"
     ];
     trusted-public-keys = [
       "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
-      "xddxdd.cachix.org-1:ay1HJyNDYmlSwj5NXQG065C8LfoqqKaTNCyzeixGjf8="
+      "lantian:EeAUQ+W+6r7EtwnmYjeVwx5kOGEBpjlBfPlzGlTNvHc="
       "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
     ];
   };
@@ -637,11 +531,8 @@ in
     rocmOverrideGfx = "10.3.0";
   };
 
-  # C24: ashmem kaldırıldıysa Waydroid memfd moduna geçmeli.
-  # Waydroid 5.18+ ashmem yerine memfd kullanir; ashmem_linux modulune
-  # baglanmak boot'i kiriyordu. Dogrulama:
-  #   sudo waydroid init
-  #   grep sys.use_memfd=true /var/lib/waydroid/waydroid_base.prop
+  # C24: after removing `ashmem_linux`, Waydroid must use memfd. Run `sudo waydroid init`
+  # and verify `grep sys.use_memfd=true /var/lib/waydroid/waydroid_base.prop`.
 
   systemd.services.wuwa-gemma-init = {
     description = "Ollama için wuwa-gemma modelini oluşturur (elle çalıştırılır)";
@@ -654,7 +545,7 @@ in
       ExecStart = pkgs.writeShellScript "wuwa-gemma-init" ''
         set -euo pipefail
 
-        # systemd'nin ollama.service'i başlatması, API'nin hazır olduğu anlamına gelmez.
+        # Starting `ollama.service` does not guarantee that the API is ready to accept requests.
         for attempt in {1..15}; do
           if ${cfgpkg}/bin/ollama list >/dev/null 2>&1; then
             break
@@ -690,47 +581,27 @@ in
     rulesProvider = pkgs.ananicy-rules-cachyos;
   };
 
-  # ─── Kalıcı depolama (impermanence) ─────────────────────────────────
-  # Bu config KASTEN impermanence KULLANMIYOR. Geçmişte modül import
-  # ediliyordu ama `environment.persistence` hiç tanımlanmadığı için tek
-  # ürettiği şey her `nixos-rebuild`'de basılan uyarıydı:
-  #   "environment.persistence: Neither /var/lib/nixos nor any of its parents
-  #    are persisted. ..."
-  # Uyarı build'i etkilemez (update-users-groups.pl UID'leri /etc/passwd'deki
-  # ilk boş slottan seçtiği için pratikte sabit kalır) ama tamamen gürültü.
-  #
-  # ⚠️ Burada `environment.persistence."/var/lib/nixos"` tanımı EKLEMEK denendi
-  # ve İKİ SEBEPLE GERİ ALINDI (gerçek `nix eval` ile ölçüldü):
-  #   1) Uyarıyı SESSİZE ÇEVRİRMİYOR — tanım eklenmiş halde de basılıyor.
-  #   2) Impermanence'in güncel sürümünde `method` option'ı kaldırılmış; alt
-  #      modül zorlanınca "The option `method` can no longer be used" hatası
-  #      veriyor. Yani uyarıyı susturmanın bedeli daha ağır.
-  #
-  # 2026-10-09: karar (b) uygulandı — impermanence girdisi flake.nix'ten ve
-  # modülü oradan TAMAMEN kaldırıldı, `home.nix`'teki yorumlu `home.persistence`
-  # bloğu silindi. Böylece uyarı da, ölü mekanizma da gitti. Geri açmak için
-  # flake.nix'teki notu okuyun; iki tarafı da AYNI committe getirin.
+  # Impermanence is intentionally disabled. Importing the module without defining
+  # `environment.persistence` only produced a rebuild warning. An attempted persistence
+  # rule did not remove that warning and newer versions reject the old `method` option.
+  # The input, NixOS persistence configuration, and Home Manager persistence block were
+  # removed together on 2026-10-09. Re-enable them only as one coordinated change.
 
-  # /etc/vulkan/implicit_layer.d, environment.etc ile yazılıyor (Vulkan
-  # manifesti salt-okunur bir store dosyası). Kalıcı depolama geri gelirse bu
-  # dizin ona VERİLMEMELİ: persist dizini ilk açılışta boş olduğu için etc
-  # dosyasını gölgeler ve Vulkan katmanı kaybolurdu.
+  # `/etc/vulkan/implicit_layer.d` is managed declaratively through `environment.etc`.
+  # Do not place it under a future persistence mount: an initially empty persisted
+  # subdirectory could shadow the manifest and make the Vulkan layer disappear.
 
-  # ─── DNS ────────────────────────────────────────────────────────────
-  # ESKİ HALİ: services.nextdns + networking.networkmanager.dns = "none" +
-  # nameservers = 127.0.0.1. Bu üçlü, nextdns geçersiz config ile başlamazsa
-  # (config ID "xxxxxx" idi) sistemde HİÇ DNS çözümlemesi kalmıyordu.
-  # Çözüm: nextdns devre dışı, DNS yine NetworkManager'ın yönetiminde.
-  # Kendi NextDNS hesabınızı kullanmak istiyorsanız: servisi açın ve
-  # arguments içindeki "xxxxxx" yerine GERÇEK DoH/DoT config ID'nizi yazın.
-  #
+  # DNS is intentionally managed by NetworkManager. The former NextDNS setup used a
+  # placeholder configuration ID and could leave the host without DNS if the service
+  # failed to start. To use NextDNS, enable the service and replace the placeholder with
+  # a real configuration ID.
   # services.nextdns = {
   #   enable = true;
-  #   arguments = [ "-config" "<GERÇEK-CONFIG-ID>" ];
+  #   arguments = [ "-config" "<REAL-CONFIG-ID>" ];
   # };
 
-  # NOT: aşağıdaki iki satır bilinçli olarak yorumda. DNS çözümlemesi
-  # NetworkManager'ın varsayılan davranışıyla (DHCP/DHCPv6) yapılır.
+  # The following DNS overrides are intentionally commented out. NetworkManager uses
+  # its default DHCP/DHCPv6 DNS resolution.
   # networking.networkmanager.dns = "none";
   # networking.nameservers = [ "127.0.0.1" "::1" ];
 

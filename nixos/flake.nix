@@ -2,48 +2,32 @@
 {
   description = "NixOS CachyOS BORE Kernel – Gaming + pyprland + lsfg-vk";
 
-  # Düzeltme (2026-10-04): substituters/trusted-public-keys yalnızca
-  # configuration.nix içindeki nix.settings ile veriliyordu. Bu ayarlar
-  # FLAKE değerlendirildiğinde henüz uygulanmadığı için `nixos-install` ve
-  # ilk `nixos-rebuild` CachyOS kernel'ini büyük olasılıkla kaynaktan deriyordu.
-  # Buraya da ekleyip kullanımda `--accept-flake-config` gerektiğini not ediyoruz.
+  # Configure the CachyOS binary cache at flake-evaluation time. On a fresh
+  # installation, accept this cache explicitly with --accept-flake-config.
   nixConfig = {
     extra-substituters = [
-      "https://xddxdd.cachix.org"
+      "https://attic.xuyh0120.win/lantian"
       "https://nix-community.cachix.org"
     ];
     extra-trusted-public-keys = [
-      "xddxdd.cachix.org-1:ay1HJyNDYmlSwj5NXQG065C8LfoqqKaTNCyzeixGjf8="
+      "lantian:EeAUQ+W+6r7EtwnmYjeVwx5kOGEBpjlBfPlzGlTNvHc="
       "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
     ];
   };
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    cachyos-kernel.url = "github:xddxdd/nix-cachyos-kernel";
+    cachyos-kernel.url = "github:xddxdd/nix-cachyos-kernel/release";
     home-manager.url = "github:nix-community/home-manager";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
-    # ⚠️ Hyprland overlay'i KALDIRILDI (karar hâlâ doğru, GEREKÇE bayat).
-    # Kararın eski gerekçesi: nixpkgs 0.54.3 veriyordu, overlay 0.55.0'a
-    # zorluyordu, istemciler 0.54 ABI ile derlenmişti -> ABI karışıklığı.
-    #
-    # DÜZELTME (2026-10-05): kilitli nixpkgs rev'i 151fa4e8'de Hyprland
-    # 0.56.2'dir, yani artık nixpkgs overlay'in sürümünden YENİ. Buna rağmen
-    # overlay'in kaldırılmış olması DOĞRU KARARDIR: tek nixpkgs rev'i her
-    # zaman ABI tutarlılığı garantisi verir, sabitlenmiş bir sürüm ise
-    # istemcileri geride bırakabilir. Sadece yukarıdaki gerekçe artık
-    # geçerli değil.
-    #
-    # Doğrulanan sürümler (kilitli rev 151fa4e8ddfd):
-    #   hyprland 0.56.2 · hyprlock 0.9.6 · hypridle 0.1.8 · hyprpicker 0.4.7
-    #   hyprpolkitagent 0.1.3
+    # Keep Hyprland and its companion packages on the same nixpkgs input.
+    # A separate version-pinning overlay can create ABI mismatches between
+    # Hyprland and clients built against the system package set.
     lsfg-vk-flake.url = "github:pabloaul/lsfg-vk-flake/main";
     lsfg-vk-flake.inputs.nixpkgs.follows = "nixpkgs";
-    # ⚠️ impermanence girdisi ve modülü KALDIRILDI (2026-10-09) — bu config
-    # kalıcı depolama kullanmıyor, kasıtlı olarak. Gerekçe ve geri açma
-    # reçetesi: configuration.nix → "Kalıcı depolama (impermanence)" notu.
-    # Özet: home.persistence yorumdaydı, environment.persistence hiç
-    # tanımlanmadıydı; modülün tek ürettiği her rebuild'de basılan uyarıydı.
+    # Impermanence is intentionally not imported: this configuration does
+    # not define a persistent-storage layout. Reintroduce the input only
+    # together with matching environment.persistence and Home Manager settings.
   };
 
   outputs = { self, nixpkgs, cachyos-kernel, home-manager, lsfg-vk-flake, ... }:
@@ -60,40 +44,26 @@
 
         ({ pkgs, ... }: {
           nixpkgs.config.allowUnfree = true;
-          # ⚠️ CachyOS kernel binary-cache notu:
-          # flake.lock ana sistem nixpkgs'ini 151fa4e, cachyos-kernel girdisinin
-          # kendi nixpkgs'ini ise c51d592 revizyonuna sabitliyor. overlays.default,
-          # kernel paketini ana sistemin nixpkgs'iyle üretir; bu derivation CachyOS
-          # cache'indeki derlemeyle eşleşmeyip cache miss ve yerel LTO kernel
-          # derlemesine yol açabilir (donanım/derleme koşullarına bağlı olarak
-          # 1–2 saat veya daha uzun).
-          # Cache isabeti için upstream overlays.pinned önerir; bu seçenek paket
-          # setini etkileyebileceği için geçiş ayrıca evaluate/build testi gerektirir.
-          nixpkgs.overlays = [
-            cachyos-kernel.overlays.default
-          ];
+          # Use the upstream pinned overlay so the kernel derivation uses the
+          # same nixpkgs revision as the published binary cache. The default
+          # overlay can miss the cache and trigger a local ThinLTO kernel build.
+          nixpkgs.overlays = [ cachyos-kernel.overlays.pinned ];
           boot.kernelPackages = pkgs.cachyosKernels.linuxPackages-cachyos-bore-lto;
-          # hyprland, hyprlock, hypridle, hyprpicker, hyprpolkitagent ve
-          # xdg-desktop-portal-hyprland hepsi aynı nixpkgs rev'inden gelir;
-          # Hyprland paketi nixpkgs varsayılanıyla zaten eşleşir.
-          # DÜZELTME (2026-10-06): `environment.systemPackages = [ pkgs.pyprland ]`
-          # burada kaldırıldı. pyprland ZATEN `configuration.nix` →
-          # `environment.systemPackages` listesinde tanımlıydı; buradaki ikinci
-          # tanım aynı paketi iki kez PATH'e ekliyordu. CHANGELOG [1.3.1]
-          # tekrarın "temizlendiğini" kaydetmişti ama bu satır duruyordu.
-          # Tek kaynak: configuration.nix.
+          # Hyprland, its companion tools, and xdg-desktop-portal-hyprland
+          # come from the same nixpkgs revision to keep their ABI consistent.
+          # Keep shared system packages declared in configuration.nix only;
+          # duplicate declarations here make ownership harder to maintain.
         })
         ./configuration.nix
       ];
     };
 
-    # Düzeltme (2026-10-04): README `nix develop` diyordu ama flake'te
-    # devShells output'u yoktu; kökte ayrı bir `shell.nix` (<nixpkgs> channel
-    # yaklaşımı) vardı. İki ayrı development modeli yerine tek gerçek devShell.
+    # The README uses `nix develop`; expose one flake dev shell rather than a
+    # separate legacy channel-based shell.
     devShells.${system}.default = pkgs.mkShell {
       name = "nixos-hyprland-vfio";
       packages = with pkgs; [
-            # P2-2: nixfmt-rfc-style artık deprecated ("same as pkgs.nixfmt")
+            # Use nixfmt; nixfmt-rfc-style is deprecated and aliases this package.
             nixfmt
             statix
             deadnix
@@ -107,7 +77,7 @@
             libxml2
           ];
       shellHook = ''
-        echo "nixos-hyprland-vfio dev shell — nixfmt, statix, deadnix hazir"
+        echo "nixos-hyprland-vfio development shell — nixfmt, statix, and deadnix are available"
       '';
     };
   };
