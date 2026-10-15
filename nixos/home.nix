@@ -1531,9 +1531,9 @@ done
     # to the scratchpad. `mpv` is now included in the Home Manager package list.
     mpv
     fd ripgrep jq wget curl file tree
-    # `playerctl`, `wev`, and `libnotify` are already installed in `configuration.nix`.
-    # Duplicating them here was harmless but contradicted the single-source-of-truth policy;
-    # only `hyprpicker` needed to remain in this list.
+    # `playerctl`, `wev`, `libnotify`, and `hyprpicker` are installed system-wide
+    # in `configuration.nix`; keep them out of this Home Manager list to avoid duplicates.
+    # `mpv` remains here because the music scratchpad invokes it directly.
     pamixer
     nano satty socat
   ];
