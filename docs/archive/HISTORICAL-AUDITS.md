@@ -32,4 +32,4 @@ The following cannot be certified from static files alone: actual OVMF variable-
 
 ## Current source status
 
-The current maintenance package additionally corrects the Windows VM Q35 alias and ISO priority, improves handling of failed Ollama API responses, and switches the CachyOS kernel input to its upstream `release` branch with the pinned overlay. The lock input must be refreshed on a Nix-enabled host with `nix flake lock --update-input cachyos-kernel`. See the root `CHANGELOG.md` and `docs/REPAIR-AND-VALIDATION-REPORT.md`.
+The current maintenance package additionally corrects the Windows VM Q35 alias and ISO priority, improves handling of failed Ollama API responses, and switches the CachyOS kernel input to its upstream `release` branch with the pinned overlay. The checked-in `flake.lock` already pins that input; do not refresh it just to apply these fixes. Run `nix flake lock --update-input cachyos-kernel` only when intentionally updating the kernel input, then review and retain the lock-file diff. See the root `CHANGELOG.md` and `docs/REPAIR-AND-VALIDATION-REPORT.md`.
