@@ -86,7 +86,7 @@ chmod +x install.sh  # only needed if the archive lost the executable bit
 ./install.sh
 ```
 
-The script backs up existing configuration files, asks for the selected GPU/audio PCI addresses and host-specific values, updates the deployed hook and VM XML, and preserves existing `system.stateVersion` and `home.stateVersion` values when it can identify them. Inspect any warnings before rebuilding. The script deliberately does not overwrite an existing machine-specific hardware configuration without confirmation.
+The script backs up existing configuration files, asks for the selected GPU/audio PCI addresses and host-specific values, updates the deployed hook and VM XML, and preserves existing `system.stateVersion` and `home.stateVersion` values when it can identify them. It is not a variable-only editor: it copies selected configuration files into `/etc/nixos/nixos`, replaces that deployment's `hooks/` directory, writes the synchronized VM XML to `/var/lib/libvirt/win10.xml` (backing up an existing XML first), and may create `/home/.snapshots` on Btrfs when missing. It retains the five newest timestamped installer-backup directories and may delete older matching backups. Inspect every prompt and warning before proceeding. The script deliberately does not overwrite an existing machine-specific hardware configuration without confirmation.
 
 ### Activate and reboot
 
@@ -312,7 +312,7 @@ Run from the repository root:
 
 ```bash
 nix develop ./nixos
-nixfmt ./nixos
+find ./nixos -type f -name '*.nix' -print0 | xargs -0 -r -n1 nixfmt
 shellcheck -S warning install.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh
 python3 scripts/extract-embedded-scripts.py /tmp/embedded-scripts | xargs -0 -r -n1 -- shellcheck -S warning
 python3 scripts/test-vm-xml.py
