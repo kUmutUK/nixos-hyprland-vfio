@@ -18,7 +18,7 @@ Reviewed the uploaded source archive and modified source files, configuration, V
 - Changed the CachyOS flake input from the default `master` branch to `github:xddxdd/nix-cachyos-kernel/release`. [Upstream documentation](https://github.com/xddxdd/nix-cachyos-kernel/blob/release/README.md) says this branch contains a kernel built by its Hydra CI and published to its binary cache.
 - Changed `cachyos-kernel.overlays.default` to `cachyos-kernel.overlays.pinned`, which selects packages from the kernel flake's pinned nixpkgs revision. See the [upstream overlay definition](https://github.com/xddxdd/nix-cachyos-kernel/blob/release/flake.nix). This can avoid a local ThinLTO build when a matching cached derivation exists.
 - Replaced the previous CachyOS cache entry with the Attic substituter and public key documented by upstream in both the flake `nixConfig` and system Nix settings. [Upstream cache configuration](https://github.com/xddxdd/nix-cachyos-kernel/blob/release/flake.nix).
-- In this archive, `flake.lock` already pins the CachyOS input to release commit `873c5a2a40575b880a962aaade19afbb572adf92` with the corresponding NAR hash. No lock refresh is required just to apply the fixes in this report. A cache miss can still trigger a local build; the configuration changes cannot repair an upstream source-level linker regression if the cache is unavailable.
+- In this archive, `nixos/flake.lock` pins the CachyOS input to release commit `b1332396df6e880d7e3b6b451c6a74132ce8cf66` with the NAR hash recorded beside it in the lock file. The previously documented hash `873c5a2a40575b880a962aaade19afbb572adf92` did not match this archive and has been corrected here. Do not refresh the lock just to apply these fixes. A cache miss can still trigger a local build; the configuration changes cannot repair an upstream source-level linker regression if the cache is unavailable.
 
 ### Windows VM XML
 
@@ -49,11 +49,11 @@ Reviewed the uploaded source archive and modified source files, configuration, V
 | `python3 scripts/test-vm-xml.py` | Passed |
 | `bash scripts/test-vfio-hook-driver-state.sh` | Passed |
 | ZIP/tree and JSON/YAML/XML parsing | Passed where relevant tooling was available |
-| Nix evaluation / `nixos-rebuild dry-activate` | Not run: `nix` is unavailable in this environment |
+| Nix evaluation / `nixos-rebuild dry-activate` | Not run by this reviewer: `nix` is unavailable in the audit environment. The project owner separately reports a successful target-system rebuild; whether the exact `dry-activate` command was run was not specified. |
 | `shellcheck`, `xmllint`, `virt-xml-validate` | Not run: tools are unavailable in this environment |
-| Real RX 6700 XT VM start/shutdown/driver restoration | Not run: requires the target host and hardware |
+| Real VM/GPU lifecycle | Not run by this reviewer in the audit environment. The project owner reports that the VM started, shut down, and the display/Hyprland session returned; a second full VM cycle was not explicitly reported. |
 
-The checked-in `flake.lock` in this archive already points to the CachyOS `release` commit listed above. Nix is unavailable in the preparation environment, so neither flake evaluation nor a kernel build was run here. The lock state is therefore verified from the file contents, but successful cache substitution and kernel compilation still need to be checked on the target host.
+The checked-in `flake.lock` points to the CachyOS `release` revision listed above. Nix is unavailable in the review environment, so this reviewer did not run flake evaluation or a kernel build. Separately, the project owner reports a successful rebuild and successful BORE-LTO kernel build on the target system. This is owner-reported evidence rather than a result independently reproduced in this container; it does not, by itself, establish whether the kernel came from the binary cache or was compiled locally.
 
 ## Required checks on the target NixOS host
 
@@ -89,4 +89,4 @@ Before relying on single-GPU passthrough, test VM startup from a separate TTY/SS
 
 - The fix-only patch ZIP produced for the 2026-10-16 corrections stores `install.sh` with Unix mode `100755`. The original full-project ZIP is intentionally not included or repackaged in this patch-only delivery; apply these files over the project tree and create a fresh full-project archive from the corrected tree when needed. ZIP mode was read back from the produced patch archive, not inferred from the Git index.
 - The pre-existing validation suite passed again for the 2026-10-16 correction set: `bash -n` for the installer, QEMU hook, and regression tests; `scripts/test-installer-invariants.sh`; `scripts/test-vfio-hook-driver-state.sh`; `scripts/test-vm-xml.py`; Python compilation for repository scripts; JSON parsing for `flake.lock`; and XML parsing for `win10.xml`. The newly added disk preflight code block in `KURULUM.md` was also extracted and Bash-syntax-checked. These checks do not simulate a real disk operation or VM lifecycle. Negative tests in the existing suite also confirm that duplicate PCI addresses and a third PCI `hostdev` are rejected.
-- `shellcheck`, Nix evaluation/build, libvirt validation, and real hardware lifecycle checks remain unrun because the required tools or target hardware are unavailable in this preparation environment.
+- `shellcheck`, Nix evaluation/build, and libvirt validation were not run by this reviewer because the required tools are unavailable in the preparation environment. Real hardware tests were also not run by this reviewer. The project owner separately reports a successful rebuild, successful BORE-LTO kernel build, VM startup and shutdown, and recovery of the display/Hyprland session. A second VM lifecycle cycle and independent verification of driver state were not provided in that report.
