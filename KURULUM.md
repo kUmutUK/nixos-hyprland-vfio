@@ -9,8 +9,8 @@ Bu rehber AMD sistemler için optimize edilmiş **NixOS + LUKS2 + Btrfs + Hyprla
 - NixOS 26.05 Live ISO
 - UEFI sistem
 - AMD Ryzen CPU
-- AMD Radeon RX 6000/7000 GPU
-- En az 810 GB boş disk (aşağıdaki bölümlendirme 800 GB kullanıyor)
+- AMD Radeon RX 6700 XT (Navi 22) — bu yapılandırmanın referans GPU hedefi. Diğer RX 6000/7000 modelleri; PCI/IOMMU grupları, GPU sıfırlama davranışı ve ROCm ayarları ayrıca doğrulanmadan desteklenmiş sayılmaz.
+- En az 810 GiB kapasite (yaklaşık 870 GB ondalık); pratikte 1 TB sınıfı disk önerilir.
 
 ---
 
@@ -45,7 +45,35 @@ lsblk -o NAME,SIZE,MODEL,SERIAL,FSTYPE,MOUNTPOINTS
 
 ```bash
 DISK=/dev/nvme0n1    # ← BURAYI DEĞİŞTİRİN
-# NVMe partition names use p1/p2; SATA/SCSI names look like sda1/sda2.
+
+# Yalnızca tüm diski kabul et; bölüm aygıtı veya var olmayan bir yol kullanma.
+if [ ! -b "$DISK" ]; then
+  echo "HATA: $DISK mevcut bir blok aygıtı değil." >&2
+  exit 1
+fi
+DISK_TYPE=$(lsblk -dnro TYPE "$DISK") || exit 1
+if [ "$DISK_TYPE" != "disk" ]; then
+  echo "HATA: $DISK bir disk aygıtı değil (tür: $DISK_TYPE)." >&2
+  exit 1
+fi
+
+# Hedef disk veya alt bölümlerinden biri bağlıysa devam etme.
+if lsblk -nrpo MOUNTPOINTS "$DISK" | grep -qE '[^[:space:]]'; then
+  echo "HATA: $DISK veya bölümlerinden biri bağlı. Önce doğru diski doğrula ve bağlantıları kaldır." >&2
+  exit 1
+fi
+
+# sgdisk'teki G birimi GiB'dir. Bölümler toplam 809 GiB ayırır.
+MIN_DISK_BYTES=$((810 * 1024 * 1024 * 1024))
+DISK_BYTES=$(sudo blockdev --getsize64 "$DISK") || { echo "HATA: Disk kapasitesi okunamadı." >&2; exit 1; }
+if [ "$DISK_BYTES" -lt "$MIN_DISK_BYTES" ]; then
+  printf 'HATA: Disk kapasitesi yetersiz (%s bayt); en az 810 GiB (%s bayt) gerekiyor.\n' \
+    "$DISK_BYTES" "$MIN_DISK_BYTES" >&2
+  exit 1
+fi
+printf 'Disk kapasitesi kontrolü geçti: %s bayt (asgari 810 GiB).\n' "$DISK_BYTES"
+
+# NVMe disk bölümleri p1/p2 biçiminde, SATA/SCSI ise sda1/sda2 biçimindedir.
 case "$DISK" in
   *[0-9]) PART_PREFIX="${DISK}p" ;;
   *)      PART_PREFIX="$DISK" ;;
@@ -54,13 +82,16 @@ esac
 
 | Bölüm | Açıklama |
 |------|----------|
-| EFI | 1G FAT32 |
-| SWAP | 8GB (zorunlu; aşağıdaki komutlar bu bölüm düzenini varsayar) |
-| LUKS | Ana sistem |
+| EFI | 1 GiB FAT32 |
+| SWAP | 8 GiB (zorunlu; aşağıdaki komutlar bu bölüm düzenini varsayar) |
+| LUKS | 800 GiB ana sistem |
 
 ---
 
 ## Disk oluşturma
+
+> `sgdisk` komutlarındaki `G` birimi GiB anlamına gelir. Aşağıdaki bölümler toplam 809 GiB ayırır.
+> Kapasite ve bağlı bölüm kontrolleri başarılı olsa bile, `sgdisk -Z` mevcut bölüm tablosunu geri alınamaz biçimde siler; model/seri numarasını son kez doğrulayın.
 
 ```bash
 sudo sgdisk -Z "$DISK"
