@@ -26,6 +26,28 @@ jobs:
           fi
           echo "  install.sh executable mode OK"
 
+      - name: source ZIP preserves Unix executable mode
+        run: |
+          archive="$(mktemp --suffix=.zip)"
+          trap 'rm -f "$archive"' EXIT
+          git archive --format=zip --prefix=nixos-hyprland-vfio/ \
+            --output="$archive" HEAD
+          python3 - "$archive" <<'PY'
+          import sys
+          import zipfile
+
+          archive = sys.argv[1]
+          with zipfile.ZipFile(archive) as bundle:
+              entry = bundle.getinfo("nixos-hyprland-vfio/install.sh")
+              mode = (entry.external_attr >> 16) & 0o777
+              if entry.create_system != 3 or not (mode & 0o111):
+                  raise SystemExit(
+                      "::error::Source ZIP must retain install.sh's Unix executable mode "
+                      f"(create_system={entry.create_system}, mode={mode:04o})."
+                  )
+          print("  source ZIP retains install.sh executable mode")
+          PY
+
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@3138316df39ed29be04236d7ffc686fa525866aa
 
