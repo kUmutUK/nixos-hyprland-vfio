@@ -48,6 +48,49 @@ if [[ -z "$assignment_line" || -z "$first_use_line" || "$assignment_line" -ge "$
   exit 1
 fi
 
+python3 - "$INSTALLER" <<'PY'
+import ast
+import re
+import sys
+from pathlib import Path
+
+text = Path(sys.argv[1]).read_text(encoding="utf-8")
+marker = 'sudo python3 - "$gpu_pci" "$gpu_audio" "$REPO_DIR/vm-xml/win10.xml" "$PATCHED_XML" <<\'PYEOF\''
+try:
+    start = text.index(marker)
+except ValueError:
+    raise SystemExit("FAIL: installer PCI XML synchronization heredoc is missing.")
+body_start = text.index("\n", start) + 1
+body_end = text.index("\nPYEOF", body_start)
+embedded = text[body_start:body_end]
+try:
+    tree = ast.parse(embedded)
+except SyntaxError as exc:
+    raise SystemExit(f"FAIL: embedded installer Python is invalid: {exc}")
+
+pattern_assignment = next((node for node in tree.body if isinstance(node, ast.Assign)
+                            and any(isinstance(target, ast.Name) and target.id == "pattern"
+                                    for target in node.targets)), None)
+if pattern_assignment is None:
+    raise SystemExit("FAIL: installer PCI hostdev address pattern is missing.")
+namespace = {}
+exec(compile(ast.Module(body=[pattern_assignment], type_ignores=[]), "installer-pattern", "exec"),
+     {"re": re}, namespace)
+pattern = namespace["pattern"]
+sample_xml = "\n".join([
+    '<devices>',
+    '<hostdev mode="subsystem" type="usb"><source><address bus="1" device="2"/></source></hostdev>',
+    '<hostdev mode="subsystem" type="pci"><source><address domain="0x0000" bus="0x0b" slot="0x00" function="0x0"/></source></hostdev>',
+    "<hostdev mode=\"subsystem\" type='pci'><source><address domain='0x0000' bus='0x0b' slot='0x00' function='0x1'/></source></hostdev>",
+    '</devices>',
+])
+matches = list(pattern.finditer(sample_xml))
+if len(matches) != 2 or any(re.search(r'type\s*=\s*[\"\\\']usb[\"\\\']', m.group(0)) for m in matches):
+    raise SystemExit("FAIL: installer PCI synchronization must match PCI hostdevs only, never USB address sources.")
+if "if n < 2:" not in embedded or "extra PCI hostdev element(s)" not in embedded:
+    raise SystemExit("FAIL: installer must distinguish a missing PCI pair member from extra PCI entries.")
+PY
+
 python3 - "$README" <<'PY'
 from pathlib import Path
 import sys
