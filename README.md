@@ -318,10 +318,15 @@ python3 scripts/extract-embedded-scripts.py /tmp/embedded-scripts | xargs -0 -r 
 python3 scripts/test-vm-xml.py
 bash scripts/test-vfio-hook-driver-state.sh
 bash scripts/test-installer-invariants.sh
-(cd nixos && nix flake check --no-build)
+(cd nixos && nix flake check --no-build --show-trace --no-update-lock-file --option warn-dirty false)
 ```
+`nix flake check --no-build` evaluates the flake but does not build the complete system or kernel. The flags above match the CI evaluation step and prevent lock-file updates during the check. This check does not replace a full build, libvirt domain validation, or a physical GPU lifecycle test.
 
-`nix flake check --no-build` evaluates the flake but does not build the complete system or kernel. It does not replace a full build, libvirt domain validation, or the physical GPU lifecycle test: start the VM, shut it down normally, start it a second time, and verify that the host graphical session recovers.
+### Target-system hardware validation — 2026-10-16
+
+> **Status: the previously reported VM display-recovery issue is resolved on the project owner's tested machine.**
+>
+> The project owner reports that GitHub Actions CI is green for the updated repository, the NixOS rebuild completed successfully, the BORE-LTO kernel built successfully, the Windows VM started, and after a normal VM shutdown the host display and Hyprland session returned. The hardware result is reported by the project owner and is the basis for marking the prior VM issue resolved. It was not independently reproduced as part of this documentation update and is not a guarantee for other hardware, firmware, or configuration changes. Re-test the VM lifecycle after changing the kernel, VFIO hook, firmware, or PCI layout.
 
 ## License
 
