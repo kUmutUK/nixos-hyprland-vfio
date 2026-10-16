@@ -2,7 +2,7 @@
 
 This file summarizes notable changes in English. The original detailed Turkish history is preserved in [`DEGISIKLIK_GECMISI.md`](DEGISIKLIK_GECMISI.md).
 
-## Unreleased — 2026-10-15
+## Unreleased — 2026-10-16
 
 ### Fixed
 - Clarified single-GPU recovery guidance: the hook can terminate SSH sessions for the default `localhost` user, so the README and Turkish setup guide now require a physical recovery TTY unless a separate, tested administrative session is configured. Removed a duplicate `android-file-transfer` package entry and corrected a stale Home Manager package-list comment.
@@ -20,6 +20,7 @@ This file summarizes notable changes in English. The original detailed Turkish h
 - Fixed the installer preflight text so it accurately describes configuration replacement, VM XML writes, backup retention, and other system changes; corrected the README's Nix formatting command to format each `.nix` file explicitly.
 - Made the password-hash checklist preserve existing valid hashes, aligned the Turkish install guide's root-password command with the post-install stage, and translated the last Turkish comment in active Nix code. The repair bundle encodes `install.sh` as executable in the ZIP itself.
 - Hardened the VM XML regression test to require exactly two distinct PCI hostdev addresses matching the QEMU hook, and clarified hook recovery logging when GPU display and GPU audio driver restoration differ.
+- Corrected disk-size units in `KURULUM.md` and `README.md` (the `sgdisk` `G` suffix means GiB), added whole-disk, mounted-volume, and minimum-capacity checks before the destructive partition-table wipe, and narrowed the documented GPU target to RX 6700 XT/Navi 22. The fix-only patch ZIP stores `install.sh` with Unix mode `100755`; the originally uploaded full-project ZIP did not preserve that mode.
 
 ### Validation
 - Bash syntax checks passed for the installer, QEMU hook, and VFIO regression test.
