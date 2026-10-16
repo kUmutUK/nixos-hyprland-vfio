@@ -183,24 +183,18 @@
     <video>
       <model type="none"/>
     </video>
-    <!--
-    KEYBOARD/MOUSE INPUT — disabled by default.
-    The vendor/product IDs are device-specific. The 2a7a:8a47 device below is
-    the maintainer's CASUE keyboard; it will not exist on most other hosts and
-    can make `virsh start` fail with "no such device" if enabled unchanged.
-    Before enabling this block, run `lsusb` on the host and replace these with
-    your own idVendor/idProduct values, then run `virsh define` and `virsh start`.
-    Emulated PS/2 keyboard and mouse devices are configured above. However, with
-    video type="none" and no graphical console, the host has no normal graphical
-    console through which to send input to those emulated devices. Configure USB
-    input passthrough or use a temporary diagnostic XML with a local console during
-    initial setup.
-    Details: README → "Known limitations".
     <hostdev mode="subsystem" type="usb" managed="yes">
-      <source><vendor id="0x2a7a"/><product id="0x8a47"/></source>
-      <address type="usb" bus="0" port="1"/>
+      <source>
+        <vendor id="0x1532"/>
+        <product id="0x0098"/>
+      </source>
     </hostdev>
-    -->
+    <hostdev mode="subsystem" type="usb" managed="yes">
+      <source>
+        <vendor id="0x05ac"/>
+        <product id="0x024f"/>
+      </source>
+    </hostdev>
     <hostdev mode="subsystem" type="pci" managed="no">
       <driver name="vfio"/>
       <source>
