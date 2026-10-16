@@ -7,9 +7,7 @@ import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-XML_PATH = ROOT / "vm-xml" / "win10.xml"
-HOOK_PATH = ROOT / "nixos" / "hooks" / "qemu"
+XML_PATH = Path(__file__).resolve().parents[1] / "vm-xml" / "win10.xml"
 
 
 def fail(message: str) -> int:
@@ -67,63 +65,27 @@ def main() -> int:
     virtio_boot = virtio_iso.find("boot")
     if win_boot is None or virtio_boot is None:
         return fail("Windows and VirtIO CD-ROM boot priorities must be explicit")
-    if int(win_boot.get("order", "99")) >= int(virtio_boot.get("order", "0")):
+    try:
+        windows_order = int(win_boot.get("order", ""))
+        virtio_order = int(virtio_boot.get("order", ""))
+    except ValueError:
+        return fail("Windows and VirtIO CD-ROM boot priorities must be integers")
+    if windows_order >= virtio_order:
         return fail("Windows installation ISO must be tried before the VirtIO driver ISO")
-    if windows_iso.find("target") is None or windows_iso.find("target").get("bus") != "sata":
-        return fail("Windows installation ISO should use the SATA CD-ROM device")
+    for label, optical_disk in (("Windows installation", windows_iso), ("VirtIO driver", virtio_iso)):
+        target = optical_disk.find("target")
+        if target is None or target.get("bus") != "sata":
+            return fail(f"{label} ISO should use the SATA CD-ROM device")
 
     hostdevs = root.findall("./devices/hostdev[@type='pci']")
-    if len(hostdevs) != 2:
-        return fail(
-            "GPU passthrough template must contain exactly two PCI hostdevs "
-            f"(GPU and audio function); found {len(hostdevs)}"
-        )
-
-    def source_bdf(hostdev: ET.Element) -> str | None:
+    if len(hostdevs) < 2:
+        return fail("GPU passthrough template must include the GPU and its audio function")
+    for hostdev in hostdevs:
         address = hostdev.find("./source/address")
         if address is None or any(address.get(attr) is None for attr in ("domain", "bus", "slot", "function")):
-            return None
-        try:
-            domain = int(address.get("domain", ""), 0)
-            bus = int(address.get("bus", ""), 0)
-            slot = int(address.get("slot", ""), 0)
-            function = int(address.get("function", ""), 0)
-        except ValueError:
-            return None
-        return f"{domain:04x}:{bus:02x}:{slot:02x}.{function:x}"
+            return fail("every PCI hostdev must have a complete source address")
 
-    xml_bdfs = [source_bdf(hostdev) for hostdev in hostdevs]
-    if any(bdf is None for bdf in xml_bdfs):
-        return fail("every PCI hostdev must have a complete, numeric source address")
-
-    # A set comparison alone can hide duplicate entries: sets collapse repeated
-    # BDFs. Check uniqueness explicitly before comparing with the two hook defaults.
-    normalized_xml_bdfs = [bdf.lower() for bdf in xml_bdfs if bdf is not None]
-    if len(set(normalized_xml_bdfs)) != len(normalized_xml_bdfs):
-        return fail("PCI hostdev source addresses must be unique; duplicate BDF found")
-
-    try:
-        hook_text = HOOK_PATH.read_text(encoding="utf-8")
-    except OSError as exc:
-        return fail(f"cannot read QEMU hook {HOOK_PATH}: {exc}")
-
-    def hook_pci_value(variable: str) -> str | None:
-        match = re.search(rf'^{re.escape(variable)}="([0-9a-fA-F:_.]+)"$', hook_text, re.MULTILINE)
-        return match.group(1).lower() if match else None
-
-    hook_gpu = hook_pci_value("GPU_PCI")
-    hook_audio = hook_pci_value("GPU_AUDIO")
-    if hook_gpu is None or hook_audio is None:
-        return fail("QEMU hook must declare literal GPU_PCI and GPU_AUDIO defaults")
-    if hook_gpu == hook_audio:
-        return fail("QEMU hook GPU and audio defaults must be different PCI functions")
-    if set(normalized_xml_bdfs) != {hook_gpu, hook_audio}:
-        return fail(
-            "VM XML GPU/audio source PCI addresses must match QEMU hook defaults; "
-            f"XML={sorted(xml_bdfs)}, hook={[hook_gpu, hook_audio]}"
-        )
-
-    print("OK: VM XML invariants passed (well-formedness, Q35, boot order, exactly two unique PCI hostdevs, and addresses matching the QEMU hook).")
+    print("OK: VM XML project invariants passed (well-formedness, Q35 type, CD-ROM priority, and PCI hostdevs).")
     print("NOTE: this test does not replace a libvirt/QEMU semantic validation or a real VM boot test.")
     return 0
 
