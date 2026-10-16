@@ -18,16 +18,20 @@ Thank you for helping improve this project. Because this is a hardware-specific 
 Run these commands from the repository root:
 
 ```bash
-bash -n install.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh
-shellcheck -S warning install.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh
+bash -n install.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh
+shellcheck -S warning install.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh
+python3 -c "import xml.etree.ElementTree as ET; ET.parse('vm-xml/win10.xml')"
 python3 scripts/test-vm-xml.py
+bash scripts/test-installer-invariants.sh
 bash scripts/test-vfio-hook-driver-state.sh
 python3 scripts/extract-embedded-scripts.py /tmp/embedded-scripts \
   | xargs -0 -r -n1 -- shellcheck -S warning
-(cd nixos && nix flake check --no-build)
+(cd nixos && nix flake check --no-build --show-trace --no-update-lock-file --option warn-dirty false)
 ```
 
-For changes to NixOS options or kernel inputs, also evaluate the relevant output and, where feasible, run a real `nixos-rebuild dry-activate`. Do not claim that the full kernel or system builds unless the build was actually completed. The `--no-build` CI step only evaluates the flake.
+For changes to NixOS options or kernel inputs, also evaluate the relevant output and, where feasible, run a real `nixos-rebuild dry-activate`. Do not claim that the full kernel or system builds unless the build was actually completed. The `--no-build` CI step only evaluates the flake; the flags above match CI and prevent lock-file updates during evaluation.
+
+The project owner reports that, on the target machine, the NixOS rebuild and BORE-LTO kernel build succeeded, the Windows VM started, and a normal VM shutdown returned the host display/Hyprland session. This owner-reported hardware test is the basis for marking the prior VM recovery issue resolved; it is not a result independently reproduced by every contributor and does not establish compatibility with other hardware.
 
 For VM XML changes, keep the project-specific invariant test up to date and validate the definition with the target host's libvirt/QEMU. A well-formed XML document can still reference an unsupported machine type or unavailable host resources.
 
