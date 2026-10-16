@@ -66,8 +66,8 @@ let
     ${builtins.readFile ./hooks/qemu}
   '';
 
-  # `wuwa-auto.sh` requests the `wuwa-gemma` Ollama model. The model definition is
-  # embedded here and used by the systemd service to create the model.
+  # `wuwa-auto.sh` requests the custom Ollama alias `wuwa-gemma`, based on
+  # `aya-expanse:8b`. The Modelfile below defines that alias for the systemd service.
   cfgpkg = pkgs.ollama-rocm;
   wuwaGemmaModelfile = pkgs.writeText "wuwa-gemma.modelfile" ''
     FROM aya-expanse:8b
@@ -550,7 +550,7 @@ in
   # and verify `grep sys.use_memfd=true /var/lib/waydroid/waydroid_base.prop`.
 
   systemd.services.wuwa-gemma-init = {
-    description = "Create the wuwa-gemma Ollama model (manual invocation).";
+    description = "Create the wuwa-gemma Ollama alias (Aya Expanse 8B; manual invocation).";
     after = [ "ollama.service" ];
     wants = [ "ollama.service" ];
     wantedBy = [ ];               # Do not start automatically.
