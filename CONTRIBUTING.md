@@ -31,7 +31,7 @@ python3 scripts/extract-embedded-scripts.py /tmp/embedded-scripts \
 
 For changes to NixOS options or kernel inputs, also evaluate the relevant output and, where feasible, run a real `nixos-rebuild dry-activate`. Do not claim that the full kernel or system builds unless the build was actually completed. The `--no-build` CI step only evaluates the flake; the flags above match CI and prevent lock-file updates during evaluation.
 
-The project owner reports that, on the target machine, the NixOS rebuild and BORE-LTO kernel build succeeded, the Windows VM started, and a normal VM shutdown returned the host display/Hyprland session. This owner-reported hardware test is the basis for marking the prior VM recovery issue resolved; it is not a result independently reproduced by every contributor and does not establish compatibility with other hardware.
+The project owner reported that, on the target machine, the NixOS rebuild and standard (non-RT) BORE-LTO kernel build succeeded, the Windows VM started, and normal VM shutdown returned the host display/Hyprland session. The configuration now selects RT-Bore-LTO, an upstream variant whose LTO build is not in the upstream binary cache. The earlier hardware result does not validate RT-Bore-LTO; do not claim the current kernel works until it has built, booted, and passed the VM lifecycle test on the target machine. This owner-reported earlier test is not independent reproduction or a compatibility guarantee for other hardware.
 
 For VM XML changes, keep the project-specific invariant test up to date and validate the definition with the target host's libvirt/QEMU. A well-formed XML document can still reference an unsupported machine type or unavailable host resources.
 
