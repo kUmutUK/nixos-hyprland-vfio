@@ -49,24 +49,25 @@ Reviewed the uploaded source archive and modified source files, configuration, V
 | `python3 scripts/test-vm-xml.py` | Passed |
 | `bash scripts/test-vfio-hook-driver-state.sh` | Passed |
 | ZIP/tree and JSON/YAML/XML parsing | Passed where relevant tooling was available |
+| GitHub Actions CI | The project owner reports that CI is green for the updated repository; this status was not independently re-run from the audit container. |
 | Nix evaluation / `nixos-rebuild dry-activate` | Not run by this reviewer: `nix` is unavailable in the audit environment. The project owner separately reports a successful target-system rebuild; whether the exact `dry-activate` command was run was not specified. |
 | `shellcheck`, `xmllint`, `virt-xml-validate` | Not run: tools are unavailable in this environment |
-| Real VM/GPU lifecycle | Not run by this reviewer in the audit environment. The project owner reports that the VM started, shut down, and the display/Hyprland session returned; a second full VM cycle was not explicitly reported. |
+| Real VM/GPU lifecycle | Not independently run by this reviewer. The project owner confirms the VM issue is resolved on the target system: after a successful rebuild and BORE-LTO kernel build, the VM started, shut down normally, and the host display/Hyprland session returned. This is owner-reported hardware validation, not a test reproduced in this container. |
 
-The checked-in `flake.lock` points to the CachyOS `release` revision listed above. Nix is unavailable in the review environment, so this reviewer did not run flake evaluation or a kernel build. Separately, the project owner reports a successful rebuild and successful BORE-LTO kernel build on the target system. This is owner-reported evidence rather than a result independently reproduced in this container; it does not, by itself, establish whether the kernel came from the binary cache or was compiled locally.
+The checked-in `flake.lock` points to the CachyOS `release` revision listed above. Nix is unavailable in the review environment, so this reviewer did not run flake evaluation or a kernel build. The project owner confirms that rebuild and BORE-LTO kernel build succeeded on the target system and that the VM-start/normal-shutdown path restored the host display and Hyprland. The VM issue is therefore marked resolved for that tested system. This is owner-reported evidence rather than a result independently reproduced in this container; it does not, by itself, establish whether the kernel came from the binary cache or was compiled locally.
 
 ## Required checks on the target NixOS host
 
 From `/etc/nixos/nixos/`:
 
 ```bash
-sudo nix flake check --no-build --show-trace --no-update-lock-file
+nix flake check --no-build --show-trace --no-update-lock-file --option warn-dirty false
 sudo nixos-rebuild dry-activate --flake .#nixos -L
 ```
 
 Watch whether the kernel is substituted from cache or built locally. If the same `tools/bpf/resolve_btfids` `ld.lld: undefined symbol` error recurs, capture the full derivation log with `nix log /nix/store/<kernel-derivation>.drv`; a lock/cache change does not itself fix a linker bug in source. Keep the currently working system generation until the candidate generation succeeds.
 
-Before relying on single-GPU passthrough, test VM startup from a separate TTY/SSH session, a clean guest shutdown, GPU and audio driver restoration, host compositor recovery, and a second VM start. XML parsing is not a substitute for libvirt/QEMU validation or a real boot.
+The project owner has confirmed a successful VM start, normal shutdown, and host compositor recovery on the target machine; this closes the previously reported VM recovery issue for that setup. After future kernel, firmware, PCI-layout, VM XML, or hook changes, repeat the lifecycle check and inspect GPU/audio driver restoration. XML parsing is not a substitute for libvirt/QEMU validation or a real boot.
 
 
 ## Follow-up fixes in the reviewed archive
@@ -89,4 +90,4 @@ Before relying on single-GPU passthrough, test VM startup from a separate TTY/SS
 
 - The fix-only patch ZIP produced for the 2026-10-16 corrections stores `install.sh` with Unix mode `100755`. The original full-project ZIP is intentionally not included or repackaged in this patch-only delivery; apply these files over the project tree and create a fresh full-project archive from the corrected tree when needed. ZIP mode was read back from the produced patch archive, not inferred from the Git index.
 - The pre-existing validation suite passed again for the 2026-10-16 correction set: `bash -n` for the installer, QEMU hook, and regression tests; `scripts/test-installer-invariants.sh`; `scripts/test-vfio-hook-driver-state.sh`; `scripts/test-vm-xml.py`; Python compilation for repository scripts; JSON parsing for `flake.lock`; and XML parsing for `win10.xml`. The newly added disk preflight code block in `KURULUM.md` was also extracted and Bash-syntax-checked. These checks do not simulate a real disk operation or VM lifecycle. Negative tests in the existing suite also confirm that duplicate PCI addresses and a third PCI `hostdev` are rejected.
-- `shellcheck`, Nix evaluation/build, and libvirt validation were not run by this reviewer because the required tools are unavailable in the preparation environment. Real hardware tests were also not run by this reviewer. The project owner separately reports a successful rebuild, successful BORE-LTO kernel build, VM startup and shutdown, and recovery of the display/Hyprland session. A second VM lifecycle cycle and independent verification of driver state were not provided in that report.
+- `shellcheck`, Nix evaluation/build, and libvirt validation were not run by this reviewer because the required tools are unavailable in the preparation environment. Real hardware tests were also not run independently by this reviewer. The project owner confirms the VM problem is resolved on the target system: rebuild and BORE-LTO kernel build succeeded, the VM started and shut down normally, and the display/Hyprland session recovered. The report records this as owner-verified real-system validation, not independent reproduction or a general guarantee for other hardware.
