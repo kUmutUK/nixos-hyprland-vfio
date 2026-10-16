@@ -56,7 +56,7 @@ jobs:
           python3 -c "import xml.etree.ElementTree as ET; ET.parse('vm-xml/win10.xml')"
           python3 scripts/test-vm-xml.py
 
-      - name: Installer and English-locale regression checks
+      - name: Installer, English locale, global Reflex and SSH regression checks
         run: bash scripts/test-installer-invariants.sh
 
       # ---- GATE STEPS (must pass) ----
