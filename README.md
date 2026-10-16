@@ -152,7 +152,7 @@ sudo virsh define /var/lib/libvirt/win10.xml
 
 Use the disk and ISO filenames that actually exist on your host. The XML's PCI addresses must match `GPU_PCI` and `GPU_AUDIO` in `/etc/nixos/nixos/hooks/qemu`; `install.sh` performs this synchronization when run successfully. If you configured the VM manually, verify both PCI host devices with `lspci` and edit the deployed XML accordingly.
 
-The default XML does not configure USB keyboard/mouse passthrough, and it intentionally has no emulated graphics console. Before handing the only GPU to the guest, configure a USB input device or a separate USB controller and verify that you can control the VM without the host desktop.
+The default XML contains two active USB passthrough entries with fixed vendor/product IDs `1532:0098` and `05ac:024f`; they are not detected or substituted automatically by the installer. Confirm with `lsusb` that these IDs identify the devices you intend to pass through, and edit or remove the corresponding USB `<hostdev>` entries in `/var/lib/libvirt/win10.xml` before starting the VM if they do not. The XML intentionally has no emulated graphics console, so verify that the guest has a usable display and input path before handing it the only GPU.
 
 Start the VM outside the graphical login session because the hook may terminate that session:
 
@@ -236,7 +236,7 @@ The OCR script now checks that the model is available before beginning; it repor
 |---|---|
 | RADV | AMD Vulkan driver; `AMD_VULKAN_ICD=RADV`, `RADV_PERFTEST=gpl` |
 | `lsfg-vk` | Vulkan frame-generation layer; per-game settings in `~/.config/lsfg-vk/conf.toml` |
-| `low_latency_layer` | Vulkan layer using `VK_AMD_anti_lag`, enabled with `LOW_LATENCY_LAYER_REFLEX=1` |
+| `low_latency_layer` | Vulkan latency layer. `LOW_LATENCY_LAYER=1` enables it; `LOW_LATENCY_LAYER_REFLEX=1` selects the Reflex (`VK_NV_low_latency2`) interface instead of the default AMD Anti-Lag 2 (`VK_AMD_anti_lag`). This configuration sets both variables system-wide. |
 | GameMode | Applies the configured game-time priority and performance settings |
 | Gamescope | Fullscreen and window rules for games |
 | MangoHud | FPS, frametime, GPU/CPU, and temperature overlay |
@@ -267,7 +267,7 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 - **Navi 2x reset behavior:** reliable reset and host rebind cannot be guaranteed from static analysis. The optional `remove`/`rtcwake`/`rescan` recovery path is disabled by default. Enabling `VFIO_ALLOW_SUSPEND_RECOVERY=1` can suspend the host briefly and should only be attempted after checking firmware support and arranging recovery access.
 - **Single-GPU host:** while the VM owns the GPU, the host does not have a normal graphical session. Keep a physical recovery TTY available. The hook may terminate SSH sessions for `HOST_USER` (default `localhost`), so do not rely on SSH unless a separate, tested administrative account is configured outside that target.
 - **Fixed host user:** the hook defaults to `localhost` and terminates that user's graphical sessions. This is designed for this single-user configuration.
-- **No automatic USB input passthrough:** configure your own keyboard/mouse or a dedicated USB controller. Do not copy the maintainer's commented VID:PID example blindly.
+- **Fixed USB passthrough IDs:** the default VM XML actively passes through USB IDs `1532:0098` and `05ac:024f`. The installer synchronizes GPU/audio PCI addresses only; it does not discover, validate, or replace these USB IDs. Verify them with `lsusb` and edit/remove the XML entries if they are not the intended devices.
 - **Swap outside LUKS2:** the reference `hardware-configuration.nix` enables per-activation random swap encryption (`randomEncryption.enable = true`). A fresh install must preserve this option in the machine-specific generated hardware file. If it is missing or disabled, the disk swap is unencrypted; random swap encryption is not persistent-key LUKS encryption.
 - **OCR display geometry:** default WuWa crop regions target a 2560×1440 display. The script validates configured geometry and can be overridden with `WUWA_GEOMETRY_MAIN` and `WUWA_GEOMETRY_CHOICE`.
 - **Windows 10 lifecycle:** standard support has ended; see the lifecycle warning above and verify the guest edition’s ESU/LTSC status before using it online.

@@ -563,10 +563,10 @@ if n == 0:
 if n != 2:
     print(f"WARNING: found {n} PCI hostdev elements in XML; expected 2.", file=sys.stderr)
     print(f"WARNING: only the first 2 were updated (GPU={gpu}, Audio={aud}).", file=sys.stderr)
-    print(f"WARNING: {n-2} extra hostdev element(s) need manual editing; check each <source><address>",
+    print(f"WARNING: {n-2} extra PCI hostdev element(s) need manual editing; check each <source><address>",
           file=sys.stderr)
     print("WARNING: verify the address with the command below:", file=sys.stderr)
-    print(f"  grep -n -A3 '<hostdev' {dst}", file=sys.stderr)
+    print(f"  grep -n -A6 'hostdev.*type=\"pci\"' {dst}", file=sys.stderr)
 
 if os.path.exists(dst):
     backup = f"{dst}.bak-{int(time.time())}"
@@ -615,7 +615,7 @@ except BaseException:
             pass
     raise
 
-print(f"OK: found {n} hostdev elements; updated {min(n,2)} -> {dst}")
+print(f"OK: found {n} PCI hostdev elements; updated {min(n,2)} -> {dst}")
 PYEOF
   then
     log "vm-xml/win10.xml -> ${PATCHED_XML} (GPU=${gpu_pci}, Audio=${gpu_audio})"
@@ -815,7 +815,7 @@ echo -e "   ${YELLOW}Copy the ISO files into /var/lib/libvirt/images/:${NC}"
 echo -e "   ${YELLOW}Win10_22H2_English_x64v1.iso and virtio-win-0.1.285.iso${NC}"
 echo -e "   ${CYAN}sudo virsh define /var/lib/libvirt/win10.xml${NC}"
 echo -e "   ${CYAN}sudo virsh list --all${NC}   ${YELLOW}→ 'win10' should appear as shut off${NC}"
-echo -e "   ${YELLOW}If there are 3+ hostdev elements, review the warning and edit extras manually.${NC}"
+echo -e "   ${YELLOW}If there are 3+ PCI hostdev elements, review the warning and edit extras manually.${NC}"
 ((step_num++))
 
 echo ""

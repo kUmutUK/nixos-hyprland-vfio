@@ -5,6 +5,8 @@ This file summarizes notable changes in English. The original detailed Turkish h
 ## Unreleased — 2026-10-16
 
 ### Fixed
+- Aligned the README with the default VM XML: it documents the two active fixed USB passthrough IDs and the system-wide low-latency-layer/Reflex environment variables without changing the VM XML or Rofi theme.
+- Clarified that installer host-device counts and synchronization refer to PCI `hostdev` entries, not all device types; extended the VM XML regression test to guard the documented USB IDs as well as the PCI pair.
 - Clarified single-GPU recovery guidance: the hook can terminate SSH sessions for the default `localhost` user, so the README and Turkish setup guide now require a physical recovery TTY unless a separate, tested administrative session is configured. Removed a duplicate `android-file-transfer` package entry and corrected a stale Home Manager package-list comment.
 - Removed the unused Waypaper package and `SUPER+W` binding, corrected the installer's missing-PCI-device diagnostic so it does not invoke `lspci` a second time, and translated the color notification title to English.
 - Clarified that IOMMU kernel parameters are not enabled by default, corrected the VM input limitation comment, and added a regression check that VM XML GPU/audio PCI addresses match the QEMU hook defaults.
