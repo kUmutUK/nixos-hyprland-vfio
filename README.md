@@ -82,8 +82,18 @@ sudo nixos-install --flake /mnt/etc/nixos/nixos#nixos --accept-flake-config
 Run the installer as a normal user with `sudo` privileges:
 
 ```bash
-chmod +x install.sh  # only needed if the archive lost the executable bit
+chmod +x install.sh  # fallback only if an external archive tool stripped the executable bit
 ./install.sh
+```
+
+Maintainers creating a source ZIP from a Git checkout should use the canonical
+Git archive command below (after committing the revision they intend to share).
+It excludes the internal `.git` directory and preserves `install.sh`'s Unix
+executable mode; CI checks that metadata so users do not need the fallback above:
+
+```bash
+git archive --format=zip --prefix=nixos-hyprland-vfio/ \
+  --output=nixos-hyprland-vfio.zip HEAD
 ```
 
 The script backs up existing configuration files, asks for the selected GPU/audio PCI addresses and host-specific values, updates the deployed hook and VM XML, and preserves existing `system.stateVersion` and `home.stateVersion` values when it can identify them. It is not a variable-only editor: it copies selected configuration files into `/etc/nixos/nixos`, replaces that deployment's `hooks/` directory, writes the synchronized VM XML to `/var/lib/libvirt/win10.xml` (backing up an existing XML first), and may create `/home/.snapshots` on Btrfs when missing. It retains the five newest timestamped installer-backup directories and may delete older matching backups. Inspect every prompt and warning before proceeding. The script deliberately does not overwrite an existing machine-specific hardware configuration without confirmation.
