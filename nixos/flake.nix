@@ -1,6 +1,6 @@
 # flake.nix
 {
-  description = "NixOS CachyOS BORE Kernel – Gaming + pyprland + lsfg-vk";
+  description = "NixOS CachyOS RT-Bore-LTO Kernel – Gaming + pyprland + lsfg-vk";
 
   # Configure the CachyOS binary cache at flake-evaluation time. On a fresh
   # installation, accept this cache explicitly with --accept-flake-config.
@@ -44,11 +44,11 @@
 
         ({ pkgs, ... }: {
           nixpkgs.config.allowUnfree = true;
-          # Use the upstream pinned overlay so the kernel derivation uses the
-          # same nixpkgs revision as the published binary cache. The default
-          # overlay can miss the cache and trigger a local ThinLTO kernel build.
+          # Keep the CachyOS kernel and its patch set on the upstream pinned
+          # nixpkgs revision. RT-Bore-LTO is not published in the upstream binary
+          # cache, so this specific variant must be built locally even with `pinned`.
           nixpkgs.overlays = [ cachyos-kernel.overlays.pinned ];
-          boot.kernelPackages = pkgs.cachyosKernels.linuxPackages-cachyos-bore-lto;
+          boot.kernelPackages = pkgs.cachyosKernels.linuxPackages-cachyos-rt-bore-lto;
           # Hyprland, its companion tools, and xdg-desktop-portal-hyprland
           # come from the same nixpkgs revision to keep their ABI consistent.
           # Keep shared system packages declared in configuration.nix only;
