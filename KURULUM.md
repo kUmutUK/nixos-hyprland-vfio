@@ -243,8 +243,8 @@ for c in /sys/class/drm/card*-*; do
 done
 ```
 
-Ardından `/etc/nixos/nixos/home.nix` dosyasının en üstündeki `let` bloğunu
-düzenleyin (satır ~4-12):
+Kurulum öncesinde hedef sistem `/mnt` altındayken, `/mnt/etc/nixos/nixos/home.nix`
+dosyasının en üstündeki `let` bloğunu düzenleyin (satır ~4-12):
 
 ```nix
   gitName            = "Adınız";
