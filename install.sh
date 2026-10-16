@@ -46,7 +46,10 @@ fi
 if ! command -v python3 &>/dev/null; then
   error "python3 is missing. Return to the repository and rerun with: nix-shell -p python3 --run 'bash ./install.sh'"
 fi
-log "Environment OK."
+# Capture the resolved interpreter before privileged operations. In a temporary
+# nix-shell this may live under /nix/store and not be present in sudo secure_path.
+PYTHON3="$(command -v python3)"
+log "Environment OK (Python: ${PYTHON3})."
 
 read -rp "Do you want to continue? (yes/no): " confirm
 [[ "$confirm" != "yes" ]] && { info "Aborted."; exit 0; }
@@ -498,15 +501,15 @@ fi
 # devices while libvirt still tried to open the old PCI addresses.
 step "VM XML PCI synchronization"
 if [ ! -f "$REPO_DIR/vm-xml/win10.xml" ]; then
-  warn "vm-xml/win10.xml was not found; edit the XML manually."
+  error "vm-xml/win10.xml was not found; refusing to continue after updating the VFIO hook."
 elif ! command -v python3 >/dev/null 2>&1; then
-  warn "python3 is missing; edit vm-xml/win10.xml manually (bus/slot/function)."
+  error "python3 is unavailable; refusing to continue with hook/XML PCI addresses out of sync."
 else
   # Keep the repository XML template read-only. Write the synchronized copy to
   # libvirt's directory instead of modifying the source tree or setting
   # skip-worktree, which can hide changes and cause later merge conflicts.
   # Run the XML update as root: the destination is owned by the system.
-  if sudo mkdir -p /var/lib/libvirt && sudo python3 - "$gpu_pci" "$gpu_audio" "$REPO_DIR/vm-xml/win10.xml" "$PATCHED_XML" <<'PYEOF'
+  if sudo mkdir -p /var/lib/libvirt && sudo "$PYTHON3" - "$gpu_pci" "$gpu_audio" "$REPO_DIR/vm-xml/win10.xml" "$PATCHED_XML" <<'PYEOF'
 import os, re, shutil, sys, time, uuid as uuidlib, secrets, tempfile, stat
 
 gpu, aud, src, dst = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
@@ -623,7 +626,7 @@ PYEOF
     log "The source repository file was NOT modified."
     echo -e "     ${CYAN}sudo virsh define ${PATCHED_XML}${NC}"
   else
-    warn "Could not update the XML; edit win10.xml manually."
+    error "Could not update the VM XML; refusing to continue with hook/XML PCI addresses out of sync. Restore the backup or correct the XML, then rerun."
   fi
 fi
 
@@ -699,7 +702,7 @@ apply_var() {
     warn "Variable '${var_name}' not found in home.nix — skipped."
     return 0
   fi
-  if ! sudo python3 - "$HOME_NIX" "$var_name" "$new_value" <<'PYEOF'
+  if ! sudo "$PYTHON3" - "$HOME_NIX" "$var_name" "$new_value" <<'PYEOF'
 import re, sys, os, tempfile
 
 path, var, value = sys.argv[1], sys.argv[2], sys.argv[3]
