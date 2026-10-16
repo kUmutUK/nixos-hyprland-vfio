@@ -174,14 +174,10 @@ stop_hyprland() {
       fi
     fi
   done
-  # Also stop user-level processes holding the GPU, such as Hyprland and games.
-  # `--all` targets every logged-in session.
-  log "Terminating user sessions..."
-  loginctl terminate-user "${HOST_USER:-localhost}" 2>/dev/null || true
-  # `terminate-user` may terminate every session for `HOST_USER`, including SSH sessions.
-  # `terminate-seat` targets seat0 and may close local VT/greeter sessions but does not
-  # necessarily terminate a headless SSH session. Start the VM in a detached systemd-run
-  # unit so the `virsh` client does not need to survive session termination.
+  # End only the local graphical seat. Do not use `loginctl terminate-user` here: it
+  # also kills remote SSH sessions for the desktop account. Any remaining GPU user will
+  # be detected by the device-node `fuser` checks below and causes a safe abort/rollback.
+  log "Terminating local seat0 sessions; keeping remote SSH sessions active..."
   loginctl terminate-seat seat0 2>/dev/null || true
 
   local card nodes
