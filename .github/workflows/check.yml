@@ -11,11 +11,9 @@ permissions:
 
 jobs:
   build:
-    # Keep the validated Ubuntu baseline stable across the October 2026 latest-label migration.
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
-      # v7.0.1 runs on Node 24; v4.4.0 depended on the retired Node 20 runtime.
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: installer executable mode
         # Keep README's ./install.sh invocation working in fresh checkouts.
