@@ -8,7 +8,7 @@
       },
       "locked": {
         "lastModified": 1791848821,
-        "narHash": "sha256-zmA3LKGQBRY4/vqDtU0+B+Vf78NlS0vhuFtKxm51+Q8=",
+        "narHash": "sha256-zmA3LKGQBRY4/vqDt0U+B+Vf78NlS0vhuFtKxm51+Q8=",
         "owner": "xddxdd",
         "repo": "nix-cachyos-kernel",
         "rev": "873c5a2a40575b880a962aaade19afbb572adf92",
