@@ -4,6 +4,12 @@
 
 Reviewed the uploaded source archive and modified source files, configuration, VM XML, installer, CI, scripts, and documentation. This is a static maintenance pass, not a claim that the configuration was activated on the target PC.
 
+## Follow-up status — 2026-10-16: RT-Bore-LTO selected
+
+The current `nixos/flake.nix` selects `pkgs.cachyosKernels.linuxPackages-cachyos-rt-bore-lto`. The exact locked upstream revision contains this package, but the upstream README explicitly says RT-Bore-LTO's LTO variant is not published to its binary cache. Expect a local kernel build; the `pinned` overlay ensures nixpkgs alignment but cannot create a missing binary cache artifact. The checked-in CachyOS input is locked to commit `b1332396df6e880d7e3b6b451c6a74132ce8cf66`, whose `version.json` selects RT-Bore 7.2.8. The earlier user-provided linker log named standard BORE-LTO 7.2.9 from a different lock state, so it is not the exact derivation this archive selects. The lock was not manually rewritten as part of this patch. This audit environment has no Nix CLI, so package evaluation and compilation were not run here.
+
+The previously reported successful target-machine build and VM display recovery were performed with the standard (non-RT) BORE-LTO kernel. They do not validate the newly selected RT-Bore-LTO kernel. After a successful build, boot it and test VM start, normal shutdown, host display/Hyprland recovery, and a second VM start before treating the migration as validated. Upstream package reference: https://github.com/xddxdd/nix-cachyos-kernel/blob/b1332396df6e880d7e3b6b451c6a74132ce8cf66/README.md
+
 ## Corrections applied for the 2026-10-16 audit
 
 - `KURULUM.md` now states the 810 GiB minimum (about 870 GB decimal) and explicitly documents that the `G` suffix accepted by `sgdisk` represents GiB. The reference partitions total 809 GiB.
@@ -16,7 +22,7 @@ Reviewed the uploaded source archive and modified source files, configuration, V
 ### CachyOS kernel build/cache path
 
 - Changed the CachyOS flake input from the default `master` branch to `github:xddxdd/nix-cachyos-kernel/release`. [Upstream documentation](https://github.com/xddxdd/nix-cachyos-kernel/blob/release/README.md) says this branch contains a kernel built by its Hydra CI and published to its binary cache.
-- Changed `cachyos-kernel.overlays.default` to `cachyos-kernel.overlays.pinned`, which selects packages from the kernel flake's pinned nixpkgs revision. See the [upstream overlay definition](https://github.com/xddxdd/nix-cachyos-kernel/blob/release/flake.nix). This can avoid a local ThinLTO build when a matching cached derivation exists.
+- Changed `cachyos-kernel.overlays.default` to `cachyos-kernel.overlays.pinned`, which selects packages from the kernel flake's pinned nixpkgs revision. See the [upstream overlay definition](https://github.com/xddxdd/nix-cachyos-kernel/blob/release/flake.nix). For variants that upstream actually caches, this can avoid a local ThinLTO build when a matching derivation exists. RT-Bore-LTO's LTO variant is not cached, as noted in the follow-up status above.
 - Replaced the previous CachyOS cache entry with the Attic substituter and public key documented by upstream in both the flake `nixConfig` and system Nix settings. [Upstream cache configuration](https://github.com/xddxdd/nix-cachyos-kernel/blob/release/flake.nix).
 - In this archive, `nixos/flake.lock` pins the CachyOS input to release commit `b1332396df6e880d7e3b6b451c6a74132ce8cf66` with the NAR hash recorded beside it in the lock file. The previously documented hash `873c5a2a40575b880a962aaade19afbb572adf92` did not match this archive and has been corrected here. Do not refresh the lock just to apply these fixes. A cache miss can still trigger a local build; the configuration changes cannot repair an upstream source-level linker regression if the cache is unavailable.
 
@@ -52,9 +58,9 @@ Reviewed the uploaded source archive and modified source files, configuration, V
 | GitHub Actions CI | The project owner reports that CI is green for the updated repository; this status was not independently re-run from the audit container. |
 | Nix evaluation / `nixos-rebuild dry-activate` | Not run by this reviewer: `nix` is unavailable in the audit environment. The project owner separately reports a successful target-system rebuild; whether the exact `dry-activate` command was run was not specified. |
 | `shellcheck`, `xmllint`, `virt-xml-validate` | Not run: tools are unavailable in this environment |
-| Real VM/GPU lifecycle | Not independently run by this reviewer. The project owner confirms the VM issue is resolved on the target system: after a successful rebuild and BORE-LTO kernel build, the VM started, shut down normally, and the host display/Hyprland session returned. This is owner-reported hardware validation, not a test reproduced in this container. |
+| Real VM/GPU lifecycle | Not independently run by this reviewer. The project owner reported a successful VM lifecycle on the prior standard (non-RT) BORE-LTO kernel. That result does not validate the current RT-Bore-LTO selection; boot and VM lifecycle testing remain required after its build. |
 
-The checked-in `flake.lock` points to the CachyOS `release` revision listed above. Nix is unavailable in the review environment, so this reviewer did not run flake evaluation or a kernel build. The project owner confirms that rebuild and BORE-LTO kernel build succeeded on the target system and that the VM-start/normal-shutdown path restored the host display and Hyprland. The VM issue is therefore marked resolved for that tested system. This is owner-reported evidence rather than a result independently reproduced in this container; it does not, by itself, establish whether the kernel came from the binary cache or was compiled locally.
+The checked-in `flake.lock` points to the CachyOS `release` revision listed above. Nix is unavailable in the review environment, so this reviewer did not run flake evaluation or a kernel build. The project owner reported that the rebuild and standard (non-RT) BORE-LTO kernel build succeeded on the target system and that the VM-start/normal-shutdown path restored the host display and Hyprland. That historical result applies only to the prior kernel; the newly selected RT-Bore-LTO variant remains unbuilt and unvalidated in this audit. This is owner-reported evidence rather than a result independently reproduced in this container; it does not, by itself, establish whether the kernel came from the binary cache or was compiled locally.
 
 ## Required checks on the target NixOS host
 
