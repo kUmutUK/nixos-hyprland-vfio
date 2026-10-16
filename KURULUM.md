@@ -225,7 +225,7 @@ kopyalanır. `install.sh`'ı çalıştırmadığınız için `home.nix` içindek
 | # | Değer | Varsayılan | Sonucu |
 |---|-------|-----------|--------|
 | 1 | `hyprlandMonitorLine` | `"monitor = ,preferred,auto,1"` | Boş monitör adı, açıkça tanımlanmamış çıkışlara uygulanacak catch-all kuralıdır; workspace aynalama kuralı değildir. Çok monitörde her çıkışa `preferred/auto/1` uygulamak istemiyorsanız gerçek çıkış adını yazın. |
-| 2 | `monitorOutput` | `""` (boş) | Yanlış çıktıysa `mpvpaper` duvar kağıdı çalışmaz (oturum açılışında kritik uyarı çıkar) |
+| 2 | `monitorOutput` | `""` (boş) | Boş bırakılırsa canlı duvar kâğıdı ve watchdog servisi oluşturulmaz; monitör doğrulaması/uyarısı atlanır. Geçersiz bir çıkış adı girilirse oturum açılışında kritik uyarı çıkar. |
 | 3 | `gitName` | `"changeme"` | Commit'ler sahte isimle etiketlenir |
 | 4 | `gitEmail` | `"you@example.com"` | Commit'ler sahte adresle etiketlenir |
 | 5 | `wallpaperVideo` | `~/Downloads/arthur-leywin-….mp4` | Dosya yoksa `Unit.ConditionPathExists` servisi başlatmaz; oturum açılışında kritik uyarı gösterilir |
@@ -461,17 +461,21 @@ başlangıç/teşhis içindir; oyun için kalıcı çözüm değildir.
 > `nixos/hooks/qemu`). Varsayılan `localhost`, bu config'in kullanıcı adıdır
 > ve tek kullanıcılı kurulumlar için doğrudur.
 >
-> ⚠️ **DÜZELTME (2026-10-06):** burada önce
-> `HOST_USER=kullanici sudo virsh start win10` yazıyordu. Bu **çalışmaz**:
-> hook'u **libvirtd** (uzun ömürlü bir systemd servisi) çalıştırır, `virsh`
-> istemcisinin ortamını **miras almaz**; ayrıca aradaki `sudo` da `env_reset`
-> ile ortamı zaten temizler. `HOST_USER` config'in hiçbir yerinde tanımlı
-> değildir, dolayısıyla hook her zaman `localhost`'u kullanır.
+> ⚠️ **DÜZELTME (2026-10-06):** `HOST_USER=kullanici sudo virsh start win10`
+> kullanmak işe yaramaz: hook'u **libvirtd** (uzun ömürlü bir systemd servisi)
+> çalıştırır; `virsh` istemcisinin ortamını miras almaz ve `sudo` da genellikle
+> istemci ortamını temizler. Bu yapılandırmada `HOST_USER` varsayılan olarak
+> tanımlanmadığı için hook ek ayar yapılmadığında `localhost` kullanır.
 >
-> Gerçekten farklı bir kullanıcıyı hedeflemek istiyorsanız tek yol
-> NixOS modülünde hook'a ortam vermektir — `configuration.nix` içinde
-> `virtualisation.libvirtd.hooks.qemu.vfio` tanımına bir `environment`
-> seçeneği ekleyin (bkz. `nixos/configuration.nix` → `vfioHook`).
+> Farklı bir kullanıcıyı hedeflemek için `configuration.nix` dosyasında,
+> üst düzeyde ve `virtualisation.libvirtd` bloğunun **dışında**, libvirtd
+> systemd servisinin ortamını tanımlayın:
+> ```nix
+> systemd.services.libvirtd.environment.HOST_USER = "gercek-kullanici";
+> ```
+> `gercek-kullanici` yerine gerçek kullanıcı adını yazın ve yapılandırmayı
+> yeniden etkinleştirin. Değişikliği uygulamadan önce fiziksel kurtarma TTY'si
+> hazır bulundurun; bu kullanıcıya ait oturumlar VM başlatılırken kapatılabilir.
 
 ---
 
