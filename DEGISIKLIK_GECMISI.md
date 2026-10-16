@@ -8,12 +8,18 @@
 >   `amd_iommu=on` ne de `iommu=pt` etkinleştirilmiştir; `README.md` de bunu
 >   açıkça belirtir. IOMMU/AMD-Vi BIOS/UEFI'de etkinleştirilmeli ve çalışma
 >   zamanı `dmesg` ile `/sys/kernel/iommu_groups/` üzerinden doğrulanmalıdır.
-> - Proje sahibinin 2026-10-16'da bildirdiği başarılı build ve VM aç/kapat testi,
->   önceki standart (RT olmayan) BORE-LTO kernel'i içindi. Güncel ağaçta kernel
->   `linuxPackages-cachyos-rt-bore-lto` olarak değiştirildi. Upstream bu LTO
->   varyantını binary cache'te yayımlamıyor; yerel derleme gerekir. Önceki test
->   RT-Bore-LTO'yu doğrulamaz; yeni kernel için boot, VM açılışı, kapanış sonrası
->   ekran geri dönüşü ve ikinci açılış yeniden test edilmelidir.
+> - Kernel, upstream `release` kanalındaki `linuxPackages-cachyos-rt-bore-lto` paketini
+>   kullanır; sürüm numarası sabit yazılmaz. Yeni kernel (ör. 7.3) yayımlandığında
+>   `sudo nix flake update cachyos-kernel --accept-flake-config` komutuyla kilidi bilinçli
+>   güncelleyin ve farkı inceleyin. RT-Bore-LTO LTO upstream binary cache'te yoktur; yerel
+>   derleme gerekir. Önceki başarılı test standart BORE-LTO içindi ve RT varyantını doğrulamaz.
+> - Vulkan düşük gecikme katmanı PAM oturum değişkenleri üzerinden sistem genelinde
+>   `LOW_LATENCY_LAYER=1` ve `LOW_LATENCY_LAYER_REFLEX=1` ile etkinleştirilmiştir. Uyumsuz
+>   oyunlar `DISABLE_LOW_LATENCY_LAYER=1 %command%` ile hariç tutulabilir.
+> - OpenSSH TCP 22'de açıktır; parola girişi yalnız `localhost` kullanıcısına izin verir,
+>   root girişi kapalıdır ve Fail2ban LAN adreslerini de denetler. VFIO hook yalnızca yerel
+>   `seat0` oturumlarını sonlandıracak şekilde değiştirildi; SSH'nin açık kalması ve gerçek
+>   RT-Bore-LTO VM yaşam döngüsü hedef sistemde yeniden doğrulanmalıdır.
 
 # [1.3.8] - 2026-10-12
 
