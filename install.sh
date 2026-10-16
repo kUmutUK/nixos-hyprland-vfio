@@ -58,6 +58,31 @@ fi
 PYTHON3="$(command -v python3)"
 log "Environment OK (Python: ${PYTHON3})."
 
+# SSH password access depends on this external secret file. Inspect it before any
+# system mutation, but do not abort installation: the manual checklist below can
+# create/fix it before the new configuration is activated.
+check_ssh_password_file() {
+  local password_file="$1" metadata
+  if [[ ! -s "$password_file" ]]; then
+    warn "SSH password login is not ready: ${password_file} is missing or empty."
+    return 1
+  fi
+  if ! metadata="$(stat -c '%U:%G:%a' -- "$password_file" 2>/dev/null)"; then
+    warn "Could not inspect SSH password file metadata: ${password_file}."
+    return 1
+  fi
+  if [[ "$metadata" != "root:root:600" ]]; then
+    warn "SSH password file must be owned by root:root with mode 0600; found ${metadata}."
+    return 1
+  fi
+  log "SSH password file exists and has root:root mode 0600."
+  return 0
+}
+
+if ! check_ssh_password_file "$NIXOS_DIR/hashedPassword"; then
+  warn "Fix /etc/nixos/hashedPassword using the manual checklist before rebuilding; SSH password login will remain unavailable until then."
+fi
+
 read -rp "Do you want to continue? (yes/no): " confirm
 [[ "$confirm" != "yes" ]] && { info "Aborted."; exit 0; }
 

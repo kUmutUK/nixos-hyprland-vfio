@@ -338,14 +338,16 @@ sudo nixos-enter --root /mnt -c 'passwd root'
 
 > **Kernel sürümünü güncelleme:** `flake.nix`, CachyOS upstream `release` kanalındaki
 > `linuxPackages-cachyos-rt-bore-lto` paketini kullanır; sürüm numarası dosyaya sabit
-> yazılmaz. `flake.lock` mevcut girdiyi tekrarlanabilirlik için kaydeder ama kalıcı bir
-> sürüm kilidi değildir. Örneğin upstream 7.3 yayımladığında `/etc/nixos/nixos/` içinde
-> `sudo nix flake update cachyos-kernel --accept-flake-config` çalıştırın; ardından
-> `git diff -- flake.lock` ile farkı inceleyin ve aşağıdaki `dry-activate` derlemesini
-> test edin. Başarılı olmadan sisteme geçmeyin. **RT-Bore-LTO LTO upstream ikili
-> önbelleğinde yayımlanmıyor**; kernel yerel olarak derlenecek, uzun sürebilir veya
-> kaynak/araç zinciri sorunlarıyla başarısız olabilir. `overlays.pinned`, kernel ile
-> hedef nixpkgs revizyonunu eşleştirir ama eksik cache çıktısı oluşturmaz.
+> yazılmaz. Bu düzeltmedeki `flake.lock`, `873c5a2a40575b880a962aaade19afbb572adf92`
+> revizyonuna (Linux 7.2.9) güncellendi. Kilit dosyası tekrarlanabilirlik için girdiyi
+> kaydeder, kalıcı bir sürüm kısıtlaması değildir. Yeni upstream kernel yayımlandığında
+> `/etc/nixos/nixos/` içinde `sudo nix flake update cachyos-kernel --accept-flake-config`
+> çalıştırın; ardından `git diff -- flake.lock` ile farkı inceleyip aşağıdaki
+> `dry-activate` derlemesini test edin. Fish `nup` kısayolu aynı hedefli güncellemeyi
+> herhangi bir dizinden yapar. Başarılı olmadan sisteme geçmeyin. **RT-Bore-LTO LTO
+> upstream ikili önbelleğinde yayımlanmıyor**; kernel yerel olarak derlenecek, uzun
+> sürebilir veya kaynak/araç zinciri sorunlarıyla başarısız olabilir. `overlays.pinned`,
+> kernel ile hedef nixpkgs revizyonunu eşleştirir ama eksik cache çıktısı oluşturmaz.
 
 
 ---
