@@ -1127,7 +1127,7 @@ while true; do
 
         # Display successful translations using Dunst.
         if [ -n "$TRANSLATION" ]; then
-            # Reuse notification ID 9999 so the notification is updated instead of stacked.
+            # Reuse notification ID 9997 so the notification is updated instead of stacked.
             notify-send -r 9997 "Translation:" "$TRANSLATION"
         fi
     fi
