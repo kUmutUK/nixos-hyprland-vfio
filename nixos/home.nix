@@ -240,7 +240,7 @@ let
 
     # The referenced Rofi theme (`arthur`) is not present in this repository. Use the
     # default theme rather than starting Rofi with a missing theme.
-    bind = $mainMod, A, exec, ${pkgs.rofi}/bin/rofi -show drun
+    bind = $mainMod, A, exec, rofi -show drun -theme arthur
     bind = $mainMod, C, exec, kitty
     bind = $mainMod, Q, killactive
     bind = $mainMod, Return, exec, kitty
