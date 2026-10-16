@@ -14,7 +14,7 @@ info()  { echo -e "${CYAN}[i]${NC} $1"; }
 error() { echo -e "${RED}[✗]${NC} $1"; exit 1; }
 step()  { echo -e "\n${BOLD}${CYAN}▶ $1${NC}"; }
 
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 BACKUP_DIR="$HOME/.nixos-config-backup-$(date +%Y%m%d-%H%M%S)"
 NIXOS_DIR="/etc/nixos"
 NIXOS_FLAKE_DIR="$NIXOS_DIR/nixos"
@@ -36,6 +36,13 @@ echo ""
 step "Preflight checks"
 if ! grep -qi nixos /etc/os-release 2>/dev/null; then
   error "This script must be run on NixOS."
+fi
+# The deployment target is /etc/nixos/nixos. Running a checkout whose root is
+# /etc/nixos would make REPO_DIR/nixos and NIXOS_FLAKE_DIR the same directory,
+# causing cp to copy each configuration file onto itself after earlier steps
+# have already changed the machine. Detect this before any prompts or mutations.
+if [[ -d "$NIXOS_DIR" && "$REPO_DIR" == "$(cd "$NIXOS_DIR" && pwd -P)" ]]; then
+  error "Do not run the repository from /etc/nixos itself. Keep the checkout outside /etc/nixos (for example ~/nixos-hyprland-vfio) so source files cannot overlap the deployment target."
 fi
 if [[ $EUID -eq 0 ]]; then
   error "Do not run as root. Use a normal user with sudo privileges."
@@ -255,21 +262,30 @@ if [[ -z "$monitor_output" ]] && [ -d /sys/class/drm ]; then
     fi
   done
 fi
+trim_whitespace() {
+  local value="$1"
+  value="${value#"${value%%[![:space:]]*}"}"
+  value="${value%"${value##*[![:space:]]}"}"
+  printf '%s' "$value"
+}
+
 read -rp "Monitor output name (for mpvpaper) [${monitor_output:-not detected}]: " input_mon
-if [[ -n "${input_mon//[[:space:]]/}" ]]; then
+input_mon="$(trim_whitespace "$input_mon")"
+if [[ -n "$input_mon" ]]; then
   monitor_output="$input_mon"
 fi
 while [[ -z "${monitor_output//[[:space:]]/}" ]]; do
   warn "Monitor output name cannot be empty. Find the exact name with: hyprctl monitors"
   read -rp "Enter a non-empty monitor output name (e.g. DP-3): " input_mon
-  if [[ -n "${input_mon//[[:space:]]/}" ]]; then
+  input_mon="$(trim_whitespace "$input_mon")"
+  if [[ -n "$input_mon" ]]; then
     monitor_output="$input_mon"
   fi
 done
 
 echo ""
-read -rp "Hyprland monitor line (e.g. monitor = DP-3,2560x1440@170,auto,1) [monitor = ${input_mon:-$monitor_output},preferred,auto,1]: " hypr_mon_line
-hypr_mon_line="${hypr_mon_line:-monitor = ${input_mon:-$monitor_output},preferred,auto,1}"
+read -rp "Hyprland monitor line (e.g. monitor = DP-3,2560x1440@170,auto,1) [monitor = ${monitor_output},preferred,auto,1]: " hypr_mon_line
+hypr_mon_line="${hypr_mon_line:-monitor = ${monitor_output},preferred,auto,1}"
 
 echo ""
 wallpaper_video="/home/localhost/Downloads/arthur-leywin-the-beginning-after-the-end.3840x2160.mp4"
@@ -511,6 +527,7 @@ else
   # Run the XML update as root: the destination is owned by the system.
   if sudo mkdir -p /var/lib/libvirt && sudo "$PYTHON3" - "$gpu_pci" "$gpu_audio" "$REPO_DIR/vm-xml/win10.xml" "$PATCHED_XML" <<'PYEOF'
 import os, re, shutil, sys, time, uuid as uuidlib, secrets, tempfile, stat
+import xml.etree.ElementTree as ET
 
 gpu, aud, src, dst = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
 
@@ -522,6 +539,14 @@ def xml_attrs(addr):
     return f'domain="0x{d}" bus="0x{b}" slot="0x{s}" function="0x{f}"'
 
 data = open(src, encoding="utf-8").read()
+try:
+    xml_root = ET.fromstring(data)
+except ET.ParseError as exc:
+    sys.exit(f"ERROR: VM XML is malformed ({exc}); no file was written.")
+
+# Count actual XML elements with a parser (not raw text), so commented examples
+# cannot affect validation and malformed/unrecognized PCI nodes are not ignored.
+pci_hostdev_count = len(xml_root.findall(".//hostdev[@type='pci']"))
 
 # Give a new deployment a unique libvirt UUID and locally administered MAC.
 # If a destination XML already exists, preserve its identity on reruns so DHCP
@@ -550,8 +575,12 @@ pattern = re.compile(
 
 addrs = [xml_attrs(gpu), xml_attrs(aud)]
 counter = [0]
+comment_spans = [m.span() for m in re.finditer(r"<!--.*?-->", data, re.DOTALL)]
 
 def repl(m):
+    # Do not rewrite commented-out XML examples: they are not real hostdevs.
+    if any(start <= m.start() < end for start, end in comment_spans):
+        return m.group(0)
     i = counter[0]
     counter[0] += 1
     return m.group(1) + (addrs[i] if i < len(addrs) else m.group(2)) + m.group(3)
@@ -559,18 +588,16 @@ def repl(m):
 new = pattern.sub(repl, data)
 
 # Only PCI hostdev addresses are synchronized; USB hostdevs must remain untouched.
+# Require exactly two actual PCI nodes and exactly two address blocks the updater
+# understands. Abort before creating backups or replacing the deployed XML if the
+# pair is incomplete, contains extras, or has an unsupported XML structure.
 n = counter[0]
-if n == 0:
-    sys.exit("ERROR: no PCI hostdev elements found in XML (0 matches). No file was written.")
-if n != 2:
-    print(f"WARNING: found {n} PCI hostdev elements in XML; expected exactly 2.", file=sys.stderr)
-    if n < 2:
-        print("WARNING: the GPU/audio PCI pair may be incomplete; verify both entries manually.", file=sys.stderr)
-    else:
-        print(f"WARNING: {n-2} extra PCI hostdev element(s) were not synchronized; review them manually.",
-              file=sys.stderr)
-    print("WARNING: verify PCI addresses with the command below:", file=sys.stderr)
-    print(f"  grep -n -A6 'hostdev.*type=\"pci\"' {dst}", file=sys.stderr)
+if pci_hostdev_count != 2 or n != 2:
+    sys.exit(
+        "ERROR: VM XML must contain exactly two synchronizable PCI hostdev source "
+        f"addresses (found {pci_hostdev_count} PCI hostdev element(s), {n} supported); "
+        "no file was written."
+    )
 
 if os.path.exists(dst):
     backup = f"{dst}.bak-{int(time.time())}"
@@ -619,7 +646,7 @@ except BaseException:
             pass
     raise
 
-print(f"OK: found {n} PCI hostdev elements; synchronized {min(n, 2)} -> {dst}")
+print(f"OK: found exactly {pci_hostdev_count} PCI hostdev elements; synchronized GPU/audio addresses -> {dst}")
 PYEOF
   then
     log "vm-xml/win10.xml -> ${PATCHED_XML} (GPU=${gpu_pci}, Audio=${gpu_audio})"

@@ -5,6 +5,7 @@ This file summarizes notable changes in English. The original detailed Turkish h
 ## Unreleased — 2026-10-16
 
 ### Fixed
+- Reject running the installer from `/etc/nixos` before system changes, trim monitor-name input before using it in Hyprland defaults, and abort VM XML synchronization unless exactly two real PCI `hostdev` elements have supported source-address blocks. Added regression coverage for malformed/incomplete/extra PCI pairs and whitespace-only monitor input.
 - Corrected the Rofi theme comment without changing the working `arthur` binding; clarified that `wuwa-gemma` is a custom Ollama alias based on Aya Expanse 8B, not a Gemma-family model.
 - Restricted installer XML address synchronization to PCI `hostdev` nodes, fixed warnings for incomplete versus extra PCI entries, and added a regression test that ensures USB address sources are never rewritten as PCI addresses.
 - Aligned the README with the default VM XML: it documents the two active fixed USB passthrough IDs and the system-wide low-latency-layer/Reflex environment variables without changing the VM XML or Rofi theme.
