@@ -238,8 +238,7 @@ let
 
     $mainMod = SUPER
 
-    # The referenced Rofi theme (`arthur`) is not present in this repository. Use the
-    # default theme rather than starting Rofi with a missing theme.
+    # Use the `arthur` Rofi theme configured on the target system.
     bind = $mainMod, A, exec, rofi -show drun -theme arthur
     bind = $mainMod, C, exec, kitty
     bind = $mainMod, Q, killactive
@@ -884,8 +883,9 @@ in
 # status, and the script does not enable `set -e`. Embedded-script scanning was added
 # to CI on 2026-10-05.
 
-# The Gemma model is a large manual download. If it is missing, `/api/generate` may
-# return `null`; stop before entering the OCR loop instead of emitting invalid output.
+# The custom Ollama alias `wuwa-gemma` is based on Aya Expanse 8B and requires a
+# first-run model download via `wuwa-gemma-init`. If it is missing, `/api/generate`
+# may return `null`; stop before entering the OCR loop instead of emitting invalid output.
 if ! curl -fsS --connect-timeout 2 --max-time 4 http://localhost:11434/api/tags \
     | jq -e '.models[]? | select(.name | startswith("wuwa-gemma"))' >/dev/null 2>&1; then
     notify-send -u critical "WuWa AI" \
@@ -1016,7 +1016,7 @@ translate() {
         return
     fi
 
-    # Ask the LLM fallback (Aya/Gemma) if the fast backend fails.
+    # Ask the Aya Expanse 8B-based `wuwa-gemma` fallback if the fast backend fails.
     local llm=$(translate_llm "$raw")
     if [ -n "$llm" ]; then
         printf '%s\t%s\n' "$raw" "$llm" >> "$CACHE_FILE"
