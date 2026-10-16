@@ -79,7 +79,7 @@ sudo nixos-install --flake /mnt/etc/nixos/nixos#nixos --accept-flake-config
 
 ### Path B — Migrate an existing NixOS installation
 
-Run the installer as a normal user with `sudo` privileges:
+Run the installer as a normal user with `sudo` privileges. Keep the checkout outside `/etc/nixos` (for example, at `~/nixos-hyprland-vfio`). The installer deploys files to `/etc/nixos/nixos`; running the checkout from `/etc/nixos` itself makes the source and destination overlap, so the installer now rejects that layout before continuing.
 
 ```bash
 chmod +x install.sh  # fallback only if an external archive tool stripped the executable bit
@@ -96,7 +96,7 @@ git archive --format=zip --prefix=nixos-hyprland-vfio/ \
   --output=nixos-hyprland-vfio.zip HEAD
 ```
 
-The script backs up existing configuration files, asks for the selected GPU/audio PCI addresses and host-specific values, updates the deployed hook and VM XML, and preserves existing `system.stateVersion` and `home.stateVersion` values when it can identify them. It is not a variable-only editor: it copies selected configuration files into `/etc/nixos/nixos`, replaces that deployment's `hooks/` directory, writes the synchronized VM XML to `/var/lib/libvirt/win10.xml` (backing up an existing XML first), and may create `/home/.snapshots` on Btrfs when missing. It retains the five newest timestamped installer-backup directories and may delete older matching backups. Inspect every prompt and warning before proceeding. The script deliberately does not overwrite an existing machine-specific hardware configuration without confirmation.
+The script backs up existing configuration files, asks for the selected GPU/audio PCI addresses and host-specific values, updates the deployed hook and VM XML, and preserves existing `system.stateVersion` and `home.stateVersion` values when it can identify them. It aborts XML deployment unless the VM XML contains exactly two valid, synchronizable PCI `hostdev` source addresses for the GPU/audio pair. It is not a variable-only editor: it copies selected configuration files into `/etc/nixos/nixos`, replaces that deployment's `hooks/` directory, writes the synchronized VM XML to `/var/lib/libvirt/win10.xml` (backing up an existing XML first), and may create `/home/.snapshots` on Btrfs when missing. It retains the five newest timestamped installer-backup directories and may delete older matching backups. Inspect every prompt and warning before proceeding. The script deliberately does not overwrite an existing machine-specific hardware configuration without confirmation.
 
 ### Activate and reboot
 
