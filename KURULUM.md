@@ -9,8 +9,8 @@ Bu rehber AMD sistemler için optimize edilmiş **NixOS + LUKS2 + Btrfs + Hyprla
 - NixOS 26.05 Live ISO
 - UEFI sistem
 - AMD Ryzen CPU
-- AMD Radeon RX 6700 XT (Navi 22) — bu yapılandırmanın referans GPU hedefi. Diğer RX 6000/7000 modelleri; PCI/IOMMU grupları, GPU sıfırlama davranışı ve ROCm ayarları ayrıca doğrulanmadan desteklenmiş sayılmaz.
-- En az 810 GiB kapasite (yaklaşık 870 GB ondalık); pratikte 1 TB sınıfı disk önerilir.
+- AMD Radeon RX 6700 XT (belgelenen hedef donanım); diğer GPU modelleri için IOMMU grubu, reset davranışı ve ROCm uyumluluğu ayrıca doğrulanmalıdır.
+- En az 810 GB boş disk (aşağıdaki bölümlendirme 800 GB kullanıyor)
 
 ---
 
@@ -25,7 +25,7 @@ nmtui
 Klavyeyi TR yap:
 
 ```bash
-sudo loadkeys trq
+loadkeys trq
 ```
 
 ---
@@ -45,35 +45,7 @@ lsblk -o NAME,SIZE,MODEL,SERIAL,FSTYPE,MOUNTPOINTS
 
 ```bash
 DISK=/dev/nvme0n1    # ← BURAYI DEĞİŞTİRİN
-
-# Yalnızca tüm diski kabul et; bölüm aygıtı veya var olmayan bir yol kullanma.
-if [ ! -b "$DISK" ]; then
-  echo "HATA: $DISK mevcut bir blok aygıtı değil." >&2
-  exit 1
-fi
-DISK_TYPE=$(lsblk -dnro TYPE "$DISK") || exit 1
-if [ "$DISK_TYPE" != "disk" ]; then
-  echo "HATA: $DISK bir disk aygıtı değil (tür: $DISK_TYPE)." >&2
-  exit 1
-fi
-
-# Hedef disk veya alt bölümlerinden biri bağlıysa devam etme.
-if lsblk -nrpo MOUNTPOINTS "$DISK" | grep -qE '[^[:space:]]'; then
-  echo "HATA: $DISK veya bölümlerinden biri bağlı. Önce doğru diski doğrula ve bağlantıları kaldır." >&2
-  exit 1
-fi
-
-# sgdisk'teki G birimi GiB'dir. Bölümler toplam 809 GiB ayırır.
-MIN_DISK_BYTES=$((810 * 1024 * 1024 * 1024))
-DISK_BYTES=$(sudo blockdev --getsize64 "$DISK") || { echo "HATA: Disk kapasitesi okunamadı." >&2; exit 1; }
-if [ "$DISK_BYTES" -lt "$MIN_DISK_BYTES" ]; then
-  printf 'HATA: Disk kapasitesi yetersiz (%s bayt); en az 810 GiB (%s bayt) gerekiyor.\n' \
-    "$DISK_BYTES" "$MIN_DISK_BYTES" >&2
-  exit 1
-fi
-printf 'Disk kapasitesi kontrolü geçti: %s bayt (asgari 810 GiB).\n' "$DISK_BYTES"
-
-# NVMe disk bölümleri p1/p2 biçiminde, SATA/SCSI ise sda1/sda2 biçimindedir.
+# NVMe partition names use p1/p2; SATA/SCSI names look like sda1/sda2.
 case "$DISK" in
   *[0-9]) PART_PREFIX="${DISK}p" ;;
   *)      PART_PREFIX="$DISK" ;;
@@ -82,16 +54,13 @@ esac
 
 | Bölüm | Açıklama |
 |------|----------|
-| EFI | 1 GiB FAT32 |
-| SWAP | 8 GiB (zorunlu; aşağıdaki komutlar bu bölüm düzenini varsayar) |
-| LUKS | 800 GiB ana sistem |
+| EFI | 1G FAT32 |
+| SWAP | 8GB (opsiyonel) |
+| LUKS | Ana sistem |
 
 ---
 
 ## Disk oluşturma
-
-> `sgdisk` komutlarındaki `G` birimi GiB anlamına gelir. Aşağıdaki bölümler toplam 809 GiB ayırır.
-> Kapasite ve bağlı bölüm kontrolleri başarılı olsa bile, `sgdisk -Z` mevcut bölüm tablosunu geri alınamaz biçimde siler; model/seri numarasını son kez doğrulayın.
 
 ```bash
 sudo sgdisk -Z "$DISK"
@@ -108,8 +77,8 @@ sudo partprobe "$DISK"
 # 🔒 3. LUKS2 Kurulum
 
 ```bash
-sudo cryptsetup luksFormat "${PART_PREFIX}3" --type luks2
-sudo cryptsetup open "${PART_PREFIX}3" cryptroot
+cryptsetup luksFormat "${PART_PREFIX}3" --type luks2
+cryptsetup open "${PART_PREFIX}3" cryptroot
 ```
 
 ---
@@ -117,9 +86,9 @@ sudo cryptsetup open "${PART_PREFIX}3" cryptroot
 # 💽 4. Dosya Sistemleri
 
 ```bash
-sudo mkfs.fat -F32 "${PART_PREFIX}1"
-sudo mkswap "${PART_PREFIX}2"
-sudo mkfs.btrfs -L nixos /dev/mapper/cryptroot
+mkfs.fat -F32 "${PART_PREFIX}1"
+mkswap "${PART_PREFIX}2"
+mkfs.btrfs -L nixos /dev/mapper/cryptroot
 ```
 
 ---
@@ -127,18 +96,18 @@ sudo mkfs.btrfs -L nixos /dev/mapper/cryptroot
 # 🌳 5. Btrfs Subvolumes
 
 ```bash
-sudo mount /dev/mapper/cryptroot /mnt
+mount /dev/mapper/cryptroot /mnt
 
-sudo btrfs subvolume create /mnt/@
-sudo btrfs subvolume create /mnt/@home
-sudo btrfs subvolume create /mnt/@nix
-sudo btrfs subvolume create /mnt/@log
-sudo btrfs subvolume create /mnt/@snapshots
+btrfs subvolume create /mnt/@
+btrfs subvolume create /mnt/@home
+btrfs subvolume create /mnt/@nix
+btrfs subvolume create /mnt/@log
+btrfs subvolume create /mnt/@snapshots
 # NOTE: @home/.snapshots cannot be created here because @home is not mounted yet.
 # The subvolume required by services.snapper.configs.home (SUBVOLUME="/home")
 # must be created after @home is mounted below (see Section 6).
 
-sudo umount /mnt
+umount /mnt
 ```
 
 ---
@@ -146,28 +115,28 @@ sudo umount /mnt
 # 📦 6. Mount İşlemleri
 
 ```bash
-sudo mount -o subvol=@,noatime,compress=zstd:1,ssd,discard=async /dev/mapper/cryptroot /mnt
+mount -o subvol=@,noatime,compress=zstd:1,ssd,discard=async /dev/mapper/cryptroot /mnt
 
-sudo mkdir -p /mnt/{boot,home,nix,var/log,.snapshots}
+mkdir -p /mnt/{boot,home,nix,var/log,.snapshots}
 
 # Create this only AFTER mounting @home (below).
 
-sudo mount -o subvol=@home,noatime,compress=zstd:1,ssd,discard=async /dev/mapper/cryptroot /mnt/home
+mount -o subvol=@home,noatime,compress=zstd:1,ssd,discard=async /dev/mapper/cryptroot /mnt/home
 
 # @home is mounted; create and mount the Home Snapper subvolume now.
-sudo btrfs subvolume create /mnt/home/.snapshots
-sudo mount -o subvol=@home/.snapshots,noatime,compress=zstd:1,ssd,discard=async /dev/mapper/cryptroot /mnt/home/.snapshots
+btrfs subvolume create /mnt/home/.snapshots
+mount -o subvol=@home/.snapshots,noatime,compress=zstd:1,ssd,discard=async /dev/mapper/cryptroot /mnt/home/.snapshots
 
-sudo mount -o subvol=@nix,noatime,nodatacow,ssd,discard=async /dev/mapper/cryptroot /mnt/nix
+mount -o subvol=@nix,noatime,nodatacow,ssd,discard=async /dev/mapper/cryptroot /mnt/nix
 
-sudo mount -o subvol=@log,noatime,ssd,discard=async /dev/mapper/cryptroot /mnt/var/log
+mount -o subvol=@log,noatime,ssd,discard=async /dev/mapper/cryptroot /mnt/var/log
 
-sudo mount -o subvol=@snapshots,noatime,compress=zstd:1,ssd,discard=async /dev/mapper/cryptroot /mnt/.snapshots
+mount -o subvol=@snapshots,noatime,compress=zstd:1,ssd,discard=async /dev/mapper/cryptroot /mnt/.snapshots
 
 
-sudo mount "${PART_PREFIX}1" /mnt/boot
+mount "${PART_PREFIX}1" /mnt/boot
 
-sudo swapon "${PART_PREFIX}2"
+swapon "${PART_PREFIX}2"
 
 # Impermanence is not enabled in this configuration; no persistent-home directory is needed.
 ```
@@ -184,31 +153,20 @@ sadece donanıma özel dosyayı (`hardware-configuration.nix`) oradan
 alın, gerisini repo'nunkiyle değiştirin:
 
 ```bash
-sudo nixos-generate-config --root /mnt
+nixos-generate-config --root /mnt
 
 git clone https://github.com/kUmutUK/nixos-hyprland-vfio.git /tmp/repo
 cp /mnt/etc/nixos/hardware-configuration.nix /tmp/repo/nixos/hardware-configuration.nix
 
-# Keep the generated files as a backup before replacing the install tree.
-sudo mv /mnt/etc/nixos /mnt/etc/nixos-generated-backup
-sudo mkdir -p /mnt/etc/nixos
-sudo cp -r /tmp/repo/. /mnt/etc/nixos/
+rm -rf /mnt/etc/nixos
+mkdir -p /mnt/etc/nixos
+cp -r /tmp/repo/. /mnt/etc/nixos/
 ```
 
 > ℹ️ `hardware-configuration.nix` yukarıdaki `cp` komutuyla **sizin makinenizden
 > `nixos-generate-config` ile üretilmiş** olanla değiştirildiği için UUID'ler zaten
 > doğrudur; ayrıca elle güncellemeniz gerekmez. Yalnızca `lsblk -f` çıktısı
 > beklediğinizle örtüşmüyorsa kontrol edin.
->
-> **Disk swap şifrelemesi:** Örnek yapılandırma, swap bölümünü her aktivasyonda
-> rastgele anahtarla şifrelemek için `randomEncryption.enable = true;` kullanır.
-> `nixos-generate-config` çıktısındaki `swapDevices` girdisinde kendi swap aygıtı
-> yolunu koruyun ve `randomEncryption.enable = true;` ayarını aynı girdiye ekleyin.
-> Dosyayı `sudoedit /mnt/etc/nixos/nixos/hardware-configuration.nix` ile düzenleyin.
-> Referans yapılandırmadaki gibi `priority = 10;` da ekleyebilirsiniz; zram
-> önceliği 100 olduğundan zram önce kullanılır. Rastgele anahtarlı swap şifrelemesi
-> kalıcı LUKS anahtarı kullanmaz; yeniden başlatma sonrası önceki swap içeriği
-> çözülemez.
 >
 > Repo yapısı korunarak kopyalandığı için flake `/mnt/etc/nixos/nixos` altında
 > durur → kurulum komutunda `#nixos` öncesindeki yol bu dizini göstermelisiniz
@@ -280,32 +238,43 @@ hyprctl configversion
 
 # 🔑 8. Şifreler (root + localhost)
 
-`configuration.nix`, `localhost` kullanıcısının parolasını
-`hashedPasswordFile = "/etc/nixos/hashedPassword"` üzerinden okur. Temiz kurulumda
-bu dosyayı hedef sistemin kök dizinine, yani `/mnt/etc/nixos/hashedPassword`
-yoluna kurulumdan **önce** yazın. Dosya mevcut ve geçerli bir hash içeriyorsa
-üzerine yazmayın; eksik veya boşsa aşağıdaki komut yeni bir hash oluşturur:
-
 ```bash
-sudo install -d -m 755 /mnt/etc/nixos
-if [ ! -s /mnt/etc/nixos/hashedPassword ]; then
-  HASH=$(nix-shell -p whois --run 'mkpasswd --method yescrypt')
-  printf '%s\n' "$HASH" | sudo tee /mnt/etc/nixos/hashedPassword >/dev/null
-fi
-sudo chown root:root /mnt/etc/nixos/hashedPassword
-sudo chmod 600 /mnt/etc/nixos/hashedPassword
-sudo test -s /mnt/etc/nixos/hashedPassword
-password_meta=$(sudo stat -c '%U:%G:%a' /mnt/etc/nixos/hashedPassword)
-[ "$password_meta" = "root:root:600" ] || { echo "hashedPassword must be root:root:600 (found: $password_meta)" >&2; exit 1; }
+nixos-enter --root /mnt -c 'passwd root'
 ```
 
-> `tee` tek başına daha gevşek izinlerle dosya oluşturabilir; bu nedenle sahiplik
-> ve `0600` izin adımlarını atlamayın. `nix-shell -p whois` geçici olarak
-> `mkpasswd` sağlar; hash komutu parola girişini etkileşimli biçimde ister.
+> ⚠️ **`hashedPassword` dosyasını da oluşturun.** `configuration.nix`
+> `localhost` kullanıcısını `hashedPasswordFile = "/etc/nixos/hashedPassword"`
+> ile tanımlıyor. Bu dosya `.gitignore`'da (bilinçli olarak) tutulmuyor ve
+> `nixos-install` sırasında **yoksa hata da vermiyor** — sadece activation'da
+> `warning: password file ... does not exist` basıp `/etc/shadow`'a
+> `localhost:!:1:::::` yazıyor, yani masaüstü hesabı kilitleniyor ve
+> tuigreet ile giriş yapılamıyor. Aşağıdaki komutla oluşturun:
 >
-> `localhost` parolası Hyprland/tuigreet masaüstü oturumu içindir. Root parolası
-> ayrıdır ve konsol/acil kip erişiminde kullanılır; root parolasını kurulum
-> başarıyla tamamlandıktan sonra ayarlayın (§9).
+> ```bash
+> # The live ISO writes into the installed system mounted at /mnt.
+> # Therefore, the target file must be /mnt/etc/nixos/hashedPassword.
+> HASH=$(nix-shell -p whois --run 'mkpasswd --method yescrypt')
+> install -d -m 755 /mnt/etc/nixos
+> printf '%s\n' "$HASH" | sudo tee /mnt/etc/nixos/hashedPassword >/dev/null
+> sudo chmod 600 /mnt/etc/nixos/hashedPassword
+> ```
+>
+> `nixos-enter` `nixos-install` öncesinde genelde "NixOS kurulumu değil" diye
+> reddedebilir. O durumda dosyayı ISO tarafından doğrudan yaz:
+>
+> ```bash
+> # Run mkpasswd from a temporary environment and capture its output:
+> HASH=$(nix-shell -p whois --run 'mkpasswd --method yescrypt')
+> # Write the hash to the target system and restrict its permissions:
+> install -d -m 755 /mnt/etc/nixos
+> printf '%s\n' "$HASH" | sudo tee /mnt/etc/nixos/hashedPassword >/dev/null
+> sudo chmod 600 /mnt/etc/nixos/hashedPassword
+> ```
+>
+> `tee` tek başına 644 açtığı için `chmod 600` adımı atlanmamalı.
+>
+> `localhost` kullanıcısının şifresiyle (greetd/tuigreet) masaüstüne
+> gireceksiniz. Root şifresi ayrıdır ve konsol/acil kip için gereklidir.
 
 > 🔑 **SSH erişimi:** `configuration.nix` `PasswordAuthentication = false`
 > ve `authorizedKeys.keys` boş bırakılmış durumda — yani kurulumdan sonra
@@ -324,23 +293,21 @@ flake.nix repo kökünde değil, `nixos/` alt dizininde olduğu için `#nixos`
 
 ```bash
 # On the first run, review and accept the configured binary cache if trusted.
-sudo nixos-install --flake /mnt/etc/nixos/nixos#nixos --accept-flake-config
+nixos-install --flake /mnt/etc/nixos/nixos#nixos --accept-flake-config
 ```
 
-Kurulum başarıyla tamamlandıktan sonra hedef sistem hâlâ `/mnt` altında bağlıyken
-root parolasını ayarlayın veya güncelleyin. `nixos-enter` komutu, kurulum
-başarıyla tamamlanmadan çalıştırılırsa hedef sistemi tanımayı reddedebilir:
-
-```bash
-sudo nixos-enter --root /mnt -c 'passwd root'
-```
-
-> **CachyOS kernel cache:** the checked-in `flake.lock` already pins the upstream
-> `release` input. Do not refresh it just to perform this installation: keeping the
-> lock unchanged makes the source selection reproducible. Only run
-> `nix flake lock --update-input cachyos-kernel` when you intentionally want to
-> move to a newer kernel input; inspect and retain the resulting `flake.lock` diff.
-> A cache miss can still trigger a local BORE-LTO build, so inspect the build log.
+> **CachyOS kernel cache:** the flake now selects the upstream `release` branch
+> and pinned overlay. Before the first build, refresh only this input so the lock
+> file points to a revision published to the binary cache:
+>
+> ```bash
+> cd /mnt/etc/nixos/nixos
+> nix flake lock --update-input cachyos-kernel
+> ```
+>
+> If the cache is unavailable or the kernel derivation does not match, Nix may
+> still attempt a local BORE-LTO build. Do not treat a successful evaluation as
+> proof that the kernel will download from cache; inspect the build log.
 
 
 ---
@@ -352,7 +319,7 @@ sudo nixos-enter --root /mnt -c 'passwd root'
 # 🔄 10. Reboot
 
 ```bash
-sudo reboot
+reboot
 ```
 
 ---
@@ -436,25 +403,33 @@ başlangıç/teşhis içindir; oyun için kalıcı çözüm değildir.
 >
 > ⚠️ **VM'i normal shell'den başlatmayın.** Hook `loginctl terminate-user` ile
 > `localhost` kullanıcısının oturumlarını, `loginctl terminate-seat seat0` ile yerel
-> VT/greeter oturumlarını sonlandırabilir. Aynı kullanıcıyla açılan SSH oturumu da
-> kapanabilir. Ayrı TTY aynı kullanıcı/seat kapsamındaysa o da kapanabilir; sistem
-> yöneticisinin başlattığı detached unit kullanın:
+> VT/greeter oturumlarını sonlandırabilir. Ayrı TTY de aynı kullanıcı/seat kapsamındaysa
+> kapanabilir; sistem yöneticisinin başlattığı detached unit kullanın:
 > ```bash
 > sudo systemd-run --unit=vmstart --collect /run/current-system/sw/bin/virsh start win10
 > sudo journalctl -u vmstart.service -b --no-pager
 > ```
->
-> SSH'yi kurtarma kanalı sayacaksanız, hook'un sonlandırmadığı ayrı bir yönetici hesabını
-> ayrıca yapılandırıp önceden test edin. Varsayılan `localhost` SSH oturumuna güvenmeyin;
-> fiziksel bir kurtarma TTY'si hazır bulundurun.
 >
 > Doğrulama: `sudo virsh dominfo win10` → ad, UUID ve PCI hostdev'ler görünmeli.
 > Hook'un çalıştığını `sudo journalctl -u libvirtd -f` ve
 > `sudo tail -f /var/log/libvirt/qemu/win10.log` ile izleyebilirsin.
 >
 > ⚠️ **Hook logu:** `sudo cat /var/log/libvirt/vfio.log` — GPU'nun gerçekten
-> `vfio-pci`'ye bağlandığını, reset durumunu ve (Navi2x'te mümkünse)
-> kurtarma adımını burada görürsün.
+> `vfio-pci`'ye bağlandığını, reset durumunu ve kurtarma denemelerini burada görürsün.
+>
+> **Navi 2x kurtarma davranışı:** `remove` → `rtcwake` ile kısa uyku → `rescan`
+> yedeği varsayılan olarak **kapalıdır**. Normal sürücü geri bağlama başarısız olursa
+> hook bunu loglar; bu yedek yolu otomatik olarak çalıştırmaz. Donanım/UEFI desteğini
+> ayrıca doğrulamadan ve ayrı SSH/kurtarma erişimi hazırlamadan açmayın. Açılması
+> gerekiyorsa `nixos/configuration.nix` içindeki üst seviye NixOS yapılandırmasına
+> şu ayar eklenebilir:
+>
+> ```nix
+> systemd.services.libvirtd.environment.VFIO_ALLOW_SUSPEND_RECOVERY = "1";
+> ```
+>
+> Bu ayar host makineyi kısa süreliğine RAM'e uyutabilir; RTC uyanma desteği
+> yoksa erişim kaybı yaşanabilir. Varsayılan `0` değerini korumak daha güvenlidir.
 >
 > **Çok kullanıcılı sistemlerde `HOST_USER`:** hook, oturumu kapatmak için
 > `loginctl terminate-user "${HOST_USER:-localhost}"` çalıştırır (bkz.
@@ -514,7 +489,7 @@ sudo reboot
 ## Log kontrol
 
 ```bash
-sudo journalctl -u libvirtd
+journalctl -u libvirtd
 ```
 
 ```bash
