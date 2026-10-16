@@ -72,6 +72,33 @@ def main() -> int:
     if windows_iso.find("target") is None or windows_iso.find("target").get("bus") != "sata":
         return fail("Windows installation ISO should use the SATA CD-ROM device")
 
+    # The default template intentionally includes two active USB passthrough
+    # entries. Keep this invariant in sync with the README: install.sh only
+    # synchronizes PCI source addresses and does not discover/replace USB IDs.
+    usb_hostdevs = root.findall("./devices/hostdev[@type='usb']")
+    expected_usb_ids = {(0x1532, 0x0098), (0x05AC, 0x024F)}
+    actual_usb_ids: list[tuple[int, int]] = []
+    for hostdev in usb_hostdevs:
+        source = hostdev.find("./source")
+        vendor = source.find("vendor") if source is not None else None
+        product = source.find("product") if source is not None else None
+        if vendor is None or product is None:
+            return fail("every USB hostdev must declare both vendor and product IDs")
+        try:
+            vendor_id = int(vendor.get("id", ""), 0)
+            product_id = int(product.get("id", ""), 0)
+        except ValueError:
+            return fail("USB hostdev vendor/product IDs must be numeric")
+        actual_usb_ids.append((vendor_id, product_id))
+
+    if len(actual_usb_ids) != len(expected_usb_ids) or set(actual_usb_ids) != expected_usb_ids:
+        formatted = sorted(f"{vendor:04x}:{product:04x}" for vendor, product in actual_usb_ids)
+        expected = sorted(f"{vendor:04x}:{product:04x}" for vendor, product in expected_usb_ids)
+        return fail(
+            "default XML USB passthrough IDs must match the documented fixed devices; "
+            f"XML={formatted}, expected={expected}"
+        )
+
     hostdevs = root.findall("./devices/hostdev[@type='pci']")
     if len(hostdevs) != 2:
         return fail(
@@ -123,7 +150,7 @@ def main() -> int:
             f"XML={sorted(xml_bdfs)}, hook={[hook_gpu, hook_audio]}"
         )
 
-    print("OK: VM XML invariants passed (well-formedness, Q35, boot order, exactly two unique PCI hostdevs, and addresses matching the QEMU hook).")
+    print("OK: VM XML invariants passed (well-formedness, Q35, boot order, two documented USB passthrough IDs, exactly two unique PCI hostdevs, and PCI addresses matching the QEMU hook).")
     print("NOTE: this test does not replace a libvirt/QEMU semantic validation or a real VM boot test.")
     return 0
 
