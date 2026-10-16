@@ -27,7 +27,7 @@ This file summarizes notable changes in English. The original detailed Turkish h
 - Python compilation checks passed for the scripts.
 - VM XML invariants test passed.
 - VFIO driver-state / rollback regression test passed.
-- Nix evaluation/build and libvirt/QEMU semantic validation could not be run in this environment because the required executables were unavailable. The checked-in `flake.lock` already pins the CachyOS `release` input; do not refresh it just to apply these fixes. A cache miss can still trigger a local build.
+- Nix evaluation/build and libvirt/QEMU semantic validation were not run by the reviewer because the required executables were unavailable in the review environment. The project owner separately reports a successful target-system rebuild, successful BORE-LTO kernel build, Windows VM startup/shutdown, and recovery of the display/Hyprland session. These are owner-reported tests, not independently reproduced here; a second VM lifecycle cycle was not explicitly confirmed. The checked-in `flake.lock` pins the CachyOS `release` input; do not refresh it just to apply these fixes. A cache miss can still trigger a local build.
 
 ## Historical releases
 

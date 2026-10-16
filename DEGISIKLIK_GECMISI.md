@@ -1,5 +1,19 @@
 # 📜 Changelog
 
+> **Güncel ağaç açıklaması — 2026-10-16**
+>
+> - Aşağıdaki `[1.3.6]` bölümünde `amd_iommu=on` parametresinin eklendiği
+>   yazıyor. Bu, tarihsel bir değişiklik kaydıdır ve mevcut yapılandırmanın
+>   durumunu anlatmaz. Güncel `nixos/configuration.nix` içinde ne
+>   `amd_iommu=on` ne de `iommu=pt` etkinleştirilmiştir; `README.md` de bunu
+>   açıkça belirtir. IOMMU/AMD-Vi BIOS/UEFI'de etkinleştirilmeli ve çalışma
+>   zamanı `dmesg` ile `/sys/kernel/iommu_groups/` üzerinden doğrulanmalıdır.
+> - Proje sahibi 2026-10-16 tarihinde NixOS rebuild'in ve BORE-LTO kernel
+>   derlemesinin başarılı olduğunu; Windows VM'nin açılıp kapandığını ve
+>   kapanıştan sonra ekranın/Hyprland'ın geri geldiğini bildirdi. Bu, hedef
+>   sistem sahibinin test raporudur; bu statik inceleme ortamında bağımsız
+>   olarak yeniden çalıştırılmış değildir. İkinci bir VM aç/kapat döngüsü
+>   ayrıca doğrulanmış olarak kaydedilmemiştir.
 
 # [1.3.8] - 2026-10-12
 
