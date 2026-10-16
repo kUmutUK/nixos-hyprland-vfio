@@ -34,8 +34,9 @@ let
     # Let nixpkgs' standard CMake hooks handle configure, build, and install
     # using the install() rules shipped by upstream. No custom installPhase is
     # needed. The manifest is installed under $out/share/vulkan/implicit_layer.d.
-    # In v0.2.0 the layer is opt-in: LOW_LATENCY_LAYER=1 enables it. By default
-    # it exposes AMD Anti-Lag 2; LOW_LATENCY_LAYER_REFLEX=1 switches to Reflex.
+    # The upstream manifest registers this as an implicit Vulkan layer. Keep it
+    # disabled globally via DISABLE_LOW_LATENCY_LAYER; opt in per game by unsetting
+    # that variable, and add LOW_LATENCY_LAYER_REFLEX=1 only to test Reflex mode.
 
     meta = with lib; {
       description = "Vulkan layer for hardware agnostic input latency reduction (Reflex/Anti-Lag)";
@@ -240,13 +241,12 @@ in
     QT_QPA_PLATFORM = "wayland;xcb";
     XCURSOR_THEME = "capitaine-cursors";
     XCURSOR_SIZE = "16";
-    # Upstream v0.2.0 is opt-in. Enable the layer and select its Reflex interface
-    # globally. This switches Vulkan applications away from the default AMD
-    # Anti-Lag 2 interface; if a native game such as CS2 behaves worse, remove
-    # LOW_LATENCY_LAYER_REFLEX or set it only in the relevant game's launch options.
+    # This is an implicit Vulkan layer. Disable it for all applications by default;
+    # opt in to a specific game's Steam launch options instead. For Reflex mode use:
+    # env -u DISABLE_LOW_LATENCY_LAYER LOW_LATENCY_LAYER_REFLEX=1 %command%
+    # For the default AMD Anti-Lag 2 interface, omit LOW_LATENCY_LAYER_REFLEX.
     # NVIDIA spoofing is deliberately not enabled; upstream warns it can break FSR4.
-    LOW_LATENCY_LAYER = "1";
-    LOW_LATENCY_LAYER_REFLEX = "1";
+    DISABLE_LOW_LATENCY_LAYER = "1";
   };
 
   programs.fish.enable = true;
