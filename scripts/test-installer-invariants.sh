@@ -6,6 +6,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 INSTALLER="$ROOT/install.sh"
 README="$ROOT/README.md"
 CONFIG="$ROOT/nixos/configuration.nix"
+FLAKE="$ROOT/nixos/flake.nix"
 HOME_CONFIG="$ROOT/nixos/home.nix"
 
 bash -n "$INSTALLER"
@@ -262,6 +263,31 @@ if grep -q 'tr_TR\.UTF-8' "$CONFIG" "$HOME_CONFIG"; then
   exit 1
 fi
 
+if ! grep -Fq 'boot.kernelPackages = pkgs.cachyosKernels.linuxPackages-cachyos-rt-bore-lto;' "$FLAKE"; then
+  echo "FAIL: the flake must select the intended CachyOS RT-Bore-LTO kernel package." >&2
+  exit 1
+fi
+if ! grep -Fq 'DISABLE_LOW_LATENCY_LAYER = "1";' "$CONFIG"; then
+  echo "FAIL: the implicit low-latency Vulkan layer must remain disabled globally by default." >&2
+  exit 1
+fi
+if grep -Eq '^[[:space:]]*LOW_LATENCY_LAYER(_REFLEX)?[[:space:]]*=' "$CONFIG"; then
+  echo "FAIL: low-latency/Reflex variables must not be enabled system-wide." >&2
+  exit 1
+fi
+if ! grep -Fq 'env -u DISABLE_LOW_LATENCY_LAYER LOW_LATENCY_LAYER_REFLEX=1 %command%' "$README"; then
+  echo "FAIL: README must document the game-scoped Reflex launch option." >&2
+  exit 1
+fi
+if ! grep -Fq 'not yet been built or tested on the target system' "$README"; then
+  echo "FAIL: README must clearly mark RT-Bore-LTO as unvalidated until target testing." >&2
+  exit 1
+fi
+if ! grep -Fq 'does not publish `linuxPackages-cachyos-rt-bore-lto` in its binary cache' "$README"; then
+  echo "FAIL: README must disclose that RT-Bore-LTO requires a local build." >&2
+  exit 1
+fi
+
 if grep -Rqi waypaper "$CONFIG" "$HOME_CONFIG" "$ROOT/install.sh" "$ROOT/.github" "$README"; then
   echo "FAIL: Waypaper remains in active configuration, installer, CI, or current README." >&2
   exit 1
@@ -290,4 +316,4 @@ for name in sys.argv[1:]:
         raise SystemExit(f"FAIL: Turkish UI/comment strings remain in {name}: {', '.join(found)}")
 PY
 
-echo "OK: stateVersion preservation, path/monitor preflight, fail-closed XML synchronization, password-hash preservation, setup-guide ordering, Waypaper removal, PCI diagnostics, locale, and runtime UI invariants passed."
+echo "OK: installer, VM/VFIO, English locale/UI, RT-Bore-LTO selection, binary-cache warning, and per-game Vulkan latency-layer invariants passed."
