@@ -21,7 +21,7 @@ A flake-based NixOS gaming desktop that passes its single AMD Radeon GPU through
 
 The host is used for gaming and daily desktop work. When the VM starts, the QEMU hook stops the host graphical session and attaches the GPU functions to `vfio-pci`. When the VM stops, the hook attempts to return the GPU to the host drivers and restore the session. A failed preparation step should roll back and prevent the VM from starting.
 
-This is a personal, hardware-specific configuration, not a universal NixOS installer. Incorrect disk identifiers can destroy data; incorrect filesystem UUIDs can prevent boot; and a failed single-GPU reset can leave the host without graphics. Back up important data and keep a physical recovery TTY available before testing. Count SSH as a recovery path only after key-based access has been configured and tested through an account that the hook will not terminate; the default `localhost` account's SSH sessions can be ended with its graphical sessions.
+This is a personal, hardware-specific configuration, not a universal NixOS installer. Incorrect disk identifiers can destroy data; incorrect filesystem UUIDs can prevent boot; and a failed single-GPU reset can leave the host without graphics. Back up important data and keep a physical recovery TTY available before testing. SSH password login is enabled for the normal `localhost` account only, root login is disabled, and the QEMU hook terminates only the local `seat0` sessions so a headless SSH session should survive VM startup. Test remote access before relying on it; the hook will abort and roll back if a process still holds the GPU device nodes.
 
 The repository is MIT-licensed and is provided “as is,” without warranty. Use it at your own risk.
 
@@ -34,7 +34,7 @@ The repository is MIT-licensed and is provided “as is,” without warranty. Us
 | Firmware | UEFI. Enable IOMMU / AMD-Vi in firmware and verify it after boot with `dmesg` and `/sys/kernel/iommu_groups/`. |
 | Storage | The reference partitions total 809 GiB: 1 GiB EFI, 8 GiB swap, and an 800 GiB LUKS2/Btrfs volume. Use a disk of at least 810 GiB (about 870 GB decimal); a 1 TB-class disk is recommended. |
 | Filesystems | LUKS2 + Btrfs subvolumes + EFI. Disk swap sits outside the LUKS volume; the reference config encrypts it with a per-activation random key using `randomEncryption.enable = true`. Preserve that option in the generated hardware file for fresh installs. |
-| Kernel | CachyOS RT-Bore-LTO (real-time patch set + BORE scheduler + ThinLTO), selected through the locked flake input. Upstream does not publish this LTO variant to its binary cache, so it must be built locally. |
+| Kernel | CachyOS RT-Bore-LTO (real-time patch set + BORE scheduler + ThinLTO), selected through the upstream `release` flake input. The kernel version is not hard-coded; the lock file records the selected input revision until you intentionally update it. Upstream does not publish this LTO variant to its binary cache, so it must be built locally. |
 
 The active `boot.kernelParams` list does not set `amd_iommu=on` or `iommu=pt`. Enable IOMMU / AMD-Vi in firmware, then verify runtime support instead of assuming that the VFIO configuration alone enables it. The installer checks the GPU's IOMMU group. If unrelated devices share that group, the GPU may not be safely passed through without additional isolation measures. ACS override is not enabled by default.
 
@@ -74,7 +74,7 @@ sudo nixos-install --flake /mnt/etc/nixos/nixos#nixos --accept-flake-config
 
 - Replace `nixos/hardware-configuration.nix` with the file generated for the target machine. The repository's original UUIDs and device paths are machine-specific; never use them blindly.
 - Confirm the password hash created by the command sequence above exists at `/mnt/etc/nixos/hashedPassword` with permissions `0600`. Do not commit this file.
-- Review the CachyOS binary-cache trust prompt before accepting it. The flake uses the upstream `release` branch and pinned overlay. The checked-in `flake.lock` already pins that input, so leave it unchanged for a reproducible install. **Important:** upstream does not publish `linuxPackages-cachyos-rt-bore-lto` in its binary cache; expect a local RT/LTO kernel build, which may take a long time and may fail for source/toolchain reasons. `overlays.pinned` keeps the kernel package aligned with its intended nixpkgs revision; it does not make this uncached variant available. Run `nix flake lock --update-input cachyos-kernel` only when intentionally updating the kernel source, then review and keep the lock-file diff.
+- Review the CachyOS binary-cache trust prompt before accepting it. The flake follows the upstream `release` branch and uses `overlays.pinned`; the kernel version is not hard-coded in `flake.nix`. `flake.lock` records a reproducible snapshot, not a permanent kernel-version restriction. When upstream publishes a newer kernel (for example, 7.3), update only this input from `/etc/nixos/nixos/` with `sudo nix flake update cachyos-kernel --accept-flake-config`, inspect `git diff -- flake.lock`, and test the candidate before switching. RT-Bore-LTO's LTO variant is not in the upstream binary cache, so expect a local kernel build.
 - Verify the target disk before running any partitioning command. The installation guide contains destructive operations.
 
 ### Path B — Migrate an existing NixOS installation
@@ -132,7 +132,7 @@ dmesg | grep -Ei 'AMD-Vi|IOMMU'
 find /sys/kernel/iommu_groups/ -maxdepth 2 -type l
 ```
 
-SSH password authentication is disabled, and no public keys are included by default. Add your own public key to `users.users.localhost.openssh.authorizedKeys.keys` in `nixos/configuration.nix`, or disable `services.openssh` if you do not need SSH. Enabling SSH does not make it a reliable recovery channel during VM startup: the hook runs `loginctl terminate-user` for `HOST_USER` (default `localhost`), which can terminate SSH sessions logged in as that user. Unless you have configured and tested a separate administrative account that the hook will not terminate, use a physical recovery TTY instead.
+OpenSSH is enabled on TCP port 22, and the firewall allows that port. Password authentication is enabled for `localhost` only; root login is disabled, interactive keyboard authentication and X11 forwarding are disabled, and Fail2ban watches failed SSH attempts. Use a strong, unique account password and expose SSH only on networks you trust. For stronger authentication, add your own public key to `users.users.localhost.openssh.authorizedKeys.keys`; after confirming key login works, you can turn password authentication off. The QEMU hook now terminates only local `seat0` sessions, not all sessions for the user, so a headless SSH session should remain connected during GPU handoff. Keep a physical recovery TTY available and test this on your host before relying on it. Connect from another trusted device with `ssh localhost@<host-ip>` (find the address with `ip -br address`). After changing session variables or SSH options, rebuild and start a fresh login session before testing.
 
 ## Preparing and starting the VM
 
@@ -170,7 +170,7 @@ Start the VM outside the graphical login session because the hook may terminate 
 sudo systemd-run --unit=vmstart --collect /run/current-system/sw/bin/virsh start win10
 ```
 
-Check the unit and hook logs from a physical recovery TTY. An SSH session is suitable only if its account is configured and has been tested to remain outside the hook's `loginctl terminate-user` target; the default `localhost` SSH session may be disconnected:
+Check the unit and hook logs from a physical recovery TTY or SSH. The hook ends only local `seat0` sessions, so SSH sessions should remain available; however, any process still holding the GPU causes the handoff to abort rather than being forcibly terminated:
 
 ```bash
 sudo journalctl -u vmstart.service -b --no-pager
@@ -246,7 +246,7 @@ The OCR script now checks that the model is available before beginning; it repor
 |---|---|
 | RADV | AMD Vulkan driver; `AMD_VULKAN_ICD=RADV`, `RADV_PERFTEST=gpl` |
 | `lsfg-vk` | Vulkan frame-generation layer; per-game settings in `~/.config/lsfg-vk/conf.toml` |
-| `low_latency_layer` | Vulkan latency layer. It is installed as an implicit layer but disabled system-wide by `DISABLE_LOW_LATENCY_LAYER=1`. Opt in per game instead of globally: Steam launch option `env -u DISABLE_LOW_LATENCY_LAYER %command%` uses the default AMD Anti-Lag 2 interface; `env -u DISABLE_LOW_LATENCY_LAYER LOW_LATENCY_LAYER_REFLEX=1 %command%` selects Reflex (`VK_NV_low_latency2`). `LOW_LATENCY_LAYER=1` is not an enable switch in the pinned upstream source. |
+| `low_latency_layer` | Vulkan latency layer, enabled system-wide through PAM session variables with `LOW_LATENCY_LAYER=1` and `LOW_LATENCY_LAYER_REFLEX=1`. This selects the Reflex (`VK_NV_low_latency2`) interface for all Vulkan applications instead of the default AMD Anti-Lag 2 interface. If a particular app has problems, use `DISABLE_LOW_LATENCY_LAYER=1 %command%` in that app's Steam launch options to opt it out. |
 | GameMode | Applies the configured game-time priority and performance settings |
 | Gamescope | Fullscreen and window rules for games |
 | MangoHud | FPS, frametime, GPU/CPU, and temperature overlay |
@@ -254,7 +254,7 @@ The OCR script now checks that the model is available before beginning; it repor
 | power-profiles-daemon | Power profile / CPU governor management |
 | Steam / Proton / Wine | Windows game compatibility tools |
 
-The Vulkan manifests do not define an `enable_environment` entry. The low-latency implicit layer is disabled for normal applications by `DISABLE_LOW_LATENCY_LAYER=1`; remove that variable only for the game you want to test. Inspect active layers with:
+The Vulkan manifests do not define an `enable_environment` entry. The layer is enabled globally using the environment variables documented above. To disable it for one incompatible game, launch that game with `DISABLE_LOW_LATENCY_LAYER=1 %command%`. Inspect active layers with:
 
 ```bash
 VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
@@ -276,7 +276,7 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 
 - **RT-Bore-LTO validation:** the upstream release source provides this package but does not publish its LTO variant to the upstream binary cache. It must be built locally. Real-time preemption does not guarantee higher FPS or better game frametimes; benchmark the target games and retain a known-good boot generation until the new kernel is validated.
 - **Navi 2x reset behavior:** reliable reset and host rebind cannot be guaranteed from static analysis. The optional `remove`/`rtcwake`/`rescan` recovery path is disabled by default. Enabling `VFIO_ALLOW_SUSPEND_RECOVERY=1` can suspend the host briefly and should only be attempted after checking firmware support and arranging recovery access.
-- **Single-GPU host:** while the VM owns the GPU, the host does not have a normal graphical session. Keep a physical recovery TTY available. The hook may terminate SSH sessions for `HOST_USER` (default `localhost`), so do not rely on SSH unless a separate, tested administrative account is configured outside that target.
+- **Single-GPU host:** while the VM owns the GPU, the host does not have a normal graphical session. Keep a physical recovery TTY available. The hook ends only local `seat0` sessions and is designed to preserve SSH sessions. The device-node usage check still fails closed if a process retains the GPU, so test the full VM lifecycle on the target hardware.
 - **Fixed host user:** the hook defaults to `localhost` and terminates that user's graphical sessions. This is designed for this single-user configuration.
 - **Fixed USB passthrough IDs:** the default VM XML actively passes through USB IDs `1532:0098` and `05ac:024f`. The installer synchronizes GPU/audio PCI addresses only; it does not discover, validate, or replace these USB IDs. Verify them with `lsusb` and edit/remove the XML entries if they are not the intended devices.
 - **Swap outside LUKS2:** the reference `hardware-configuration.nix` enables per-activation random swap encryption (`randomEncryption.enable = true`). A fresh install must preserve this option in the machine-specific generated hardware file. If it is missing or disabled, the disk swap is unencrypted; random swap encryption is not persistent-key LUKS encryption.

@@ -307,13 +307,14 @@ password_meta=$(sudo stat -c '%U:%G:%a' /mnt/etc/nixos/hashedPassword)
 > ayrıdır ve konsol/acil kip erişiminde kullanılır; root parolasını kurulum
 > başarıyla tamamlandıktan sonra ayarlayın (§9).
 
-> 🔑 **SSH erişimi:** `configuration.nix` `PasswordAuthentication = false`
-> ve `authorizedKeys.keys` boş bırakılmış durumda — yani kurulumdan sonra
-> uzaktan giriş **kapalıdır**. Siz SSH kullanacaksanız:
-> `ssh-keygen -t ed25519 && cat ~/.ssh/id_ed25519.pub` çıktısını
-> `configuration.nix` içindeki `users.users.localhost.openssh.authorizedKeys.keys`
-> listesine ekleyin, `nixos-rebuild switch` çalıştırın. Kullanmayacaksanız
-> `services.openssh.enable = false` yapmak daha temiz.
+> 🔑 **SSH erişimi:** SSH sunucusu TCP 22 üzerinden açıktır; güvenlik duvarı da bu
+> porta izin verir. Parola ile giriş yalnızca `localhost` kullanıcısına açıktır,
+> root SSH girişi kapalıdır ve Fail2ban başarısız girişleri izler. Güçlü ve benzersiz
+> parola kullanın; SSH'yi yalnızca güvendiğiniz ağlarda erişilebilir tutun. Başka bir
+> cihazdan `ssh localhost@<sunucu-ip>` ile bağlanın; sunucu IP'sini `ip -br address`
+> ile bulabilirsiniz. Daha güvenli anahtar girişi için `ssh-keygen -t ed25519` oluşturup
+> `.pub` çıktısını `users.users.localhost.openssh.authorizedKeys.keys` listesine ekleyin.
+> Anahtarın çalıştığını doğruladıktan sonra `PasswordAuthentication = false` yapabilirsiniz.
 
 ---
 
@@ -335,15 +336,16 @@ başarıyla tamamlanmadan çalıştırılırsa hedef sistemi tanımayı reddedeb
 sudo nixos-enter --root /mnt -c 'passwd root'
 ```
 
-> **CachyOS kernel önbelleği:** depodaki `flake.lock`, upstream `release` girdisini
-> zaten sabitliyor. Kurulum için yalnızca bu nedenle kilidi yenilemeyin; kilidi korumak
-> kaynak seçimini tekrarlanabilir tutar. Daha yeni bir kernel girdisine bilinçli olarak
-> geçmek istediğinizde `nix flake lock --update-input cachyos-kernel` çalıştırın ve
-> oluşan `flake.lock` farkını inceleyip commit edin. **RT-Bore-LTO upstream ikili
-> önbelleğinde yayımlanmıyor**; bu nedenle kernel yerel olarak derlenecek. Derleme uzun
-> sürebilir ve kaynak kodu/derleyici araç zinciri sorunları nedeniyle başarısız olabilir.
-> `overlays.pinned` doğru nixpkgs sürümünü eşleştirir, fakat eksik bir önbellek çıktısı
-> oluşturmaz.
+> **Kernel sürümünü güncelleme:** `flake.nix`, CachyOS upstream `release` kanalındaki
+> `linuxPackages-cachyos-rt-bore-lto` paketini kullanır; sürüm numarası dosyaya sabit
+> yazılmaz. `flake.lock` mevcut girdiyi tekrarlanabilirlik için kaydeder ama kalıcı bir
+> sürüm kilidi değildir. Örneğin upstream 7.3 yayımladığında `/etc/nixos/nixos/` içinde
+> `sudo nix flake update cachyos-kernel --accept-flake-config` çalıştırın; ardından
+> `git diff -- flake.lock` ile farkı inceleyin ve aşağıdaki `dry-activate` derlemesini
+> test edin. Başarılı olmadan sisteme geçmeyin. **RT-Bore-LTO LTO upstream ikili
+> önbelleğinde yayımlanmıyor**; kernel yerel olarak derlenecek, uzun sürebilir veya
+> kaynak/araç zinciri sorunlarıyla başarısız olabilir. `overlays.pinned`, kernel ile
+> hedef nixpkgs revizyonunu eşleştirir ama eksik cache çıktısı oluşturmaz.
 
 
 ---
@@ -437,19 +439,17 @@ başlangıç/teşhis içindir; oyun için kalıcı çözüm değildir.
 > ⚠️ XML'deki disk/NVRAM yolları sabit geliyor. Kendi diskine göre
 > düzenlemezsen `virsh start win10` "disk bulunamadı" ile başarısız olur.
 >
-> ⚠️ **VM'i normal shell'den başlatmayın.** Hook `loginctl terminate-user` ile
-> `localhost` kullanıcısının oturumlarını, `loginctl terminate-seat seat0` ile yerel
-> VT/greeter oturumlarını sonlandırabilir. Aynı kullanıcıyla açılan SSH oturumu da
-> kapanabilir. Ayrı TTY aynı kullanıcı/seat kapsamındaysa o da kapanabilir; sistem
-> yöneticisinin başlattığı detached unit kullanın:
+> ⚠️ **VM'i detached bir systemd unit ile başlatın.** Hook yerel grafik oturumlarını
+> `loginctl terminate-seat seat0` ile sonlandırır; SSH oturumunu bilerek kapatmaz.
+> GPU aygıtlarını kullanan bir süreç kalırsa hook devam etmek yerine devri iptal edip
+> geri alma işlemini dener. Başlatma için:
 > ```bash
 > sudo systemd-run --unit=vmstart --collect /run/current-system/sw/bin/virsh start win10
 > sudo journalctl -u vmstart.service -b --no-pager
 > ```
 >
-> SSH'yi kurtarma kanalı sayacaksanız, hook'un sonlandırmadığı ayrı bir yönetici hesabını
-> ayrıca yapılandırıp önceden test edin. Varsayılan `localhost` SSH oturumuna güvenmeyin;
-> fiziksel bir kurtarma TTY'si hazır bulundurun.
+> Fiziksel kurtarma TTY'sini yine hazır bulundurun ve VM açılırken ikinci bir cihazdan
+> SSH bağlantısının korunduğunu gerçek donanımda test edin.
 >
 > Doğrulama: `sudo virsh dominfo win10` → ad, UUID ve PCI hostdev'ler görünmeli.
 > Hook'un çalıştığını `sudo journalctl -u libvirtd -f` ve
@@ -459,17 +459,10 @@ başlangıç/teşhis içindir; oyun için kalıcı çözüm değildir.
 > `vfio-pci`'ye bağlandığını, reset durumunu ve (Navi2x'te mümkünse)
 > kurtarma adımını burada görürsün.
 >
-> **Çok kullanıcılı sistemlerde `HOST_USER`:** hook, oturumu kapatmak için
-> `loginctl terminate-user "${HOST_USER:-localhost}"` çalıştırır (bkz.
-> `nixos/hooks/qemu`). Varsayılan `localhost`, bu config'in kullanıcı adıdır
-> ve tek kullanıcılı kurulumlar için doğrudur.
->
-> ⚠️ **DÜZELTME (2026-10-06):** burada önce
-> `HOST_USER=kullanici sudo virsh start win10` yazıyordu. Bu **çalışmaz**:
-> hook'u **libvirtd** (uzun ömürlü bir systemd servisi) çalıştırır, `virsh`
-> istemcisinin ortamını **miras almaz**; ayrıca aradaki `sudo` da `env_reset`
-> ile ortamı zaten temizler. `HOST_USER` config'in hiçbir yerinde tanımlı
-> değildir, dolayısıyla hook her zaman `localhost`'u kullanır.
+> **Oturum kapsamı:** hook artık `HOST_USER` kullanmaz ve `loginctl terminate-user`
+> çağırmaz. Yalnızca `seat0` üzerindeki yerel oturumları kapatır; SSH oturumu korunur.
+> GPU kullanım denetimi, arka planda GPU'yu tutan bir işlem kalırsa devri güvenli biçimde
+> iptal eder.
 >
 > Gerçekten farklı bir kullanıcıyı hedeflemek istiyorsanız tek yol
 > NixOS modülünde hook'a ortam vermektir — `configuration.nix` içinde
