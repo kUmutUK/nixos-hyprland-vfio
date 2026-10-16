@@ -99,6 +99,40 @@ if grep -Eq 'basename "\$\(readlink -f .*iommu_group' "$INSTALLER"; then
   exit 1
 fi
 
+# Test the SSH password-file preflight without touching /etc/nixos.
+password_test_dir="$(mktemp -d)"
+trap 'rm -rf "$state_test_dir" "$monitor_test_dir" "$password_test_dir"' EXIT
+awk '/^check_ssh_password_file\(\) \{/ { capture=1 } capture { print } capture && /^}/ { exit }' "$INSTALLER" > "$password_test_dir/check-password.sh"
+if ! grep -q '^check_ssh_password_file() {' "$password_test_dir/check-password.sh"; then
+  echo "FAIL: could not locate check_ssh_password_file() for its regression test." >&2
+  exit 1
+fi
+cat > "$password_test_dir/harness.sh" <<'BASH'
+warn() { :; }
+log() { :; }
+stat() { printf '%s\n' "${FAKE_STAT:-root:root:600}"; }
+source "$1"
+check_ssh_password_file "$2"
+BASH
+: > "$password_test_dir/empty"
+if FAKE_STAT='root:root:600' bash "$password_test_dir/harness.sh" "$password_test_dir/check-password.sh" "$password_test_dir/missing"; then
+  echo "FAIL: a missing SSH password file was accepted." >&2
+  exit 1
+fi
+if FAKE_STAT='root:root:600' bash "$password_test_dir/harness.sh" "$password_test_dir/check-password.sh" "$password_test_dir/empty"; then
+  echo "FAIL: an empty SSH password file was accepted." >&2
+  exit 1
+fi
+printf 'test-hash\n' > "$password_test_dir/valid"
+if FAKE_STAT='root:root:600' bash "$password_test_dir/harness.sh" "$password_test_dir/check-password.sh" "$password_test_dir/valid"; then :; else
+  echo "FAIL: a non-empty root:root/0600 SSH password file was rejected." >&2
+  exit 1
+fi
+if FAKE_STAT='localhost:users:644' bash "$password_test_dir/harness.sh" "$password_test_dir/check-password.sh" "$password_test_dir/valid"; then
+  echo "FAIL: an insecure SSH password file was accepted." >&2
+  exit 1
+fi
+
 assignment_line="$(awk '/^PATCHED_XML="\/var\/lib\/libvirt\/win10\.xml"$/ { print NR; exit }' "$INSTALLER")"
 first_use_line="$(awk '/\$PATCHED_XML/ { print NR; exit }' "$INSTALLER")"
 if [[ -z "$assignment_line" || -z "$first_use_line" || "$assignment_line" -ge "$first_use_line" ]]; then
@@ -284,6 +318,22 @@ if ! grep -Fq 'cachyos-kernel.url = "github:xddxdd/nix-cachyos-kernel/release";'
   echo "FAIL: the CachyOS input must follow the upstream release channel, not a hard-coded tag." >&2
   exit 1
 fi
+if ! grep -Fq 'nup = "sudo nix flake update --accept-flake-config --flake /etc/nixos/nixos cachyos-kernel";' "$HOME_CONFIG"; then
+  echo "FAIL: nup must update only the CachyOS input against the absolute system flake path." >&2
+  exit 1
+fi
+if grep -Fq 'RFC1918 home/LAN ranges are exempt' "$CONFIG"; then
+  echo "FAIL: stale Fail2ban comments still claim private LAN ranges are exempt." >&2
+  exit 1
+fi
+if ! grep -Fq 'ignoreIP = [ "127.0.0.0/8" "::1" ];' "$CONFIG"; then
+  echo "FAIL: Fail2ban must exempt loopback only, not private LAN addresses." >&2
+  exit 1
+fi
+if ! grep -Fq 'check_ssh_password_file "$NIXOS_DIR/hashedPassword"' "$INSTALLER" || ! grep -Fq 'root:root:600' "$INSTALLER"; then
+  echo "FAIL: installer preflight must check the SSH password hash file and its secure metadata." >&2
+  exit 1
+fi
 if ! grep -Fq 'nix flake update cachyos-kernel --accept-flake-config' "$README" || ! grep -Fq 'nix flake update cachyos-kernel --accept-flake-config' "$ROOT/KURULUM.md"; then
   echo "FAIL: both install guides must document how to update the CachyOS kernel input." >&2
   exit 1
@@ -335,6 +385,28 @@ for name in sys.argv[1:]:
     found = [word for word in forbidden if word in text]
     if found:
         raise SystemExit(f"FAIL: Turkish UI/comment strings remain in {name}: {', '.join(found)}")
+PY
+
+python3 - "$FLAKE" "$ROOT/nixos/flake.lock" <<'PY'
+import json
+import re
+import sys
+from pathlib import Path
+flake_text = Path(sys.argv[1]).read_text(encoding="utf-8")
+lock = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
+node = lock["nodes"]["cachyos-kernel"]
+locked = node["locked"]
+if node["original"].get("ref") != "release":
+    raise SystemExit("FAIL: the CachyOS lock must follow the upstream release branch.")
+if locked["rev"] == "b1332396df6e880d7e3b6b451c6a74132ce8cf66":
+    raise SystemExit("FAIL: the known stale 7.2.8 CachyOS lock revision has returned.")
+if not re.fullmatch(r"[0-9a-f]{40}", locked.get("rev", "")) or not locked.get("narHash"):
+    raise SystemExit("FAIL: CachyOS lock revision/hash must be complete.")
+child = lock["nodes"][node["inputs"]["nixpkgs"]]["locked"]
+if not re.fullmatch(r"[0-9a-f]{40}", child.get("rev", "")) or not child.get("narHash"):
+    raise SystemExit("FAIL: the CachyOS nested nixpkgs lock revision/hash must be complete.")
+if "linuxPackages-cachyos-rt-bore-lto" not in flake_text:
+    raise SystemExit("FAIL: flake must select the RT-Bore-LTO package.")
 PY
 
 echo "OK: installer, VM/VFIO, English locale/UI, updateable RT-Bore-LTO selection, global Reflex, SSH access, and SSH-preserving VFIO handoff invariants passed."
