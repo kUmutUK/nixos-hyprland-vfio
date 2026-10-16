@@ -1,6 +1,6 @@
 # flake.nix
 {
-  description = "NixOS CachyOS RT-Bore-LTO Kernel – Gaming + pyprland + lsfg-vk";
+  description = "NixOS CachyOS RT-Bore-LTO Kernel — Gaming + Hyprland + VFIO";
 
   # Configure the CachyOS binary cache at flake-evaluation time. On a fresh
   # installation, accept this cache explicitly with --accept-flake-config.

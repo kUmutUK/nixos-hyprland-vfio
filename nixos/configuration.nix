@@ -157,9 +157,8 @@ in
   services.fail2ban = {
     enable = true;
     maxretry = 5;
-    # RFC1918 home/LAN ranges are exempt for convenience. This also means compromised
-    # or hostile devices on the local network will not be banned by fail2ban; narrow
-    # the exception if the LAN is not trusted.
+    # Only loopback addresses are exempt. RFC1918/private LAN ranges are deliberately
+    # not excluded, so failed SSH attempts from untrusted LAN devices can still be banned.
     ignoreIP = [ "127.0.0.0/8" "::1" ];
     bantime = "24h";
     bantime-increment = {
