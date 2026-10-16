@@ -9,10 +9,18 @@
 >   açıkça belirtir. IOMMU/AMD-Vi BIOS/UEFI'de etkinleştirilmeli ve çalışma
 >   zamanı `dmesg` ile `/sys/kernel/iommu_groups/` üzerinden doğrulanmalıdır.
 > - Kernel, upstream `release` kanalındaki `linuxPackages-cachyos-rt-bore-lto` paketini
->   kullanır; sürüm numarası sabit yazılmaz. Yeni kernel (ör. 7.3) yayımlandığında
->   `sudo nix flake update cachyos-kernel --accept-flake-config` komutuyla kilidi bilinçli
->   güncelleyin ve farkı inceleyin. RT-Bore-LTO LTO upstream binary cache'te yoktur; yerel
->   derleme gerekir. Önceki başarılı test standart BORE-LTO içindi ve RT varyantını doğrulamaz.
+>   kullanır; sürüm numarası `flake.nix` içinde sabit yazılmaz. Kilit dosyası bu düzeltmeyle
+>   `873c5a2a40575b880a962aaade19afbb572adf92` revizyonuna (Linux 7.2.9) güncellendi.
+>   Yeni kernel yayımlandığında `sudo nix flake update cachyos-kernel --accept-flake-config`
+>   komutuyla kilidi bilinçli güncelleyin ve farkı inceleyin. Fish `nup` kısayolu yalnızca bu
+>   girdiyi günceller. RT-Bore-LTO LTO upstream binary cache'te yoktur; yerel derleme gerekir.
+>   Önceki başarılı test standart BORE-LTO içindi ve RT varyantını doğrulamaz.
+> - `install.sh` ön kontrolü `/etc/nixos/hashedPassword` dosyasının varlığını, boş olmadığını
+>   ve `root:root`/`0600` izinlerini denetler. Eksik/uygunsuzsa uyarı verir; kullanıcıya
+>   kurulumu tamamlamadan önce dosyayı düzeltmesi gerektiğini söyler.
+> - Fail2ban yorumları etkin ayarla hizalandı: yalnızca loopback muaf, özel LAN aralıkları
+>   da ban politikasına tabidir. `nup` alias'ı tüm flake girdilerini güncellemek yerine
+>   `/etc/nixos/nixos` içindeki yalnızca CachyOS kernel girdisini günceller.
 > - Vulkan düşük gecikme katmanı PAM oturum değişkenleri üzerinden sistem genelinde
 >   `LOW_LATENCY_LAYER=1` ve `LOW_LATENCY_LAYER_REFLEX=1` ile etkinleştirilmiştir. Uyumsuz
 >   oyunlar `DISABLE_LOW_LATENCY_LAYER=1 %command%` ile hariç tutulabilir.
