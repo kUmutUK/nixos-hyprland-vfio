@@ -8,6 +8,7 @@ README="$ROOT/README.md"
 CONFIG="$ROOT/nixos/configuration.nix"
 FLAKE="$ROOT/nixos/flake.nix"
 HOME_CONFIG="$ROOT/nixos/home.nix"
+HOOK="$ROOT/nixos/hooks/qemu"
 
 bash -n "$INSTALLER"
 
@@ -267,23 +268,43 @@ if ! grep -Fq 'boot.kernelPackages = pkgs.cachyosKernels.linuxPackages-cachyos-r
   echo "FAIL: the flake must select the intended CachyOS RT-Bore-LTO kernel package." >&2
   exit 1
 fi
-if ! grep -Fq 'DISABLE_LOW_LATENCY_LAYER = "1";' "$CONFIG"; then
-  echo "FAIL: the implicit low-latency Vulkan layer must remain disabled globally by default." >&2
+if ! grep -Fq 'LOW_LATENCY_LAYER = "1";' "$CONFIG" || ! grep -Fq 'LOW_LATENCY_LAYER_REFLEX = "1";' "$CONFIG"; then
+  echo "FAIL: the low-latency Vulkan layer and Reflex interface must be enabled system-wide." >&2
   exit 1
 fi
-if grep -Eq '^[[:space:]]*LOW_LATENCY_LAYER(_REFLEX)?[[:space:]]*=' "$CONFIG"; then
-  echo "FAIL: low-latency/Reflex variables must not be enabled system-wide." >&2
+if grep -Eq '^[[:space:]]*DISABLE_LOW_LATENCY_LAYER[[:space:]]*=' "$CONFIG" "$HOME_CONFIG"; then
+  echo "FAIL: the global layer configuration must not disable the Vulkan latency layer." >&2
   exit 1
 fi
-if ! grep -Fq 'env -u DISABLE_LOW_LATENCY_LAYER LOW_LATENCY_LAYER_REFLEX=1 %command%' "$README"; then
-  echo "FAIL: README must document the game-scoped Reflex launch option." >&2
+if ! grep -Fq 'DISABLE_LOW_LATENCY_LAYER=1 %command%' "$README"; then
+  echo "FAIL: README must document the per-game opt-out for incompatible Vulkan apps." >&2
+  exit 1
+fi
+if ! grep -Fq 'cachyos-kernel.url = "github:xddxdd/nix-cachyos-kernel/release";' "$FLAKE"; then
+  echo "FAIL: the CachyOS input must follow the upstream release channel, not a hard-coded tag." >&2
+  exit 1
+fi
+if ! grep -Fq 'nix flake update cachyos-kernel --accept-flake-config' "$README" || ! grep -Fq 'nix flake update cachyos-kernel --accept-flake-config' "$ROOT/KURULUM.md"; then
+  echo "FAIL: both install guides must document how to update the CachyOS kernel input." >&2
+  exit 1
+fi
+if ! grep -Fq 'services.openssh = {' "$CONFIG" || ! grep -Fq 'enable = true;' "$CONFIG" || ! grep -Fq 'PasswordAuthentication = true;' "$CONFIG" || ! grep -Fq 'AllowUsers = [ "localhost" ];' "$CONFIG" || ! grep -Fq 'PermitRootLogin = "no";' "$CONFIG"; then
+  echo "FAIL: SSH must be usable for localhost without allowing root SSH login." >&2
+  exit 1
+fi
+if ! grep -Fq 'allowedTCPPorts = [ 22 ];' "$CONFIG"; then
+  echo "FAIL: the firewall must allow the configured SSH port." >&2
+  exit 1
+fi
+if grep -Eq '^[[:space:]]*loginctl[[:space:]]+terminate-user' "$HOOK" || ! grep -Fq 'loginctl terminate-seat seat0' "$HOOK"; then
+  echo "FAIL: VFIO handoff must preserve remote SSH sessions and terminate only seat0." >&2
   exit 1
 fi
 if ! grep -Fq 'not yet been built or tested on the target system' "$README"; then
   echo "FAIL: README must clearly mark RT-Bore-LTO as unvalidated until target testing." >&2
   exit 1
 fi
-if ! grep -Fq 'does not publish `linuxPackages-cachyos-rt-bore-lto` in its binary cache' "$README"; then
+if ! grep -Fq 'not in the upstream binary cache' "$README"; then
   echo "FAIL: README must disclose that RT-Bore-LTO requires a local build." >&2
   exit 1
 fi
@@ -316,4 +337,4 @@ for name in sys.argv[1:]:
         raise SystemExit(f"FAIL: Turkish UI/comment strings remain in {name}: {', '.join(found)}")
 PY
 
-echo "OK: installer, VM/VFIO, English locale/UI, RT-Bore-LTO selection, binary-cache warning, and per-game Vulkan latency-layer invariants passed."
+echo "OK: installer, VM/VFIO, English locale/UI, updateable RT-Bore-LTO selection, global Reflex, SSH access, and SSH-preserving VFIO handoff invariants passed."
