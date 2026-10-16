@@ -1,8 +1,15 @@
-# Repair and validation report — 2026-10-15
+# Repair and validation report — 2026-10-16
 
 ## Scope
 
 Reviewed the uploaded source archive and modified source files, configuration, VM XML, installer, CI, scripts, and documentation. This is a static maintenance pass, not a claim that the configuration was activated on the target PC.
+
+## Corrections applied for the 2026-10-16 audit
+
+- `KURULUM.md` now states the 810 GiB minimum (about 870 GB decimal) and explicitly documents that the `G` suffix accepted by `sgdisk` represents GiB. The reference partitions total 809 GiB.
+- Before `sgdisk -Z` can run, the guide checks that the target exists, is a whole-disk block device, has no mounted descendants, and is at least 810 GiB. These checks reduce common mistakes but do not replace the operator's final model/serial-number verification; `sgdisk -Z` remains destructive.
+- `KURULUM.md` and `README.md` now identify RX 6700 XT/Navi 22 as the reference GPU and do not imply universal support for RX 6000/7000 cards.
+- The original uploaded full-project ZIP's missing Unix executable bit is distinguished from the new patch-only ZIP, which stores `install.sh` as mode `100755`. This patch archive contains only the corrected paths, not a duplicate full project or `.git` metadata.
 
 ## Changes made
 
@@ -64,7 +71,7 @@ Before relying on single-GPU passthrough, test VM startup from a separate TTY/SS
 
 ## Follow-up fixes in the reviewed archive
 
-- Defined `PATCHED_XML=/var/lib/libvirt/win10.xml` before its first use in `install.sh` and translated the remaining installer prompt/help strings. The input ZIP did not encode Unix permission bits for `install.sh`, so extraction produced mode `0644` even though the Git index records `100755`. This follow-up fix bundle explicitly stores `install.sh` as mode `100755`.
+- Defined `PATCHED_XML=/var/lib/libvirt/win10.xml` before its first use in `install.sh` and translated the remaining installer prompt/help strings. The originally uploaded full-project ZIP did not encode Unix permission bits for `install.sh`, so extraction produced mode `0644` even though the Git index records `100755`. The fix-only patch ZIP for the 2026-10-16 corrections stores `install.sh` as mode `100755`; this statement is verified against the patch archive, not inferred from the Git index.
 - Kept an already-deployed VM XML intact and corrected the README fallback to copy `vm-xml/win10.xml` from the repository root only when no deployed XML exists. The manual-copy path warns that host-specific PCI addresses must be checked.
 - Documented a manual migration prerequisite check for `/etc/nixos/hashedPassword` in `README.md`, including non-empty content, root ownership, and mode `0600`, before rebuild commands. The installer prints the same checks as follow-up commands; it does not independently inspect the deployed password file. Its example creates a hash only when the file is missing or empty, preserving an existing valid hash. Added a regression assertion that rejects the former undeclared `iommu_dir` spelling; the checked-in installer already uses the declared `gpu_iommu_dir`.
 - Retracted the false OVMF template-architecture finding, corrected historical HEAD wording, and removed stale advice to refresh the CachyOS lock during routine installation.
@@ -80,6 +87,6 @@ Before relying on single-GPU passthrough, test VM startup from a separate TTY/SS
 
 ## Follow-up validation of this fix bundle
 
-- The corrected ZIP stores `install.sh` with Unix mode `100755`, consistent with the Git index and the README's direct `./install.sh` invocation. ZIP mode is verified on the produced archive, not inferred from the Git index.
-- Passed after these edits: `bash -n` for the installer, QEMU hook, and regression tests; `scripts/test-installer-invariants.sh`; `scripts/test-vfio-hook-driver-state.sh`; `scripts/test-vm-xml.py`; Python compilation for the repository scripts; and XML parsing. Negative tests also confirmed that duplicate PCI addresses and a third PCI `hostdev` are rejected.
+- The fix-only patch ZIP produced for the 2026-10-16 corrections stores `install.sh` with Unix mode `100755`. The original full-project ZIP is intentionally not included or repackaged in this patch-only delivery; apply these files over the project tree and create a fresh full-project archive from the corrected tree when needed. ZIP mode was read back from the produced patch archive, not inferred from the Git index.
+- The pre-existing validation suite passed again for the 2026-10-16 correction set: `bash -n` for the installer, QEMU hook, and regression tests; `scripts/test-installer-invariants.sh`; `scripts/test-vfio-hook-driver-state.sh`; `scripts/test-vm-xml.py`; Python compilation for repository scripts; JSON parsing for `flake.lock`; and XML parsing for `win10.xml`. The newly added disk preflight code block in `KURULUM.md` was also extracted and Bash-syntax-checked. These checks do not simulate a real disk operation or VM lifecycle. Negative tests in the existing suite also confirm that duplicate PCI addresses and a third PCI `hostdev` are rejected.
 - `shellcheck`, Nix evaluation/build, libvirt validation, and real hardware lifecycle checks remain unrun because the required tools or target hardware are unavailable in this preparation environment.
