@@ -221,7 +221,7 @@ VNC listens only on `127.0.0.1`. Use an SSH tunnel for remote viewing; do not ex
 
 The mouse-selection and one-shot translation scripts use `translate-shell` (`trans`) with a Google Translate backend by default. Selected text is sent over the network; do not use these shortcuts for sensitive text unless you replace the backend with a local workflow.
 
-The WuWa OCR fallback requires the locally installed `wuwa-gemma` model. Start setup manually and wait for it to finish:
+The WuWa OCR fallback uses the custom Ollama alias `wuwa-gemma`, based on `aya-expanse:8b` (not the Gemma model family). The model is pulled when you start its setup service manually; wait for setup to finish:
 
 ```bash
 sudo systemctl start wuwa-gemma-init

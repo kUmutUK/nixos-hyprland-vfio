@@ -487,9 +487,10 @@ sudo nixos-rebuild dry-activate --flake /etc/nixos/nixos#nixos
 sudo nixos-rebuild switch --flake /etc/nixos/nixos#nixos
 ```
 
-## WuWa yerel Gemma modeli (isteğe bağlı, büyük indirme)
+## WuWa yerel çeviri modeli (`wuwa-gemma`, Aya Expanse 8B tabanlı; isteğe bağlı)
 
-Model otomatik indirilmez. WuWa OCR otomatik çevirisini ilk kez kullanmadan önce:
+`wuwa-gemma` Ollama adı, `aya-expanse:8b` modelinden oluşturulan özel bir addır; Gemma model ailesi değildir.
+Model servis otomatik olarak başlatılmadığı için WuWa OCR çevirisini ilk kez kullanmadan önce servisi elle başlatın.
 
 ```bash
 sudo systemctl start wuwa-gemma-init

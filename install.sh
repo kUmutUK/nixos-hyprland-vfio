@@ -541,7 +541,8 @@ data = re.sub(r'<uuid>[^<]+</uuid>', f'<uuid>{vm_uuid}</uuid>', data, count=1)
 data = re.sub(r'<mac\s+address="[^"]+"\s*/>', f'<mac address="{vm_mac}"/>', data, count=1)
 
 pattern = re.compile(
-    r'(<hostdev\b[^>]*>\s*(?:<driver\b[^>]*/>\s*)?<source>\s*<address\s+)([^/]+)(/>)',
+    r"(<hostdev\b(?=[^>]*\btype\s*=\s*['\"]pci['\"])[^>]*>\s*"
+    r"(?:<driver\b[^>]*/>\s*)?<source>\s*<address\s+)([^/]+)(/>)",
     re.DOTALL)
 
 addrs = [xml_attrs(gpu), xml_attrs(aud)]
@@ -554,18 +555,18 @@ def repl(m):
 
 new = pattern.sub(repl, data)
 
-# Fix (2026-10-05): previously, unexpected hostdev counts failed without a clear
-# explanation. Zero PCI hostdevs is a hard error; three or more produces a warning
-# and updates only the first GPU/audio pair so extra devices can be handled manually.
+# Only PCI hostdev addresses are synchronized; USB hostdevs must remain untouched.
 n = counter[0]
 if n == 0:
     sys.exit("ERROR: no PCI hostdev elements found in XML (0 matches). No file was written.")
 if n != 2:
-    print(f"WARNING: found {n} PCI hostdev elements in XML; expected 2.", file=sys.stderr)
-    print(f"WARNING: only the first 2 were updated (GPU={gpu}, Audio={aud}).", file=sys.stderr)
-    print(f"WARNING: {n-2} extra PCI hostdev element(s) need manual editing; check each <source><address>",
-          file=sys.stderr)
-    print("WARNING: verify the address with the command below:", file=sys.stderr)
+    print(f"WARNING: found {n} PCI hostdev elements in XML; expected exactly 2.", file=sys.stderr)
+    if n < 2:
+        print("WARNING: the GPU/audio PCI pair may be incomplete; verify both entries manually.", file=sys.stderr)
+    else:
+        print(f"WARNING: {n-2} extra PCI hostdev element(s) were not synchronized; review them manually.",
+              file=sys.stderr)
+    print("WARNING: verify PCI addresses with the command below:", file=sys.stderr)
     print(f"  grep -n -A6 'hostdev.*type=\"pci\"' {dst}", file=sys.stderr)
 
 if os.path.exists(dst):
@@ -615,7 +616,7 @@ except BaseException:
             pass
     raise
 
-print(f"OK: found {n} PCI hostdev elements; updated {min(n,2)} -> {dst}")
+print(f"OK: found {n} PCI hostdev elements; synchronized {min(n, 2)} -> {dst}")
 PYEOF
   then
     log "vm-xml/win10.xml -> ${PATCHED_XML} (GPU=${gpu_pci}, Audio=${gpu_audio})"

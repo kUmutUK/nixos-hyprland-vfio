@@ -5,6 +5,8 @@ This file summarizes notable changes in English. The original detailed Turkish h
 ## Unreleased — 2026-10-16
 
 ### Fixed
+- Corrected the Rofi theme comment without changing the working `arthur` binding; clarified that `wuwa-gemma` is a custom Ollama alias based on Aya Expanse 8B, not a Gemma-family model.
+- Restricted installer XML address synchronization to PCI `hostdev` nodes, fixed warnings for incomplete versus extra PCI entries, and added a regression test that ensures USB address sources are never rewritten as PCI addresses.
 - Aligned the README with the default VM XML: it documents the two active fixed USB passthrough IDs and the system-wide low-latency-layer/Reflex environment variables without changing the VM XML or Rofi theme.
 - Clarified that installer host-device counts and synchronization refer to PCI `hostdev` entries, not all device types; extended the VM XML regression test to guard the documented USB IDs as well as the PCI pair.
 - Clarified single-GPU recovery guidance: the hook can terminate SSH sessions for the default `localhost` user, so the README and Turkish setup guide now require a physical recovery TTY unless a separate, tested administrative session is configured. Removed a duplicate `android-file-transfer` package entry and corrected a stale Home Manager package-list comment.
