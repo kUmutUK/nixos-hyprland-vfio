@@ -104,6 +104,33 @@ if [[ -z "$assignment_line" || -z "$first_use_line" || "$assignment_line" -ge "$
   exit 1
 fi
 
+if ! grep -Fq 'Do not run the repository from /etc/nixos itself.' "$INSTALLER"; then
+  echo "FAIL: installer must reject a checkout whose root overlaps /etc/nixos before making changes." >&2
+  exit 1
+fi
+if ! grep -Fq 'input_mon="$(trim_whitespace "$input_mon")"' "$INSTALLER"; then
+  echo "FAIL: monitor input must be trimmed before it is accepted or used as a default." >&2
+  exit 1
+fi
+if grep -Fq 'input_mon:-$monitor_output' "$INSTALLER"; then
+  echo "FAIL: raw monitor input must not override the validated monitor default." >&2
+  exit 1
+fi
+
+monitor_test_dir="$(mktemp -d)"
+trap 'rm -rf "$state_test_dir" "$monitor_test_dir"' EXIT
+awk '/^trim_whitespace\(\) \{/ { capture=1 } capture { print } capture && /^}/ { exit }' "$INSTALLER" > "$monitor_test_dir/trim.sh"
+cat >> "$monitor_test_dir/trim.sh" <<'BASH'
+set -e
+whitespace_only="$(printf ' \t  ')"
+[[ "$(trim_whitespace "$whitespace_only")" == "" ]]
+[[ "$(trim_whitespace '  DP-3  ')" == "DP-3" ]]
+BASH
+if ! bash "$monitor_test_dir/trim.sh"; then
+  echo "FAIL: monitor input trimming did not handle blank/padded input." >&2
+  exit 1
+fi
+
 python3 - "$INSTALLER" <<'PY'
 import ast
 import re
@@ -134,17 +161,64 @@ exec(compile(ast.Module(body=[pattern_assignment], type_ignores=[]), "installer-
      {"re": re}, namespace)
 pattern = namespace["pattern"]
 sample_xml = "\n".join([
+    '<domain><name>win10</name><uuid>11111111-2222-3333-4444-555555555555</uuid>',
     '<devices>',
     '<hostdev mode="subsystem" type="usb"><source><address bus="1" device="2"/></source></hostdev>',
     '<hostdev mode="subsystem" type="pci"><source><address domain="0x0000" bus="0x0b" slot="0x00" function="0x0"/></source></hostdev>',
     "<hostdev mode=\"subsystem\" type='pci'><source><address domain='0x0000' bus='0x0b' slot='0x00' function='0x1'/></source></hostdev>",
-    '</devices>',
+    '<interface type="network"><mac address="52:54:00:00:00:01"/></interface>',
+    '</devices></domain>',
 ])
 matches = list(pattern.finditer(sample_xml))
-if len(matches) != 2 or any(re.search(r'type\s*=\s*[\"\\\']usb[\"\\\']', m.group(0)) for m in matches):
+if len(matches) != 2 or any(re.search(r'type\s*=\s*["\']usb["\']', m.group(0)) for m in matches):
     raise SystemExit("FAIL: installer PCI synchronization must match PCI hostdevs only, never USB address sources.")
-if "if n < 2:" not in embedded or "extra PCI hostdev element(s)" not in embedded:
-    raise SystemExit("FAIL: installer must distinguish a missing PCI pair member from extra PCI entries.")
+if "pci_hostdev_count != 2 or n != 2" not in embedded:
+    raise SystemExit("FAIL: installer must fail closed unless exactly two actual PCI hostdevs have synchronizable source addresses.")
+if "ET.fromstring(data)" not in embedded or "comment_spans" not in embedded:
+    raise SystemExit("FAIL: XML validation must parse real XML nodes and ignore commented-out examples.")
+
+# Execute the actual embedded updater against temporary fixtures. Failed cases must
+# exit non-zero before a destination XML is created; the valid pair must be rewritten.
+import subprocess
+import tempfile
+
+pci0 = '<hostdev mode="subsystem" type="pci"><source><address domain="0x0000" bus="0x0b" slot="0x00" function="0x0"/></source></hostdev>'
+pci1 = "<hostdev mode='subsystem' type='pci'><source><address domain='0x0000' bus='0x0b' slot='0x00' function='0x1'/></source></hostdev>"
+pci2 = '<hostdev mode="subsystem" type="pci"><source><address domain="0x0000" bus="0x0c" slot="0x00" function="0x0"/></source></hostdev>'
+usb = '<hostdev mode="subsystem" type="usb"><source><address bus="1" device="2"/></source></hostdev>'
+header = '<domain><name>win10</name><uuid>11111111-2222-3333-4444-555555555555</uuid><devices>'
+footer = '<interface type="network"><mac address="52:54:00:00:00:01"/></interface></devices></domain>'
+fixtures = {
+    "valid-two": (header + usb + '<!-- ' + pci2 + ' -->' + pci0 + pci1 + footer, True),
+    "none": (header + usb + footer, False),
+    "one": (header + pci0 + footer, False),
+    "three": (header + pci0 + pci1 + pci2 + footer, False),
+    "unmatched-source": (header + pci0 + '<hostdev type="pci"><source><adapter name="missing-address"/></source></hostdev>' + footer, False),
+    "malformed-xml": (header + pci0 + pci1 + footer + '<', False),
+}
+for name, (xml, should_pass) in fixtures.items():
+    with tempfile.TemporaryDirectory(prefix="installer-xml-test-") as temp:
+        src = Path(temp) / "source.xml"
+        dst = Path(temp) / "deployed.xml"
+        src.write_text(xml, encoding="utf-8")
+        result = subprocess.run(
+            [sys.executable, "-", "0000:0b:00.0", "0000:0b:00.1", str(src), str(dst)],
+            input=embedded, text=True, capture_output=True,
+        )
+        passed = result.returncode == 0 and dst.is_file()
+        if passed != should_pass:
+            raise SystemExit(
+                f"FAIL: XML updater fixture {name!r}: expected success={should_pass}, "
+                f"exit={result.returncode}, output={result.stdout}{result.stderr}"
+            )
+        if not should_pass and dst.exists():
+            raise SystemExit(f"FAIL: XML updater fixture {name!r} wrote a destination on failure.")
+        if name == "valid-two":
+            generated = dst.read_text(encoding="utf-8")
+            if 'bus="0x0b" slot="0x00" function="0x0"' not in generated or 'function="0x1"' not in generated:
+                raise SystemExit("FAIL: valid XML did not receive the selected GPU/audio addresses.")
+            if ('<!-- ' + pci2 + ' -->') not in generated:
+                raise SystemExit("FAIL: a commented-out PCI example was altered by XML synchronization.")
 PY
 
 python3 - "$README" <<'PY'
@@ -216,4 +290,4 @@ for name in sys.argv[1:]:
         raise SystemExit(f"FAIL: Turkish UI/comment strings remain in {name}: {', '.join(found)}")
 PY
 
-echo "OK: stateVersion preservation, installer XML destination, password-hash preservation, setup-guide ordering, Waypaper removal, PCI diagnostics, locale, and runtime UI invariants passed."
+echo "OK: stateVersion preservation, path/monitor preflight, fail-closed XML synchronization, password-hash preservation, setup-guide ordering, Waypaper removal, PCI diagnostics, locale, and runtime UI invariants passed."
