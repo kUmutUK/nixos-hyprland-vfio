@@ -10,6 +10,62 @@ HOME_CONFIG="$ROOT/nixos/home.nix"
 
 bash -n "$INSTALLER"
 
+# Exercise the real apply_state_version() helper without running the installer.
+# The installer is interactive and performs system changes at top level, so only
+# extract this pure helper and provide harmless stubs for sudo/log/error.
+state_test_dir="$(mktemp -d)"
+trap 'rm -rf "$state_test_dir"' EXIT
+awk '/^apply_state_version\(\) \{/ { capture=1 } capture { print } capture && /^}/ { exit }' "$INSTALLER" \
+  > "$state_test_dir/apply-state-version.sh"
+if ! grep -q '^apply_state_version() {' "$state_test_dir/apply-state-version.sh"; then
+  echo "FAIL: could not locate apply_state_version() for its regression test." >&2
+  exit 1
+fi
+cat > "$state_test_dir/state-version-harness.sh" <<'BASH'
+sudo() { "$@"; }
+error() { printf 'FAIL: %s\n' "$*" >&2; exit 90; }
+log() { :; }
+BACKUP_DIR="${TMPDIR:-/tmp}/state-version-test-backup"
+source "$1"
+apply_state_version "$2" "$3" "$4"
+BASH
+cat > "$state_test_dir/configuration.nix" <<'NIX'
+system.stateVersion = "26.05";
+NIX
+# A blank value (the clean-install path) must leave the template default intact.
+bash "$state_test_dir/state-version-harness.sh" \
+  "$state_test_dir/apply-state-version.sh" \
+  "$state_test_dir/configuration.nix" system.stateVersion ""
+if ! grep -Fxq 'system.stateVersion = "26.05";' "$state_test_dir/configuration.nix"; then
+  echo "FAIL: empty stateVersion must leave the repository template unchanged." >&2
+  exit 1
+fi
+# A detected existing value must be written and then verified by the helper.
+bash "$state_test_dir/state-version-harness.sh" \
+  "$state_test_dir/apply-state-version.sh" \
+  "$state_test_dir/configuration.nix" system.stateVersion 24.11
+if ! grep -Fxq 'system.stateVersion = "24.11";' "$state_test_dir/configuration.nix"; then
+  echo "FAIL: existing system.stateVersion was not applied to the copied template." >&2
+  exit 1
+fi
+cat > "$state_test_dir/home.nix" <<'NIX'
+home.stateVersion = "26.05";
+NIX
+bash "$state_test_dir/state-version-harness.sh" \
+  "$state_test_dir/apply-state-version.sh" \
+  "$state_test_dir/home.nix" home.stateVersion ""
+if ! grep -Fxq 'home.stateVersion = "26.05";' "$state_test_dir/home.nix"; then
+  echo "FAIL: empty home.stateVersion must leave the repository template unchanged." >&2
+  exit 1
+fi
+bash "$state_test_dir/state-version-harness.sh" \
+  "$state_test_dir/apply-state-version.sh" \
+  "$state_test_dir/home.nix" home.stateVersion 24.11
+if ! grep -Fxq 'home.stateVersion = "24.11";' "$state_test_dir/home.nix"; then
+  echo "FAIL: existing home.stateVersion was not applied to the copied template." >&2
+  exit 1
+fi
+
 # Guard against the former SC2154 typo: the warning must reference the declared
 # gpu_iommu_dir variable, not an undeclared iommu_dir variable.
 if grep -Eq '\$\{iommu_dir\}|\$iommu_dir([^[:alnum:]_]|$)' "$INSTALLER"; then
@@ -160,4 +216,4 @@ for name in sys.argv[1:]:
         raise SystemExit(f"FAIL: Turkish UI/comment strings remain in {name}: {', '.join(found)}")
 PY
 
-echo "OK: installer XML destination, password-hash preservation, setup-guide ordering, Waypaper removal, PCI diagnostics, locale, and runtime UI invariants passed."
+echo "OK: stateVersion preservation, installer XML destination, password-hash preservation, setup-guide ordering, Waypaper removal, PCI diagnostics, locale, and runtime UI invariants passed."

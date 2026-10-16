@@ -120,8 +120,8 @@ def main():
 
     for idx, line in enumerate(lines):
         if DIRECT_MARKER.match(line):
-            # P3: `lines.index()` returns the first matching line; if a second
-            # script with the same name were added, it would extract the wrong block.
+            # Use the current enumerate index so each matching marker is handled
+            # at its own position, even if more direct-script blocks are added.
             text = extract(lines, idx, direct=True)
             if text:
                 emit(text)
