@@ -8,12 +8,12 @@
 >   `amd_iommu=on` ne de `iommu=pt` etkinleştirilmiştir; `README.md` de bunu
 >   açıkça belirtir. IOMMU/AMD-Vi BIOS/UEFI'de etkinleştirilmeli ve çalışma
 >   zamanı `dmesg` ile `/sys/kernel/iommu_groups/` üzerinden doğrulanmalıdır.
-> - Proje sahibi 2026-10-16 tarihinde NixOS rebuild'in ve BORE-LTO kernel
->   derlemesinin başarılı olduğunu; Windows VM'nin açılıp kapandığını ve
->   kapanıştan sonra ekranın/Hyprland'ın geri geldiğini bildirdi. Bu, hedef
->   sistem sahibinin test raporudur; bu statik inceleme ortamında bağımsız
->   olarak yeniden çalıştırılmış değildir. İkinci bir VM aç/kapat döngüsü
->   ayrıca doğrulanmış olarak kaydedilmemiştir.
+> - Proje sahibinin 2026-10-16'da bildirdiği başarılı build ve VM aç/kapat testi,
+>   önceki standart (RT olmayan) BORE-LTO kernel'i içindi. Güncel ağaçta kernel
+>   `linuxPackages-cachyos-rt-bore-lto` olarak değiştirildi. Upstream bu LTO
+>   varyantını binary cache'te yayımlamıyor; yerel derleme gerekir. Önceki test
+>   RT-Bore-LTO'yu doğrulamaz; yeni kernel için boot, VM açılışı, kapanış sonrası
+>   ekran geri dönüşü ve ikinci açılış yeniden test edilmelidir.
 
 # [1.3.8] - 2026-10-12
 

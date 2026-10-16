@@ -4,11 +4,15 @@ This file summarizes notable changes in English. The original detailed Turkish h
 
 ## Unreleased — 2026-10-16
 
+### Changed
+- Switched the selected kernel from standard CachyOS BORE-LTO to `linuxPackages-cachyos-rt-bore-lto`. Upstream lists RT-Bore-LTO LTO builds as uncached, so the kernel is expected to compile locally. The previous successful target-system test used standard BORE-LTO and does not validate this new kernel; boot and VFIO lifecycle tests are still required.
+- Superseded the earlier system-wide low-latency/Reflex environment variables. The implicit Vulkan layer is disabled globally using `DISABLE_LOW_LATENCY_LAYER=1`; opt in per game with a Steam launch option, and use `LOW_LATENCY_LAYER_REFLEX=1` only when testing the Reflex interface.
+
 ### Fixed
 - Reject running the installer from `/etc/nixos` before system changes, trim monitor-name input before using it in Hyprland defaults, and abort VM XML synchronization unless exactly two real PCI `hostdev` elements have supported source-address blocks. Added regression coverage for malformed/incomplete/extra PCI pairs and whitespace-only monitor input.
 - Corrected the Rofi theme comment without changing the working `arthur` binding; clarified that `wuwa-gemma` is a custom Ollama alias based on Aya Expanse 8B, not a Gemma-family model.
 - Restricted installer XML address synchronization to PCI `hostdev` nodes, fixed warnings for incomplete versus extra PCI entries, and added a regression test that ensures USB address sources are never rewritten as PCI addresses.
-- Aligned the README with the default VM XML: it documents the two active fixed USB passthrough IDs and the system-wide low-latency-layer/Reflex environment variables without changing the VM XML or Rofi theme.
+- Aligned the README with the default VM XML: it documents the two active fixed USB passthrough IDs. The former system-wide low-latency-layer/Reflex configuration has since been superseded; the current setup disables the implicit layer globally and opts in per game.
 - Clarified that installer host-device counts and synchronization refer to PCI `hostdev` entries, not all device types; extended the VM XML regression test to guard the documented USB IDs as well as the PCI pair.
 - Clarified single-GPU recovery guidance: the hook can terminate SSH sessions for the default `localhost` user, so the README and Turkish setup guide now require a physical recovery TTY unless a separate, tested administrative session is configured. Removed a duplicate `android-file-transfer` package entry and corrected a stale Home Manager package-list comment.
 - Removed the unused Waypaper package and `SUPER+W` binding, corrected the installer's missing-PCI-device diagnostic so it does not invoke `lspci` a second time, and translated the color notification title to English.
@@ -32,7 +36,7 @@ This file summarizes notable changes in English. The original detailed Turkish h
 - Python compilation checks passed for the scripts.
 - VM XML invariants test passed.
 - VFIO driver-state / rollback regression test passed.
-- The project owner reports that GitHub Actions CI is green for the updated repository and confirms the prior VM recovery issue is resolved on the tested target system: NixOS rebuild and BORE-LTO kernel build succeeded, the Windows VM started, and the host display/Hyprland session returned after normal VM shutdown. This is owner-reported hardware validation, not independent reproduction by the reviewer and not a compatibility guarantee for other hardware. The review environment lacked Nix and libvirt/QEMU tools, so independent evaluation/build and semantic validation were not performed. The checked-in `flake.lock` pins the CachyOS `release` input; do not refresh it just to apply these fixes. A cache miss can still trigger a local build.
+- The project owner reported that GitHub Actions CI was green and the previous standard BORE-LTO kernel built successfully on the tested target system: the Windows VM started and the host display/Hyprland session returned after normal VM shutdown. This result predates the RT-Bore-LTO switch and does not validate the newly selected uncached RT/LTO kernel. This is owner-reported hardware validation, not independent reproduction by the reviewer and not a compatibility guarantee for other hardware. The review environment lacked Nix and libvirt/QEMU tools, so independent evaluation/build and semantic validation were not performed. The checked-in `flake.lock` pins the CachyOS `release` input; do not refresh it just to apply these fixes. The selected RT-Bore-LTO LTO variant is not published in the upstream binary cache and therefore requires a local build.
 
 ## Historical releases
 

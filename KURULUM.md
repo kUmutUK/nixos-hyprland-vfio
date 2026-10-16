@@ -335,12 +335,15 @@ başarıyla tamamlanmadan çalıştırılırsa hedef sistemi tanımayı reddedeb
 sudo nixos-enter --root /mnt -c 'passwd root'
 ```
 
-> **CachyOS kernel cache:** the checked-in `flake.lock` already pins the upstream
-> `release` input. Do not refresh it just to perform this installation: keeping the
-> lock unchanged makes the source selection reproducible. Only run
-> `nix flake lock --update-input cachyos-kernel` when you intentionally want to
-> move to a newer kernel input; inspect and retain the resulting `flake.lock` diff.
-> A cache miss can still trigger a local BORE-LTO build, so inspect the build log.
+> **CachyOS kernel önbelleği:** depodaki `flake.lock`, upstream `release` girdisini
+> zaten sabitliyor. Kurulum için yalnızca bu nedenle kilidi yenilemeyin; kilidi korumak
+> kaynak seçimini tekrarlanabilir tutar. Daha yeni bir kernel girdisine bilinçli olarak
+> geçmek istediğinizde `nix flake lock --update-input cachyos-kernel` çalıştırın ve
+> oluşan `flake.lock` farkını inceleyip commit edin. **RT-Bore-LTO upstream ikili
+> önbelleğinde yayımlanmıyor**; bu nedenle kernel yerel olarak derlenecek. Derleme uzun
+> sürebilir ve kaynak kodu/derleyici araç zinciri sorunları nedeniyle başarısız olabilir.
+> `overlays.pinned` doğru nixpkgs sürümünü eşleştirir, fakat eksik bir önbellek çıktısı
+> oluşturmaz.
 
 
 ---
@@ -473,11 +476,11 @@ başlangıç/teşhis içindir; oyun için kalıcı çözüm değildir.
 > `virtualisation.libvirtd.hooks.qemu.vfio` tanımına bir `environment`
 > seçeneği ekleyin (bkz. `nixos/configuration.nix` → `vfioHook`).
 
-### Donanımda VM doğrulama durumu — 16 Ekim 2026
+### Önceki kernel ile donanım doğrulaması — 16 Ekim 2026
 
-> **Durum: daha önce bildirilen VM kapanışı sonrası görüntü/Hyprland geri dönüş sorunu, depo sahibinin test ettiği sistemde çözülmüş ve çalışır olarak doğrulanmıştır.**
+> **Kapsam: aşağıdaki başarılı sonuç önceki standart BORE-LTO kernel'i içindir; güncel RT-Bore-LTO henüz doğrulanmamıştır.**
 >
-> Depo sahibinin gerçek sistem testinde NixOS rebuild başarıyla tamamlandı, BORE-LTO kernel başarıyla derlendi, Windows VM başlatıldı ve VM normal şekilde kapatıldıktan sonra ana sistemin görüntüsü ile Hyprland oturumu geri geldi. Bu kayıt, söz konusu donanımdaki başarılı testi belgelemektedir; bu dokümantasyon düzenlemesi sırasında bağımsız olarak yeniden çalıştırılmış bir test değildir ve farklı GPU/anakart/firmware yapılandırmalarına garanti vermez. Kernel, VFIO hook'u, firmware veya PCI yerleşimi değiştirilirse VM yaşam döngüsünü tekrar test edin.
+> Depo sahibinin 2026-10-16 tarihinde bildirdiği gerçek sistem testi, önceki standart BORE-LTO kernel'i içindir: rebuild ve kernel derlemesi tamamlanmış, Windows VM açılıp kapatılmış ve ana sistemin görüntüsü/Hyprland oturumu geri gelmiştir. Bu sonuç yeni seçilen RT-Bore-LTO kernel'ini doğrulamaz; RT-Bore-LTO henüz hedef donanımda build/boot/VM yaşam döngüsü testinden geçmemiştir. Yeni kernel derlemesi tamamlandıktan sonra açılışı, VM açılışını, normal kapatmayı, ekran geri dönüşünü ve ikinci VM açılışını tekrar test edin.
 
 ---
 

@@ -34,7 +34,7 @@ The repository is MIT-licensed and is provided “as is,” without warranty. Us
 | Firmware | UEFI. Enable IOMMU / AMD-Vi in firmware and verify it after boot with `dmesg` and `/sys/kernel/iommu_groups/`. |
 | Storage | The reference partitions total 809 GiB: 1 GiB EFI, 8 GiB swap, and an 800 GiB LUKS2/Btrfs volume. Use a disk of at least 810 GiB (about 870 GB decimal); a 1 TB-class disk is recommended. |
 | Filesystems | LUKS2 + Btrfs subvolumes + EFI. Disk swap sits outside the LUKS volume; the reference config encrypts it with a per-activation random key using `randomEncryption.enable = true`. Preserve that option in the generated hardware file for fresh installs. |
-| Kernel | CachyOS BORE-LTO selected through a flake input. The exact kernel version follows the locked kernel input. |
+| Kernel | CachyOS RT-Bore-LTO (real-time patch set + BORE scheduler + ThinLTO), selected through the locked flake input. Upstream does not publish this LTO variant to its binary cache, so it must be built locally. |
 
 The active `boot.kernelParams` list does not set `amd_iommu=on` or `iommu=pt`. Enable IOMMU / AMD-Vi in firmware, then verify runtime support instead of assuming that the VFIO configuration alone enables it. The installer checks the GPU's IOMMU group. If unrelated devices share that group, the GPU may not be safely passed through without additional isolation measures. ACS override is not enabled by default.
 
@@ -74,7 +74,7 @@ sudo nixos-install --flake /mnt/etc/nixos/nixos#nixos --accept-flake-config
 
 - Replace `nixos/hardware-configuration.nix` with the file generated for the target machine. The repository's original UUIDs and device paths are machine-specific; never use them blindly.
 - Confirm the password hash created by the command sequence above exists at `/mnt/etc/nixos/hashedPassword` with permissions `0600`. Do not commit this file.
-- Review the CachyOS binary-cache trust prompt before accepting it. The flake uses the upstream `release` branch and pinned overlay. The checked-in `flake.lock` already pins that input, so leave it unchanged for a reproducible install. Run `nix flake lock --update-input cachyos-kernel` only when intentionally updating the kernel source, then review and keep the lock-file diff.
+- Review the CachyOS binary-cache trust prompt before accepting it. The flake uses the upstream `release` branch and pinned overlay. The checked-in `flake.lock` already pins that input, so leave it unchanged for a reproducible install. **Important:** upstream does not publish `linuxPackages-cachyos-rt-bore-lto` in its binary cache; expect a local RT/LTO kernel build, which may take a long time and may fail for source/toolchain reasons. `overlays.pinned` keeps the kernel package aligned with its intended nixpkgs revision; it does not make this uncached variant available. Run `nix flake lock --update-input cachyos-kernel` only when intentionally updating the kernel source, then review and keep the lock-file diff.
 - Verify the target disk before running any partitioning command. The installation guide contains destructive operations.
 
 ### Path B — Migrate an existing NixOS installation
@@ -246,7 +246,7 @@ The OCR script now checks that the model is available before beginning; it repor
 |---|---|
 | RADV | AMD Vulkan driver; `AMD_VULKAN_ICD=RADV`, `RADV_PERFTEST=gpl` |
 | `lsfg-vk` | Vulkan frame-generation layer; per-game settings in `~/.config/lsfg-vk/conf.toml` |
-| `low_latency_layer` | Vulkan latency layer. `LOW_LATENCY_LAYER=1` enables it; `LOW_LATENCY_LAYER_REFLEX=1` selects the Reflex (`VK_NV_low_latency2`) interface instead of the default AMD Anti-Lag 2 (`VK_AMD_anti_lag`). This configuration sets both variables system-wide. |
+| `low_latency_layer` | Vulkan latency layer. It is installed as an implicit layer but disabled system-wide by `DISABLE_LOW_LATENCY_LAYER=1`. Opt in per game instead of globally: Steam launch option `env -u DISABLE_LOW_LATENCY_LAYER %command%` uses the default AMD Anti-Lag 2 interface; `env -u DISABLE_LOW_LATENCY_LAYER LOW_LATENCY_LAYER_REFLEX=1 %command%` selects Reflex (`VK_NV_low_latency2`). `LOW_LATENCY_LAYER=1` is not an enable switch in the pinned upstream source. |
 | GameMode | Applies the configured game-time priority and performance settings |
 | Gamescope | Fullscreen and window rules for games |
 | MangoHud | FPS, frametime, GPU/CPU, and temperature overlay |
@@ -254,7 +254,7 @@ The OCR script now checks that the model is available before beginning; it repor
 | power-profiles-daemon | Power profile / CPU governor management |
 | Steam / Proton / Wine | Windows game compatibility tools |
 
-Both Vulkan layers are configured without an explicit `enable_environment` restriction. Inspect the active layers with:
+The Vulkan manifests do not define an `enable_environment` entry. The low-latency implicit layer is disabled for normal applications by `DISABLE_LOW_LATENCY_LAYER=1`; remove that variable only for the game you want to test. Inspect active layers with:
 
 ```bash
 VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
@@ -274,6 +274,7 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 
 ## Known limitations
 
+- **RT-Bore-LTO validation:** the upstream release source provides this package but does not publish its LTO variant to the upstream binary cache. It must be built locally. Real-time preemption does not guarantee higher FPS or better game frametimes; benchmark the target games and retain a known-good boot generation until the new kernel is validated.
 - **Navi 2x reset behavior:** reliable reset and host rebind cannot be guaranteed from static analysis. The optional `remove`/`rtcwake`/`rescan` recovery path is disabled by default. Enabling `VFIO_ALLOW_SUSPEND_RECOVERY=1` can suspend the host briefly and should only be attempted after checking firmware support and arranging recovery access.
 - **Single-GPU host:** while the VM owns the GPU, the host does not have a normal graphical session. Keep a physical recovery TTY available. The hook may terminate SSH sessions for `HOST_USER` (default `localhost`), so do not rely on SSH unless a separate, tested administrative account is configured outside that target.
 - **Fixed host user:** the hook defaults to `localhost` and terminates that user's graphical sessions. This is designed for this single-user configuration.
@@ -332,11 +333,11 @@ bash scripts/test-installer-invariants.sh
 ```
 `nix flake check --no-build` evaluates the flake but does not build the complete system or kernel. The flags above match the CI evaluation step and prevent lock-file updates during the check. This check does not replace a full build, libvirt domain validation, or a physical GPU lifecycle test.
 
-### Target-system hardware validation — 2026-10-16
+### Prior target-system hardware validation — 2026-10-16
 
-> **Status: the previously reported VM display-recovery issue is resolved on the project owner's tested machine.**
+> **Scope: this result applies to the previous standard BORE-LTO kernel, not the newly selected RT-Bore-LTO kernel.**
 >
-> The project owner reports that GitHub Actions CI is green for the updated repository, the NixOS rebuild completed successfully, the BORE-LTO kernel built successfully, the Windows VM started, and after a normal VM shutdown the host display and Hyprland session returned. The hardware result is reported by the project owner and is the basis for marking the prior VM issue resolved. It was not independently reproduced as part of this documentation update and is not a guarantee for other hardware, firmware, or configuration changes. Re-test the VM lifecycle after changing the kernel, VFIO hook, firmware, or PCI layout.
+> The project owner reported that GitHub Actions CI was green, the NixOS rebuild and standard BORE-LTO kernel build completed successfully, the Windows VM started, and after a normal VM shutdown the host display and Hyprland session returned. This owner-reported result documents the earlier kernel and hardware state; it was not independently reproduced during this audit. The current RT-Bore-LTO variant has not yet been built or tested on the target system. Re-test kernel boot, VM start, normal shutdown, display recovery, and a second VM start after the RT-Bore-LTO build succeeds.
 
 ## License
 
