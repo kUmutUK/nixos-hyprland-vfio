@@ -34,9 +34,9 @@ let
     # Let nixpkgs' standard CMake hooks handle configure, build, and install
     # using the install() rules shipped by upstream. No custom installPhase is
     # needed. The manifest is installed under $out/share/vulkan/implicit_layer.d.
-    # The upstream manifest registers this as an implicit Vulkan layer. Keep it
-    # disabled globally via DISABLE_LOW_LATENCY_LAYER; opt in per game by unsetting
-    # that variable, and add LOW_LATENCY_LAYER_REFLEX=1 only to test Reflex mode.
+    # The upstream manifest registers an implicit Vulkan layer. It is enabled globally
+    # using LOW_LATENCY_LAYER=1 and selects Reflex via LOW_LATENCY_LAYER_REFLEX=1 in
+    # environment.sessionVariables below; per-game opt-out uses DISABLE_LOW_LATENCY_LAYER=1.
 
     meta = with lib; {
       description = "Vulkan layer for hardware agnostic input latency reduction (Reflex/Anti-Lag)";
@@ -151,18 +151,16 @@ in
   ];
 
   security.apparmor.enable = true;
-  # The sshd fail2ban jail can ban repeated failed SSH attempts from logs even when
-  # password authentication is disabled. No authorized keys are configured by default,
-  # so enabling SSH does not automatically create password-based access.
+  # Fail2ban protects password-enabled SSH from repeated failed authentication attempts.
+  # Private LAN ranges are not exempt: an untrusted device on the local network must be
+  # subject to the same ban policy as any other source.
   services.fail2ban = {
     enable = true;
     maxretry = 5;
     # RFC1918 home/LAN ranges are exempt for convenience. This also means compromised
     # or hostile devices on the local network will not be banned by fail2ban; narrow
     # the exception if the LAN is not trusted.
-    ignoreIP = [
-      "127.0.0.0/8" "10.0.0.0/8" "172.16.0.0/12" "192.168.0.0/16"
-    ];
+    ignoreIP = [ "127.0.0.0/8" "::1" ];
     bantime = "24h";
     bantime-increment = {
       enable = true;
@@ -241,12 +239,16 @@ in
     QT_QPA_PLATFORM = "wayland;xcb";
     XCURSOR_THEME = "capitaine-cursors";
     XCURSOR_SIZE = "16";
-    # This is an implicit Vulkan layer. Disable it for all applications by default;
-    # opt in to a specific game's Steam launch options instead. For Reflex mode use:
-    # env -u DISABLE_LOW_LATENCY_LAYER LOW_LATENCY_LAYER_REFLEX=1 %command%
-    # For the default AMD Anti-Lag 2 interface, omit LOW_LATENCY_LAYER_REFLEX.
-    # NVIDIA spoofing is deliberately not enabled; upstream warns it can break FSR4.
-    DISABLE_LOW_LATENCY_LAYER = "1";
+  };
+
+  # PAM initializes these variables for login sessions, including the greetd/Hyprland
+  # desktop. NixOS merges sessionVariables into the global environment as well.
+  # The layer is intentionally enabled for all Vulkan applications, with Reflex selected
+  # globally. Override it per game with DISABLE_LOW_LATENCY_LAYER=1 when compatibility
+  # problems occur. NVIDIA spoofing is not enabled because upstream warns it can break FSR4.
+  environment.sessionVariables = {
+    LOW_LATENCY_LAYER = "1";
+    LOW_LATENCY_LAYER_REFLEX = "1";
   };
 
   programs.fish.enable = true;
@@ -355,13 +357,9 @@ in
       "gamemode" "libvirtd" "kvm" "input" "render"
     ];
     openssh.authorizedKeys.keys = [
-      # The previous configuration embedded the maintainer's public SSH key, which could
-      # authorize remote access for every installation while blocking the new owner's key.
-      # Add your own key with `ssh-keygen -t ed25519` and copy the `.pub` value below.
-      # The list is intentionally empty by default and password/root SSH login is disabled;
-      # remote SSH stays unavailable until you add a key. Disable `services.openssh` if
-      # remote access is not needed.
-      # Example: "ssh-ed25519 AAAA... user@host"
+      # Optional: add your own public key here for key-based login. Password login is
+      # enabled only for this account; root SSH login remains disabled. Never commit a
+      # private key. Example: "ssh-ed25519 AAAA... user@host"
     ];
   };
 
@@ -500,9 +498,13 @@ in
   services.openssh = {
     enable = true;
     settings = {
-      PasswordAuthentication = false;
+      # Password authentication makes SSH usable without requiring a key to be baked
+      # into this repository. Restrict access to the configured normal user and never
+      # permit root login; use a strong unique password and add a personal SSH key when able.
+      PasswordAuthentication = true;
       KbdInteractiveAuthentication = false;
       PermitRootLogin = "no";
+      AllowUsers = [ "localhost" ];
       X11Forwarding = false;
       MaxAuthTries = 3;
     };

@@ -44,9 +44,11 @@
 
         ({ pkgs, ... }: {
           nixpkgs.config.allowUnfree = true;
-          # Keep the CachyOS kernel and its patch set on the upstream pinned
-          # nixpkgs revision. RT-Bore-LTO is not published in the upstream binary
-          # cache, so this specific variant must be built locally even with `pinned`.
+          # Keep the CachyOS kernel and patch set on the upstream pinned nixpkgs revision.
+          # The package follows the `release` input; its kernel version is not hard-coded here.
+          # Update the flake lock intentionally with `nix flake update cachyos-kernel` when
+          # upstream publishes a newer kernel. RT-Bore-LTO LTO is not in the binary cache,
+          # so this variant is expected to build locally even with `pinned`.
           nixpkgs.overlays = [ cachyos-kernel.overlays.pinned ];
           boot.kernelPackages = pkgs.cachyosKernels.linuxPackages-cachyos-rt-bore-lto;
           # Hyprland, its companion tools, and xdg-desktop-portal-hyprland
