@@ -326,21 +326,8 @@ if ! grep -Fq 'cachyos-kernel.url = "github:xddxdd/nix-cachyos-kernel/release";'
   echo "FAIL: the CachyOS input must follow the upstream release channel, not a hard-coded tag." >&2
   exit 1
 fi
-python3 - "$ROOT/nixos/flake.lock" <<'PYLOCK'
-import json
-import sys
-from pathlib import Path
-
-lock = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
-node = lock["nodes"]["cachyos-kernel"]["locked"]
-if node.get("rev") == "873c5a2a40575b880a962aaade19afbb572adf92":
-    expected = "sha256-zmA3LKGQBRY4/vqDt0U+B+Vf78NlS0vhuFtKxm51+Q8="
-    if node.get("narHash") != expected:
-        raise SystemExit(
-            "FAIL: cachyos-kernel@873c5a2a40575b880a962aaade19afbb572adf92 "
-            "has the wrong NAR hash; expected the Nix-reported value " + expected
-        )
-PYLOCK
+# The generic lock-integrity check below validates the current release ref and hashes.
+# Avoid tying this regression suite to one dated upstream kernel commit.
 if ! grep -Fq 'nup = "sudo nix flake update --flake /etc/nixos/nixos cachyos-kernel";' "$HOME_CONFIG"; then
   echo "FAIL: nup must update only the CachyOS input against the absolute system flake path." >&2
   exit 1
@@ -366,9 +353,11 @@ if ! grep -Fq 'nix flake update --flake /etc/nixos/nixos cachyos-kernel' "$READM
   echo "FAIL: both install guides must document how to update the CachyOS kernel input." >&2
   exit 1
 fi
-if grep -Fq 'nixos-install --flake /mnt/etc/nixos/nixos#nixos --accept-flake-config' "$README" "$ROOT/KURULUM.md" \
-  || grep -Fq 'nix flake update cachyos-kernel --accept-flake-config' "$README" "$ROOT/KURULUM.md"; then
-  echo "FAIL: documented install/update commands must not silently auto-accept flake cache settings." >&2
+if grep -Fq 'nixos-install --flake /mnt/etc/nixos/nixos#nixos --accept-flake-config' \
+    "$README" "$ROOT/KURULUM.md" "$ROOT/DEGISIKLIK_GECMISI.md" "$ROOT/docs/REPAIR-AND-VALIDATION-REPORT.md" \
+  || grep -Fq 'nix flake update cachyos-kernel --accept-flake-config' \
+    "$README" "$ROOT/KURULUM.md" "$ROOT/DEGISIKLIK_GECMISI.md" "$ROOT/docs/REPAIR-AND-VALIDATION-REPORT.md"; then
+  echo "FAIL: active install/update guidance must not silently bypass flake cache-trust prompts." >&2
   exit 1
 fi
 if ! grep -Fq 'services.openssh = {' "$CONFIG" || ! grep -Fq 'enable = true;' "$CONFIG" || ! grep -Fq 'PasswordAuthentication = true;' "$CONFIG" || ! grep -Fq 'AllowUsers = [ "localhost" ];' "$CONFIG" || ! grep -Fq 'PermitRootLogin = "no";' "$CONFIG"; then
