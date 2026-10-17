@@ -4,6 +4,18 @@
 
 Reviewed the uploaded source archive and modified source files, configuration, VM XML, installer, CI, scripts, and documentation. This is a static maintenance pass, not a claim that the configuration was activated on the target PC.
 
+## Follow-up status — 2026-10-17: installer and VFIO safety corrections
+
+The RT-Bore-LTO ThinLTO kernel selection remains intentional and unchanged in `nixos/flake.nix`. The following code-level findings from the follow-up static audit have now been addressed:
+
+- `install.sh` backs up `/var/lib/libvirt/win10.xml` together with the deployed NixOS files, tracks which targets existed before deployment, and installs an `EXIT` rollback handler. If deployment exits non-zero after the first target mutation, existing files are restored from the run's backup and newly created targets are removed. Rollback is best-effort; if it reports a restoration failure, inspect the backup directory before rebuilding.
+- `nixos/hooks/qemu` writes the pre-VM active state of `greetd`, `ollama`, and `polkit.service` to a mode-0600 state file under `/run/libvirt/vfio-state`. The release hook and prepare rollback restore only services which were active before the handoff; inactive Ollama is no longer started just because its unit is enabled.
+- The installer now stops before deploying configuration if either CPU or GPU is not positively identified as AMD, matching the supported configuration scope.
+- `README.md` and `KURULUM.md` document the upstream `low_latency_layer` v0.2.0 CS2/Source 2 frame-pacing limitation, the `fps_max 0` workaround, and per-game opt-out.
+- New mocked tests cover the rollback path and service active-state restoration. CI invokes the rollback test and includes it in ShellCheck.
+
+Validation performed for this follow-up: `bash -n` on the installer, hook, and affected shell tests; `scripts/test-installer-rollback.sh`; `scripts/test-vfio-hook-driver-state.sh`; `scripts/test-installer-invariants.sh`; `scripts/test-vm-xml.py`; Python compilation of `scripts/*.py`; and XML well-formedness parsing all passed. This environment does not have Nix, ShellCheck, or libvirt/QEMU validation tools, and no actual GPU passthrough or RT-Bore-LTO boot was performed here. The selected kernel still requires local build and real target-system boot/VM lifecycle verification.
+
 ## Follow-up status — 2026-10-16: RT-Bore-LTO selected
 
 The current `nixos/flake.nix` selects `pkgs.cachyosKernels.linuxPackages-cachyos-rt-bore-lto` from the upstream `release` input; no kernel version is hard-coded in the flake expression. The checked-in `flake.lock` records the resolved input revision for reproducibility, as Nix flakes normally do; run a targeted `nix flake update` to move to a newer upstream release. Upstream does not publish the RT-Bore-LTO LTO variant in its binary cache, so expect a local kernel build; the `pinned` overlay aligns nixpkgs revisions but cannot create a missing cache artifact. The earlier user-provided linker log named standard BORE-LTO, a different package derivation, and does not prove or disprove the RT-Bore-LTO build. This audit environment has no Nix CLI, so package evaluation and compilation were not run here.
