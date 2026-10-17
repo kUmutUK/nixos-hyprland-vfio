@@ -3,9 +3,102 @@ mkdir -p /var/log/libvirt
 LOGFILE="/var/log/libvirt/vfio.log"
 GPU_PCI="0000:0b:00.0"
 GPU_AUDIO="0000:0b:00.1"
+VFIO_STATE_DIR="${VFIO_STATE_DIR:-/run/libvirt/vfio-state}"
+SERVICE_STATE_FILE="$VFIO_STATE_DIR/win10-services.state"
 
 log() {
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOGFILE"
+}
+
+# `prepare` and `release` are separate hook processes. Persist the pre-VM active
+# state so release only starts services that were running before the handoff.
+# A stale state file is a fail-closed condition: blindly overwriting it could lose
+# the only record needed to restore services after a previous failed VM shutdown.
+save_service_state() {
+  local service active active_state temporary
+  if [ -e "$SERVICE_STATE_FILE" ]; then
+    log "ERROR: Existing service-state file found at $SERVICE_STATE_FILE; inspect/recover it before starting another VM."
+    return 1
+  fi
+  if ! mkdir -p "$VFIO_STATE_DIR"; then
+    log "ERROR: Could not create service-state directory $VFIO_STATE_DIR."
+    return 1
+  fi
+  temporary="$(mktemp "$VFIO_STATE_DIR/.win10-services.XXXXXX")" || {
+    log "ERROR: Could not create a temporary service-state file."
+    return 1
+  }
+  if ! chmod 0600 "$temporary"; then
+    rm -f -- "$temporary"
+    log "ERROR: Could not secure the temporary service-state file."
+    return 1
+  fi
+  for service in greetd ollama polkit.service; do
+    if ! active_state="$(systemctl show --property=ActiveState --value "$service" 2>/dev/null)"; then
+      rm -f -- "$temporary"
+      log "ERROR: Could not query ActiveState for $service; aborting before the desktop is stopped."
+      return 1
+    fi
+    case "$active_state" in
+      active|reloading) active=1 ;;
+      inactive|failed) active=0 ;;
+      *)
+        rm -f -- "$temporary"
+        log "ERROR: $service has transitional/unknown ActiveState '$active_state'; aborting before the desktop is stopped."
+        return 1
+        ;;
+    esac
+    if ! printf '%s=%s\n' "$service" "$active" >> "$temporary"; then
+      rm -f -- "$temporary"
+      log "ERROR: Could not write the service state for $service."
+      return 1
+    fi
+  done
+  if ! mv -- "$temporary" "$SERVICE_STATE_FILE"; then
+    rm -f -- "$temporary"
+    log "ERROR: Could not persist service state to $SERVICE_STATE_FILE."
+    return 1
+  fi
+  chmod 0600 "$SERVICE_STATE_FILE" || {
+    rm -f -- "$SERVICE_STATE_FILE"
+    log "ERROR: Could not secure $SERVICE_STATE_FILE."
+    return 1
+  }
+  return 0
+}
+
+restore_saved_services() {
+  local service previous failed=0
+  if [ ! -r "$SERVICE_STATE_FILE" ]; then
+    log "ERROR: Service-state file is missing; refusing to start Ollama/polkit without knowing their pre-VM state. Check display recovery manually."
+    return 1
+  fi
+
+  for service in greetd ollama polkit.service; do
+    previous="$(awk -F= -v name="$service" '$1 == name { print $2; found=1 } END { if (!found) exit 1 }' "$SERVICE_STATE_FILE" 2>/dev/null)" || previous="invalid"
+    case "$previous" in
+      1)
+        if systemctl start "$service" 2>/dev/null; then
+          log "Restored $service (it was active before VM start)."
+        else
+          log "WARNING: Could not restore $service; state file retained for retry."
+          failed=1
+        fi
+        ;;
+      0)
+        log "Leaving $service stopped (it was inactive before VM start)."
+        ;;
+      *)
+        log "ERROR: Invalid/missing saved state for $service; state file retained for manual recovery."
+        failed=1
+        ;;
+    esac
+  done
+
+  if [ "$failed" -eq 0 ]; then
+    rm -f -- "$SERVICE_STATE_FILE"
+  fi
+  return "$failed"
 }
 
 bind_vfio() {
@@ -154,8 +247,14 @@ stop_hyprland() {
     return 1
   fi
 
-  # After `fuser` is verified, services may be partially stopped. If a later operation
-  # fails, rollback reverses only this preparation stage.
+  # Save exact service activity before making any changes. The saved state is shared
+  # with the later `release` hook invocation under /run/libvirt/vfio-state.
+  if ! save_service_state; then
+    log "ERROR: Could not record pre-VM service state; GPU handoff is aborted before stopping the desktop."
+    return 1
+  fi
+  # After the state is durable, services may be partially stopped. If a later operation
+  # fails, rollback restores only the state recorded by this preparation stage.
   PREPARE_DESKTOP_TOUCHED=1
   log "Stopping greetd..."
   systemctl stop greetd 2>/dev/null || true
@@ -248,24 +347,11 @@ stop_hyprland() {
 }
 
 start_hyprland() {
-  log "Starting greetd..."
-  systemctl start greetd 2>/dev/null || true
-  # Restart the GPU-related services stopped by this hook when the VM exits. The old
-  # one-item loop triggered ShellCheck SC2043 and has been replaced with a direct condition.
-  # Only genuine `# shellcheck disable=...` directives should use the directive prefix.
-  # Also restore both `ollama` and `polkit.service`; otherwise authorization dialogs could
-  # remain unavailable after VM shutdown.
-  for svc in ollama polkit.service; do
-    if systemctl is-enabled --quiet "$svc" 2>/dev/null; then
-      if systemctl start "$svc" 2>/dev/null; then
-        log "  restarted $svc."
-      else
-        log "  WARNING: Could not restart $svc."
-      fi
-    fi
-  done
+  log "Restoring pre-VM service activity..."
+  if ! restore_saved_services; then
+    log "WARNING: Service-state restoration was incomplete. Inspect $SERVICE_STATE_FILE and /var/log/libvirt/vfio.log before another VM start."
+  fi
 }
-
 # Verify that the device is actually bound to `vfio-pci`; this catches errors that
 # `bind_vfio()` might otherwise leave hidden.
 device_bound_to_vfio() {
