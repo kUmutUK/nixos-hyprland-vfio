@@ -2,7 +2,7 @@
 
 This file summarizes notable changes in English. The original detailed Turkish history is preserved in [`DEGISIKLIK_GECMISI.md`](DEGISIKLIK_GECMISI.md).
 
-## Unreleased — 2026-10-16
+## Unreleased — 2026-10-17
 
 ### Changed
 - Switched the selected kernel from standard CachyOS BORE-LTO to `linuxPackages-cachyos-rt-bore-lto`. The version is not hard-coded: the flake follows the upstream `release` branch and the lock can be updated for new releases with `nix flake update cachyos-kernel`. Upstream does not cache the RT-Bore-LTO LTO build, so it is expected to compile locally. The prior successful target-system test used standard BORE-LTO and does not validate this new kernel.
@@ -12,6 +12,11 @@ This file summarizes notable changes in English. The original detailed Turkish h
 - Replaced the broad `nup` alias (`nix flake update`, which could update unrelated inputs and depended on the current directory) with a privileged CachyOS-only update targeting `/etc/nixos/nixos`.
 
 ### Fixed
+- Made the installer roll back the prior NixOS flake files, hardware configuration, VFIO hook directory, and deployed VM XML when a non-zero exit occurs after deployment begins. The XML is now included in the pre-change backup set, and targets that did not previously exist are removed during rollback.
+- Updated the VFIO hook to persist the pre-VM active state of `greetd`, `ollama`, and `polkit.service` under `/run/libvirt/vfio-state`; VM release and prepare rollback now start only services that were active before handoff. Added mocked regression coverage for active and inactive states.
+- Changed the installer to stop by default before deployment on non-AMD or unidentified CPU/GPU hardware rather than proceed with an AMD-only configuration after a warning.
+- Documented the upstream CS2/Source 2 frame-pacing caveat for the globally enabled Vulkan latency layer, including the `fps_max 0` workaround and per-game opt-out.
+- Added a dedicated rollback regression test and made it a required CI step; retained the explicit RT-Bore-LTO ThinLTO selection.
 - Corrected the Fail2ban comment so it matches the active setting: only loopback is exempt; private LAN ranges remain bannable.
 - Added an installer preflight check for `/etc/nixos/hashedPassword` presence, non-empty content, root ownership, and mode `0600`. This is warning-only so the documented manual setup can fix the file before activation.
 - Reject running the installer from `/etc/nixos` before system changes, trim monitor-name input before using it in Hyprland defaults, and abort VM XML synchronization unless exactly two real PCI `hostdev` elements have supported source-address blocks. Added regression coverage for malformed/incomplete/extra PCI pairs and whitespace-only monitor input.
@@ -40,8 +45,9 @@ This file summarizes notable changes in English. The original detailed Turkish h
 - Bash syntax checks passed for the installer, QEMU hook, and VFIO regression test.
 - Python compilation checks passed for the scripts.
 - VM XML invariants test passed.
-- VFIO driver-state / rollback regression test passed.
-- The project owner reported that GitHub Actions CI was green and the previous standard BORE-LTO kernel built successfully on the tested target system: the Windows VM started and the host display/Hyprland session returned after normal VM shutdown. This result predates the RT-Bore-LTO switch and does not validate the newly selected uncached RT/LTO kernel. This is owner-reported hardware validation, not independent reproduction by the reviewer and not a compatibility guarantee for other hardware. The review environment lacked Nix and libvirt/QEMU tools, so independent evaluation/build and semantic validation were not performed. The checked-in `flake.lock` now pins the CachyOS `release` input at `873c5a2a40575b880a962aaade19afbb572adf92` (Linux 7.2.9); future kernel releases still require an intentional input update. The selected RT-Bore-LTO LTO variant is not published in the upstream binary cache and therefore requires a local build.
+- VFIO driver-state and service-state regression tests passed.
+- Installer partial-deployment rollback regression test passed.
+- The project owner reported that GitHub Actions CI was green and the previous standard BORE-LTO kernel built successfully on the tested target system: the Windows VM started and the host display/Hyprland session returned after normal VM shutdown. This result predates the RT-Bore-LTO switch and does not validate the newly selected uncached RT/LTO kernel. This is owner-reported hardware validation, not independent reproduction by the reviewer and not a compatibility guarantee for other hardware. The review environment lacked Nix, ShellCheck, and libvirt/QEMU tools, so independent flake evaluation/build, ShellCheck, and semantic VM validation were not performed. The checked-in `flake.lock` now pins the CachyOS `release` input at `873c5a2a40575b880a962aaade19afbb572adf92` (Linux 7.2.9); future kernel releases still require an intentional input update. The selected RT-Bore-LTO LTO variant is not published in the upstream binary cache and therefore requires a local build.
 
 ## Historical releases
 

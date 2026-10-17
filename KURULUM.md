@@ -363,6 +363,9 @@ sudo nixos-enter --root /mnt -c 'passwd root'
 > `overlays.pinned`, kernel ile hedef nixpkgs revizyonunu eşleştirir ama eksik cache çıktısı oluşturmaz.
 
 
+**CS2 / Source 2 düşük gecikme notu:** [low_latency_layer v0.2.0 upstream sürüm notları](https://github.com/Korthos-Software/low_latency_layer/releases/tag/v0.2.0), katman etkin durumdayken oyun içi FPS sınırının kare-zamanlama sorunlarına neden olabildiğini belirtiyor. Sorun upstream'de çözülene kadar CS2 konsolunda `fps_max 0` kullanın. MangoHud gibi harici FPS sınırlandırıcıları aynı soruna neden olmamış olarak rapor edilmiştir. Takılma sürerse Steam başlatma seçeneklerinde `DISABLE_LOW_LATENCY_LAYER=1 %command%` ile katmanı yalnızca CS2 için kapatıp frametime'ı karşılaştırın.
+
+
 ---
 
 > ⚠️ **VM hazırlığı:** XML ve qcow2 dosyaları kurulum sonrası ilk açılışta oluşturulacak — §10b'ye bakın.

@@ -266,6 +266,8 @@ The OCR script now checks that the model is available before beginning; it repor
 
 The Vulkan manifests do not define an `enable_environment` entry. The layer is enabled globally using the environment variables documented above. To disable it for one incompatible game, launch that game with `DISABLE_LOW_LATENCY_LAYER=1 %command%`. Inspect active layers with:
 
+**CS2 / Source 2 note:** the upstream [`low_latency_layer` v0.2.0 release notes](https://github.com/Korthos-Software/low_latency_layer/releases/tag/v0.2.0) document frame-pacing issues when an in-engine FPS cap is enabled. While the layer is active, use `fps_max 0` in CS2 until upstream resolves the issue; an external cap such as MangoHud's has been reported not to trigger it. If you still see stutter or frame-pacing problems, opt CS2 out with `DISABLE_LOW_LATENCY_LAYER=1 %command%` and compare frametimes.
+
 ```bash
 VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 ```
