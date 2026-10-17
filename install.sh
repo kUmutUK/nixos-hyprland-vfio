@@ -37,13 +37,21 @@ step "Preflight checks"
 if ! grep -qi nixos /etc/os-release 2>/dev/null; then
   error "This script must be run on NixOS."
 fi
-# The deployment target is /etc/nixos/nixos. Running a checkout whose root is
-# /etc/nixos would make REPO_DIR/nixos and NIXOS_FLAKE_DIR the same directory,
-# causing cp to copy each configuration file onto itself after earlier steps
-# have already changed the machine. Detect this before any prompts or mutations.
-if [[ -d "$NIXOS_DIR" && "$REPO_DIR" == "$(cd "$NIXOS_DIR" && pwd -P)" ]]; then
-  error "Do not run the repository from /etc/nixos itself. Keep the checkout outside /etc/nixos (for example ~/nixos-hyprland-vfio) so source files cannot overlap the deployment target."
-fi
+# The deployment target is /etc/nixos/nixos. A checkout anywhere inside
+# /etc/nixos can overlap its source and deployment paths, not only when the
+# repository root is exactly /etc/nixos. Resolve physical paths before checking
+# the boundary so symlinked paths cannot bypass this guard.
+ensure_repo_outside_deployment_target() {
+  local repo_dir="$1" nixos_dir="$2" nixos_dir_real
+  [[ -d "$nixos_dir" ]] || return 0
+  nixos_dir_real="$(cd "$nixos_dir" && pwd -P)" || error "Could not resolve deployment directory: $nixos_dir"
+  case "$repo_dir" in
+    "$nixos_dir_real"|"$nixos_dir_real"/*)
+      error "Do not run the repository from /etc/nixos itself or any directory beneath it. Keep the checkout outside /etc/nixos (for example ~/nixos-hyprland-vfio) so source files cannot overlap the deployment target."
+      ;;
+  esac
+}
+ensure_repo_outside_deployment_target "$REPO_DIR" "$NIXOS_DIR"
 if [[ $EUID -eq 0 ]]; then
   error "Do not run as root. Use a normal user with sudo privileges."
 fi
