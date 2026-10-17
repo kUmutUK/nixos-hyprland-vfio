@@ -342,12 +342,10 @@ sudo nixos-enter --root /mnt -c 'passwd root'
 > `nixos-install` komutundan önce aynı işlemi `/mnt/etc/nixos/nixos` yoluyla yapın.
 >
 > **Kernel sürümünü güncelleme:** `flake.nix`, CachyOS upstream `release` kanalındaki
-> `linuxPackages-cachyos-rt-bore-lto` paketini kullanır; sürüm numarası dosyaya sabit
-> yazılmaz. Bu arşivin kilidi `873c5a2a40575b880a962aaade19afbb572adf92` revizyonunu
-> (Linux 7.2.9) seçer; gelecek sürümlerde gerçek revizyon için `flake.lock` dosyasını
-> kontrol edin. Kilit dosyası tekrarlanabilirlik sağlar, kalıcı bir sürüm kısıtlaması değildir.
-> Yeni upstream kernel yayımlandığında mevcut kilidi yedekleyin, CachyOS girdisini güncelleyin
-> ve değişikliği inceleyin:
+> `linuxPackages-cachyos-rt-bore-lto` paketini kullanır; belirli bir kernel sürümü dosyaya
+> sabit yazılmaz. Nix'in `flake.lock` dosyası mevcut checkout için çözümlenen kaynak revizyonunu
+> tekrar üretilebilirlik amacıyla kaydeder. Yeni upstream sürüme geçmek için mevcut kilidi
+> yedekleyin, yalnızca CachyOS girdisini güncelleyin ve değişikliği inceleyin:
 >
 > ```bash
 > sudo cp /etc/nixos/nixos/flake.lock /tmp/flake.lock.before-cachyos-update
