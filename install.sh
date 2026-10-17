@@ -243,26 +243,28 @@ show_iommu_group() {
   done
 }
 
-if [ -n "$gpu_grp" ]; then
-  info "GPU ($gpu_pci) IOMMU group: $gpu_grp"
-  show_iommu_group "$gpu_grp"
-  if [ -n "$audio_grp" ] && [ "$audio_grp" != "$gpu_grp" ]; then
-    warn "Audio function ($gpu_audio) is in a different IOMMU group: $audio_grp"
-    show_iommu_group "$audio_grp"
-  fi
-  echo ""
-  warn "If the list above contains devices other than GPU (${gpu_pci}) and audio function (${gpu_audio}),"
-  warn "the GPU may not be isolated by itself unless those devices are also passed through"
-  warn "(additional measures such as ACS override may be required)."
-  read -rp "Continue? (type yes to continue; anything else aborts): " iommu_confirm
-  [[ "$iommu_confirm" != "yes" ]] && { info "Aborted."; exit 0; }
-else
-  warn "Could not resolve GPU IOMMU group information (${gpu_iommu_dir}); the link may be absent or invalid."
-  warn "Ensure IOMMU is enabled in firmware; skipping this check."
+# Do not deploy a VFIO configuration unless both selected PCI functions have
+# real IOMMU groups. Continuing without this information would make the safety
+# of the device handoff impossible to establish.
+if [ -z "$gpu_grp" ]; then
+  error "Could not resolve the GPU IOMMU group at ${gpu_iommu_dir}. Enable IOMMU/AMD-Vi in BIOS/UEFI, reboot into NixOS, verify /sys/kernel/iommu_groups, and rerun the installer. No configuration files have been changed."
 fi
-if [ -n "$gpu_grp" ] && [ -z "$audio_grp" ]; then
-  warn "Could not resolve audio-function IOMMU group information (${audio_iommu_dir}); verify isolation manually."
+if [ -z "$audio_grp" ]; then
+  error "Could not resolve the GPU audio-function IOMMU group at ${audio_iommu_dir}. Enable IOMMU/AMD-Vi in BIOS/UEFI, reboot into NixOS, verify /sys/kernel/iommu_groups, and rerun the installer. No configuration files have been changed."
 fi
+
+info "GPU ($gpu_pci) IOMMU group: $gpu_grp"
+show_iommu_group "$gpu_grp"
+if [ "$audio_grp" != "$gpu_grp" ]; then
+  warn "Audio function ($gpu_audio) is in a different IOMMU group: $audio_grp"
+  show_iommu_group "$audio_grp"
+fi
+echo ""
+warn "If either group contains devices other than GPU (${gpu_pci}) and audio function (${gpu_audio}),"
+warn "those devices may not be safely isolated unless additional measures are taken."
+warn "ACS override is not enabled by default and does not guarantee safe isolation."
+read -rp "Continue only after reviewing both groups (type yes to confirm): " iommu_confirm
+[[ "$iommu_confirm" != "yes" ]] && { info "Aborted."; exit 0; }
 
 echo ""
 # Leave the monitor output empty by default and auto-detect it only when a real
