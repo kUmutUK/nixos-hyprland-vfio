@@ -18,16 +18,28 @@ Thank you for helping improve this project. Because this is a hardware-specific 
 Run these commands from the repository root:
 
 ```bash
-for f in install.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh; do
-  bash -n "$f" || exit
+set -euo pipefail
+for f in install.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh; do
+  bash -n "$f"
 done
-shellcheck -S warning install.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh
+shellcheck -S warning install.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh
 python3 -c "import xml.etree.ElementTree as ET; ET.parse('vm-xml/win10.xml')"
 python3 scripts/test-vm-xml.py
 bash scripts/test-installer-invariants.sh
+bash scripts/test-installer-rollback.sh
 bash scripts/test-vfio-hook-driver-state.sh
-python3 scripts/extract-embedded-scripts.py /tmp/embedded-scripts \
-  | xargs -0 -r -n1 -- shellcheck -S warning
+(
+  set -euo pipefail
+  tmpdir=$(mktemp -d)
+  trap 'rm -rf "$tmpdir"' EXIT
+  python3 scripts/extract-embedded-scripts.py "$tmpdir" > "$tmpdir/paths.nul"
+  mapfile -d '' -t embedded_scripts < "$tmpdir/paths.nul"
+  if [ "${#embedded_scripts[@]}" -ne 7 ]; then
+    printf 'Expected 7 embedded Bash scripts, found %s\n' "${#embedded_scripts[@]}" >&2
+    exit 1
+  fi
+  shellcheck -S warning "${embedded_scripts[@]}"
+)
 (cd nixos && nix flake check --no-build --show-trace --no-update-lock-file --option warn-dirty false)
 ```
 

@@ -552,9 +552,13 @@ cat ~/.local/share/hyprland/hyprland.log
 - VFIO sırasında ekran kararır (normal)
 - GPU PCI ID doğru girilmelidir
 - hardware-configuration.nix cihaz bağımlıdır
-- Mevcut bir sistemi güncelliyorsanız /home/.snapshots alt hacmini
-  `sudo btrfs subvolume create /home/.snapshots` ile ÖNCE oluşturun,
-  aksi halde neededForBoot yüzünden acil kipe düşersiniz
+- `/home/.snapshots`, `hardware-configuration.nix` içinde `neededForBoot = true`
+  olarak bağlandığından Btrfs kullanan sistemlerde gerekli bir alt hacimdir.
+  Manuel kurulumda, yalnızca alt hacim henüz yoksa `sudo btrfs subvolume create
+  /home/.snapshots` çalıştırın ve ardından mount tanımını/gerçek mount'u doğrulayın.
+  `install.sh` kullanıldığında betik `/home` Btrfs ise eksik alt hacmi oluşturup
+  doğrular; komutu ayrıca tekrar çalıştırmayın. Yol mevcut ama Btrfs alt hacmi
+  değilse otomatik silmeyin/dönüştürmeyin; önce içeriği ve mount durumunu inceleyin.
 - UEFI zorunludur
 - SSH key authentication önerilir
 - LUKS şifresi açılışta istenir
