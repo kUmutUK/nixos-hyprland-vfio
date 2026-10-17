@@ -1252,7 +1252,7 @@ done
         l = "eza -lah --icons";
         cat = "bat";
         nrs = "sudo nixos-rebuild switch --flake /etc/nixos/nixos#nixos";
-        nup = "sudo nix flake update --accept-flake-config --flake /etc/nixos/nixos cachyos-kernel";
+        nup = "sudo nix flake update --flake /etc/nixos/nixos cachyos-kernel";
         nclean = "nix-collect-garbage -d && sudo nix-collect-garbage -d";
         ntest = "sudo nixos-rebuild dry-activate --flake /etc/nixos/nixos#nixos";
         lock = "hyprlock";
