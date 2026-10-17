@@ -107,27 +107,21 @@ jobs:
         # MANPAGER). scripts/extract-embedded-scripts.py resolves Nix indented strings
         # and writes the scripts to disk.
         run: |
-          # `-r` (--no-run-if-empty) is required: GNU xargs runs the command with no arguments
-          # once when input is empty. Measured with GNU xargs 4.9.0 and ShellCheck 0.9.0:
-          #   printf '' | xargs -0    -n1 -- shellcheck  → exit 123
-          #     (ShellCheck prints usage and exits 3 when no file argument is supplied;
-          #      this fails loudly rather than being a silent false positive)
-          #   printf '' | xargs -0 -r -n1 -- shellcheck  → no invocation, exit 0
-          # With this ShellCheck version the empty-input trap fails loudly, not silently.
-          # This step still closes the coverage gap: if extraction breaks, it must not
-          # report success without checking any scripts.
-          # The old comment claimed ShellCheck read empty stdin and returned 0, leaving CI green.
-          # That claim was version-dependent and is false for the measured version.
-          # Re-check if this behavior changes in a future tool version.
-          python3 scripts/extract-embedded-scripts.py /tmp/emb \
-            | xargs -0 -r -n1 -- shellcheck -S warning
-          # This expected count prevents CI passing if the extractor misses a marker.
-          # Update the expected count whenever an embedded script is intentionally added or removed.
-          n=$(find /tmp/emb -maxdepth 1 -name '*.sh' -type f 2>/dev/null | wc -l)
+          set -euo pipefail
+          # Use a fresh directory so stale files cannot make the expected-count
+          # assertion pass. Capture extractor output to a file so its exit status
+          # is checked directly rather than potentially masked by a downstream pipe.
+          tmpdir="$(mktemp -d)"
+          trap 'rm -rf "$tmpdir"' EXIT
+          python3 scripts/extract-embedded-scripts.py "$tmpdir" > "$tmpdir/paths.nul"
+          mapfile -d '' -t embedded_scripts < "$tmpdir/paths.nul"
+          n="${#embedded_scripts[@]}"
+          # Update this count only when an embedded Bash script is intentionally added or removed.
           if [ "$n" -ne 7 ]; then
             echo "::error::Expected 7 embedded scripts in home.nix, found $n. Check extractor markers and the expected count."
             exit 1
           fi
+          shellcheck -S warning "${embedded_scripts[@]}"
           echo "  embedded scripts OK ($n/7)"
 
       # ---- THE GATE THIS REPO WAS ACTUALLY MISSING ----
