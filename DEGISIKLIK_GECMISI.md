@@ -8,13 +8,14 @@
 >   `amd_iommu=on` ne de `iommu=pt` etkinleştirilmiştir; `README.md` de bunu
 >   açıkça belirtir. IOMMU/AMD-Vi BIOS/UEFI'de etkinleştirilmeli ve çalışma
 >   zamanı `dmesg` ile `/sys/kernel/iommu_groups/` üzerinden doğrulanmalıdır.
-> - Kernel, upstream `release` kanalındaki `linuxPackages-cachyos-rt-bore-lto` paketini
->   kullanır; sürüm numarası `flake.nix` içinde sabit yazılmaz. Kilit dosyası bu düzeltmeyle
->   `873c5a2a40575b880a962aaade19afbb572adf92` revizyonuna (Linux 7.2.9) güncellendi.
->   Yeni kernel yayımlandığında `sudo nix flake update cachyos-kernel --accept-flake-config`
->   komutuyla kilidi bilinçli güncelleyin ve farkı inceleyin. Fish `nup` kısayolu yalnızca bu
->   girdiyi günceller. RT-Bore-LTO LTO upstream binary cache'te yoktur; yerel derleme gerekir.
->   Önceki başarılı test standart BORE-LTO içindi ve RT varyantını doğrulamaz.
+> - Kernel seçimi, upstream `release` kanalındaki `linuxPackages-cachyos-rt-bore-lto` paketini
+>   kullanır; `flake.nix` içine sabit kernel sürümü yazılmaz. `flake.lock`, tekrar üretilebilir
+>   kurulum için o checkout'ta çözümlenen kaynak revizyonunu kaydeder; upstream'deki yeni sürüme
+>   geçmek için yalnızca CachyOS girdisini hedefli güncelleyin ve lock farkını inceleyin:
+>   `sudo nix flake update --flake /etc/nixos/nixos cachyos-kernel`. Cache güven onayını
+>   `--accept-flake-config` ile otomatik atlamayın. Fish `nup` kısayolu aynı hedefli güncellemeyi
+>   yapar. RT-Bore-LTO LTO upstream binary cache'te yoktur; yerel derleme gerekir. Önceki başarılı
+>   test standart BORE-LTO içindi ve RT varyantını doğrulamaz.
 > - `install.sh` ön kontrolü `/etc/nixos/hashedPassword` dosyasının varlığını, boş olmadığını
 >   ve `root:root`/`0600` izinlerini denetler. Eksik/uygunsuzsa uyarı verir; kullanıcıya
 >   kurulumu tamamlamadan önce dosyayı düzeltmesi gerektiğini söyler.

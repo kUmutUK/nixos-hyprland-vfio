@@ -18,7 +18,9 @@ Thank you for helping improve this project. Because this is a hardware-specific 
 Run these commands from the repository root:
 
 ```bash
-bash -n install.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh
+for f in install.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh; do
+  bash -n "$f" || exit
+done
 shellcheck -S warning install.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh
 python3 -c "import xml.etree.ElementTree as ET; ET.parse('vm-xml/win10.xml')"
 python3 scripts/test-vm-xml.py

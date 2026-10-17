@@ -74,7 +74,7 @@ sudo nixos-install --flake /mnt/etc/nixos/nixos#nixos
 
 - Replace `nixos/hardware-configuration.nix` with the file generated for the target machine. The repository's original UUIDs and device paths are machine-specific; never use them blindly.
 - Confirm the password hash created by the command sequence above exists at `/mnt/etc/nixos/hashedPassword` with permissions `0600`. Do not commit this file.
-- Review the CachyOS binary-cache trust prompt before accepting it. The flake follows the upstream `release` branch and uses `overlays.pinned`; the kernel version is not hard-coded in `flake.nix`. At this revision, the committed lock resolves the CachyOS input to `873c5a2a40575b880a962aaade19afbb572adf92` (Linux 7.2.9); check `nixos/flake.lock` for the actual revision after future updates. `flake.lock` is a reproducible snapshot, not a permanent kernel-version restriction. RT-Bore-LTO's LTO variant is not in the upstream binary cache, so expect a local kernel build.
+- Review the CachyOS binary-cache trust prompt before accepting it. The flake follows the upstream `release` branch and uses `overlays.pinned`; no kernel version is hard-coded in `flake.nix`. As usual for Nix flakes, `nixos/flake.lock` records the resolved input revision for reproducibility. To move to a newer upstream release, update only the CachyOS input with the command below and review the lock diff before rebuilding. RT-Bore-LTO's LTO variant is not in the upstream binary cache, so expect a local kernel build.
 
   To update the running system after its first boot, first save the deployed lock, then update only this input and inspect the diff before switching:
 
