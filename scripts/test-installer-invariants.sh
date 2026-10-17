@@ -90,6 +90,16 @@ if ! grep -Fq 'readlink -e -- "$link"' "$INSTALLER"; then
   echo "FAIL: IOMMU group resolution must require an existing canonical sysfs target." >&2
   exit 1
 fi
+if ! grep -Fq 'Installer failed after deployment began; restoring the prior NixOS/VFIO/XML files.' "$INSTALLER" \
+  || ! grep -Fq "trap 'rollback_deployment \"\$?\"' EXIT" "$INSTALLER" \
+  || ! grep -Fq '"$PATCHED_XML"; do' "$INSTALLER"; then
+  echo "FAIL: installer must back up the deployed VM XML and roll back partial NixOS/VFIO/XML updates." >&2
+  exit 1
+fi
+if ! grep -Fq 'Installer stopped before changing system configuration because the detected hardware is unsupported.' "$INSTALLER"; then
+  echo "FAIL: installer must stop on unsupported CPU/GPU hardware rather than proceed with AMD-only settings." >&2
+  exit 1
+fi
 if ! grep -Fq 'Preserve an existing valid hash; create one only if the file is missing or empty.' "$INSTALLER"; then
   echo "FAIL: installer checklist must preserve existing valid password hashes." >&2
   exit 1
@@ -109,7 +119,7 @@ fi
 
 # Test the SSH password-file preflight without touching /etc/nixos.
 password_test_dir="$(mktemp -d)"
-trap 'rm -rf "$state_test_dir" "$monitor_test_dir" "$password_test_dir"' EXIT
+trap 'rm -rf -- "${state_test_dir:-}" "${monitor_test_dir:-}" "${password_test_dir:-}"' EXIT
 awk '/^check_ssh_password_file\(\) \{/ { capture=1 } capture { print } capture && /^}/ { exit }' "$INSTALLER" > "$password_test_dir/check-password.sh"
 if ! grep -q '^check_ssh_password_file() {' "$password_test_dir/check-password.sh"; then
   echo "FAIL: could not locate check_ssh_password_file() for its regression test." >&2
@@ -162,7 +172,7 @@ if grep -Fq 'input_mon:-$monitor_output' "$INSTALLER"; then
 fi
 
 monitor_test_dir="$(mktemp -d)"
-trap 'rm -rf "$state_test_dir" "$monitor_test_dir"' EXIT
+trap 'rm -rf -- "${state_test_dir:-}" "${monitor_test_dir:-}"' EXIT
 awk '/^trim_whitespace\(\) \{/ { capture=1 } capture { print } capture && /^}/ { exit }' "$INSTALLER" > "$monitor_test_dir/trim.sh"
 cat >> "$monitor_test_dir/trim.sh" <<'BASH'
 set -e
@@ -320,6 +330,10 @@ if grep -Eq '^[[:space:]]*DISABLE_LOW_LATENCY_LAYER[[:space:]]*=' "$CONFIG" "$HO
 fi
 if ! grep -Fq 'DISABLE_LOW_LATENCY_LAYER=1 %command%' "$README"; then
   echo "FAIL: README must document the per-game opt-out for incompatible Vulkan apps." >&2
+  exit 1
+fi
+if ! grep -Fq 'fps_max 0' "$README" || ! grep -Fq 'fps_max 0' "$ROOT/KURULUM.md"; then
+  echo "FAIL: both guides must document the upstream CS2/Source 2 frame-pacing workaround." >&2
   exit 1
 fi
 if ! grep -Fq 'cachyos-kernel.url = "github:xddxdd/nix-cachyos-kernel/release";' "$FLAKE"; then
