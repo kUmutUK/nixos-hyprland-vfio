@@ -146,7 +146,7 @@ OpenSSH is enabled on TCP port 22, and the firewall allows that port. Password a
 
 ## Preparing and starting the VM
 
-The VM domain is named `win10`. Before defining or starting it, ensure that the Windows installation ISO, VirtIO driver ISO, and qcow2 disk exist at the paths referenced by `vm-xml/win10.xml`. The XML uses the SATA bus for both CD-ROM drives; the operating-system disk uses VirtIO and needs the VirtIO storage driver during Windows setup.
+The VM domain is named `win10`. The default `vm-xml/win10.xml` expects these files under `/var/lib/libvirt/images/`: `Win10_22H2_English_x64v1.iso`, `virtio-win-0.1.285.iso`, and `win10new.qcow2`. Confirm that the ISO files you downloaded match the XML paths; edit the XML if their names or locations differ. The XML uses the SATA bus for both CD-ROM drives; the operating-system disk uses VirtIO and needs the VirtIO storage driver during Windows setup.
 
 > **Windows 10 lifecycle:** Standard support for Windows 10 Home and Pro ended on October 14, 2025 ([Microsoft lifecycle policy](https://learn.microsoft.com/en-us/lifecycle/products/windows-10-home-and-pro)). Before using this guest for network-connected or sensitive activity, verify that the installed edition is covered by applicable Extended Security Updates (ESU) or its own supported lifecycle (for example, an eligible LTSC edition), and that updates are installed. The ISO filename alone does not establish ESU eligibility.
 
@@ -315,6 +315,7 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 │   ├── extract-embedded-scripts.py
 │   ├── prepare-vm-diagnostic.py
 │   ├── test-installer-invariants.sh
+│   ├── test-installer-rollback.sh
 │   ├── test-vfio-hook-driver-state.sh
 │   └── test-vm-xml.py
 ├── vm-xml/win10.xml
@@ -336,11 +337,23 @@ Run from the repository root:
 ```bash
 nix develop ./nixos
 find ./nixos -type f -name '*.nix' -print0 | xargs -0 -r -n1 nixfmt
-shellcheck -S warning install.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh
-python3 scripts/extract-embedded-scripts.py /tmp/embedded-scripts | xargs -0 -r -n1 -- shellcheck -S warning
+shellcheck -S warning install.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh
 python3 scripts/test-vm-xml.py
 bash scripts/test-vfio-hook-driver-state.sh
 bash scripts/test-installer-invariants.sh
+bash scripts/test-installer-rollback.sh
+(
+  set -euo pipefail
+  tmpdir=$(mktemp -d)
+  trap 'rm -rf "$tmpdir"' EXIT
+  python3 scripts/extract-embedded-scripts.py "$tmpdir" > "$tmpdir/paths.nul"
+  mapfile -d '' -t embedded_scripts < "$tmpdir/paths.nul"
+  if [ "${#embedded_scripts[@]}" -ne 7 ]; then
+    printf 'Expected 7 embedded Bash scripts, found %s\n' "${#embedded_scripts[@]}" >&2
+    exit 1
+  fi
+  shellcheck -S warning "${embedded_scripts[@]}"
+)
 (cd nixos && nix flake check --no-build --show-trace --no-update-lock-file --option warn-dirty false)
 ```
 `nix flake check --no-build` evaluates the flake but does not build the complete system or kernel. The flags above match the CI evaluation step and prevent lock-file updates during the check. This check does not replace a full build, libvirt domain validation, or a physical GPU lifecycle test.
