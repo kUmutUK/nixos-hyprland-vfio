@@ -892,12 +892,6 @@ echo "   lsblk -f   # to see UUIDs"
 echo "   Then set: LUKS device, Btrfs subvolumes, EFI, swap."
 ((step_num++))
 
-if [[ "$CPU_VENDOR" != "amd" || "$GPU_VENDOR" != "amd" ]]; then
-  echo ""
-  echo -e "${step_num}. Apply hardware-specific changes as shown earlier."
-  ((step_num++))
-fi
-
 echo ""
 echo -e "${step_num}. Ensure the hashed password file exists and is secure:"
 echo "   Preserve an existing valid hash; create one only if the file is missing or empty."
@@ -931,7 +925,8 @@ echo -e "   ${YELLOW}Copy the ISO files into /var/lib/libvirt/images/:${NC}"
 echo -e "   ${YELLOW}Win10_22H2_English_x64v1.iso and virtio-win-0.1.285.iso${NC}"
 echo -e "   ${CYAN}sudo virsh define /var/lib/libvirt/win10.xml${NC}"
 echo -e "   ${CYAN}sudo virsh list --all${NC}   ${YELLOW}→ 'win10' should appear as shut off${NC}"
-echo -e "   ${YELLOW}If there are 3+ PCI hostdev elements, review the warning and edit extras manually.${NC}"
+echo -e "   ${YELLOW}The installer requires exactly two PCI hostdev elements (GPU + audio).${NC}"
+echo -e "   ${YELLOW}If the XML contains extra PCI hostdevs, remove/rework them in the template before rerunning; XML synchronization will stop otherwise.${NC}"
 ((step_num++))
 
 echo ""
