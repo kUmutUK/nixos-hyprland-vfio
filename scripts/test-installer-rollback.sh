@@ -65,15 +65,20 @@ set +e
   for target in "${TRANSACTION_PATHS[@]}"; do
     case "$target" in
       "$NIXOS_FLAKE_DIR/configuration.nix"|"$NIXOS_FLAKE_DIR/hooks"|"$PATCHED_XML") TRANSACTION_EXISTED["$target"]=1 ;;
-      *) TRANSACTION_EXISTED["$target"]=0 ;;
+      *)
+        # shellcheck disable=SC2034 # consumed by sourced installer helpers
+        TRANSACTION_EXISTED["$target"]=0
+        ;;
     esac
   done
+  # shellcheck disable=SC2034 # consumed by sourced installer helpers
   TRANSACTION_ACTIVE=1
   sudo() {
     if [[ "$1" == chown ]]; then return 0; fi
     "$@"
   }
   warn() { :; }
+  # shellcheck disable=SC1090 # HELPERS is computed at runtime
   source "$HELPERS"
   rollback_deployment 1
 )
