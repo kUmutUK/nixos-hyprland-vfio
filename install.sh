@@ -203,26 +203,16 @@ log "GPU PCI: $gpu_pci / Audio: $gpu_audio (format and sysfs presence verified)"
 
 if [[ "$CPU_VENDOR" != "amd" || "$GPU_VENDOR" != "amd" ]]; then
   echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-  warn "This configuration is optimized for AMD CPU + AMD GPU."
-  if [[ "$CPU_VENDOR" == "intel" ]]; then
-    echo "  - Switch 'hardware.cpu.amd.updateMicrocode' → 'hardware.cpu.intel.updateMicrocode'"
-    echo "  - Replace 'kvm-amd' → 'kvm-intel'"
-    echo "  - Also verify IOMMU in BIOS/UEFI and kernel parameters (Intel VT-d)."
-    echo "  - Remove 'amd_pstate=active' kernel parameter"
+  warn "Unsupported hardware: this repository's active configuration targets AMD CPU + AMD GPU only."
+  if [[ "$CPU_VENDOR" != "amd" ]]; then
+    echo "  - CPU detected: ${CPU_VENDOR}; this configuration uses AMD microcode, kvm-amd, and AMD-specific kernel settings."
   fi
-  if [[ "$GPU_VENDOR" == "nvidia" ]]; then
-    echo "  - This repository does not support NVIDIA; amdgpu is the default."
-    echo "  - Remove AMD_VULKAN_ICD, RADV_PERFTEST variables"
-    echo "  - Switch ollama package to ollama-cuda"
-  elif [[ "$GPU_VENDOR" == "intel" ]]; then
-    echo "  - Remove AMD-specific env vars and amdgpu.ppfeaturemask"
-    echo "  - Switch ollama to pkgs.ollama (CPU only)"
-  elif [[ "$GPU_VENDOR" == "unknown" ]]; then
-    warn "Selected GPU vendor could not be identified from: $gpu_pci"
+  if [[ "$GPU_VENDOR" != "amd" ]]; then
+    echo "  - GPU detected: ${GPU_VENDOR}; this configuration assumes amdgpu/RADV and AMD-specific Vulkan/ROCm settings."
   fi
+  echo "  - No hardware-specific configuration will be deployed. Adapt and validate the NixOS files manually first."
   echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-  echo ""
-  read -rp "Press Enter to acknowledge these manual changes are needed..."
+  error "Installer stopped before changing system configuration because the detected hardware is unsupported."
 fi
 
 # ─── IOMMU group preflight ─────────────────────────────────
@@ -336,7 +326,8 @@ for src in "$HOME/.config/hypr" "$HOME/.config/waybar" "$HOME/.config/gtk-3.0" "
            "$NIXOS_FLAKE_DIR/flake.nix" "$NIXOS_FLAKE_DIR/flake.lock" \
            "$NIXOS_FLAKE_DIR/hooks" \
            "$NIXOS_DIR/hardware-configuration.nix" \
-           "$NIXOS_FLAKE_DIR/hardware-configuration.nix"; do
+           "$NIXOS_FLAKE_DIR/hardware-configuration.nix" \
+           "$PATCHED_XML"; do
     if [ -e "$src" ]; then
         # Fix: writing every backup directly into `$BACKUP_DIR/` caused filename
         # collisions when two source paths had the same basename. Flatten each
@@ -352,6 +343,75 @@ for src in "$HOME/.config/hypr" "$HOME/.config/waybar" "$HOME/.config/gtk-3.0" "
     fi
 done
 log "Backup saved to $BACKUP_DIR"
+
+# Treat the deployed NixOS files, VFIO hook, machine-specific hardware file, and
+# VM XML as one transaction. Any later command failure restores the exact set of
+# targets that existed before this run; targets created by this run are removed.
+# The installer backup remains available for manual inspection even after rollback.
+TRANSACTION_PATHS=(
+  "$NIXOS_FLAKE_DIR/configuration.nix"
+  "$NIXOS_FLAKE_DIR/home.nix"
+  "$NIXOS_FLAKE_DIR/flake.nix"
+  "$NIXOS_FLAKE_DIR/flake.lock"
+  "$NIXOS_FLAKE_DIR/hooks"
+  "$NIXOS_FLAKE_DIR/hardware-configuration.nix"
+  "$PATCHED_XML"
+)
+declare -A TRANSACTION_EXISTED=()
+for target in "${TRANSACTION_PATHS[@]}"; do
+  if [ -e "$target" ] || [ -L "$target" ]; then
+    TRANSACTION_EXISTED["$target"]=1
+  else
+    TRANSACTION_EXISTED["$target"]=0
+  fi
+done
+TRANSACTION_ACTIVE=0
+
+transaction_backup_path() {
+  printf '%s/%s' "$BACKUP_DIR" "$(printf '%s' "$1" | tr '/' '_')"
+}
+
+rollback_deployment() {
+  local exit_status="$1" target failed=0 backup_path parent
+  trap - EXIT
+  if [ "$exit_status" -ne 0 ] && [ "${TRANSACTION_ACTIVE:-0}" = "1" ]; then
+    warn "Installer failed after deployment began; restoring the prior NixOS/VFIO/XML files."
+    for target in "${TRANSACTION_PATHS[@]}"; do
+      if [ "${TRANSACTION_EXISTED[$target]:-0}" = "1" ]; then
+        backup_path="$(transaction_backup_path "$target")"
+        if [ ! -e "$backup_path" ] && [ ! -L "$backup_path" ]; then
+          warn "Rollback backup missing for $target ($backup_path); manual recovery may be needed."
+          failed=1
+          continue
+        fi
+        parent="$(dirname "$target")"
+        if ! sudo mkdir -p -- "$parent" || ! sudo rm -rf -- "$target" || ! sudo cp -a -- "$backup_path" "$target"; then
+          warn "Rollback failed while restoring $target; restore it manually from $BACKUP_DIR."
+          failed=1
+          continue
+        fi
+        # These system configuration paths are normally root-owned. Backups are
+        # user-readable copies, so explicitly restore ownership after copying back.
+        if ! sudo chown -R root:root -- "$target"; then
+          warn "Could not restore root ownership for $target."
+          failed=1
+        fi
+      else
+        if ! sudo rm -rf -- "$target"; then
+          warn "Could not remove newly created target $target during rollback."
+          failed=1
+        fi
+      fi
+    done
+    if [ "$failed" = "0" ]; then
+      warn "Rollback completed. Backup retained at $BACKUP_DIR."
+    else
+      warn "Rollback was incomplete. Inspect $BACKUP_DIR and the messages above before rebuilding."
+    fi
+  fi
+  exit "$exit_status"
+}
+trap 'rollback_deployment "$?"' EXIT
 
 # Keep the five newest installer backups. A matching prefix is not enough:
 # only directories created with this script's exact timestamp format qualify.
@@ -443,6 +503,7 @@ HOME_STATE_VERSION="$STATE_VERSION_VALUE"
 log "home.stateVersion source: $STATE_VERSION_SOURCE${HOME_STATE_VERSION:+ (value $HOME_STATE_VERSION)}"
 
 sudo mkdir -p "$NIXOS_FLAKE_DIR"
+TRANSACTION_ACTIVE=1
 for f in configuration.nix home.nix flake.nix flake.lock; do
     if [ -f "$REPO_DIR/nixos/$f" ]; then
         sudo cp "$REPO_DIR/nixos/$f" "$NIXOS_FLAKE_DIR/$f"
@@ -877,4 +938,6 @@ echo -e "   ${YELLOW}If there are 3+ PCI hostdev elements, review the warning an
 ((step_num++))
 
 echo ""
+TRANSACTION_ACTIVE=0
+trap - EXIT
 log "Setup complete."
