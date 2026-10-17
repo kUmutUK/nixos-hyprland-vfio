@@ -38,6 +38,11 @@ jobs:
 
           archive = sys.argv[1]
           with zipfile.ZipFile(archive) as bundle:
+              names = bundle.namelist()
+              if any(name.startswith("nixos-hyprland-vfio/.git/") for name in names):
+                  raise SystemExit(
+                      "::error::Source ZIP must not include the repository's .git directory."
+                  )
               entry = bundle.getinfo("nixos-hyprland-vfio/install.sh")
               mode = (entry.external_attr >> 16) & 0o777
               if entry.create_system != 3 or not (mode & 0o111):
@@ -45,7 +50,7 @@ jobs:
                       "::error::Source ZIP must retain install.sh's Unix executable mode "
                       f"(create_system={entry.create_system}, mode={mode:04o})."
                   )
-          print("  source ZIP retains install.sh executable mode")
+          print("  source ZIP excludes .git and retains install.sh executable mode")
           PY
 
       - name: Install Nix
