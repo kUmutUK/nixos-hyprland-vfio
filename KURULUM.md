@@ -192,7 +192,8 @@ cp /mnt/etc/nixos/hardware-configuration.nix /tmp/repo/nixos/hardware-configurat
 # Keep the generated files as a backup before replacing the install tree.
 sudo mv /mnt/etc/nixos /mnt/etc/nixos-generated-backup
 sudo mkdir -p /mnt/etc/nixos
-sudo cp -r /tmp/repo/. /mnt/etc/nixos/
+# Depo içeriğini kopyala; Git geçmişini hedef sistem yapılandırmasına taşıma.
+tar --exclude='./.git' -C /tmp/repo -cf - . | sudo tar --no-same-owner -C /mnt/etc/nixos -xf -
 ```
 
 > ℹ️ `hardware-configuration.nix` yukarıdaki `cp` komutuyla **sizin makinenizden
