@@ -325,7 +325,7 @@ flake.nix repo kökünde değil, `nixos/` alt dizininde olduğu için `#nixos`
 
 ```bash
 # On the first run, review and accept the configured binary cache if trusted.
-sudo nixos-install --flake /mnt/etc/nixos/nixos#nixos --accept-flake-config
+sudo nixos-install --flake /mnt/etc/nixos/nixos#nixos
 ```
 
 Kurulum başarıyla tamamlandıktan sonra hedef sistem hâlâ `/mnt` altında bağlıyken
@@ -336,18 +336,33 @@ başarıyla tamamlanmadan çalıştırılırsa hedef sistemi tanımayı reddedeb
 sudo nixos-enter --root /mnt -c 'passwd root'
 ```
 
+> **Önemli:** Aşağıdaki `/etc/nixos/nixos` komutları ilk yeniden başlatmadan sonra
+> kurulu sistemde çalıştırılmalıdır. Hâlâ Live ISO içindeyseniz bu komutları çalıştırmayın;
+> hedef sistem `/mnt` altındadır. İlk kurulumdan önce yeni kernel seçmek istiyorsanız,
+> `nixos-install` komutundan önce aynı işlemi `/mnt/etc/nixos/nixos` yoluyla yapın.
+>
 > **Kernel sürümünü güncelleme:** `flake.nix`, CachyOS upstream `release` kanalındaki
 > `linuxPackages-cachyos-rt-bore-lto` paketini kullanır; sürüm numarası dosyaya sabit
-> yazılmaz. Bu düzeltmedeki `flake.lock`, `873c5a2a40575b880a962aaade19afbb572adf92`
-> revizyonuna (Linux 7.2.9) güncellendi. Kilit dosyası tekrarlanabilirlik için girdiyi
-> kaydeder, kalıcı bir sürüm kısıtlaması değildir. Yeni upstream kernel yayımlandığında
-> `/etc/nixos/nixos/` içinde `sudo nix flake update cachyos-kernel --accept-flake-config`
-> çalıştırın; ardından `git diff -- flake.lock` ile farkı inceleyip aşağıdaki
-> `dry-activate` derlemesini test edin. Fish `nup` kısayolu aynı hedefli güncellemeyi
-> herhangi bir dizinden yapar. Başarılı olmadan sisteme geçmeyin. **RT-Bore-LTO LTO
-> upstream ikili önbelleğinde yayımlanmıyor**; kernel yerel olarak derlenecek, uzun
-> sürebilir veya kaynak/araç zinciri sorunlarıyla başarısız olabilir. `overlays.pinned`,
-> kernel ile hedef nixpkgs revizyonunu eşleştirir ama eksik cache çıktısı oluşturmaz.
+> yazılmaz. Bu arşivin kilidi `873c5a2a40575b880a962aaade19afbb572adf92` revizyonunu
+> (Linux 7.2.9) seçer; gelecek sürümlerde gerçek revizyon için `flake.lock` dosyasını
+> kontrol edin. Kilit dosyası tekrarlanabilirlik sağlar, kalıcı bir sürüm kısıtlaması değildir.
+> Yeni upstream kernel yayımlandığında mevcut kilidi yedekleyin, CachyOS girdisini güncelleyin
+> ve değişikliği inceleyin:
+>
+> ```bash
+> sudo cp /etc/nixos/nixos/flake.lock /tmp/flake.lock.before-cachyos-update
+> sudo nix flake update --flake /etc/nixos/nixos cachyos-kernel
+> sudo diff -u /tmp/flake.lock.before-cachyos-update /etc/nixos/nixos/flake.lock || test "$?" -eq 1
+> ```
+>
+> `diff` kodu `1`, dosyalar arasında fark bulunduğunu gösterir; `2` ise komut hatasıdır.
+> Nix cache ayarlarını sorarsa URL ve public key'i inceleyip yalnızca güvendiğinizde
+> kabul edin; `--accept-flake-config` seçeneğini kontrolü atlamak için kullanmayın.
+> Fish `nup` kısayolu aynı hedefli güncellemeyi herhangi bir dizinden yapar ve ayarları
+> otomatik kabul etmez. `dry-activate` derlemesi başarılı olmadan sisteme geçmeyin.
+> **RT-Bore-LTO'nun LTO varyantı upstream ikili önbelleğinde yayımlanmıyor**; kernel yerel
+> olarak derlenecek, uzun sürebilir veya kaynak/araç zinciri sorunlarıyla başarısız olabilir.
+> `overlays.pinned`, kernel ile hedef nixpkgs revizyonunu eşleştirir ama eksik cache çıktısı oluşturmaz.
 
 
 ---
@@ -513,8 +528,11 @@ sudo reboot
 > ⚠️ Kernel parametreleri ve initrd/VFIO modül değişiklikleri için yeniden
 > başlatma gerekebilir. Bu, IOMMU'nun etkin olduğunu tek başına kanıtlamaz.
 > `dmesg | grep -Ei "AMD-Vi|IOMMU"` ve `/sys/kernel/iommu_groups/` ile kontrol edin;
-> BIOS/UEFI ayarlarında IOMMU/AMD-Vi etkin olmalıdır. Hook'un çalışmasını
-> `switch` sonrasında kontrol etmek, IOMMU'nun etkinliğini doğrulamakla aynı değildir.
+> BIOS/UEFI ayarlarında IOMMU/AMD-Vi etkin olmalıdır. Kurulum betiği GPU ve ses işlevi
+> için IOMMU grubu çözümlenemezse yapılandırma dosyalarını dağıtmadan durur. Bir grupta
+> ilgisiz aygıtlar varsa üyeleri inceleyip açıkça onaylamadan devam etmeyin. Hook'un
+> `switch` sonrasında çalışması, IOMMU'nun etkinliğini veya izolasyonun güvenli olduğunu
+> tek başına kanıtlamaz.
 
 ## Log kontrol
 

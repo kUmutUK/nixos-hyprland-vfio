@@ -36,7 +36,7 @@ The repository is MIT-licensed and is provided “as is,” without warranty. Us
 | Filesystems | LUKS2 + Btrfs subvolumes + EFI. Disk swap sits outside the LUKS volume; the reference config encrypts it with a per-activation random key using `randomEncryption.enable = true`. Preserve that option in the generated hardware file for fresh installs. |
 | Kernel | CachyOS RT-Bore-LTO (real-time patch set + BORE scheduler + ThinLTO), selected through the upstream `release` flake input. The kernel version is not hard-coded; the lock file records the selected input revision until you intentionally update it. Upstream does not publish this LTO variant to its binary cache, so it must be built locally. |
 
-The active `boot.kernelParams` list does not set `amd_iommu=on` or `iommu=pt`. Enable IOMMU / AMD-Vi in firmware, then verify runtime support instead of assuming that the VFIO configuration alone enables it. The installer checks the GPU's IOMMU group. If unrelated devices share that group, the GPU may not be safely passed through without additional isolation measures. ACS override is not enabled by default.
+The active `boot.kernelParams` list does not set `amd_iommu=on` or `iommu=pt`. Enable IOMMU / AMD-Vi in firmware, then verify runtime support instead of assuming that the VFIO configuration alone enables it. The installer requires resolvable IOMMU groups for both the GPU and its audio function and aborts before deploying configuration files if either group is missing. If unrelated devices share a group, the installer requires explicit typed confirmation after showing group members; this confirmation does not make unsafe isolation safe. ACS override is not enabled by default.
 
 ## Installation
 
@@ -67,14 +67,24 @@ sudo chmod 600 /mnt/etc/nixos/hashedPassword
 sudo test -s /mnt/etc/nixos/hashedPassword || { echo "hashedPassword is missing or empty" >&2; exit 1; }
 [ "$(sudo stat -c '%U:%G:%a' /mnt/etc/nixos/hashedPassword)" = "root:root:600" ] || { echo "hashedPassword must be root:root mode 600" >&2; exit 1; }
 cd /mnt/etc/nixos/nixos
-sudo nixos-install --flake /mnt/etc/nixos/nixos#nixos --accept-flake-config
+sudo nixos-install --flake /mnt/etc/nixos/nixos#nixos
 ```
 
 **Before installing:**
 
 - Replace `nixos/hardware-configuration.nix` with the file generated for the target machine. The repository's original UUIDs and device paths are machine-specific; never use them blindly.
 - Confirm the password hash created by the command sequence above exists at `/mnt/etc/nixos/hashedPassword` with permissions `0600`. Do not commit this file.
-- Review the CachyOS binary-cache trust prompt before accepting it. The flake follows the upstream `release` branch and uses `overlays.pinned`; the kernel version is not hard-coded in `flake.nix`. The committed lock now resolves the CachyOS input to `873c5a2a40575b880a962aaade19afbb572adf92` (Linux 7.2.9). `flake.lock` is a reproducible snapshot, not a permanent kernel-version restriction. When upstream publishes a newer kernel (for example, 7.3), update only this input from `/etc/nixos/nixos/` with `sudo nix flake update cachyos-kernel --accept-flake-config`, inspect `git diff -- flake.lock`, and test the candidate before switching. The fish `nup` alias performs this targeted update from any directory. RT-Bore-LTO's LTO variant is not in the upstream binary cache, so expect a local kernel build.
+- Review the CachyOS binary-cache trust prompt before accepting it. The flake follows the upstream `release` branch and uses `overlays.pinned`; the kernel version is not hard-coded in `flake.nix`. At this revision, the committed lock resolves the CachyOS input to `873c5a2a40575b880a962aaade19afbb572adf92` (Linux 7.2.9); check `nixos/flake.lock` for the actual revision after future updates. `flake.lock` is a reproducible snapshot, not a permanent kernel-version restriction. RT-Bore-LTO's LTO variant is not in the upstream binary cache, so expect a local kernel build.
+
+  To update the running system after its first boot, first save the deployed lock, then update only this input and inspect the diff before switching:
+
+  ```bash
+  sudo cp /etc/nixos/nixos/flake.lock /tmp/flake.lock.before-cachyos-update
+  sudo nix flake update --flake /etc/nixos/nixos cachyos-kernel
+  sudo diff -u /tmp/flake.lock.before-cachyos-update /etc/nixos/nixos/flake.lock || test "$?" -eq 1
+  ```
+
+  A `diff` exit status of 1 means changes were found; status 2 indicates an error. Review any Nix cache-trust prompt before accepting settings. The fish `nup` alias performs this targeted update from any directory and does not silently accept flake settings. Do not run the `/etc/nixos/nixos` commands from a live installer: the mounted target is under `/mnt`. If you intentionally update the candidate before the first installation, target `/mnt/etc/nixos/nixos` and do so before running `nixos-install`.
 - Verify the target disk before running any partitioning command. The installation guide contains destructive operations.
 
 ### Path B — Migrate an existing NixOS installation
