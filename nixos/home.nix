@@ -35,34 +35,34 @@ let
   '';
 
   gtkCss = ''
-    @define-color accent_color              #cba6f7;
-    @define-color accent_fg_color           #000000;
-    @define-color accent_bg_color           #cba6f7;
-    @define-color window_bg_color           #000000;
-    @define-color window_fg_color           #ffffff;
-    @define-color view_bg_color             #0a0a0a;
-    @define-color view_fg_color             #ffffff;
-    @define-color headerbar_bg_color        #000000;
-    @define-color headerbar_fg_color        #ffffff;
-    @define-color headerbar_border_color    #222222;
-    @define-color headerbar_backdrop_color  #000000;
-    @define-color headerbar_shade_color     #000000;
-    @define-color card_bg_color             #111111;
-    @define-color card_fg_color             #ffffff;
-    @define-color card_shade_color          #000000;
-    @define-color popover_bg_color          #111111;
-    @define-color popover_fg_color          #ffffff;
-    @define-color dialog_bg_color           #000000;
-    @define-color dialog_fg_color           #ffffff;
-    @define-color sidebar_bg_color          #000000;
-    @define-color sidebar_fg_color          #ffffff;
-    @define-color sidebar_border_color      #222222;
-    @define-color warning_color             #f9e2af;
-    @define-color error_color               #f38ba8;
-    @define-color success_color             #a6e3a1;
-    @define-color destructive_color         #f38ba8;
-    @define-color destructive_bg_color      #f38ba8;
-    @define-color destructive_fg_color      #000000;
+    @define-color accent_color              #EAB2C2;
+    @define-color accent_fg_color           #1B1E25;
+    @define-color accent_bg_color           #EAB2C2;
+    @define-color window_bg_color           #1B1E25;
+    @define-color window_fg_color           #CCD9FF;
+    @define-color view_bg_color             #1B1E25;
+    @define-color view_fg_color             #CCD9FF;
+    @define-color headerbar_bg_color        #1B1E25;
+    @define-color headerbar_fg_color        #CCD9FF;
+    @define-color headerbar_border_color    #2F364A;
+    @define-color headerbar_backdrop_color  #1B1E25;
+    @define-color headerbar_shade_color     #1B1E25;
+    @define-color card_bg_color             #232936;
+    @define-color card_fg_color             #CCD9FF;
+    @define-color card_shade_color          #1B1E25;
+    @define-color popover_bg_color          #232936;
+    @define-color popover_fg_color          #CCD9FF;
+    @define-color dialog_bg_color           #1B1E25;
+    @define-color dialog_fg_color           #CCD9FF;
+    @define-color sidebar_bg_color          #1B1E25;
+    @define-color sidebar_fg_color          #CCD9FF;
+    @define-color sidebar_border_color      #2F364A;
+    @define-color warning_color             #D9C95E;
+    @define-color error_color               #EAB2C2;
+    @define-color success_color             #76C4D7;
+    @define-color destructive_color         #EAB2C2;
+    @define-color destructive_bg_color      #EAB2C2;
+    @define-color destructive_fg_color      #1B1E25;
 
     window, .background {
       background-color: @window_bg_color;
@@ -163,8 +163,10 @@ let
   hyprlandConf = ''
     ${hyprlandMonitorLine}
 
-    $accent = 0xcba6f7ff
-    $bg     = 0x000000ff
+    # Bocchi-inspired palette: rose, teal, gold, and deep navy.
+    $accent = 0xeab2c2ff
+    $accentAlt = 0x76c4d7ff
+    $bg = 0x1b1e25ff
 
 
     input {
@@ -178,7 +180,7 @@ let
         gaps_in = 4
         gaps_out = 8
         border_size = 2
-        col.active_border = $accent
+        col.active_border = $accent $accentAlt 45deg
         col.inactive_border = $bg
         layout = dwindle
         allow_tearing = true
@@ -238,8 +240,8 @@ let
 
     $mainMod = SUPER
 
-    # Use the `arthur` Rofi theme configured on the target system.
-    bind = $mainMod, A, exec, rofi -show drun -theme arthur
+    # Rofi loads its theme from ~/.config/rofi/config.rasi.
+    bind = $mainMod, A, exec, rofi -show drun
     bind = $mainMod, C, exec, kitty
     bind = $mainMod, Q, killactive
     bind = $mainMod, Return, exec, kitty
@@ -360,7 +362,7 @@ let
     # Avoid duplicate service startup: mpvpaper, its watchdog, and gamemode-notify are
     # started only by their systemd user units, not by both Hyprland and systemd.
     exec-once = ${pkgs.pcmanfm}/bin/pcmanfm --desktop
-    exec-once = hyprctl setcursor capitaine-cursors 16
+    exec-once = hyprctl setcursor Bibata-Modern-Ice 20
     exec-once = waybar
     exec-once = dunst
     exec-once = wl-paste --watch cliphist store
@@ -390,11 +392,11 @@ let
     general {
         hide_cursor = 0
     }
-    background { color = rgba(0, 0, 0, 1.0) }
+    background { color = rgba(27, 30, 37, 1.0) }
     label {
         position = 0, -65; halign = center; valign = center;
         text = ; font_family = JetBrainsMono Nerd Font; font_size = 15;
-        color = rgba(203, 166, 247, 1.0); shadow_passes = 0;
+        color = rgba(234, 178, 194, 1.0); shadow_passes = 0;
     }
     input-field {
         position = 0, -120; size = 300, 50; halign = center; valign = center;
@@ -404,45 +406,45 @@ let
         # supported fade options replace the removed transition option.
         placeholder_text = Password...; font_family = JetBrainsMono Nerd Font;
         dots_size = 0.55; dots_spacing = 0.15; check_text = ✓;
-        font_color = rgba(255, 255, 255, 1.0);
-        check_color = rgba(166, 227, 161, 1.0); fail_color = rgba(243, 139, 168, 1.0);
+        font_color = rgba(204, 217, 255, 1.0);
+        check_color = rgba(118, 196, 215, 1.0); fail_color = rgba(234, 178, 194, 1.0);
         hide_input = false; rounding = 10;
-        outline_thickness = 2; outer_color = rgba(255, 255, 255, 0.1);
-        inner_color = rgba(0, 0, 0, 0.9); shadow_passes = 0;
+        outline_thickness = 2; outer_color = rgba(217, 201, 94, 0.85);
+        inner_color = rgba(27, 30, 37, 0.95); shadow_passes = 0;
     }
     label {
         position = 0, 150; halign = center; valign = center;
         text =  $TIME; font_family = JetBrainsMono Nerd Font; font_size = 80;
-        font_color = rgba(255, 255, 255, 1.0); shadow_passes = 0;
+        font_color = rgba(204, 217, 255, 1.0); shadow_passes = 0;
     }
     label {
         position = 0, 60; halign = center; valign = center;
         text = cmd[update:60000, LC_TIME=en_US.UTF-8 ${pkgs.coreutils}/bin/date +"%d %B %Y"];
         font_family = JetBrainsMono Nerd Font; font_size = 20;
-        font_color = rgba(255, 255, 255, 0.6); shadow_passes = 0;
+        font_color = rgba(204, 217, 255, 0.75); shadow_passes = 0;
     }
     label {
         position = 0, 10; halign = center; valign = center;
         text =  $USER; font_family = JetBrainsMono Nerd Font; font_size = 15;
-        font_color = rgba(255, 255, 255, 0.4); shadow_passes = 0;
+        font_color = rgba(204, 217, 255, 0.65); shadow_passes = 0;
     }
     label {
         position = 20, 20; halign = left; valign = top;
         text = cmd[update:2000, ${pkgs.wireplumber}/bin/wpctl get-volume @DEFAULT_AUDIO_SINK@ | ${pkgs.gawk}/bin/awk '{printf "%.0f%%", $2*100}'];
         font_family = JetBrainsMono Nerd Font; font_size = 15;
-        font_color = rgba(249, 226, 175, 1.0); shadow_passes = 0;
+        font_color = rgba(217, 201, 94, 1.0); shadow_passes = 0;
     }
     label {
         position = 20, 20; halign = right; valign = top;
         text = cmd[update:5000, ${pkgs.networkmanager}/bin/nmcli -t -f NAME,TYPE,STATE con show --active 2>/dev/null | ${pkgs.gnugrep}/bin/grep -v loopback | ${pkgs.coreutils}/bin/head -1 | ${pkgs.coreutils}/bin/cut -d: -f1 | ${pkgs.findutils}/bin/xargs -I{} echo " {}" || echo " Disconnected"];
         font_family = JetBrainsMono Nerd Font; font_size = 15;
-        font_color = rgba(148, 226, 213, 1.0); shadow_passes = 0;
+        font_color = rgba(118, 196, 215, 1.0); shadow_passes = 0;
     }
     label {
         position = 0, -260; halign = center; valign = center;
         text = Press SUPER + SHIFT + E to exit the session
         font_family = JetBrainsMono Nerd Font; font_size = 14;
-        font_color = rgba(255, 255, 255, 0.35); shadow_passes = 0;
+        font_color = rgba(204, 217, 255, 0.45); shadow_passes = 0;
     }
     # Hyprlock 0.9.6 removed the `button` widget, so the old wlogout/suspend buttons
     # were never rendered. The configured `SUPER+SHIFT+E` shortcut still exits Hyprland.
@@ -452,45 +454,50 @@ let
   waybarStyle = ''
     * {
       font-family: "JetBrainsMono Nerd Font", monospace;
-      font-size: 12px; font-weight: 500; min-height: 0;
+      font-size: 13px; font-weight: 600; min-height: 0;
     }
-    #waybar { background: #000000; color: #ffffff; border-bottom: 1px solid #222222; }
-    tooltip { background: #0a0a0a; border: 1px solid #cba6f7; border-radius: 8px; }
-    tooltip label { color: #ffffff; padding: 2px 6px; font-size: 11px; }
-    #workspaces { background: #0a0a0a; border-radius: 10px; margin: 4px 6px; padding: 0 4px; }
+    window#waybar {
+      background: rgba(27, 30, 37, 0.96); color: #CCD9FF;
+      border: 1px solid #2F364A; border-radius: 7px;
+    }
+    tooltip {
+      background: #1B1E25; color: #CCD9FF; border: 1px solid #D9C95E;
+      border-radius: 8px;
+    }
+    tooltip label { color: #CCD9FF; padding: 2px 6px; font-size: 11px; }
+    #workspaces { background: #1B1E25; border-radius: 10px; margin: 4px 6px; padding: 0 4px; }
     #workspaces button {
-      color: #888888; background: transparent; border: none;
+      color: #EAB2C2; background: transparent; border: none;
       border-radius: 8px; padding: 4px 10px; margin: 3px 2px; font-weight: 600;
     }
-    #workspaces button.active { color: #000000; background: #cba6f7; }
-    #workspaces button:hover { color: #ffffff; background: #222222; }
-    #window { color: #aaaaaa; padding: 4px 12px; font-style: italic; font-size: 11px; }
+    #workspaces button.active { color: #1B1E25; background: #EAB2C2; }
+    #workspaces button:hover { color: #1B1E25; background: #76C4D7; }
+    #window { color: #CCD9FF; padding: 4px 12px; font-style: italic; font-size: 11px; }
     #clock {
-      font-size: 13px; font-weight: 600; color: #ffffff;
-      background: #0a0a0a; padding: 4px 14px; border-radius: 10px; margin: 4px;
+      font-size: 13px; font-weight: 700; color: #D9C95E;
+      background: #1B1E25; padding: 4px 14px; border-radius: 10px; margin: 4px;
     }
     #cpu, #memory, #temperature, #pulseaudio, #network, #gamemode, #tray, #custom-temperature {
-      padding: 4px 10px; margin: 4px 3px; border-radius: 10px; background: #0a0a0a;
+      padding: 4px 10px; margin: 4px 3px; border-radius: 10px;
+      background: #1B1E25; border: 1px solid #2F364A;
     }
-    #cpu.warning { color: #f9e2af; }
-    #cpu.critical { color: #f38ba8; }
-    #memory.warning { color: #f9e2af; }
-    #memory.critical { color: #f38ba8; }
-    #mpris { background: #111111; color: #cba6f7; border-radius: 10px; padding: 4px 10px; margin: 4px 3px; }
-    #mpris.playing { color: #a6e3a1; }
-    #mpris.paused  { color: #f9e2af; }
-    #mpris.stopped { color: #6c7086; }
-    #cpu { color: #89b4fa; }
-    #memory { color: #a6e3a1; }
-    #custom-temperature { color: #fab387; }
-    #pulseaudio { color: #f9e2af; }
-    #network { color: #94e2d5; }
-    #gamemode { color: #cba6f7; font-weight: bold; }
+    #cpu.warning, #memory.warning { color: #D9C95E; }
+    #cpu.critical, #memory.critical { color: #EAB2C2; }
+    #mpris { background: #232936; color: #EAB2C2; border-radius: 10px; padding: 4px 10px; margin: 4px 3px; }
+    #mpris.playing { color: #76C4D7; }
+    #mpris.paused { color: #D9C95E; }
+    #mpris.stopped { color: #8290A8; }
+    #cpu { color: #76C4D7; }
+    #memory { color: #EAB2C2; }
+    #custom-temperature { color: #D9C95E; }
+    #pulseaudio { color: #D9C95E; }
+    #network { color: #76C4D7; }
+    #gamemode { color: #EAB2C2; font-weight: bold; }
     #custom-power {
-      color: #f38ba8; font-size: 15px; font-weight: bold;
-      padding: 4px 12px; margin: 4px; background: #0a0a0a; border-radius: 10px;
+      color: #EAB2C2; font-size: 15px; font-weight: bold;
+      padding: 4px 12px; margin: 4px; background: #1B1E25; border-radius: 10px;
     }
-    #custom-power:hover { background: #222222; }
+    #custom-power:hover { background: #2F364A; }
   '';
 
   waybarConfig = builtins.toJSON {
@@ -498,8 +505,10 @@ let
     position = "top";
     height = 32;
     spacing = 4;
-    margin-top = 0;
+    margin-top = 6;
     margin-bottom = 0;
+    margin-left = 8;
+    margin-right = 8;
     modules-left = [ "hyprland/workspaces" "hyprland/window" ];
     modules-center = [ "clock" ];
     modules-right = [
@@ -615,11 +624,11 @@ let
         on-scroll = 1;
         on-click-right = "mode";
         format = {
-          months = "<span color='#cdd6f4'><b>{}</b></span>";
-          days = "<span color='#cdd6f4'>{}</span>";
-          weeks = "<span color='#a6e3a1'><b>H{}</b></span>";
-          weekdays = "<span color='#f9e2af'><b>{}</b></span>";
-          today = "<span color='#f38ba8'><b><u>{}</u></b></span>";
+          months = "<span color='#CCD9FF'><b>{}</b></span>";
+          days = "<span color='#CCD9FF'>{}</span>";
+          weeks = "<span color='#76C4D7'><b>H{}</b></span>";
+          weekdays = "<span color='#D9C95E'><b>{}</b></span>";
+          today = "<span color='#EAB2C2'><b><u>{}</u></b></span>";
         };
       };
       timezone = "Europe/Istanbul";
@@ -684,19 +693,138 @@ in
       };
     };
     iconTheme = {
-      name = "Papirus-Dark";
-      package = pkgs.papirus-icon-theme;
+      name = "Tela-circle-dracula";
+      package = pkgs.tela-circle-icon-theme.override {
+        colorVariants = [ "dracula" ];
+      };
     };
     cursorTheme = {
-      name = "capitaine-cursors";
-      package = pkgs.capitaine-cursors;
-      size = 16;
+      name = "Bibata-Modern-Ice";
+      package = pkgs.bibata-cursors;
+      size = 20;
     };
     gtk3.extraCss = gtkCss;
     gtk4.extraCss = gtkCss;
   };
 
   xdg.configFile = {
+    # A compact Rofi theme inspired by the public dotfiles. The Super+A binding
+    # uses this managed theme rather than forcibly selecting Rofi's stock `arthur`.
+    "rofi/config.rasi".text = ''
+      configuration {
+        modi: "drun,run,window";
+        show-icons: true;
+        terminal: "kitty";
+        drun-display-format: "{name}";
+        matching: "fuzzy";
+        sort: true;
+        case-sensitive: false;
+      }
+      @theme "~/.config/rofi/themes/theme.rasi"
+    '';
+    "rofi/themes/theme.rasi".text = ''
+      * {
+        main-bg: #1B1E25;
+        main-fg: #CCD9FF;
+        main-br: #D9C95E;
+        main-ex: #76C4D7;
+        select-bg: #EAB2C2;
+        select-fg: #1B1E25;
+        urgent: #EAB2C2;
+        background-color: @main-bg;
+        text-color: @main-fg;
+      }
+      window {
+        width: 42%;
+        border: 2px;
+        border-color: @main-br;
+        border-radius: 12px;
+        background-color: @main-bg;
+      }
+      mainbox { padding: 12px; background-color: @main-bg; }
+      inputbar {
+        padding: 8px 10px;
+        border: 1px;
+        border-color: @main-ex;
+        border-radius: 8px;
+        background-color: #232936;
+        children: [ prompt, entry ];
+        spacing: 8px;
+      }
+      prompt { text-color: @main-ex; }
+      entry { text-color: @main-fg; placeholder: "Search…"; }
+      listview { lines: 8; columns: 1; fixed-height: false; padding: 8px 0 0; spacing: 3px; }
+      element {
+        padding: 7px 10px;
+        border-radius: 7px;
+        background-color: transparent;
+        text-color: @main-fg;
+      }
+      element normal.normal { background-color: transparent; text-color: @main-fg; }
+      element selected.normal { background-color: @select-bg; text-color: @select-fg; }
+      element alternate.normal { background-color: #232936; }
+      element selected.active { background-color: @main-ex; text-color: @main-bg; }
+      element-text { background-color: inherit; text-color: inherit; }
+      element-icon { size: 1.2em; background-color: inherit; }
+      scrollbar { handle-width: 4px; border: 0; border-color: @main-bg; }
+    '';
+    "kitty/kitty.conf".text = ''
+      font_family JetBrainsMono Nerd Font
+      font_size 11.0
+      window_padding_width 20
+      confirm_os_window_close 0
+      background_opacity 0.97
+      include themes/theme.conf
+    '';
+    "kitty/themes/theme.conf".text = ''
+      foreground #CCD9FF
+      background #1B1E25
+      cursor #EAB2C2
+      cursor_text_color #1B1E25
+      selection_background #EAB2C2
+      selection_foreground #1B1E25
+      color0  #1B1E25
+      color1  #EAB2C2
+      color2  #76C4D7
+      color3  #D9C95E
+      color4  #76C4D7
+      color5  #EAB2C2
+      color6  #76C4D7
+      color7  #CCD9FF
+      color8  #8290A8
+      color9  #F2C6D2
+      color10 #97D5E2
+      color11 #E8D982
+      color12 #91D2E0
+      color13 #F0C4D1
+      color14 #A6DFE9
+      color15 #FFFFFF
+    '';
+    "ranger/rc.conf".text = ''
+      set preview_images true
+      set preview_images_method kitty
+      set show_hidden true
+      set sort_directories_first true
+      set confirm_on_delete multiple
+      set draw_borders both
+      set vcs_aware false
+    '';
+    # Keep Fish as the login shell; translate safe convenience aliases instead of
+    # importing the upstream Zsh/Oh-My-Zsh setup or its Arch-only update command.
+    "fish/conf.d/bocchi-theme.fish".text = ''
+      if status is-interactive
+          if type -q eza
+              alias ls 'eza --icons --color=always --group-directories-first'
+              alias ll 'eza -alF --icons --color=always --group-directories-first'
+              alias la 'eza -a --icons --color=always --group-directories-first'
+              alias l 'eza -F --icons --color=always --group-directories-first'
+          end
+          alias c clear
+          if test -r "$HOME/.cache/wal/sequences"
+              command cat "$HOME/.cache/wal/sequences"
+          end
+      end
+    '';
     "hypr/hyprland.conf".text = hyprlandConf;
     "hypr/hyprlock.conf".text = hyprlockConf;
     "waybar/style.css".text = waybarStyle;
@@ -1530,6 +1658,8 @@ done
     # installed in either package list; mpvpaper's private PATH did not make it available
     # to the scratchpad. `mpv` is now included in the Home Manager package list.
     mpv
+    # Optional tools for the adapted dotfile theme; Pywal is user-invoked (wal -i).
+    eza ranger pywal16
     fd ripgrep jq wget curl file tree
     # `playerctl`, `wev`, `libnotify`, and `hyprpicker` are installed system-wide
     # in `configuration.nix`; keep them out of this Home Manager list to avoid duplicates.
