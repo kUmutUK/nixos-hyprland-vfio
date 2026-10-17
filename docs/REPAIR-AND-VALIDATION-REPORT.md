@@ -1,5 +1,18 @@
 # Repair and validation report — 2026-10-16
 
+## Follow-up status — 2026-10-17: packaging and documentation audit corrections
+
+The 2026-10-17 audit of `nixos-hyprland-vfio(6).zip` found that the uploaded full-project archive included its internal `.git/` directory and extracted `install.sh` as mode `0644`, despite the Git index recording mode `100755`. This is an input-archive packaging defect, not a content-level installer bug. The fix-only ZIP for this correction set contains only the changed documentation/workflow files plus `install.sh` with Unix mode `100755`; it does not include `.git/` or duplicate the full project. To publish a canonical full-source ZIP from a Git checkout, commit the intended revision and use the `git archive` command documented in `README.md`. The CI check validates both exclusion of `.git/` and preservation of the executable bit.
+
+The documentation and validation workflow were updated to close the other findings from that audit:
+
+- `KURULUM.md` now distinguishes manual Btrfs `/home/.snapshots` setup from the installer's existing create-and-verify behavior, warns against running `btrfs subvolume create` on an already-existing subvolume, and keeps the boot-critical mount requirement explicit.
+- `README.md` lists `scripts/test-installer-rollback.sh` in the repository map and local validation steps; `CONTRIBUTING.md` includes the same test and ShellCheck/syntax coverage.
+- The embedded Bash validation in README, CONTRIBUTING, and CI now uses a fresh temporary directory, captures and checks the extractor's exit status directly, verifies exactly seven scripts before invoking ShellCheck, and removes the temporary files. An extraction failure or missing marker can no longer be masked by a downstream `xargs` success.
+- `README.md` now names the default Windows and VirtIO ISO files and their expected `/var/lib/libvirt/images/` location, matching `vm-xml/win10.xml` and `KURULUM.md`.
+
+Validation completed in this environment: installer invariants, rollback, VFIO driver-state, and VM XML tests passed; Bash syntax checks passed for the installer, QEMU hook, regression scripts, and all seven extracted embedded scripts; Python compilation, XML parsing, `flake.lock` JSON parsing, and workflow YAML parsing passed. The embedded-script extractor returned exactly seven scripts. ShellCheck and Nix flake evaluation were not run because those executables are unavailable here; libvirt semantic validation and real GPU/VM lifecycle behavior still require validation on the target host.
+
 ## Scope
 
 Reviewed the uploaded source archive and modified source files, configuration, VM XML, installer, CI, scripts, and documentation. This is a static maintenance pass, not a claim that the configuration was activated on the target PC.
