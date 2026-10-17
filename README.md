@@ -368,3 +368,10 @@ bash scripts/test-installer-rollback.sh
 ## License
 
 MIT. See [`LICENSE`](LICENSE).
+
+
+## Bocchi-inspired desktop theme adaptation
+
+A NixOS-native visual adaptation of [roscaa-stack/dotfiles](https://github.com/roscaa-stack/dotfiles) is included in `nixos/home.nix`: a rose/teal/gold palette, Bibata-Modern-Ice cursor, Tela-circle Dracula icons, and Home Manager-managed Rofi/Kitty/Ranger/Fish configuration. The existing Hyprland shortcuts, Turkish keyboard layout, Waybar modules, and AMD VFIO/Windows VM setup are retained. Arch-only scripts, hard-coded upstream home paths, and laptop-only backlight settings are intentionally not copied.
+
+See [`ANALIZ_VE_UYARLAMA_RAPORU.md`](ANALIZ_VE_UYARLAMA_RAPORU.md) for the file-by-file audit, omissions, tests, and safe validation steps. This is a configuration adaptation, not a claim of a successful build on every target host.
