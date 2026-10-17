@@ -2,8 +2,9 @@
 {
   description = "NixOS CachyOS RT-Bore-LTO Kernel — Gaming + Hyprland + VFIO";
 
-  # Configure the CachyOS binary cache at flake-evaluation time. On a fresh
-  # installation, accept this cache explicitly with --accept-flake-config.
+  # Configure the CachyOS binary cache at flake-evaluation time. Nix may ask
+  # whether to trust these settings. Review the cache URL and public key before
+  # accepting; do not pass --accept-flake-config merely to suppress that prompt.
   nixConfig = {
     extra-substituters = [
       "https://attic.xuyh0120.win/lantian"
