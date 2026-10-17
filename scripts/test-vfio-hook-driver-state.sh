@@ -3,6 +3,7 @@ set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 HOOK="$REPO_DIR/nixos/hooks/qemu"
+CONFIG="$REPO_DIR/nixos/configuration.nix"
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
@@ -10,6 +11,13 @@ fail() {
   printf 'FAIL: %s\n' "$1" >&2
   exit 1
 }
+
+# The hook runs with libvirtd's controlled PATH, not the interactive user's PATH.
+# restore_saved_services uses awk, so the generated PATH must explicitly include gawk.
+hook_path_line="$(grep -F 'export PATH="${lib.makeBinPath [' "$CONFIG" || true)"
+if [[ "$hook_path_line" != *"pkgs.gawk"* ]]; then
+  fail 'libvirt hook PATH must explicitly include pkgs.gawk for service-state restoration'
+fi
 
 extract_function() {
   local function_name="$1"
