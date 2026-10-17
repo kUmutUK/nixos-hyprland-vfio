@@ -59,6 +59,9 @@ jobs:
       - name: Installer, English locale, global Reflex and SSH regression checks
         run: bash scripts/test-installer-invariants.sh
 
+      - name: Installer partial-deployment rollback regression test
+        run: bash scripts/test-installer-rollback.sh
+
       # ---- GATE STEPS (must pass) ----
 
       - name: shellcheck
@@ -73,7 +76,7 @@ jobs:
             sudo apt-get update -qq
             sudo apt-get install -y -qq shellcheck
           fi
-          shellcheck -S warning install.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh
+          shellcheck -S warning install.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh
           echo "  shellcheck OK"
 
       - name: VFIO hook driver-state regression tests
