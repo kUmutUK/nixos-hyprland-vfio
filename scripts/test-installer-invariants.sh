@@ -158,8 +158,36 @@ if [[ -z "$assignment_line" || -z "$first_use_line" || "$assignment_line" -ge "$
   exit 1
 fi
 
-if ! grep -Fq 'Do not run the repository from /etc/nixos itself.' "$INSTALLER"; then
-  echo "FAIL: installer must reject a checkout whose root overlaps /etc/nixos before making changes." >&2
+# Exercise the actual path-boundary helper with a temporary deployment tree.
+# Both the exact /etc/nixos-equivalent root and descendants must be rejected;
+# a checkout outside the deployment tree must remain allowed.
+repo_guard_dir="$(mktemp -d)"
+trap 'rm -rf -- "${state_test_dir:-}" "${monitor_test_dir:-}" "${password_test_dir:-}" "${repo_guard_dir:-}"' EXIT
+mkdir -p "$repo_guard_dir/nixos/repo/nixos" "$repo_guard_dir/outside/repo"
+awk '/^ensure_repo_outside_deployment_target\(\) \{/ { capture=1 } capture { print } capture && /^}/ { exit }' "$INSTALLER" > "$repo_guard_dir/guard.sh"
+if ! grep -q '^ensure_repo_outside_deployment_target() {' "$repo_guard_dir/guard.sh"; then
+  echo "FAIL: could not locate the repository deployment-path guard." >&2
+  exit 1
+fi
+cat > "$repo_guard_dir/harness.sh" <<'BASH'
+error() { printf '%s\n' "$*" >&2; exit 1; }
+source "$1"
+ensure_repo_outside_deployment_target "$2" "$3"
+BASH
+nixos_target="$(cd "$repo_guard_dir/nixos" && pwd -P)"
+nixos_root="$nixos_target"
+nixos_nested="$(cd "$repo_guard_dir/nixos/repo" && pwd -P)"
+outside_repo="$(cd "$repo_guard_dir/outside/repo" && pwd -P)"
+if bash "$repo_guard_dir/harness.sh" "$repo_guard_dir/guard.sh" "$nixos_root" "$nixos_target" 2>/dev/null; then
+  echo "FAIL: installer accepted a repository rooted at /etc/nixos." >&2
+  exit 1
+fi
+if bash "$repo_guard_dir/harness.sh" "$repo_guard_dir/guard.sh" "$nixos_nested" "$nixos_target" 2>/dev/null; then
+  echo "FAIL: installer accepted a repository nested beneath /etc/nixos." >&2
+  exit 1
+fi
+if ! bash "$repo_guard_dir/harness.sh" "$repo_guard_dir/guard.sh" "$outside_repo" "$nixos_target"; then
+  echo "FAIL: installer rejected a repository outside /etc/nixos." >&2
   exit 1
 fi
 if ! grep -Fq 'input_mon="$(trim_whitespace "$input_mon")"' "$INSTALLER"; then
@@ -172,7 +200,7 @@ if grep -Fq 'input_mon:-$monitor_output' "$INSTALLER"; then
 fi
 
 monitor_test_dir="$(mktemp -d)"
-trap 'rm -rf -- "${state_test_dir:-}" "${monitor_test_dir:-}"' EXIT
+trap 'rm -rf -- "${state_test_dir:-}" "${monitor_test_dir:-}" "${password_test_dir:-}" "${repo_guard_dir:-}"' EXIT
 awk '/^trim_whitespace\(\) \{/ { capture=1 } capture { print } capture && /^}/ { exit }' "$INSTALLER" > "$monitor_test_dir/trim.sh"
 cat >> "$monitor_test_dir/trim.sh" <<'BASH'
 set -e

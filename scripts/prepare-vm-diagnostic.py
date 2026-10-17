@@ -46,13 +46,38 @@ def main() -> int:
         parser.error(f"output directory does not exist: {output.parent}")
 
     original = source.read_text(encoding="utf-8")
-    if re.search(r"<graphics\b", original):
-        parser.error("input already has a graphics device; refusing to add a duplicate")
-    updated, count = VIDEO_NONE.subn(lambda match: GRAPHICS.replace("    ", match.group("indent"), 1), original, count=1)
-    if count != 1:
-        parser.error('expected exactly one <video><model type="none"/></video> block in input XML')
 
-    # Check well-formedness without serializing the tree, preserving original XML comments/layout.
+    # Validate the XML structure before a text-preserving substitution. The
+    # regex below intentionally keeps the original formatting, but it must not
+    # silently accept a second video device or an already-present graphics
+    # device. Parse errors are reported before any output file is created.
+    try:
+        original_root = ET.fromstring(original)
+    except ET.ParseError as exc:
+        parser.error(f"input XML is not well-formed: {exc}")
+    devices = original_root.find("./devices")
+    if devices is None:
+        parser.error("input XML has no <devices> section")
+    if original_root.find(".//graphics") is not None:
+        parser.error("input already has a graphics device; refusing to add a duplicate")
+    video_nodes = devices.findall("video")
+    if len(video_nodes) != 1:
+        parser.error(f"expected exactly one <devices><video> block, found {len(video_nodes)}")
+    model = video_nodes[0].find("model")
+    if model is None or model.get("type") != "none":
+        parser.error('the single <video> block must contain <model type="none"/>')
+
+    updated, count = VIDEO_NONE.subn(
+        lambda match: GRAPHICS.replace("    ", match.group("indent"), 1), original
+    )
+    if count != 1:
+        parser.error(
+            'expected exactly one text-formatted <video><model type="none"/></video> block; '
+            f"found {count} matching blocks"
+        )
+
+    # Validate generated XML without serializing the tree, preserving original
+    # XML comments and layout.
     try:
         ET.fromstring(updated)
     except ET.ParseError as exc:
