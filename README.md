@@ -55,7 +55,8 @@ git clone https://github.com/kUmutUK/nixos-hyprland-vfio.git /tmp/repo
 cp /mnt/etc/nixos/hardware-configuration.nix /tmp/repo/nixos/hardware-configuration.nix
 sudo mv /mnt/etc/nixos /mnt/etc/nixos-generated-backup
 sudo mkdir -p /mnt/etc/nixos
-sudo cp -r /tmp/repo/. /mnt/etc/nixos/
+# Copy the repository contents but leave Git metadata out of the system config tree.
+tar --exclude='./.git' -C /tmp/repo -cf - . | sudo tar --no-same-owner -C /mnt/etc/nixos -xf -
 
 # Preserve the generated swap device path and add randomEncryption.enable = true
 # inside its swapDevices entry, then save and exit the editor.

@@ -761,12 +761,9 @@ echo ""
 echo "   If the file already exists on this system:"
 echo -e "     ${CYAN}sudo cp ${NIXOS_DIR}/hardware-configuration.nix ${NIXOS_FLAKE_DIR}/${NC}"
 echo ""
-echo "   For a fresh installation:"
-echo -e "     ${CYAN}sudo cp /mnt/etc/nixos/hardware-configuration.nix ${NIXOS_FLAKE_DIR}/${NC}"
-echo ""
-echo "   Or create it manually:"
-echo -e "     ${CYAN}sudo nixos-generate-config --root /mnt${NC}"
-echo -e "     ${CYAN}lsblk -f${NC}  # Verify the UUIDs"
+echo "   This migration installer is for an already booted NixOS host; do not run it from the live installer."
+echo "   For a fresh installation, follow KURULUM.md and generate hardware configuration for the mounted target."
+echo "   The generated file must be installed at /mnt/etc/nixos/nixos/hardware-configuration.nix before nixos-install."
 fi
 
 # ─── Btrfs snapshot subvolume ───────────────────────────
