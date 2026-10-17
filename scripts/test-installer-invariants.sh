@@ -74,8 +74,16 @@ if grep -Eq '\$\{iommu_dir\}|\$iommu_dir([^[:alnum:]_]|$)' "$INSTALLER"; then
   echo "FAIL: undeclared iommu_dir variable reference remains in installer." >&2
   exit 1
 fi
-if ! grep -Fq 'Could not resolve GPU IOMMU group information (${gpu_iommu_dir})' "$INSTALLER"; then
-  echo "FAIL: missing IOMMU warning must describe an unresolved path, not assume the link is absent." >&2
+if ! grep -Fq 'if [ -z "$gpu_grp" ]; then' "$INSTALLER" || ! grep -Fq 'Could not resolve the GPU IOMMU group at ${gpu_iommu_dir}' "$INSTALLER"; then
+  echo "FAIL: installer must abort when the GPU IOMMU group cannot be resolved." >&2
+  exit 1
+fi
+if ! grep -Fq 'if [ -z "$audio_grp" ]; then' "$INSTALLER" || ! grep -Fq 'Could not resolve the GPU audio-function IOMMU group at ${audio_iommu_dir}' "$INSTALLER"; then
+  echo "FAIL: installer must abort when the GPU audio-function IOMMU group cannot be resolved." >&2
+  exit 1
+fi
+if grep -Fq 'Ensure IOMMU is enabled in firmware; skipping this check.' "$INSTALLER"; then
+  echo "FAIL: installer must not skip the required IOMMU validation and continue." >&2
   exit 1
 fi
 if ! grep -Fq 'readlink -e -- "$link"' "$INSTALLER"; then
@@ -318,8 +326,27 @@ if ! grep -Fq 'cachyos-kernel.url = "github:xddxdd/nix-cachyos-kernel/release";'
   echo "FAIL: the CachyOS input must follow the upstream release channel, not a hard-coded tag." >&2
   exit 1
 fi
-if ! grep -Fq 'nup = "sudo nix flake update --accept-flake-config --flake /etc/nixos/nixos cachyos-kernel";' "$HOME_CONFIG"; then
+python3 - "$ROOT/nixos/flake.lock" <<'PYLOCK'
+import json
+import sys
+from pathlib import Path
+
+lock = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+node = lock["nodes"]["cachyos-kernel"]["locked"]
+if node.get("rev") == "873c5a2a40575b880a962aaade19afbb572adf92":
+    expected = "sha256-zmA3LKGQBRY4/vqDt0U+B+Vf78NlS0vhuFtKxm51+Q8="
+    if node.get("narHash") != expected:
+        raise SystemExit(
+            "FAIL: cachyos-kernel@873c5a2a40575b880a962aaade19afbb572adf92 "
+            "has the wrong NAR hash; expected the Nix-reported value " + expected
+        )
+PYLOCK
+if ! grep -Fq 'nup = "sudo nix flake update --flake /etc/nixos/nixos cachyos-kernel";' "$HOME_CONFIG"; then
   echo "FAIL: nup must update only the CachyOS input against the absolute system flake path." >&2
+  exit 1
+fi
+if grep -Fq -- '--accept-flake-config' "$HOME_CONFIG"; then
+  echo "FAIL: nup must not silently auto-accept untrusted flake cache settings." >&2
   exit 1
 fi
 if grep -Fq 'RFC1918 home/LAN ranges are exempt' "$CONFIG"; then
@@ -334,8 +361,14 @@ if ! grep -Fq 'check_ssh_password_file "$NIXOS_DIR/hashedPassword"' "$INSTALLER"
   echo "FAIL: installer preflight must check the SSH password hash file and its secure metadata." >&2
   exit 1
 fi
-if ! grep -Fq 'nix flake update cachyos-kernel --accept-flake-config' "$README" || ! grep -Fq 'nix flake update cachyos-kernel --accept-flake-config' "$ROOT/KURULUM.md"; then
+if ! grep -Fq 'nix flake update --flake /etc/nixos/nixos cachyos-kernel' "$README" \
+  || ! grep -Fq 'nix flake update --flake /etc/nixos/nixos cachyos-kernel' "$ROOT/KURULUM.md"; then
   echo "FAIL: both install guides must document how to update the CachyOS kernel input." >&2
+  exit 1
+fi
+if grep -Fq 'nixos-install --flake /mnt/etc/nixos/nixos#nixos --accept-flake-config' "$README" "$ROOT/KURULUM.md" \
+  || grep -Fq 'nix flake update cachyos-kernel --accept-flake-config' "$README" "$ROOT/KURULUM.md"; then
+  echo "FAIL: documented install/update commands must not silently auto-accept flake cache settings." >&2
   exit 1
 fi
 if ! grep -Fq 'services.openssh = {' "$CONFIG" || ! grep -Fq 'enable = true;' "$CONFIG" || ! grep -Fq 'PasswordAuthentication = true;' "$CONFIG" || ! grep -Fq 'AllowUsers = [ "localhost" ];' "$CONFIG" || ! grep -Fq 'PermitRootLogin = "no";' "$CONFIG"; then
