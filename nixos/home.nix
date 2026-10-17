@@ -10,6 +10,31 @@ let
   hyprlandMonitorLine = "monitor = ,preferred,auto,1";
   wallpaperVideo     = "${config.home.homeDirectory}/Downloads/arthur-leywin-the-beginning-after-the-end.3840x2160.mp4";
 
+  # Reuse Bibata's designed plus cursor as the default pointer while preserving
+  # its hand, text, resize, busy, and other context-specific cursors.
+  plusCursorTheme = pkgs.runCommand "plus-cursor-theme" {} ''
+    src="${pkgs.bibata-cursors}/share/icons/Bibata-Modern-Ice"
+    theme="$out/share/icons/Plus-Cursor"
+    mkdir -p "$theme/cursors"
+    test -f "$src/cursors/plus"
+
+    for cursor in "$src"/cursors/*; do
+      ln -s "$cursor" "$theme/cursors/$(basename "$cursor")"
+    done
+
+    # These aliases are the usual default arrow names used by XCursor clients.
+    for alias in left_ptr default arrow top_left_arrow; do
+      ln -sfn "$src/cursors/plus" "$theme/cursors/$alias"
+    done
+
+    cat > "$theme/index.theme" <<'EOF'
+[Icon Theme]
+Name=Plus-Cursor
+Comment=Plus-shaped default pointer based on Bibata-Modern-Ice
+Inherits=Bibata-Modern-Ice
+EOF
+  '';
+
   # Quote every argument passed to systemd `ExecStart` using systemd's escaping rules.
   # JSON quoting preserves spaces/special characters and escapes `%` and `$` to prevent
   # specifier and environment-variable expansion.
@@ -362,7 +387,7 @@ let
     # Avoid duplicate service startup: mpvpaper, its watchdog, and gamemode-notify are
     # started only by their systemd user units, not by both Hyprland and systemd.
     exec-once = ${pkgs.pcmanfm}/bin/pcmanfm --desktop
-    exec-once = hyprctl setcursor Bibata-Modern-Ice 20
+    exec-once = hyprctl setcursor Plus-Cursor 20
     exec-once = waybar
     exec-once = dunst
     exec-once = wl-paste --watch cliphist store
@@ -669,8 +694,11 @@ in
   # the explicit variable, starting Hyprland before Home Manager activation could create
   # a sample Lua config that shadows the managed configuration. Remove this setting only
   # if the system intentionally migrates to Lua.
-  home.sessionVariables.HYPRLAND_CONFIG =
-    "${config.home.homeDirectory}/.config/hypr/hyprland.conf";
+  home.sessionVariables = {
+    HYPRLAND_CONFIG = "${config.home.homeDirectory}/.config/hypr/hyprland.conf";
+    XCURSOR_THEME = "Plus-Cursor";
+    XCURSOR_SIZE = "20";
+  };
 
   # Verify the active config with `hyprctl configversion`. Check for
   # `~/.config/hypr/hyprland.lua`; with `HYPRLAND_CONFIG` set, it should not shadow the
@@ -698,13 +726,17 @@ in
         colorVariants = [ "dracula" ];
       };
     };
-    cursorTheme = {
-      name = "Bibata-Modern-Ice";
-      package = pkgs.bibata-cursors;
-      size = 20;
-    };
     gtk3.extraCss = gtkCss;
     gtk4.extraCss = gtkCss;
+  };
+
+  home.pointerCursor = {
+    enable = true;
+    name = "Plus-Cursor";
+    package = plusCursorTheme;
+    size = 20;
+    gtk.enable = true;
+    x11.enable = true;
   };
 
   xdg.configFile = {
