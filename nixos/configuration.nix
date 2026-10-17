@@ -236,8 +236,8 @@ in
     NIXOS_OZONE_WL = "1";
     MOZ_ENABLE_WAYLAND = "1";
     QT_QPA_PLATFORM = "wayland;xcb";
-    XCURSOR_THEME = "capitaine-cursors";
-    XCURSOR_SIZE = "16";
+    XCURSOR_THEME = "Bibata-Modern-Ice";
+    XCURSOR_SIZE = "20";
   };
 
   # PAM initializes these variables for login sessions, including the greetd/Hyprland
@@ -389,7 +389,7 @@ in
     ntfs3g exfat gparted crow-translate tesseract translate-shell libnotify
     steam gamemode gamescope mangohud winetricks procps
     heroic protonup-qt wine nodejs
-    virt-manager capitaine-cursors
+    virt-manager bibata-cursors
     btop nvtopPackages.amd fastfetch
     git zip unzip usbutils pciutils p7zip android-tools
     (vscode-with-extensions.override {
