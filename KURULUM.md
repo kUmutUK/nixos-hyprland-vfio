@@ -1,5 +1,7 @@
 # 🇹🇷 NixOS Hyprland + VFIO Kurulum Rehberi
 
+English version: [INSTALLATION.md](INSTALLATION.md)
+
 Bu rehber AMD sistemler için optimize edilmiş **NixOS + LUKS2 + Btrfs + Hyprland + VFIO** kurulum akışıdır.
 
 > **Önerilen yol elle kurulumdur.** Bu rehber temiz kurulum içindir ve adımları sırayla, her komutu anlayarak uygulayın. `install.sh` temiz kurulum veya disk bölümleme aracı değildir; mevcut NixOS sistemini taşıyan ileri düzey kullanıcılar için isteğe bağlı ve daha riskli bir yardımcıdır. Risk uyarısı ve alternatif elle taşıma adımları için [`README.md`](README.md) bölümüne bakın.
@@ -392,10 +394,10 @@ kopyalanır. `install.sh`'ı çalıştırmadığınız için `home.nix` içindek
 | # | Değer | Varsayılan | Sonucu |
 |---|-------|-----------|--------|
 | 1 | `hyprlandMonitorLine` | `"monitor = ,preferred,auto,1"` | Boş monitör adı, açıkça tanımlanmamış çıkışlara uygulanacak catch-all kuralıdır; workspace aynalama kuralı değildir. Çok monitörde her çıkışa `preferred/auto/1` uygulamak istemiyorsanız gerçek çıkış adını yazın. |
-| 2 | `monitorOutput` | `""` (boş) | Yanlış çıktıysa `mpvpaper` duvar kağıdı çalışmaz (oturum açılışında kritik uyarı çıkar) |
+| 2 | `monitorOutput` | `""` (boş) | Yanlış bir çıkış adı seçilirse `mpvpaper` başlatılamaz. Boş değer canlı duvar kâğıdını devre dışı bırakır ve uyarı göstermez. |
 | 3 | `gitName` | `"changeme"` | Commit'ler sahte isimle etiketlenir |
 | 4 | `gitEmail` | `"you@example.com"` | Commit'ler sahte adresle etiketlenir |
-| 5 | `wallpaperVideo` | `~/Downloads/arthur-leywin-….mp4` | Dosya yoksa `Unit.ConditionPathExists` servisi başlatmaz; oturum açılışında kritik uyarı gösterilir |
+| 5 | `wallpaperVideo` | `~/Downloads/arthur-leywin-….mp4` | Dosya yoksa `Unit.ConditionPathExists` servisi başlatmaz. `monitorOutput` boş değilse oturum açılışında uyarı gösterilir. |
 
 Elle kurulum önerilen yoldur; bu değerleri elle doldurun. `install.sh`
 mevcut NixOS'u taşıyan ileri düzey kullanıcılar için isteğe bağlıdır ve sistem
@@ -554,6 +556,14 @@ sudo reboot
 > `if [ "$GUEST" != "$TARGET_VM" ]; then exit 0` filtresi (`TARGET_VM="win10"`)
 > hiç eşleşmez ve GPU **hiçbir zaman** `vfio-pci`'ye bağlanmaz. Yani tüm
 > VFIO sistemi sessizce hiç çalışmaz.
+
+> **USB klavye/fare kimlikleri:** varsayılan XML `1532:0098` ve `05ac:024f` USB
+> aygıtlarını etkin biçimde VM'e aktarır; kurulum betiği bu kimlikleri otomatik algılamaz.
+> `lsusb -nn` ile her iki kimliğin de aktarmak istediğiniz aygıtlar olduğundan emin olun.
+> Yanlışsa, ilk VM tanımından önce kaynak şablonu `/etc/nixos/vm-xml/win10.xml` düzenleyin.
+> `/var/lib/libvirt/win10.xml` zaten varsa dağıtılmış dosyayı düzenleyin; yalnızca kaynak
+> şablonunu düzenlemek mevcut VM tanımını değiştirmez. Ardından etkin dosyayı
+> `sudo virsh define /var/lib/libvirt/win10.xml` ile yeniden tanıtın.
 
 ```bash
 # Run these commands after the first reboot, not from the live ISO.

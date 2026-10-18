@@ -44,9 +44,9 @@ The active `boot.kernelParams` list does not set `amd_iommu=on` or `iommu=pt`. E
 
 ### Path A — Manual fresh installation (recommended for a new system)
 
-Follow [`KURULUM.md`](KURULUM.md) from the NixOS Live ISO. It covers partitioning, LUKS2, Btrfs subvolumes, machine-specific hardware configuration, password setup, and installation. The disk steps are **destructive**; do not copy them without substituting and re-checking your own target disk.
+Follow [`KURULUM.md`](KURULUM.md) (Turkish) or its English version, [`INSTALLATION.md`](INSTALLATION.md), from the NixOS Live ISO. The guides cover partitioning, LUKS2, Btrfs subvolumes, machine-specific hardware configuration, password setup, and installation. The disk steps are **destructive**; do not copy them without substituting and re-checking your own target disk.
 
-The high-level flow is shown below. Perform the steps in [`KURULUM.md`](KURULUM.md) in order; do not skip its disk identity checks or typed confirmations.
+The high-level flow is shown below. Perform the steps in [`KURULUM.md`](KURULUM.md) or [`INSTALLATION.md`](INSTALLATION.md) in order; do not skip the disk identity checks or typed confirmations.
 
 ```bash
 set -Eeuo pipefail
@@ -395,6 +395,7 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 .
 ├── README.md
 ├── KURULUM.md                      # Turkish fresh-install guide
+├── INSTALLATION.md                 # English fresh-install guide
 ├── DEGISIKLIK_GECMISI.md           # Turkish detailed legacy changelog
 ├── CONTRIBUTING.md
 ├── CHANGELOG.md
