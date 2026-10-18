@@ -2,6 +2,8 @@
 
 Bu rehber AMD sistemler için optimize edilmiş **NixOS + LUKS2 + Btrfs + Hyprland + VFIO** kurulum akışıdır.
 
+> **Önerilen yol elle kurulumdur.** Bu rehber temiz kurulum içindir ve adımları sırayla, her komutu anlayarak uygulayın. `install.sh` temiz kurulum veya disk bölümleme aracı değildir; mevcut NixOS sistemini taşıyan ileri düzey kullanıcılar için isteğe bağlı ve daha riskli bir yardımcıdır. Risk uyarısı ve alternatif elle taşıma adımları için [`README.md`](README.md) bölümüne bakın.
+
 ---
 
 # ⚙️ Ön Gereksinimler
@@ -44,6 +46,7 @@ lsblk -o NAME,SIZE,MODEL,SERIAL,FSTYPE,MOUNTPOINTS
 > diskinizle değiştirin; devam eden komutları aynı terminal oturumunda çalıştırın.
 
 ```bash
+set -Eeuo pipefail
 DISK=/dev/nvme0n1    # ← BURAYI DEĞİŞTİRİN
 
 # Yalnızca tüm diski kabul et; bölüm aygıtı veya var olmayan bir yol kullanma.
@@ -57,79 +60,133 @@ if [ "$DISK_TYPE" != "disk" ]; then
   exit 1
 fi
 
-# Hedef disk veya alt bölümlerinden biri bağlıysa devam etme.
-if lsblk -nrpo MOUNTPOINTS "$DISK" | grep -qE '[^[:space:]]'; then
-  echo "HATA: $DISK veya bölümlerinden biri bağlı. Önce doğru diski doğrula ve bağlantıları kaldır." >&2
-  exit 1
-fi
-
-# Hedef diskten gelen etkin swap varsa bölüm tablosunu silme. `lsblk -s`,
-# doğrudan bölümün yanı sıra device-mapper/LUKS arkasındaki fiziksel diski de arar.
 DISK_REAL=$(readlink -f -- "$DISK") || {
   echo "HATA: Hedef diskin kanonik aygıt yolu çözümlenemedi." >&2
   exit 1
 }
-# Use the resolved block-device path for partition-name construction too; paths
-# under /dev/disk/by-id can otherwise produce invalid partition paths later.
-DISK="$DISK_REAL"
-ACTIVE_SWAP_DEVICES=$(sudo swapon --noheadings --raw --show=NAME) || {
-  echo "HATA: Etkin swap aygıtları doğrulanamadı; güvenlik için devam edilmiyor." >&2
+DISK_MODEL=$(lsblk -dnro MODEL "$DISK" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+DISK_SERIAL=$(lsblk -dnro SERIAL "$DISK" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+DISK_BYTES=$(sudo blockdev --getsize64 "$DISK") || {
+  echo "HATA: Disk kapasitesi okunamadı." >&2
   exit 1
 }
-while IFS= read -r swap_dev; do
-  [ -n "$swap_dev" ] || continue
-  # Swap dosyası bir hedef diskteyse o dosya sistemi bağlı olmak zorundadır;
-  # yukarıdaki mount kontrolü bunu yakalar. Burada blok aygıtı swap'ını izliyoruz.
-  [ -b "$swap_dev" ] || continue
-  SWAP_BACKING_DEVICES=$(lsblk --inverse --noheadings --raw --paths --output NAME "$swap_dev") || {
-    echo "HATA: $swap_dev swap aygıtının fiziksel kaynağı doğrulanamadı." >&2
-    exit 1
-  }
-  while IFS= read -r backing_dev; do
-    [ -n "$backing_dev" ] || continue
-    backing_real=$(readlink -f -- "$backing_dev") || {
-      echo "HATA: $backing_dev aygıtının kanonik yolu çözümlenemedi." >&2
-      exit 1
-    }
-    if [ "$backing_real" = "$DISK_REAL" ]; then
-      echo "HATA: $swap_dev etkin swap'ı $DISK diski üzerindedir. Swap'ı kapatıp hedef diski yeniden doğrulamadan devam etme." >&2
-      exit 1
-    fi
-  done <<< "$SWAP_BACKING_DEVICES"
-done <<< "$ACTIVE_SWAP_DEVICES"
+printf '\nSeçilen disk:\n  Aygıt: %s\n  Model: %s\n  Seri:  %s\n  Boyut: %s bayt\n' \
+  "$DISK_REAL" "${DISK_MODEL:-bilinmiyor}" "${DISK_SERIAL:-bilinmiyor}" "$DISK_BYTES"
 
-# Refuse to erase any disk/partition currently held by device-mapper, LUKS,
-# LVM, or software RAID, even if it happens not to be mounted or used as swap.
-while IFS= read -r device; do
-  [ -n "$device" ] || continue
-  holders_dir="/sys/class/block/${device##*/}/holders"
-  if [ -d "$holders_dir" ]; then
-    holder="$(find "$holders_dir" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" || {
-      echo "HATA: $device aygıtının etkin holder ilişkileri doğrulanamadı." >&2
-      exit 1
-    }
-    if [ -n "$holder" ]; then
-      echo "HATA: $device etkin bir aygıt eşleştirmesi tarafından kullanılıyor ($(basename "$holder")). Disk bölüm tablosunu silmeden önce bu ilişkiyi inceleyin." >&2
-      exit 1
-    fi
+# Bu işlevler ilerleyen kod bloklarında tekrar çağrılır. Disk yolu/modeli/seri
+# numarası/boyutu değişirse veya disk bağlı/swap/başka aygıt tarafından tutuluyorsa dur.
+assert_disk_identity() {
+  local real model serial bytes type
+  [ -b "$DISK" ] || { echo "HATA: $DISK artık blok aygıtı değil." >&2; return 1; }
+  real=$(readlink -f -- "$DISK") || return 1
+  type=$(lsblk -dnro TYPE "$DISK") || return 1
+  model=$(lsblk -dnro MODEL "$DISK" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+  serial=$(lsblk -dnro SERIAL "$DISK" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+  bytes=$(sudo blockdev --getsize64 "$DISK") || return 1
+  if [ "$real" != "$DISK_REAL" ] || [ "$type" != "disk" ] || \
+     [ "$model" != "$DISK_MODEL" ] || [ "$serial" != "$DISK_SERIAL" ] || \
+     [ "$bytes" != "$DISK_BYTES" ]; then
+    echo "HATA: Disk kimliği ilk kontrolden farklı; hiçbir yıkıcı işleme devam etmeyin." >&2
+    return 1
   fi
-done < <(lsblk -nrpo NAME "$DISK")
+}
+
+assert_disk_unused() {
+  local mountpoints active_swaps swap_dev backing_devices backing_dev backing_real
+  local device holders_dir holder
+  assert_disk_identity || return 1
+  mountpoints=$(lsblk -nrpo MOUNTPOINTS "$DISK") || return 1
+  if [[ "$mountpoints" =~ [^[:space:]] ]]; then
+    echo "HATA: $DISK veya alt bölümlerinden biri bağlı; silme işlemi iptal edildi." >&2
+    return 1
+  fi
+  active_swaps=$(sudo swapon --noheadings --raw --show=NAME) || {
+    echo "HATA: Etkin swap aygıtları doğrulanamadı." >&2; return 1;
+  }
+  while IFS= read -r swap_dev; do
+    [ -n "$swap_dev" ] || continue
+    [ -b "$swap_dev" ] || continue
+    backing_devices=$(lsblk --inverse --noheadings --raw --paths --output NAME "$swap_dev") || return 1
+    while IFS= read -r backing_dev; do
+      [ -n "$backing_dev" ] || continue
+      backing_real=$(readlink -f -- "$backing_dev") || return 1
+      if [ "$backing_real" = "$DISK_REAL" ]; then
+        echo "HATA: Etkin swap ($swap_dev) hedef disk üzerinde; işlem iptal edildi." >&2
+        return 1
+      fi
+    done <<< "$backing_devices"
+  done <<< "$active_swaps"
+  local device_list
+  device_list=$(lsblk -nrpo NAME "$DISK") || return 1
+  while IFS= read -r device; do
+    [ -n "$device" ] || continue
+    holders_dir="/sys/class/block/${device##*/}/holders"
+    [ -d "$holders_dir" ] || continue
+    holder=$(find "$holders_dir" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null) || return 1
+    if [ -n "$holder" ]; then
+      echo "HATA: $device etkin bir aygıt tarafından kullanılıyor ($(basename "$holder")); işlem iptal edildi." >&2
+      return 1
+    fi
+  done <<< "$device_list"
+}
+
+assert_disk_unused || exit 1
 
 # sgdisk'teki G birimi GiB'dir. Bölümler toplam 809 GiB ayırır.
 MIN_DISK_BYTES=$((810 * 1024 * 1024 * 1024))
-DISK_BYTES=$(sudo blockdev --getsize64 "$DISK") || { echo "HATA: Disk kapasitesi okunamadı." >&2; exit 1; }
 if [ "$DISK_BYTES" -lt "$MIN_DISK_BYTES" ]; then
   printf 'HATA: Disk kapasitesi yetersiz (%s bayt); en az 810 GiB (%s bayt) gerekiyor.\n' \
     "$DISK_BYTES" "$MIN_DISK_BYTES" >&2
   exit 1
 fi
-printf 'Disk kapasitesi kontrolü geçti: %s bayt (asgari 810 GiB).\n' "$DISK_BYTES"
+printf 'Kapasite kontrolü geçti: en az 810 GiB. Model ve seri numarasını yukarıda kendiniz doğrulayın.\n'
 
 # NVMe disk bölümleri p1/p2 biçiminde, SATA/SCSI ise sda1/sda2 biçimindedir.
-case "$DISK" in
-  *[0-9]) PART_PREFIX="${DISK}p" ;;
-  *)      PART_PREFIX="$DISK" ;;
+case "$DISK_REAL" in
+  *[0-9]) PART_PREFIX="${DISK_REAL}p" ;;
+  *)      PART_PREFIX="$DISK_REAL" ;;
 esac
+
+assert_partition_on_target() {
+  local part="$1" type parent parent_real mountpoints
+  [ -b "$part" ] || { echo "HATA: Beklenen bölüm aygıtı bulunamadı: $part" >&2; return 1; }
+  type=$(lsblk -dnro TYPE "$part") || return 1
+  [ "$type" = "part" ] || { echo "HATA: $part bir bölüm değil (tür: $type)." >&2; return 1; }
+  parent=$(lsblk -dnro PKNAME "$part") || return 1
+  [ -n "$parent" ] || { echo "HATA: $part üst disk bilgisi yok." >&2; return 1; }
+  parent_real=$(readlink -f -- "/dev/$parent") || return 1
+  [ "$parent_real" = "$DISK_REAL" ] || {
+    echo "HATA: $part seçili hedef diske ait değil." >&2; return 1;
+  }
+  mountpoints=$(lsblk -nrpo MOUNTPOINTS "$part") || return 1
+  if [[ "$mountpoints" =~ [^[:space:]] ]]; then
+    echo "HATA: $part bağlı; biçimlendirme iptal edildi." >&2; return 1
+  fi
+  local holders_dir holder active_swaps swap_dev backing_devices backing_dev part_real backing_real
+  holders_dir="/sys/class/block/${part##*/}/holders"
+  if [ -d "$holders_dir" ]; then
+    holder=$(find "$holders_dir" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null) || return 1
+    if [ -n "$holder" ]; then
+      echo "HATA: $part etkin bir aygıt tarafından kullanılıyor ($(basename "$holder")); biçimlendirme iptal edildi." >&2
+      return 1
+    fi
+  fi
+  part_real=$(readlink -f -- "$part") || return 1
+  active_swaps=$(sudo swapon --noheadings --raw --show=NAME) || return 1
+  while IFS= read -r swap_dev; do
+    [ -n "$swap_dev" ] || continue
+    [ -b "$swap_dev" ] || continue
+    backing_devices=$(lsblk --inverse --noheadings --raw --paths --output NAME "$swap_dev") || return 1
+    while IFS= read -r backing_dev; do
+      [ -n "$backing_dev" ] || continue
+      backing_real=$(readlink -f -- "$backing_dev") || return 1
+      if [ "$backing_real" = "$part_real" ]; then
+        echo "HATA: $part etkin swap olarak kullanılıyor; biçimlendirme iptal edildi." >&2
+        return 1
+      fi
+    done <<< "$backing_devices"
+  done <<< "$active_swaps"
+}
 ```
 
 | Bölüm | Açıklama |
@@ -146,20 +203,32 @@ esac
 > Kapasite ve bağlı bölüm kontrolleri başarılı olsa bile, `sgdisk -Z` mevcut bölüm tablosunu geri alınamaz biçimde siler; model/seri numarasını son kez doğrulayın.
 
 ```bash
-printf '\nUYARI: Aşağıdaki işlemler %s üzerindeki mevcut bölüm tablosunu silecek.\n' "$DISK"
-read -r -p "Devam etmek için tam olarak 'WIPE $DISK' yazın: " WIPE_CONFIRMATION
-if [ "$WIPE_CONFIRMATION" != "WIPE $DISK" ]; then
+set -Eeuo pipefail
+# Disk ve kullanım durumu, ilk kontrolden sonra değişmiş olabilir; tekrar kontrol et.
+assert_disk_unused
+printf '\nSON KONTROL — aşağıdaki disk geri alınamaz biçimde yeniden bölümlendirilecek:\n'
+printf '  Aygıt: %s\n  Model: %s\n  Seri:  %s\n  Boyut: %s bayt\n' \
+  "$DISK_REAL" "${DISK_MODEL:-bilinmiyor}" "${DISK_SERIAL:-bilinmiyor}" "$DISK_BYTES"
+read -r -p "Devam etmek için tam olarak 'WIPE $DISK_REAL' yazın: " WIPE_CONFIRMATION
+if [ "$WIPE_CONFIRMATION" != "WIPE $DISK_REAL" ]; then
   echo "İptal edildi; diske yazılmadı." >&2
   exit 1
 fi
 
-sudo sgdisk -Z "$DISK"
+sudo sgdisk -Z "$DISK_REAL"
+sudo sgdisk -n 1:0:+1G   -t 1:ef00 -c 1:EFI  "$DISK_REAL"
+sudo sgdisk -n 2:0:+8G   -t 2:8200 -c 2:SWAP "$DISK_REAL"
+sudo sgdisk -n 3:0:+800G -t 3:8309 -c 3:LUKS "$DISK_REAL"
+sudo partprobe "$DISK_REAL"
+sudo udevadm settle
 
-sudo sgdisk -n 1:0:+1G  -t 1:ef00 -c 1:EFI  "$DISK"
-sudo sgdisk -n 2:0:+8G  -t 2:8200 -c 2:SWAP "$DISK"
-sudo sgdisk -n 3:0:+800G -t 3:8309 -c 3:LUKS "$DISK"
-
-sudo partprobe "$DISK"
+# Devam etmeden önce tam olarak üç bölümün oluştuğunu ve aynı diske bağlı
+# olduklarını doğrula. Bir komut başarısızsa bu blok set -e nedeniyle durur.
+assert_disk_identity
+assert_partition_on_target "${PART_PREFIX}1"
+assert_partition_on_target "${PART_PREFIX}2"
+assert_partition_on_target "${PART_PREFIX}3"
+printf 'Bölüm tablosu oluşturuldu ve üç bölüm aygıtı doğrulandı. Format adımlarına geçmeden önce çıktıyı kontrol edin.\n'
 ```
 
 ---
@@ -167,8 +236,23 @@ sudo partprobe "$DISK"
 # 🔒 3. LUKS2 Kurulum
 
 ```bash
+set -Eeuo pipefail
+assert_disk_unused
+assert_partition_on_target "${PART_PREFIX}3"
+if [ -e /dev/mapper/cryptroot ]; then
+  echo "HATA: /dev/mapper/cryptroot zaten var; başka bir aygıtı kapatmadan/incelemeden devam etmeyin." >&2
+  exit 1
+fi
+printf "LUKS2 başlığı %s üzerine yazılacak; devam etmeden önce bunun yeni kurulum hedefi olduğundan emin olun.\n" "${PART_PREFIX}3"
+read -r -p "LUKS biçimlendirmesini onaylamak için tam olarak 'FORMAT LUKS ${PART_PREFIX}3' yazın: " LUKS_CONFIRMATION
+if [ "$LUKS_CONFIRMATION" != "FORMAT LUKS ${PART_PREFIX}3" ]; then
+  echo "İptal edildi; LUKS biçimlendirmesi yapılmadı." >&2
+  exit 1
+fi
 sudo cryptsetup luksFormat "${PART_PREFIX}3" --type luks2
+sudo cryptsetup isLuks "${PART_PREFIX}3"
 sudo cryptsetup open "${PART_PREFIX}3" cryptroot
+sudo cryptsetup status cryptroot
 ```
 
 ---
@@ -176,9 +260,26 @@ sudo cryptsetup open "${PART_PREFIX}3" cryptroot
 # 💽 4. Dosya Sistemleri
 
 ```bash
+set -Eeuo pipefail
+assert_disk_identity
+assert_partition_on_target "${PART_PREFIX}1"
+assert_partition_on_target "${PART_PREFIX}2"
+sudo cryptsetup isLuks "${PART_PREFIX}3"
+sudo cryptsetup status cryptroot >/dev/null
+if [ -e /dev/mapper/cryptroot ] && [ -n "$(findmnt -rn -S /dev/mapper/cryptroot -o TARGET || true)" ]; then
+  echo "HATA: /dev/mapper/cryptroot zaten bağlı; biçimlendirme iptal edildi." >&2
+  exit 1
+fi
+printf '\nUYARI: EFI, swap ve şifreli Btrfs dosya sistemleri oluşturulacak. Bu bölümlerdeki mevcut içerik silinebilir.\n'
+read -r -p "Devam etmek için tam olarak 'FORMAT $DISK_REAL' yazın: " FORMAT_CONFIRMATION
+if [ "$FORMAT_CONFIRMATION" != "FORMAT $DISK_REAL" ]; then
+  echo "İptal edildi; dosya sistemleri oluşturulmadı." >&2
+  exit 1
+fi
 sudo mkfs.fat -F32 "${PART_PREFIX}1"
 sudo mkswap "${PART_PREFIX}2"
 sudo mkfs.btrfs -L nixos /dev/mapper/cryptroot
+sudo blkid "${PART_PREFIX}1" "${PART_PREFIX}2" /dev/mapper/cryptroot
 ```
 
 ---
@@ -243,13 +344,19 @@ sadece donanıma özel dosyayı (`hardware-configuration.nix`) oradan
 alın, gerisini repo'nunkiyle değiştirin:
 
 ```bash
+set -Eeuo pipefail
 sudo nixos-generate-config --root /mnt
 
 git clone https://github.com/kUmutUK/nixos-hyprland-vfio.git /tmp/repo
 cp /mnt/etc/nixos/hardware-configuration.nix /tmp/repo/nixos/hardware-configuration.nix
 
-# Keep the generated files as a backup before replacing the install tree.
-sudo mv /mnt/etc/nixos /mnt/etc/nixos-generated-backup
+# Keep the generated files as a unique backup before replacing the install tree.
+TARGET_BACKUP="/mnt/etc/nixos-generated-backup-$(date +%Y%m%d-%H%M%S)"
+if [ -e "$TARGET_BACKUP" ] || [ -L "$TARGET_BACKUP" ]; then
+  echo "HATA: Yedek yolu zaten var: $TARGET_BACKUP" >&2
+  exit 1
+fi
+sudo mv /mnt/etc/nixos "$TARGET_BACKUP"
 sudo mkdir -p /mnt/etc/nixos
 # Depo içeriğini kopyala; Git geçmişini hedef sistem yapılandırmasına taşıma.
 tar --exclude='./.git' -C /tmp/repo -cf - . | sudo tar --no-same-owner -C /mnt/etc/nixos -xf -
@@ -290,9 +397,9 @@ kopyalanır. `install.sh`'ı çalıştırmadığınız için `home.nix` içindek
 | 4 | `gitEmail` | `"you@example.com"` | Commit'ler sahte adresle etiketlenir |
 | 5 | `wallpaperVideo` | `~/Downloads/arthur-leywin-….mp4` | Dosya yoksa `Unit.ConditionPathExists` servisi başlatmaz; oturum açılışında kritik uyarı gösterilir |
 
-Mevcut NixOS'u güncelliyorsanız bunların hepsini `install.sh` sizin yerinize
-doldurur (monitörü `hyprctl`/`/sys/class/drm`'den okur). Yeni kurulumda elle
-yazın:
+Elle kurulum önerilen yoldur; bu değerleri elle doldurun. `install.sh`
+mevcut NixOS'u taşıyan ileri düzey kullanıcılar için isteğe bağlıdır ve sistem
+yapılandırması/VM XML dosyalarını otomatik değiştirirken hata riski taşır:
 
 ```bash
 # Find the monitor output name.

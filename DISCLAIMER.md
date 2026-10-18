@@ -2,6 +2,14 @@ Disclaimer
 
 Use at Your Own Risk
 
+Recommended installation method and installer-specific risk
+
+Manual installation is the recommended default. `install.sh` is an optional, higher-risk migration helper for an already-installed NixOS host; it is not a fresh-install or disk-partitioning tool. It has no dry-run mode. After the user acknowledges the warning, it may replace files under `/etc/nixos/nixos`, replace the deployed VFIO hook, and write `/var/lib/libvirt/win10.xml`. Incorrect host-specific values can prevent boot, interrupt graphical access, or make an existing VM unavailable. The script creates selected-file backups and attempts rollback, but this is best-effort and is not equivalent to a full system or VM backup. The script does not automatically rebuild or reboot the machine. Existing backups are not deleted automatically.
+
+A manual procedure is not risk-free either: commands in `KURULUM.md` include irreversible disk partitioning, encryption, and filesystem creation. Read each command, verify the target disk identity, and retain an independent backup before running any destructive step.
+
+---
+
 This project is provided for educational and informational purposes. By using, modifying, or executing any part of this project, you acknowledge and accept the risks associated with system-level configuration changes.
 
 1. No Warranty

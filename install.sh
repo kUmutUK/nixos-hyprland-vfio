@@ -24,39 +24,41 @@ SNAPSHOT_SUBVOL_CREATED=0
 
 echo ""
 echo -e "${CYAN}==============================================================${NC}"
-echo -e "${CYAN}   NixOS Hyprland Gaming + VFIO — Safe Setup Script${NC}"
+echo -e "${CYAN}   NixOS Hyprland + VFIO — High-Risk Migration Helper${NC}"
 echo -e "${CYAN}==============================================================${NC}"
 echo ""
 
-echo -e "${RED}${BOLD}WARNING: USE AT YOUR OWN RISK${NC}"
+echo -e "${RED}${BOLD}UYARI: İLERİ DÜZEY VE YÜKSEK RİSKLİ TAŞIMA BETİĞİ${NC}"
 echo ""
-warn "This installer modifies system-level configuration files."
-info "It copies NixOS/Home Manager files and replaces the deployed VFIO hooks."
-info "It also updates libvirt VM XML, hardware-specific PCI IDs and desktop settings."
-info "Existing configuration files are backed up, but backups are not a substitute for a full system backup."
-warn "Only the five newest matching installer backups are retained; older backups may be permanently deleted."
+warn "ÖNERİLEN YÖNTEM: Önce README.md içindeki manuel taşıma adımlarını uygulayın."
+warn "Bu betik ilk kez NixOS kurmak veya disk bölümlendirmek için değildir."
+warn "Kuru çalıştırma/dry-run modu yoktur; onaydan sonra sistem dosyalarını gerçekten değiştirir."
+info "NixOS/Home Manager dosyalarını kopyalar, VFIO hook dizinini değiştirir ve libvirt VM XML dosyasını yazar."
+info "Hatalı PCI adresleri, UUID/mount ayarları veya VM XML'i sistemi açılmaz ya da VM'i kullanılamaz hâle getirebilir."
+info "Yedekleme ve geri alma en iyi çaba esasındadır; tam sistem yedeğinin veya kurtarma yönteminin yerini tutmaz."
+info "Önceki yedekler otomatik silinmez; her çalıştırma için ayrı bir özel yedek dizini oluşturulur."
 echo ""
-echo -e "${YELLOW}POTENTIAL RISKS:${NC}"
-echo "  - An unbootable or unstable NixOS system."
-echo "  - Loss of graphical output during GPU passthrough."
-echo "  - Incorrect disk UUIDs or mount settings preventing boot."
-echo "  - VM configuration errors or loss of access to an existing VM."
-echo "  - Kernel, driver or hardware incompatibilities."
-echo "  - Data loss if configuration or recovery procedures fail."
+echo -e "${YELLOW}OLASI RİSKLER:${NC}"
+echo "  - NixOS'un açılmaması veya kararsız hâle gelmesi."
+echo "  - GPU passthrough sırasında görüntünün kaybolması ve masaüstünün geri dönememesi."
+echo "  - Yanlış UUID, dosya sistemi veya mount ayarı nedeniyle önyüklemenin bozulması."
+echo "  - Mevcut VM'nin UUID/MAC/disk/firmware ayarlarının bozulması veya VM'e erişilememesi."
+echo "  - Kernel, sürücü, ROCm ya da donanım uyumsuzluğu."
+echo "  - Kısmi geri alma veya yetersiz yedek nedeniyle veri/kurtarma kaybı."
 echo ""
-echo -e "${YELLOW}BEFORE CONTINUING:${NC}"
-echo "  - Back up important personal data."
-echo "  - Review the configuration files and installation instructions."
-echo "  - Verify hardware compatibility and PCI device selection."
-echo "  - Ensure you have a working recovery method."
-echo "  - Verify hardware-configuration.nix before rebuilding."
+echo -e "${YELLOW}DEVAM ETMEDEN ÖNCE:${NC}"
+echo "  - Önemli kişisel verilerinizi ve mevcut NixOS/VM ayarlarınızı ayrıca yedekleyin."
+echo "  - Bu betiği ve değiştirilecek yapılandırma dosyalarını inceleyin."
+echo "  - Donanım/PCI/IOMMU uyumluluğunu doğrulayın; model onayı testi yerine geçmez."
+echo "  - Fiziksel TTY veya çalışan kurtarma ortamı bulunduğundan emin olun."
+echo "  - hardware-configuration.nix, system.stateVersion ve home.stateVersion değerlerini doğrulayın."
 echo ""
-info "This script does NOT automatically rebuild or reboot your system."
-info "Review DISCLAIMER.md for additional information about project risks."
+info "Betik NixOS'u otomatik derlemez, etkinleştirmez veya yeniden başlatmaz."
+info "Daha fazla bilgi için README.md ve DISCLAIMER.md dosyalarını okuyun."
 echo ""
-read -rp "Do you understand these risks and want to continue? Type 'yes' to proceed: " confirm
-[[ "$confirm" != "yes" ]] && {
-info "Installation cancelled before deployment changes."
+read -rp "Elle kurulum yerine bu riskli otomatik taşıma betiğini kullanmayı kabul ediyor musunuz? Tam olarak 'RISKLERI KABUL EDIYORUM' yazın: " confirm
+[[ "$confirm" != "RISKLERI KABUL EDIYORUM" ]] && {
+info "Kurulum iptal edildi; sistem yapılandırma dosyaları değiştirilmedi."
 exit 0
 }
 
@@ -258,20 +260,16 @@ if [[ "$CPU_VENDOR" != "amd" || "$GPU_VENDOR" != "amd" ]]; then
   error "Installer stopped before changing system configuration because the detected hardware is unsupported."
 fi
 
-# The repository is tuned for one documented GPU model. Vendor detection alone
-# is not enough to establish compatibility: many AMD cards share the same
-# vendor ID but differ in reset behavior, IOMMU topology, and ROCm requirements.
-# Require an explicit acknowledgement before any deployment files are changed.
+# Vendor detection alone is not proof of compatibility. The configuration is
+# documented against RX 6700 XT / Navi 22; other AMD models need separate review.
 echo ""
-warn "GPU compatibility must be checked for the selected device."
-echo "  Documented target: AMD Radeon RX 6700 XT (Navi 22)."
-echo "  Other AMD GPUs are not automatically supported; verify PCI/IOMMU grouping,"
-echo "  GPU reset behavior, and the configured ROCm gfx override in README.md/KURULUM.md."
-read -rp "Confirm this is the documented target GPU or that this different model was manually validated. Type 'yes' to continue: " gpu_compat_confirm
+warn "GPU uyumluluğu ayrıca doğrulanmalıdır."
+echo "  Belgelenen hedef: AMD Radeon RX 6700 XT (Navi 22)."
+echo "  Diğer AMD kartlarında IOMMU grupları, reset davranışı ve ROCm gfx override ayrıca doğrulanmalıdır."
+read -rp "Bu modelin uyumlu olduğunu doğruladınız mı? Devam etmek için tam olarak 'yes' yazın: " gpu_compat_confirm
 if [[ "$gpu_compat_confirm" != "yes" ]]; then
-  error "GPU compatibility was not confirmed; no configuration files have been changed."
+  error "GPU uyumluluğu onaylanmadı; sistem dosyaları değiştirilmedi."
 fi
-log "GPU compatibility explicitly acknowledged."
 
 # ─── IOMMU group preflight ─────────────────────────────────
 step "IOMMU group check"
@@ -423,7 +421,10 @@ declare -A TRANSACTION_EXISTED=()
 
 # ─── Backup ──────────────────────────────────────────────
 step "Backing up current configurations"
-mkdir -p "$BACKUP_DIR"
+if [[ -e "$BACKUP_DIR" || -L "$BACKUP_DIR" ]]; then
+    error "Backup path already exists; refusing to reuse it: $BACKUP_DIR"
+fi
+mkdir -m 700 -- "$BACKUP_DIR"
 for src in "$HOME/.config/hypr" "$HOME/.config/waybar" "$HOME/.config/gtk-3.0" "$HOME/.config/gtk-4.0" \
            "$NIXOS_FLAKE_DIR/configuration.nix" "$NIXOS_FLAKE_DIR/home.nix" \
            "$NIXOS_FLAKE_DIR/flake.nix" "$NIXOS_FLAKE_DIR/flake.lock" \
@@ -536,28 +537,10 @@ rollback_deployment() {
 }
 trap 'rollback_deployment "$?"' EXIT
 
-# Keep the five newest installer backups. A matching prefix is not enough:
-# only directories created with this script's exact timestamp format qualify.
-# Filter BEFORE sorting so unrelated lookalike directories cannot displace a real
-# backup from the five-entry retention window. NUL delimiters preserve spaces.
-backup_count=0
-while IFS=$'\t' read -r -d '' _backup_mtime old_backup; do
-    ((backup_count += 1))
-    [ "$old_backup" = "$BACKUP_DIR" ] && continue
-    if (( backup_count > 5 )); then
-        rm -rf -- "$old_backup"
-        log "Removed old installer backup: $old_backup"
-    fi
-done < <(
-    while IFS= read -r -d '' candidate; do
-        backup_name="${candidate##*/}"
-        [[ "$backup_name" =~ ^\.nixos-config-backup-[0-9]{8}-[0-9]{6}$ ]] || continue
-        backup_mtime="$(stat -c '%Y' -- "$candidate" 2>/dev/null)" || continue
-        printf '%s\t%s\0' "$backup_mtime" "$candidate"
-    done < <(find "$HOME" -mindepth 1 -maxdepth 1 -type d \
-              -name '.nixos-config-backup-*' -print0) \
-    | sort -z -t $'\t' -k1,1nr
-)
+# Recovery backups are intentionally never pruned automatically. An interrupted
+# migration or delayed discovery of a problem must not lose an older restore point.
+# After the host, desktop, and VM have been verified, the user may inspect and
+# manually delete a specific backup directory if desired.
 
 # Read stateVersion from the existing destination before replacing files.
 # stateVersion is a compatibility baseline, not the target NixOS release; it
