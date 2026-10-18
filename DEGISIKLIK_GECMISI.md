@@ -1,6 +1,6 @@
 # 📜 Changelog
 
-> **Güncel ağaç açıklaması — 2026-10-16**
+> **Güncel ağaç açıklaması — 2026-10-19**
 >
 > - Aşağıdaki `[1.3.6]` bölümünde `amd_iommu=on` parametresinin eklendiği
 >   yazıyor. Bu, tarihsel bir değişiklik kaydıdır ve mevcut yapılandırmanın
@@ -19,6 +19,13 @@
 > - `install.sh` ön kontrolü `/etc/nixos/hashedPassword` dosyasının varlığını, boş olmadığını
 >   ve `root:root`/`0600` izinlerini denetler. Eksik/uygunsuzsa uyarı verir; kullanıcıya
 >   kurulumu tamamlamadan önce dosyayı düzeltmesi gerektiğini söyler.
+> - `install.sh` artık risk ve GPU uyumluluğu istemlerini İngilizce gösterir. Onay ifadesi
+>   tam olarak `I ACCEPT THE RISKS` olmalıdır. Betik `/etc/nixos/nixos/hooks/qemu` kaynak dosyasını
+>   günceller; etkin libvirt hook ancak başarılı `nixos-rebuild switch` sonrasında yenilenir.
+>   Betik VM XML dosyasını yazar ama otomatik olarak `virsh define` çalıştırmaz.
+> - Yedek saklama politikasının güncel durumu: kurulum yedekleri otomatik budanmaz/silinmez.
+>   Aşağıdaki `[1.3.8]` içindeki “son beş yedek” ifadesi o sürümün tarihsel davranışıdır;
+>   mevcut kod için geçerli değildir.
 > - Fail2ban yorumları etkin ayarla hizalandı: yalnızca loopback muaf, özel LAN aralıkları
 >   da ban politikasına tabidir. `nup` alias'ı tüm flake girdilerini güncellemek yerine
 >   `/etc/nixos/nixos` içindeki yalnızca CachyOS kernel girdisini günceller.
