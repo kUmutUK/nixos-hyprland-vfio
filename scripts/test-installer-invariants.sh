@@ -5,6 +5,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 INSTALLER="$ROOT/install.sh"
 README="$ROOT/README.md"
+ENGLISH_GUIDE="$ROOT/INSTALLATION.md"
 CONFIG="$ROOT/nixos/configuration.nix"
 FLAKE="$ROOT/nixos/flake.nix"
 HOME_CONFIG="$ROOT/nixos/home.nix"
@@ -403,6 +404,13 @@ if ! grep -Fq 'boot.kernelPackages = pkgs.cachyosKernels.linuxPackages-cachyos-r
   echo "FAIL: the flake must select the intended CachyOS RT-Bore-LTO kernel package." >&2
   exit 1
 fi
+# A blank monitorOutput intentionally disables live wallpaper, so the missing-file
+# notification must be gated by the monitor argument rather than shown at every login.
+if ! grep -Fq 'if [ -n "$2" ] && [ ! -e "$1" ]; then notify-send -t 15000 -u critical "mpvpaper" "Live wallpaper file not found: $1' "$HOME_CONFIG" \
+  || ! grep -Fq '${lib.escapeShellArg wallpaperVideo} ${lib.escapeShellArg monitorOutput}' "$HOME_CONFIG"; then
+  echo "FAIL: missing-wallpaper notification must only run when live wallpaper is enabled." >&2
+  exit 1
+fi
 if ! grep -Fq 'LOW_LATENCY_LAYER = "1";' "$CONFIG" || ! grep -Fq 'LOW_LATENCY_LAYER_REFLEX = "1";' "$CONFIG"; then
   echo "FAIL: the low-latency Vulkan layer and Reflex interface must be enabled system-wide." >&2
   exit 1
@@ -417,6 +425,13 @@ if ! grep -Fq 'DISABLE_LOW_LATENCY_LAYER=1 %command%' "$README"; then
 fi
 if ! grep -Fq 'fps_max 0' "$README" || ! grep -Fq 'fps_max 0' "$ROOT/KURULUM.md"; then
   echo "FAIL: both guides must document the upstream CS2/Source 2 frame-pacing workaround." >&2
+  exit 1
+fi
+if [ ! -s "$ENGLISH_GUIDE" ] \
+  || ! grep -Fq '[`INSTALLATION.md`](INSTALLATION.md)' "$README" \
+  || ! grep -Fq 'sudo nixos-install --flake /mnt/etc/nixos/nixos#nixos' "$ENGLISH_GUIDE" \
+  || ! grep -Fq "Type exactly 'WIPE \$DISK_REAL': " "$ENGLISH_GUIDE"; then
+  echo "FAIL: the English installation guide must be linked and include the validated install steps." >&2
   exit 1
 fi
 if ! grep -Fq 'cachyos-kernel.url = "github:xddxdd/nix-cachyos-kernel/master";' "$FLAKE"; then
