@@ -330,11 +330,12 @@ echo ""
 wallpaper_video="/home/localhost/Downloads/arthur-leywin-the-beginning-after-the-end.3840x2160.mp4"
 expand_home_prefix() {
   local value="$1"
+  local tilde_prefix='~/'
   case "$value" in
-    '~')    printf '%s' "$HOME" ;;
-    '~/'*)  printf '%s/%s' "$HOME" "${value:2}" ;;
-    '~'*)   error "Named-user tilde paths are not supported; use an absolute path or ~/relative/path." ;;
-    *)      printf '%s' "$value" ;;
+    '~')                  printf '%s' "$HOME" ;;
+    "$tilde_prefix"*)    printf '%s/%s' "$HOME" "${value:2}" ;;
+    '~'*)                 error "Named-user tilde paths are not supported; use an absolute path or ~/relative/path." ;;
+    *)                    printf '%s' "$value" ;;
   esac
 }
 read -rp "Wallpaper video path [${wallpaper_video}]: " input_video
