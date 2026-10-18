@@ -290,7 +290,7 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 - **RT-Bore-LTO validation:** the upstream release source provides this package but does not publish its LTO variant to the upstream binary cache. It must be built locally. Real-time preemption does not guarantee higher FPS or better game frametimes; benchmark the target games and retain a known-good boot generation until the new kernel is validated.
 - **Navi 2x reset behavior:** reliable reset and host rebind cannot be guaranteed from static analysis. The optional `remove`/`rtcwake`/`rescan` recovery path is disabled by default. Enabling `VFIO_ALLOW_SUSPEND_RECOVERY=1` can suspend the host briefly and should only be attempted after checking firmware support and arranging recovery access.
 - **Single-GPU host:** while the VM owns the GPU, the host does not have a normal graphical session. Keep a physical recovery TTY available. The hook ends only local `seat0` sessions and is designed to preserve SSH sessions. The device-node usage check still fails closed if a process retains the GPU, so test the full VM lifecycle on the target hardware.
-- **Fixed host user:** the hook defaults to `localhost` and terminates that user's graphical sessions. This is designed for this single-user configuration.
+- **Local graphical-session scope:** the hook runs `loginctl terminate-seat seat0`; it ends local sessions on that seat without filtering by user, and does not target SSH sessions with that command. This is designed for a single-GPU host where the desktop must release the GPU.
 - **Fixed USB passthrough IDs:** the default VM XML actively passes through USB IDs `1532:0098` and `05ac:024f`. The installer synchronizes GPU/audio PCI addresses only; it does not discover, validate, or replace these USB IDs. Verify them with `lsusb` and edit/remove the XML entries if they are not the intended devices.
 - **Swap outside LUKS2:** the reference `hardware-configuration.nix` enables per-activation random swap encryption (`randomEncryption.enable = true`). A fresh install must preserve this option in the machine-specific generated hardware file. If it is missing or disabled, the disk swap is unencrypted; random swap encryption is not persistent-key LUKS encryption.
 - **OCR display geometry:** default WuWa crop regions target a 2560×1440 display. The script validates configured geometry and can be overridden with `WUWA_GEOMETRY_MAIN` and `WUWA_GEOMETRY_CHOICE`.
@@ -318,6 +318,7 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 │   ├── test-installer-invariants.sh
 │   ├── test-installer-rollback.sh
 │   ├── test-vfio-hook-driver-state.sh
+│   ├── test-vm-diagnostic.py
 │   └── test-vm-xml.py
 ├── vm-xml/win10.xml
 └── nixos/
@@ -340,6 +341,7 @@ nix develop ./nixos
 find ./nixos -type f -name '*.nix' -print0 | xargs -0 -r -n1 nixfmt
 shellcheck -S warning install.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh
 python3 scripts/test-vm-xml.py
+python3 scripts/test-vm-diagnostic.py
 bash scripts/test-vfio-hook-driver-state.sh
 bash scripts/test-installer-invariants.sh
 bash scripts/test-installer-rollback.sh
@@ -374,4 +376,4 @@ MIT. See [`LICENSE`](LICENSE).
 
 A NixOS-native visual adaptation of [roscaa-stack/dotfiles](https://github.com/roscaa-stack/dotfiles) is included in `nixos/home.nix`: a rose/teal/gold palette, Bibata-Modern-Ice cursor, Tela-circle Dracula icons, and Home Manager-managed Rofi/Kitty/Ranger/Fish configuration. The existing Hyprland shortcuts, Turkish keyboard layout, Waybar modules, and AMD VFIO/Windows VM setup are retained. Arch-only scripts, hard-coded upstream home paths, and laptop-only backlight settings are intentionally not copied.
 
-See [`ANALIZ_VE_UYARLAMA_RAPORU.md`](ANALIZ_VE_UYARLAMA_RAPORU.md) for the file-by-file audit, omissions, tests, and safe validation steps. This is a configuration adaptation, not a claim of a successful build on every target host.
+See [`docs/REPAIR-AND-VALIDATION-REPORT.md`](docs/REPAIR-AND-VALIDATION-REPORT.md) for the repair history, omissions, tests, and safe validation steps. This is a configuration adaptation, not a claim of a successful build on every target host.
