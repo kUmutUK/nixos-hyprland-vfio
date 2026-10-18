@@ -27,13 +27,38 @@ echo -e "${CYAN}==============================================================${
 echo -e "${CYAN}   NixOS Hyprland Gaming + VFIO — Safe Setup Script${NC}"
 echo -e "${CYAN}==============================================================${NC}"
 echo ""
-info "This installer changes system files; it is not a variable-only editor."
-info "It backs up existing configs, copies NixOS/Home Manager files, replaces"
-info "the deployed hooks directory, and updates the libvirt VM XML."
-info "It also applies GPU/audio PCI IDs and host-specific desktop values."
-info "Only the five newest matching installer backups are retained; older ones may be removed."
-info "Review every prompt and warning. Rebuilding the NixOS system is a separate step."
+
+echo -e "${RED}${BOLD}WARNING: USE AT YOUR OWN RISK${NC}"
 echo ""
+warn "This installer modifies system-level configuration files."
+info "It copies NixOS/Home Manager files and replaces the deployed VFIO hooks."
+info "It also updates libvirt VM XML, hardware-specific PCI IDs and desktop settings."
+info "Existing configuration files are backed up, but backups are not a substitute for a full system backup."
+warn "Only the five newest matching installer backups are retained; older backups may be permanently deleted."
+echo ""
+echo -e "${YELLOW}POTENTIAL RISKS:${NC}"
+echo "  - An unbootable or unstable NixOS system."
+echo "  - Loss of graphical output during GPU passthrough."
+echo "  - Incorrect disk UUIDs or mount settings preventing boot."
+echo "  - VM configuration errors or loss of access to an existing VM."
+echo "  - Kernel, driver or hardware incompatibilities."
+echo "  - Data loss if configuration or recovery procedures fail."
+echo ""
+echo -e "${YELLOW}BEFORE CONTINUING:${NC}"
+echo "  - Back up important personal data."
+echo "  - Review the configuration files and installation instructions."
+echo "  - Verify hardware compatibility and PCI device selection."
+echo "  - Ensure you have a working recovery method."
+echo "  - Verify hardware-configuration.nix before rebuilding."
+echo ""
+info "This script does NOT automatically rebuild or reboot your system."
+info "Review DISCLAIMER.md for additional information about project risks."
+echo ""
+read -rp "Do you understand these risks and want to continue? Type 'yes' to proceed: " confirm
+[[ "$confirm" != "yes" ]] && {
+info "Installation cancelled before deployment changes."
+exit 0
+}
 
 step "Preflight checks"
 if ! grep -qi nixos /etc/os-release 2>/dev/null; then
@@ -104,10 +129,6 @@ check_ssh_password_file() {
 if ! check_ssh_password_file "$NIXOS_DIR/hashedPassword"; then
   warn "Fix /etc/nixos/hashedPassword using the manual checklist before rebuilding; SSH password login will remain unavailable until then."
 fi
-
-read -rp "Do you want to continue? (yes/no): " confirm
-[[ "$confirm" != "yes" ]] && { info "Aborted."; exit 0; }
-
 # ─── Hardware detection ───────────────────────────────────
 step "Hardware detection"
 
