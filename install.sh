@@ -326,6 +326,36 @@ git_name="${git_name:-changeme}"
 read -rp "Git email [you@example.com]: " git_email
 git_email="${git_email:-you@example.com}"
 
+# Treat the deployed NixOS files, VFIO hook, machine-specific hardware file, and
+# VM XML as one transaction. Refuse symlinked deployment paths: later copy/atomic-
+# replace operations have different symlink semantics and could silently replace
+# a link or write through it. Inspect and resolve such paths manually first.
+TRANSACTION_PATHS=(
+  "$NIXOS_FLAKE_DIR/configuration.nix"
+  "$NIXOS_FLAKE_DIR/home.nix"
+  "$NIXOS_FLAKE_DIR/flake.nix"
+  "$NIXOS_FLAKE_DIR/flake.lock"
+  "$NIXOS_FLAKE_DIR/hooks"
+  "$NIXOS_FLAKE_DIR/hardware-configuration.nix"
+  "$PATCHED_XML"
+)
+assert_no_symlink_transaction_targets() {
+  local target
+  if [[ -L "$NIXOS_FLAKE_DIR" ]]; then
+    error "Deployment directory $NIXOS_FLAKE_DIR is a symbolic link. Resolve it manually before installation."
+    return 1
+  fi
+  for target in "${TRANSACTION_PATHS[@]}"; do
+    if [[ -L "$target" ]]; then
+      error "Deployment target $target is a symbolic link (including a dangling link). Resolve it manually before installation."
+      return 1
+    fi
+  done
+}
+assert_no_symlink_transaction_targets
+
+declare -A TRANSACTION_EXISTED=()
+
 # ─── Backup ──────────────────────────────────────────────
 step "Backing up current configurations"
 mkdir -p "$BACKUP_DIR"
@@ -336,12 +366,12 @@ for src in "$HOME/.config/hypr" "$HOME/.config/waybar" "$HOME/.config/gtk-3.0" "
            "$NIXOS_DIR/hardware-configuration.nix" \
            "$NIXOS_FLAKE_DIR/hardware-configuration.nix" \
            "$PATCHED_XML"; do
-    if [ -e "$src" ]; then
-        # Fix: writing every backup directly into `$BACKUP_DIR/` caused filename
-        # collisions when two source paths had the same basename. Flatten each
-        # full source path by replacing `/` with `_`, so every backup is unique.
-        backup_name="$(echo "$src" | tr '/' '_')"
-        if cp -rL "$src" "$BACKUP_DIR/$backup_name" 2>/dev/null; then
+    if [[ -e "$src" || -L "$src" ]]; then
+        # Full source paths avoid collisions between equal basenames. `cp -a`
+        # preserves symlink identity and metadata in the recovery copy instead
+        # of dereferencing links and turning their targets into ordinary files.
+        backup_name="$(printf '%s' "$src" | tr '/' '_')"
+        if cp -a -- "$src" "$BACKUP_DIR/$backup_name" 2>/dev/null; then
             log "Backed up: $backup_name"
         else
             warn "Backup FAILED for: $src"
@@ -352,20 +382,8 @@ for src in "$HOME/.config/hypr" "$HOME/.config/waybar" "$HOME/.config/gtk-3.0" "
 done
 log "Backup saved to $BACKUP_DIR"
 
-# Treat the deployed NixOS files, VFIO hook, machine-specific hardware file, and
-# VM XML as one transaction. Any later command failure restores the exact set of
-# targets that existed before this run; targets created by this run are removed.
-# The installer backup remains available for manual inspection even after rollback.
-TRANSACTION_PATHS=(
-  "$NIXOS_FLAKE_DIR/configuration.nix"
-  "$NIXOS_FLAKE_DIR/home.nix"
-  "$NIXOS_FLAKE_DIR/flake.nix"
-  "$NIXOS_FLAKE_DIR/flake.lock"
-  "$NIXOS_FLAKE_DIR/hooks"
-  "$NIXOS_FLAKE_DIR/hardware-configuration.nix"
-  "$PATCHED_XML"
-)
-declare -A TRANSACTION_EXISTED=()
+# Any later command failure restores the targets that existed before this run;
+# targets created by this run are removed. The backup remains for manual recovery.
 for target in "${TRANSACTION_PATHS[@]}"; do
   if [ -e "$target" ] || [ -L "$target" ]; then
     TRANSACTION_EXISTED["$target"]=1
@@ -398,9 +416,14 @@ rollback_deployment() {
           failed=1
           continue
         fi
-        # These system configuration paths are normally root-owned. Backups are
-        # user-readable copies, so explicitly restore ownership after copying back.
-        if ! sudo chown -R root:root -- "$target"; then
+        # These system configuration paths are normally root-owned. Do not let
+        # recursive chown follow a symlink if one appeared after preflight.
+        if [[ -L "$target" ]]; then
+          if ! sudo chown -h root:root -- "$target"; then
+            warn "Could not restore symlink ownership for $target."
+            failed=1
+          fi
+        elif ! sudo chown -R root:root -- "$target"; then
           warn "Could not restore root ownership for $target."
           failed=1
         fi

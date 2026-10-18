@@ -374,10 +374,10 @@ sudo nixos-enter --root /mnt -c 'passwd root'
 > hedef sistem `/mnt` altındadır. İlk kurulumdan önce yeni kernel seçmek istiyorsanız,
 > `nixos-install` komutundan önce aynı işlemi `/mnt/etc/nixos/nixos` yoluyla yapın.
 >
-> **Kernel sürümünü güncelleme:** `flake.nix`, CachyOS upstream `release` kanalındaki
+> **Kernel sürümünü güncelleme:** `flake.nix`, CachyOS upstream `master` kanalındaki
 > `linuxPackages-cachyos-rt-bore-lto` paketini kullanır; belirli bir kernel sürümü dosyaya
 > sabit yazılmaz. Nix'in `flake.lock` dosyası mevcut checkout için çözümlenen kaynak revizyonunu
-> tekrar üretilebilirlik amacıyla kaydeder. Yeni upstream sürüme geçmek için mevcut kilidi
+> tekrar üretilebilirlik amacıyla kaydeder. Yeni upstream revizyonuna geçmek için mevcut kilidi
 > yedekleyin, yalnızca CachyOS girdisini güncelleyin ve değişikliği inceleyin:
 >
 > ```bash
@@ -600,6 +600,7 @@ cat ~/.local/share/hyprland/hyprland.log
 
 - VFIO sırasında ekran kararır (normal)
 - GPU PCI ID doğru girilmelidir
+- `nixos/configuration.nix` varsayılan makine adını `nixos` olarak ayarlar; hedef makinenin adı farklı olacaksa etkinleştirmeden önce bu değeri değiştirin.
 - hardware-configuration.nix cihaz bağımlıdır
 - `/home/.snapshots`, `hardware-configuration.nix` içinde `neededForBoot = true`
   olarak bağlandığından Btrfs kullanan sistemlerde gerekli bir alt hacimdir.

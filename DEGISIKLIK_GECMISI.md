@@ -8,7 +8,7 @@
 >   `amd_iommu=on` ne de `iommu=pt` etkinleştirilmiştir; `README.md` de bunu
 >   açıkça belirtir. IOMMU/AMD-Vi BIOS/UEFI'de etkinleştirilmeli ve çalışma
 >   zamanı `dmesg` ile `/sys/kernel/iommu_groups/` üzerinden doğrulanmalıdır.
-> - Kernel seçimi, upstream `release` kanalındaki `linuxPackages-cachyos-rt-bore-lto` paketini
+> - Kernel seçimi, upstream `master` kanalındaki `linuxPackages-cachyos-rt-bore-lto` paketini
 >   kullanır; `flake.nix` içine sabit kernel sürümü yazılmaz. `flake.lock`, tekrar üretilebilir
 >   kurulum için o checkout'ta çözümlenen kaynak revizyonunu kaydeder; upstream'deki yeni sürüme
 >   geçmek için yalnızca CachyOS girdisini hedefli güncelleyin ve lock farkını inceleyin:
