@@ -258,6 +258,21 @@ if [[ "$CPU_VENDOR" != "amd" || "$GPU_VENDOR" != "amd" ]]; then
   error "Installer stopped before changing system configuration because the detected hardware is unsupported."
 fi
 
+# The repository is tuned for one documented GPU model. Vendor detection alone
+# is not enough to establish compatibility: many AMD cards share the same
+# vendor ID but differ in reset behavior, IOMMU topology, and ROCm requirements.
+# Require an explicit acknowledgement before any deployment files are changed.
+echo ""
+warn "GPU compatibility must be checked for the selected device."
+echo "  Documented target: AMD Radeon RX 6700 XT (Navi 22)."
+echo "  Other AMD GPUs are not automatically supported; verify PCI/IOMMU grouping,"
+echo "  GPU reset behavior, and the configured ROCm gfx override in README.md/KURULUM.md."
+read -rp "Confirm this is the documented target GPU or that this different model was manually validated. Type 'yes' to continue: " gpu_compat_confirm
+if [[ "$gpu_compat_confirm" != "yes" ]]; then
+  error "GPU compatibility was not confirmed; no configuration files have been changed."
+fi
+log "GPU compatibility explicitly acknowledged."
+
 # ─── IOMMU group preflight ─────────────────────────────────
 step "IOMMU group check"
 gpu_iommu_dir="/sys/bus/pci/devices/${gpu_pci}/iommu_group"
