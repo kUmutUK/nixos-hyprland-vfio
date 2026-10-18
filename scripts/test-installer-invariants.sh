@@ -100,6 +100,12 @@ if ! grep -Fq 'Installer stopped before changing system configuration because th
   echo "FAIL: installer must stop on unsupported CPU/GPU hardware rather than proceed with AMD-only settings." >&2
   exit 1
 fi
+if ! grep -Fq 'Documented target: AMD Radeon RX 6700 XT (Navi 22).' "$INSTALLER" \
+  || ! grep -Fq "Type 'yes' to continue:" "$INSTALLER" \
+  || ! grep -Fq 'GPU compatibility was not confirmed; no configuration files have been changed.' "$INSTALLER"; then
+  echo "FAIL: installer must require explicit GPU-model compatibility acknowledgement before deployment." >&2
+  exit 1
+fi
 if ! grep -Fq 'Preserve an existing valid hash; create one only if the file is missing or empty.' "$INSTALLER"; then
   echo "FAIL: installer checklist must preserve existing valid password hashes." >&2
   exit 1
