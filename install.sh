@@ -19,6 +19,8 @@ BACKUP_DIR="$HOME/.nixos-config-backup-$(date +%Y%m%d-%H%M%S)"
 NIXOS_DIR="/etc/nixos"
 NIXOS_FLAKE_DIR="$NIXOS_DIR/nixos"
 PATCHED_XML="/var/lib/libvirt/win10.xml"
+SNAPSHOT_SUBVOL="/home/.snapshots"
+SNAPSHOT_SUBVOL_CREATED=0
 
 echo ""
 echo -e "${CYAN}==============================================================${NC}"
@@ -36,6 +38,18 @@ echo ""
 step "Preflight checks"
 if ! grep -qi nixos /etc/os-release 2>/dev/null; then
   error "This script must be run on NixOS."
+fi
+# NixOS live installer media exposes the ISO at /iso and its read-only store at
+# /nix/.ro-store. This script migrates an already-booted installation and must
+# stop before prompting or changing files when run from the live environment.
+is_nixos_live_installer() {
+  command -v findmnt >/dev/null 2>&1 || return 1
+  findmnt -rn -M /iso -t iso9660 >/dev/null 2>&1 && return 0
+  findmnt -rn -M /nix/.ro-store -t squashfs >/dev/null 2>&1 && return 0
+  return 1
+}
+if is_nixos_live_installer; then
+  error "A NixOS live installer environment was detected. Do not run this migration script from the live ISO; follow KURULUM.md for a fresh install or boot the installed NixOS system first."
 fi
 # The deployment target is /etc/nixos/nixos. A checkout anywhere inside
 # /etc/nixos can overlap its source and deployment paths, not only when the
@@ -314,8 +328,20 @@ hypr_mon_line="${hypr_mon_line:-monitor = ${monitor_output},preferred,auto,1}"
 
 echo ""
 wallpaper_video="/home/localhost/Downloads/arthur-leywin-the-beginning-after-the-end.3840x2160.mp4"
+expand_home_prefix() {
+  local value="$1"
+  case "$value" in
+    '~')    printf '%s' "$HOME" ;;
+    '~/'*)  printf '%s/%s' "$HOME" "${value:2}" ;;
+    '~'*)   error "Named-user tilde paths are not supported; use an absolute path or ~/relative/path." ;;
+    *)      printf '%s' "$value" ;;
+  esac
+}
 read -rp "Wallpaper video path [${wallpaper_video}]: " input_video
-[[ -n "$input_video" ]] && wallpaper_video="$input_video"
+input_video="$(trim_whitespace "$input_video")"
+if [[ -n "$input_video" ]]; then
+  wallpaper_video="$(expand_home_prefix "$input_video")"
+fi
 
 echo ""
 # Fix: the previous defaults exposed the maintainer's real identity. Pressing
@@ -434,6 +460,33 @@ rollback_deployment() {
         fi
       fi
     done
+    if [ "${SNAPSHOT_SUBVOL_CREATED:-0}" = "1" ]; then
+      if sudo btrfs subvolume show "$SNAPSHOT_SUBVOL" >/dev/null 2>&1; then
+        local snapshot_contents
+        if snapshot_contents="$(sudo find "$SNAPSHOT_SUBVOL" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)"; then
+          if [ -z "$snapshot_contents" ]; then
+            if sudo btrfs subvolume delete "$SNAPSHOT_SUBVOL"; then
+              warn "Removed the empty snapshot subvolume created by this failed installer run."
+              SNAPSHOT_SUBVOL_CREATED=0
+            else
+              warn "Could not remove the empty snapshot subvolume created by this run: $SNAPSHOT_SUBVOL"
+              failed=1
+            fi
+          else
+            warn "Retained the snapshot subvolume because it is no longer empty: $SNAPSHOT_SUBVOL"
+            failed=1
+          fi
+        else
+          warn "Could not inspect the snapshot subvolume; retaining it for safety: $SNAPSHOT_SUBVOL"
+          failed=1
+        fi
+      elif [ ! -e "$SNAPSHOT_SUBVOL" ]; then
+        SNAPSHOT_SUBVOL_CREATED=0
+      else
+        warn "Could not verify the snapshot subvolume during rollback; leaving it untouched: $SNAPSHOT_SUBVOL"
+        failed=1
+      fi
+    fi
     if [ "$failed" = "0" ]; then
       warn "Rollback completed. Backup retained at $BACKUP_DIR."
     else
@@ -645,7 +698,7 @@ else
   # skip-worktree, which can hide changes and cause later merge conflicts.
   # Run the XML update as root: the destination is owned by the system.
   if sudo mkdir -p /var/lib/libvirt && sudo "$PYTHON3" - "$gpu_pci" "$gpu_audio" "$REPO_DIR/vm-xml/win10.xml" "$PATCHED_XML" <<'PYEOF'
-import os, re, shutil, sys, time, uuid as uuidlib, secrets, tempfile, stat
+import html, os, re, shutil, sys, time, uuid as uuidlib, secrets, tempfile, stat
 import xml.etree.ElementTree as ET
 
 gpu, aud, src, dst = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
@@ -679,8 +732,55 @@ old_data = ""
 if os.path.exists(dst):
     with open(dst, encoding="utf-8") as old_file:
         old_data = old_file.read()
+    if not old_data.strip():
+        sys.exit("ERROR: existing deployed VM XML is empty; refusing to replace it automatically.")
+
 old_uuid = re.search(r'<uuid>([^<]+)</uuid>', old_data)
 old_mac = re.search(r'<mac\s+address="([^"]+)"\s*/>', old_data)
+
+# On migration/reruns, the deployed XML may point at a real Windows installation
+# whose filename differs from the repository's clean-install default. Preserve
+# that primary disk path, and fail closed for an unrecognized XML/domain/source
+# shape rather than silently directing the VM at a new empty image.
+if old_data:
+    try:
+        old_root = ET.fromstring(old_data)
+    except ET.ParseError as exc:
+        sys.exit(f"ERROR: existing deployed VM XML is malformed ({exc}); refusing to replace it.")
+    if old_root.findtext("name") != xml_root.findtext("name"):
+        sys.exit("ERROR: existing deployed XML belongs to a different VM domain; refusing to overwrite it.")
+    old_disks = old_root.findall("./devices/disk[@device='disk']")
+    new_disks = xml_root.findall("./devices/disk[@device='disk']")
+    if len(old_disks) != 1 or len(new_disks) != 1:
+        sys.exit("ERROR: expected exactly one primary file-backed disk in both existing and template VM XML; refusing to overwrite it.")
+    old_disk_source = old_disks[0].find("source")
+    new_disk_source = new_disks[0].find("source")
+    old_disk_path = old_disk_source.get("file") if old_disk_source is not None else None
+    template_disk_path = new_disk_source.get("file") if new_disk_source is not None else None
+    if not old_disk_path or not template_disk_path:
+        sys.exit("ERROR: the deployed or template primary disk is not file-backed; inspect and migrate its source manually.")
+
+    main_disk_match = re.search(
+        r'(<disk\b(?=[^>]*\bdevice\s*=\s*["\']disk["\'])[^>]*>.*?</disk>)',
+        data, re.DOTALL)
+    if not main_disk_match:
+        sys.exit("ERROR: could not locate the template's primary disk block; no file was written.")
+    disk_block = main_disk_match.group(1)
+    source_match = re.search(r'<source\b[^>]*>', disk_block, re.DOTALL)
+    if not source_match:
+        sys.exit("ERROR: the template's primary disk source is unsupported; no file was written.")
+    source_tag = source_match.group(0)
+    escaped_path = html.escape(old_disk_path, quote=True)
+    source_tag_new, source_count = re.subn(
+        r'(\bfile\s*=\s*)(["\']).*?\2',
+        lambda match: match.group(1) + match.group(2) + escaped_path + match.group(2),
+        source_tag, count=1, flags=re.DOTALL)
+    if source_count != 1:
+        sys.exit("ERROR: the template primary disk source has no supported file attribute; no file was written.")
+    disk_block = disk_block[:source_match.start()] + source_tag_new + disk_block[source_match.end():]
+    data = data[:main_disk_match.start()] + disk_block + data[main_disk_match.end():]
+    if old_disk_path != template_disk_path:
+        print(f"NOTE: preserving existing Windows disk path -> {old_disk_path}")
 
 vm_uuid = old_uuid.group(1) if old_uuid else str(uuidlib.uuid4())
 vm_mac = old_mac.group(1) if old_mac else "52:54:00:" + ":".join(secrets.token_hex(3)[i:i+2] for i in (0, 2, 4))
@@ -800,16 +900,17 @@ fi
 # ─── Btrfs snapshot subvolume ───────────────────────────
 step "Btrfs snapshot subvolume"
 if findmnt -no FSTYPE /home 2>/dev/null | grep -qi btrfs; then
-  if sudo btrfs subvolume show /home/.snapshots >/dev/null 2>&1; then
-    log "/home/.snapshots is an existing Btrfs subvolume."
-  elif [ -e /home/.snapshots ]; then
-    error "/home/.snapshots exists but is NOT a Btrfs subvolume. Move/inspect it manually; refusing to continue because neededForBoot=true requires the subvolume."
+  if sudo btrfs subvolume show "$SNAPSHOT_SUBVOL" >/dev/null 2>&1; then
+    log "$SNAPSHOT_SUBVOL is an existing Btrfs subvolume."
+  elif [ -e "$SNAPSHOT_SUBVOL" ]; then
+    error "$SNAPSHOT_SUBVOL exists but is NOT a Btrfs subvolume. Move/inspect it manually; refusing to continue because neededForBoot=true requires the subvolume."
   else
-    warn "/home/.snapshots is MISSING — creating the required Btrfs subvolume."
-    sudo btrfs subvolume create /home/.snapshots
-    sudo btrfs subvolume show /home/.snapshots >/dev/null 2>&1 \
-      || error "Failed to verify /home/.snapshots as a Btrfs subvolume."
-    log "Created and verified /home/.snapshots Btrfs subvolume."
+    warn "$SNAPSHOT_SUBVOL is MISSING — creating the required Btrfs subvolume."
+    sudo btrfs subvolume create "$SNAPSHOT_SUBVOL"
+    SNAPSHOT_SUBVOL_CREATED=1
+    sudo btrfs subvolume show "$SNAPSHOT_SUBVOL" >/dev/null 2>&1 \
+      || error "Failed to verify $SNAPSHOT_SUBVOL as a Btrfs subvolume."
+    log "Created and verified $SNAPSHOT_SUBVOL Btrfs subvolume."
   fi
 else
   warn "/home is not a btrfs mount — skipping (snapper home config will not work)."

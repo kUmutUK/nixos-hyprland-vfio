@@ -69,6 +69,9 @@ DISK_REAL=$(readlink -f -- "$DISK") || {
   echo "HATA: Hedef diskin kanonik aygıt yolu çözümlenemedi." >&2
   exit 1
 }
+# Use the resolved block-device path for partition-name construction too; paths
+# under /dev/disk/by-id can otherwise produce invalid partition paths later.
+DISK="$DISK_REAL"
 ACTIVE_SWAP_DEVICES=$(sudo swapon --noheadings --raw --show=NAME) || {
   echo "HATA: Etkin swap aygıtları doğrulanamadı; güvenlik için devam edilmiyor." >&2
   exit 1
@@ -94,6 +97,23 @@ while IFS= read -r swap_dev; do
     fi
   done <<< "$SWAP_BACKING_DEVICES"
 done <<< "$ACTIVE_SWAP_DEVICES"
+
+# Refuse to erase any disk/partition currently held by device-mapper, LUKS,
+# LVM, or software RAID, even if it happens not to be mounted or used as swap.
+while IFS= read -r device; do
+  [ -n "$device" ] || continue
+  holders_dir="/sys/class/block/${device##*/}/holders"
+  if [ -d "$holders_dir" ]; then
+    holder="$(find "$holders_dir" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" || {
+      echo "HATA: $device aygıtının etkin holder ilişkileri doğrulanamadı." >&2
+      exit 1
+    }
+    if [ -n "$holder" ]; then
+      echo "HATA: $device etkin bir aygıt eşleştirmesi tarafından kullanılıyor ($(basename "$holder")). Disk bölüm tablosunu silmeden önce bu ilişkiyi inceleyin." >&2
+      exit 1
+    fi
+  fi
+done < <(lsblk -nrpo NAME "$DISK")
 
 # sgdisk'teki G birimi GiB'dir. Bölümler toplam 809 GiB ayırır.
 MIN_DISK_BYTES=$((810 * 1024 * 1024 * 1024))
@@ -126,6 +146,13 @@ esac
 > Kapasite ve bağlı bölüm kontrolleri başarılı olsa bile, `sgdisk -Z` mevcut bölüm tablosunu geri alınamaz biçimde siler; model/seri numarasını son kez doğrulayın.
 
 ```bash
+printf '\nUYARI: Aşağıdaki işlemler %s üzerindeki mevcut bölüm tablosunu silecek.\n' "$DISK"
+read -r -p "Devam etmek için tam olarak 'WIPE $DISK' yazın: " WIPE_CONFIRMATION
+if [ "$WIPE_CONFIRMATION" != "WIPE $DISK" ]; then
+  echo "İptal edildi; diske yazılmadı." >&2
+  exit 1
+fi
+
 sudo sgdisk -Z "$DISK"
 
 sudo sgdisk -n 1:0:+1G  -t 1:ef00 -c 1:EFI  "$DISK"
