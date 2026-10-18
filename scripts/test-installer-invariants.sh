@@ -364,11 +364,11 @@ if ! grep -Fq 'fps_max 0' "$README" || ! grep -Fq 'fps_max 0' "$ROOT/KURULUM.md"
   echo "FAIL: both guides must document the upstream CS2/Source 2 frame-pacing workaround." >&2
   exit 1
 fi
-if ! grep -Fq 'cachyos-kernel.url = "github:xddxdd/nix-cachyos-kernel/release";' "$FLAKE"; then
-  echo "FAIL: the CachyOS input must follow the upstream release channel, not a hard-coded tag." >&2
+if ! grep -Fq 'cachyos-kernel.url = "github:xddxdd/nix-cachyos-kernel/master";' "$FLAKE"; then
+  echo "FAIL: the CachyOS input must follow the upstream master branch, not a hard-coded tag." >&2
   exit 1
 fi
-# The generic lock-integrity check below validates the current release ref and hashes.
+# The generic lock-integrity check below validates the current master ref and hashes.
 # Avoid tying this regression suite to one dated upstream kernel commit.
 if ! grep -Fq 'nup = "sudo nix flake update --flake /etc/nixos/nixos cachyos-kernel";' "$HOME_CONFIG"; then
   echo "FAIL: nup must update only the CachyOS input against the absolute system flake path." >&2
@@ -460,8 +460,8 @@ flake_text = Path(sys.argv[1]).read_text(encoding="utf-8")
 lock = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
 node = lock["nodes"]["cachyos-kernel"]
 locked = node["locked"]
-if node["original"].get("ref") != "release":
-    raise SystemExit("FAIL: the CachyOS lock must follow the upstream release branch.")
+if node["original"].get("ref") != "master":
+    raise SystemExit("FAIL: the CachyOS lock must follow the upstream master branch.")
 if locked["rev"] == "b1332396df6e880d7e3b6b451c6a74132ce8cf66":
     raise SystemExit("FAIL: the known stale 7.2.8 CachyOS lock revision has returned.")
 if not re.fullmatch(r"[0-9a-f]{40}", locked.get("rev", "")) or not locked.get("narHash"):
