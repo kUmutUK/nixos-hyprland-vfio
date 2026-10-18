@@ -100,10 +100,23 @@ if ! grep -Fq 'Installer stopped before changing system configuration because th
   echo "FAIL: installer must stop on unsupported CPU/GPU hardware rather than proceed with AMD-only settings." >&2
   exit 1
 fi
-if ! grep -Fq 'Documented target: AMD Radeon RX 6700 XT (Navi 22).' "$INSTALLER" \
-  || ! grep -Fq "Type 'yes' to continue:" "$INSTALLER" \
-  || ! grep -Fq 'GPU compatibility was not confirmed; no configuration files have been changed.' "$INSTALLER"; then
-  echo "FAIL: installer must require explicit GPU-model compatibility acknowledgement before deployment." >&2
+if ! grep -Fq 'Belgelenen hedef: AMD Radeon RX 6700 XT (Navi 22).' "$INSTALLER" \
+  || ! grep -Fq "RISKLERI KABUL EDIYORUM" "$INSTALLER" \
+  || ! grep -Fq "GPU uyumluluğu onaylanmadı; sistem dosyaları değiştirilmedi." "$INSTALLER"; then
+  echo "FAIL: installer must require explicit risk and target-GPU compatibility acknowledgements." >&2
+  exit 1
+fi
+if ! grep -Fq 'ÖNERİLEN YÖNTEM: Önce README.md içindeki manuel taşıma adımlarını uygulayın.' "$INSTALLER"; then
+  echo "FAIL: installer must tell users that manual migration is the recommended default." >&2
+  exit 1
+fi
+if grep -Fq 'rm -rf -- "$old_backup"' "$INSTALLER" || grep -Fq 'Keep the five newest installer backups' "$INSTALLER"; then
+  echo "FAIL: installer must not delete old recovery backups automatically." >&2
+  exit 1
+fi
+if ! grep -Fq 'mkdir -m 700 -- "$BACKUP_DIR"' "$INSTALLER" \
+  || ! grep -Fq 'Backup path already exists; refusing to reuse it:' "$INSTALLER"; then
+  echo "FAIL: installer backups must be private and must not reuse an existing timestamp path." >&2
   exit 1
 fi
 if ! grep -Fq 'Preserve an existing valid hash; create one only if the file is missing or empty.' "$INSTALLER"; then
@@ -348,6 +361,12 @@ guard = 'if [ ! -f /var/lib/libvirt/win10.xml ]; then'
 copy = 'sudo cp ./vm-xml/win10.xml /var/lib/libvirt/win10.xml'
 if guard not in text or copy not in text or text.index(guard) > text.index(copy):
     raise SystemExit("FAIL: README must only copy the repository VM XML when no deployed XML exists.")
+if text.index('Path B — Manual migration of an existing NixOS installation (recommended)') > text.index('Path C — Optional `install.sh` migration helper (advanced users only; not the default recommendation)'):
+    raise SystemExit("FAIL: README must put manual migration before the optional installer script.")
+if 'use the manual installation steps first' not in text:
+    raise SystemExit("FAIL: README must recommend manual installation before install.sh.")
+if 'prior installer backups instead of deleting them automatically' not in text:
+    raise SystemExit("FAIL: README must disclose that old recovery backups are retained.")
 if "Before rebuilding, make sure `/etc/nixos/hashedPassword` exists" not in text:
     raise SystemExit("FAIL: README must document hashedPassword as a prerequisite for migration rebuilds.")
 if 'sudo test -s /etc/nixos/hashedPassword' not in text or 'sudo chmod 600 /etc/nixos/hashedPassword' not in text:
@@ -608,10 +627,12 @@ SH
 bash "$wallpaper_test_dir/path-helper.sh"
 rm -rf -- "$wallpaper_test_dir"
 
-if ! grep -Fq 'DISK="$DISK_REAL"' "$ROOT/KURULUM.md" \
+if ! grep -Fq 'DISK_REAL=$(readlink -f -- "$DISK")' "$ROOT/KURULUM.md" \
   || ! grep -Fq 'holders_dir="/sys/class/block/${device##*/}/holders"' "$ROOT/KURULUM.md" \
-  || ! grep -Fq 'WIPE $DISK' "$ROOT/KURULUM.md"; then
-  echo "FAIL: disk guide must canonicalize by-id paths, reject active holders, and require explicit destructive confirmation." >&2
+  || ! grep -Fq 'WIPE $DISK_REAL' "$ROOT/KURULUM.md" \
+  || ! grep -Fq 'FORMAT LUKS ${PART_PREFIX}3' "$ROOT/KURULUM.md" \
+  || ! grep -Fq 'assert_partition_on_target "${PART_PREFIX}3"' "$ROOT/KURULUM.md"; then
+  echo "FAIL: disk guide must validate the canonical target, reject active holders, validate partition ancestry, and require explicit confirmations." >&2
   exit 1
 fi
 if ! grep -Fq 'SNAPSHOT_SUBVOL_CREATED=1' "$INSTALLER" \
