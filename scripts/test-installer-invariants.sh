@@ -473,4 +473,56 @@ if "linuxPackages-cachyos-rt-bore-lto" not in flake_text:
     raise SystemExit("FAIL: flake must select the RT-Bore-LTO package.")
 PY
 
+# Verify that the configured upstream CachyOS branch, flake lock, and current
+# operator-facing instructions agree. Historical changelog entries are excluded.
+python3 - "$FLAKE" "$ROOT/nixos/flake.lock" "$README" "$ROOT/KURULUM.md" "$ROOT/CHANGELOG.md" "$ROOT/DEGISIKLIK_GECMISI.md" "$ROOT/docs/REPAIR-AND-VALIDATION-REPORT.md" <<'PY_KERNEL_REF'
+import json
+import re
+import sys
+from pathlib import Path
+
+flake_path, lock_path, readme_path, setup_path, changelog_path, tr_history_path, report_path = sys.argv[1:]
+flake = Path(flake_path).read_text(encoding="utf-8")
+lock = json.loads(Path(lock_path).read_text(encoding="utf-8"))
+match = re.search(r'cachyos-kernel\.url\s*=\s*"github:xddxdd/nix-cachyos-kernel/([^"/]+)"', flake)
+if not match:
+    raise SystemExit("FAIL: could not determine CachyOS branch from nixos/flake.nix.")
+branch = match.group(1)
+locked_ref = lock["nodes"]["cachyos-kernel"]["original"].get("ref")
+if locked_ref != branch:
+    raise SystemExit(f"FAIL: flake branch {branch!r} and flake.lock original.ref {locked_ref!r} disagree.")
+
+readme = Path(readme_path).read_text(encoding="utf-8")
+if f"selected through the upstream `{branch}` flake input" not in readme:
+    raise SystemExit("FAIL: README's active kernel summary does not match the CachyOS flake branch.")
+if f"The flake follows the upstream `{branch}` branch" not in readme:
+    raise SystemExit("FAIL: README's installation guidance does not match the CachyOS flake branch.")
+
+setup = Path(setup_path).read_text(encoding="utf-8")
+if f"CachyOS upstream `{branch}` kanalındaki" not in setup:
+    raise SystemExit("FAIL: KURULUM.md's kernel update instructions do not match the CachyOS flake branch.")
+
+changelog = Path(changelog_path).read_text(encoding="utf-8")
+unreleased = changelog.split("## Follow-up status", 1)[0]
+if f"upstream `{branch}` branch" not in unreleased:
+    raise SystemExit("FAIL: the current CHANGELOG section does not describe the configured CachyOS branch.")
+if f"CachyOS `{branch}` input" not in unreleased:
+    raise SystemExit("FAIL: the current CHANGELOG validation notes do not match the configured CachyOS branch.")
+
+tr_history = Path(tr_history_path).read_text(encoding="utf-8").split("# [1.3.8]", 1)[0]
+if f"upstream `{branch}` kanalındaki" not in tr_history:
+    raise SystemExit("FAIL: DEGISIKLIK_GECMISI.md's current-tree summary does not match the CachyOS flake branch.")
+
+report = Path(report_path).read_text(encoding="utf-8")
+if f"from the upstream `{branch}` input" not in report.split("## Corrections applied", 1)[0]:
+    raise SystemExit("FAIL: the active status in docs/REPAIR-AND-VALIDATION-REPORT.md does not match the CachyOS flake branch.")
+
+config = Path(Path(flake_path).parent / "configuration.nix").read_text(encoding="utf-8")
+if 'networking.hostName = "nixos";' not in config:
+    raise SystemExit("FAIL: the configured host name changed; update the host-name guidance if intentional.")
+if 'The included configuration sets `networking.hostName = "nixos"`' not in readme or 'varsayılan makine adını `nixos` olarak ayarlar' not in setup:
+    raise SystemExit("FAIL: host-name guidance in README/KURULUM is missing or stale.")
+print(f"OK: CachyOS branch {branch!r}, lock, active docs, and host-name guidance are consistent.")
+PY_KERNEL_REF
+
 echo "OK: installer, VM/VFIO, English locale/UI, updateable RT-Bore-LTO selection, global Reflex, SSH access, and SSH-preserving VFIO handoff invariants passed."
