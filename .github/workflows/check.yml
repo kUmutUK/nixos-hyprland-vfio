@@ -170,11 +170,18 @@ jobs:
             --option warn-dirty false
           echo "  flake evaluates OK"
 
-      # This is an informational step, not a required gate. Required gates are:
-      #   1) ShellCheck (install.sh + nixos/hooks/qemu)
-      #   2) embedded home.nix script checks
-      #   3) nix flake check (evaluation only), which catches option errors
-      #   4) flake.lock unchanged
+      # This is an informational step, not a required gate. The required gates above
+      # and below include:
+      #   1) install.sh is executable in Git and the source ZIP preserves its mode
+      #      while excluding the repository's .git directory
+      #   2) VM XML is well-formed and the XML/diagnostic invariant tests pass
+      #   3) installer invariants and partial-deployment rollback regression tests
+      #   4) ShellCheck for install.sh, the source VFIO hook, and test scripts
+      #   5) VFIO hook driver-state regression tests
+      #   6) ShellCheck for the Nix-generated VFIO hook
+      #   7) extraction and ShellCheck of all seven embedded home.nix scripts
+      #   8) nix flake check evaluates the NixOS configuration without building it
+      #   9) flake.lock remains unchanged during CI
       # statix and deadnix findings are logged but do not fail the workflow by design:
       # failing a PR on every advisory finding would be noisy for a configuration repository.
       # `|| echo` returns success after an advisory warning; this is not a pipeline,
