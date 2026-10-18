@@ -40,20 +40,26 @@ The active `boot.kernelParams` list does not set `amd_iommu=on` or `iommu=pt`. E
 
 ## Installation
 
-The repository root is intended to become `/etc/nixos/`, while the flake lives in `/etc/nixos/nixos/`.
+> **Recommended for everyone: use the manual installation steps first.** Review each file and command before applying it. `install.sh` is an optional, higher-risk migration helper for an already-installed NixOS system; it is not the default recommendation and is not for partitioning or fresh OS installation. It writes system configuration and VM XML, can make the host or VM unusable if the hardware/settings are wrong, and cannot guarantee that rollback will recover every state. See the explicit risk notice in the script and [`DISCLAIMER.md`](DISCLAIMER.md).
 
-### Path A — Fresh installation
+### Path A — Manual fresh installation (recommended for a new system)
 
-Follow the Turkish step-by-step guide in [`KURULUM.md`](KURULUM.md) for disk partitioning, LUKS2, Btrfs subvolumes, generating the machine-specific hardware file, setting passwords, and installing NixOS.
+Follow [`KURULUM.md`](KURULUM.md) from the NixOS Live ISO. It covers partitioning, LUKS2, Btrfs subvolumes, machine-specific hardware configuration, password setup, and installation. The disk steps are **destructive**; do not copy them without substituting and re-checking your own target disk.
 
-The high-level flow is:
+The high-level flow is shown below. Perform the steps in [`KURULUM.md`](KURULUM.md) in order; do not skip its disk identity checks or typed confirmations.
 
 ```bash
+set -Eeuo pipefail
 sudo nixos-generate-config --root /mnt
 
 git clone https://github.com/kUmutUK/nixos-hyprland-vfio.git /tmp/repo
 cp /mnt/etc/nixos/hardware-configuration.nix /tmp/repo/nixos/hardware-configuration.nix
-sudo mv /mnt/etc/nixos /mnt/etc/nixos-generated-backup
+TARGET_BACKUP="/mnt/etc/nixos-generated-backup-$(date +%Y%m%d-%H%M%S)"
+if [ -e "$TARGET_BACKUP" ] || [ -L "$TARGET_BACKUP" ]; then
+  echo "HATA: Yedek yolu zaten var: $TARGET_BACKUP" >&2
+  exit 1
+fi
+sudo mv /mnt/etc/nixos "$TARGET_BACKUP"
 sudo mkdir -p /mnt/etc/nixos
 # Copy the repository contents but leave Git metadata out of the system config tree.
 tar --exclude='./.git' -C /tmp/repo -cf - . | sudo tar --no-same-owner -C /mnt/etc/nixos -xf -
@@ -74,10 +80,10 @@ sudo nixos-install --flake /mnt/etc/nixos/nixos#nixos
 **Before installing:**
 
 - Replace `nixos/hardware-configuration.nix` with the file generated for the target machine. The repository's original UUIDs and device paths are machine-specific; never use them blindly.
-- Confirm the password hash created by the command sequence above exists at `/mnt/etc/nixos/hashedPassword` with permissions `0600`. Do not commit this file.
-- Review the CachyOS binary-cache trust prompt before accepting it. The flake follows the upstream `master` branch and uses `overlays.pinned`; no kernel version is hard-coded in `flake.nix`. As usual for Nix flakes, `nixos/flake.lock` records the resolved input revision for reproducibility. To move to a newer upstream revision, update only the CachyOS input with the command below and review the lock diff before rebuilding. RT-Bore-LTO's LTO variant is not in the upstream binary cache, so expect a local kernel build.
+- Confirm `/mnt/etc/nixos/hashedPassword` exists and has permissions `0600`. Do not commit this file.
+- Review the CachyOS binary-cache trust prompt before accepting it. The flake follows the upstream `master` branch and uses `overlays.pinned`; no kernel version is hard-coded in `flake.nix`. `nixos/flake.lock` records the resolved input revision. RT-Bore-LTO's LTO variant is not in the upstream binary cache, so expect a local kernel build.
 
-  To update the running system after its first boot, first save the deployed lock, then update only this input and inspect the diff before switching:
+  To update the running system after its first boot, first save the deployed lock, then update only this input and inspect the diff before rebuilding:
 
   ```bash
   sudo cp /etc/nixos/nixos/flake.lock /tmp/flake.lock.before-cachyos-update
@@ -85,29 +91,115 @@ sudo nixos-install --flake /mnt/etc/nixos/nixos#nixos
   sudo diff -u /tmp/flake.lock.before-cachyos-update /etc/nixos/nixos/flake.lock || test "$?" -eq 1
   ```
 
-  A `diff` exit status of 1 means changes were found; status 2 indicates an error. Review any Nix cache-trust prompt before accepting settings. The fish `nup` alias performs this targeted update from any directory and does not silently accept flake settings. Do not run the `/etc/nixos/nixos` commands from a live installer: the mounted target is under `/mnt`. If you intentionally update the candidate before the first installation, target `/mnt/etc/nixos/nixos` and do so before running `nixos-install`.
-- Verify the target disk before running any partitioning command. The installation guide contains destructive operations.
+  A `diff` exit status of 1 means changes were found; status 2 indicates an error. Review any cache-trust prompt before accepting settings. Do not run commands targeting `/etc/nixos/nixos` from a Live ISO; for an intentional candidate update before first installation, target `/mnt/etc/nixos/nixos` instead.
+- For the first boot, review the `system.stateVersion` and `home.stateVersion` values rather than changing them just to match the installed release.
+- Verify the target disk before running any partitioning command. [`KURULUM.md`](KURULUM.md) contains commands that erase a partition table and format filesystems.
 
-### Path B — Migrate an existing NixOS installation
+### Path B — Manual migration of an existing NixOS installation (recommended)
 
-Run the installer as a normal user with `sudo` privileges. Keep the checkout outside `/etc/nixos` (for example, at `~/nixos-hyprland-vfio`). The installer deploys files to `/etc/nixos/nixos`; running the checkout from `/etc/nixos` itself makes the source and destination overlap, so the installer now rejects that layout before continuing. During preflight it also checks whether `/etc/nixos/hashedPassword` is non-empty and has `root:root` ownership with mode `0600`; it warns but continues so you can complete the password setup in the printed manual steps before rebuilding.
+This is the recommended path for an existing host. It intentionally makes you inspect changes instead of letting a script replace files in one pass.
+
+1. **Do not continue while the Windows VM is running.** Save your work, shut down `win10` cleanly if it exists, and keep physical/recovery-console access available. Back up important personal data separately; the configuration backup below is not a full system backup.
+2. Use a repository checkout outside `/etc/nixos`, for example `~/nixos-hyprland-vfio`, and keep the existing machine-specific `hardware-configuration.nix` and password hash.
+3. Back up current NixOS settings, the deployed VM XML if present, and the Home Manager directories that this configuration may manage:
 
 ```bash
-chmod +x install.sh  # fallback only if an external archive tool stripped the executable bit
+set -Eeuo pipefail
+REPO="$HOME/nixos-hyprland-vfio"   # change this if your checkout is elsewhere
+test -f "$REPO/nixos/configuration.nix"
+BACKUP="$HOME/.nixos-manual-backup-$(date +%Y%m%d-%H%M%S)"
+mkdir -m 700 -- "$BACKUP"
+sudo cp -a -- /etc/nixos "$BACKUP/etc-nixos"
+if sudo test -f /var/lib/libvirt/win10.xml; then
+  sudo cp -a -- /var/lib/libvirt/win10.xml "$BACKUP/win10.xml"
+fi
+for path in /home/localhost/.config/hypr /home/localhost/.config/waybar \
+            /home/localhost/.config/gtk-3.0 /home/localhost/.config/gtk-4.0; do
+  if sudo test -e "$path"; then
+    sudo cp -a -- "$path" "$BACKUP/$(basename "$path")"
+  fi
+done
+printf 'Backup saved to %s\n' "$BACKUP"
+```
+
+4. **Review the diff before copying anything.** This command only displays differences; exit code 1 from `diff` means differences were found, not a command failure:
+
+```bash
+REPO="$HOME/nixos-hyprland-vfio"   # same checkout path as above
+for file in configuration.nix home.nix flake.nix flake.lock; do
+  target="/etc/nixos/nixos/$file"
+  if [ -f "$target" ]; then
+    diff -u "$target" "$REPO/nixos/$file" || test "$?" -eq 1
+  else
+    printf 'No existing target: %s\n' "$target"
+  fi
+done
+# Record current compatibility baselines BEFORE replacing configuration files.
+grep -nE 'system\.stateVersion|home\.stateVersion' \
+  /etc/nixos/configuration.nix /etc/nixos/home.nix \
+  /etc/nixos/nixos/configuration.nix /etc/nixos/nixos/home.nix \
+  /home/localhost/.config/home-manager/home.nix 2>/dev/null || true
+```
+
+5. After reviewing that diff and the values above, copy only the four flake files. This overwrites their corresponding target files, so do not run it before making and checking the backup:
+
+```bash
+REPO="$HOME/nixos-hyprland-vfio"   # same checkout path as above
+sudo install -d -m 0755 /etc/nixos/nixos
+for file in configuration.nix home.nix flake.nix flake.lock; do
+  sudo install -m 0644 "$REPO/nixos/$file" /etc/nixos/nixos/
+done
+sudo install -d -m 0755 /etc/nixos/nixos/hooks
+sudo install -m 0755 "$REPO/nixos/hooks/qemu" /etc/nixos/nixos/hooks/qemu
+```
+
+6. **Preserve machine-specific settings.** If `/etc/nixos/nixos/hardware-configuration.nix` does not exist, first verify that `/etc/nixos/hardware-configuration.nix` was generated on this machine, then copy it (never use the repository template as a substitute):
+
+```bash
+if [ ! -f /etc/nixos/nixos/hardware-configuration.nix ]; then
+  test -f /etc/nixos/hardware-configuration.nix || { echo "No machine-generated hardware-configuration.nix; stop and generate/review one first." >&2; exit 1; }
+  sudo install -m 0644 /etc/nixos/hardware-configuration.nix /etc/nixos/nixos/hardware-configuration.nix
+fi
+```
+
+**Preserve machine-specific settings.** Never copy `REPO/nixos/hardware-configuration.nix` just because the file exists in the repository. Use the file generated on this machine. If `/etc/nixos/nixos/hardware-configuration.nix` already exists, compare its UUIDs, mount points, and swap device with the generated `/etc/nixos/hardware-configuration.nix` and merge deliberately; do not blindly replace either. Edit `/etc/nixos/nixos/configuration.nix` and `/etc/nixos/nixos/home.nix` to preserve the previous `system.stateVersion` and `home.stateVersion` values, then review the `home.nix` values listed in [`KURULUM.md`](KURULUM.md) (`gitName`, `gitEmail`, monitor output, monitor rule, and wallpaper path).
+
+7. Find the GPU display and HDMI/DP audio functions with `lspci -Dnn`. Edit `/etc/nixos/nixos/hooks/qemu` so `GPU_PCI` and `GPU_AUDIO` match the actual PCI addresses. Validate IOMMU groups and make sure no unrelated device shares an unsafe group before using passthrough.
+
+8. For an existing VM, **do not replace its XML with the repository template**. Preserve its UUID, MAC, firmware/NVRAM and primary Windows disk path. Back up `/var/lib/libvirt/win10.xml`, then edit only the two PCI `hostdev` source addresses to match the hook. If no deployed XML exists and this is a new VM, copy `REPO/vm-xml/win10.xml` only after reviewing its disk/ISO paths, USB IDs, UUID/MAC, and PCI addresses. Define the reviewed XML with `sudo virsh define /var/lib/libvirt/win10.xml` after the guest is shut down.
+
+9. Check the password file, run the test suite available on the host, and build before switching:
+
+```bash
+bash -n "$REPO/install.sh"
+bash "$REPO/scripts/test-installer-invariants.sh"
+bash "$REPO/scripts/test-installer-rollback.sh"
+bash "$REPO/scripts/test-vfio-hook-driver-state.sh"
+python3 "$REPO/scripts/test-vm-xml.py"
+python3 "$REPO/scripts/test-vm-diagnostic.py"
+sudo nixos-rebuild build --flake /etc/nixos/nixos#nixos
+sudo nixos-rebuild dry-activate --flake /etc/nixos/nixos#nixos
+```
+
+Only after reviewing the build and dry-activation output should you run `sudo nixos-rebuild switch --flake /etc/nixos/nixos#nixos`. Keep the backup and a working recovery generation until you have verified boot, graphics login, SSH access, and the complete VM start/shutdown/display-recovery cycle.
+
+### Path C — Optional `install.sh` migration helper (advanced users only; not the default recommendation)
+
+Use this only if you have reviewed the script and intentionally prefer its automated migration flow over the manual steps above. It is **not** a fresh-installer or disk-partitioning tool. It modifies files under `/etc/nixos/nixos`, replaces the deployed VFIO hook, and writes `/var/lib/libvirt/win10.xml`; incorrect PCI addresses, state versions, mount settings, or VM paths can make the host or VM unusable. Its backup/rollback logic is best-effort and does not replace a full backup or a tested recovery method. The script does not automatically rebuild or reboot the host, and it now retains prior installer backups instead of deleting them automatically. Do not run it as root; keep its repository checkout outside `/etc/nixos`.
+
+```bash
+# Review the whole script and the manual migration section first.
+less install.sh
+bash -n install.sh
 ./install.sh
 ```
 
-Maintainers creating a source ZIP from a Git checkout should use the canonical
-Git archive command below (after committing the revision they intend to share).
-It excludes the internal `.git` directory and preserves `install.sh`'s Unix
-executable mode; CI checks that metadata so users do not need the fallback above:
+The installer displays a risk notice and requires the exact acknowledgement phrase shown by the script. If you do not fully understand or accept the changes, cancel and use Path B. Maintainers creating a source ZIP should use the canonical Git archive command below; it excludes `.git` and preserves `install.sh`'s executable bit:
 
 ```bash
 git archive --format=zip --prefix=nixos-hyprland-vfio/ \
   --output=nixos-hyprland-vfio.zip HEAD
 ```
-
-The script backs up existing configuration files, refuses to run from a NixOS live ISO, asks for the selected GPU/audio PCI addresses and host-specific values, updates the deployed hook and VM XML, and preserves existing `system.stateVersion` and `home.stateVersion` values when it can identify them. When `/var/lib/libvirt/win10.xml` already exists for the `win10` domain, the XML updater preserves its file-backed primary Windows disk path as well as UUID/MAC identity; it fails closed for malformed/unrecognized XML instead of silently pointing an existing VM at the template's clean-install disk. A first deployment uses the template's configured image path. The updater aborts unless the VM XML contains exactly two valid, synchronizable PCI `hostdev` source addresses for the GPU/audio pair. It is not a variable-only editor: it copies selected configuration files into `/etc/nixos/nixos`, replaces that deployment's `hooks/` directory, writes the synchronized VM XML to `/var/lib/libvirt/win10.xml` (backing up an existing XML first), and may create `/home/.snapshots` on Btrfs when missing. If a later step fails, rollback removes that subvolume only when this run created it and it is still empty; nonempty content is retained for safety. It retains the five newest timestamped installer-backup directories and may delete older matching backups. Inspect every prompt and warning before proceeding. The script deliberately does not overwrite an existing machine-specific hardware configuration without confirmation.
 
 ### Activate and reboot
 
@@ -143,7 +235,7 @@ dmesg | grep -Ei 'AMD-Vi|IOMMU'
 find /sys/kernel/iommu_groups/ -maxdepth 2 -type l
 ```
 
-OpenSSH is enabled on TCP port 22, and the firewall allows that port. Password authentication is enabled for `localhost` only; root login is disabled, interactive keyboard authentication and X11 forwarding are disabled, and Fail2ban watches failed SSH attempts. Use a strong, unique account password and expose SSH only on networks you trust. For stronger authentication, add your own public key to `users.users.localhost.openssh.authorizedKeys.keys`; after confirming key login works, you can turn password authentication off. The QEMU hook now terminates only local `seat0` sessions, not all sessions for the user, so a headless SSH session should remain connected during GPU handoff. Keep a physical recovery TTY available and test this on your host before relying on it. Connect from another trusted device with `ssh localhost@<host-ip>` (find the address with `ip -br address`). After changing session variables or SSH options, rebuild and start a fresh login session before testing.
+OpenSSH is enabled on TCP port 22, and the firewall allows that port. Password authentication is enabled for `localhost` only; root login is disabled, interactive keyboard authentication and X11 forwarding are disabled, and Fail2ban watches failed SSH attempts. This is still an exposed authentication surface: use a strong, unique account password, restrict SSH at your network edge, and do not expose port 22 to untrusted networks. Prefer adding your own public key to `users.users.localhost.openssh.authorizedKeys.keys`; after confirming key login works from a separate session, disable password authentication. The QEMU hook now terminates only local `seat0` sessions, not all sessions for the user, so a headless SSH session should remain connected during GPU handoff. Keep a physical recovery TTY available and test this on your host before relying on it. Connect from another trusted device with `ssh localhost@<host-ip>` (find the address with `ip -br address`). After changing session variables or SSH options, rebuild and start a fresh login session before testing.
 
 ## Preparing and starting the VM
 
