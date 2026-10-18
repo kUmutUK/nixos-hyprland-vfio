@@ -399,11 +399,11 @@ EOF
     # mpvpaper watchdog could not find the Hyprland socket and restarted repeatedly.
     # Import the environment before starting the watchdog.
     exec-once = ${pkgs.coreutils}/bin/sh -c 'systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE HYPRLAND_INSTANCE_SIGNATURE HYPRLAND_DISPLAY; systemctl --user start gamemode-notify; if [ -n "$1" ]; then systemctl --user start mpvpaper-watchdog; fi' sh ${lib.escapeShellArg monitorOutput}
-    # `ConditionPathExists` belongs in the unit section, not the service section. If the
-    # wallpaper video is missing, systemd skips the service and the separate `exec-once`
-    # check displays a user-visible warning. Pass the path as a separate argument instead
-    # of embedding it in shell code to handle spaces, quotes, `$`, and backticks safely.
-    exec-once = ${pkgs.coreutils}/bin/sh -c '[ -e "$1" ] || notify-send -t 15000 -u critical "mpvpaper" "Live wallpaper file not found: $1\nDownload it or change wallpaperVideo in home.nix, then run: systemctl --user restart mpvpaper mpvpaper-watchdog"' sh ${lib.escapeShellArg wallpaperVideo}
+    # Only check the wallpaper file when live wallpaper is enabled. An empty
+    # `monitorOutput` intentionally disables the service and must not produce a warning.
+    # Pass both values as separate arguments so spaces, quotes, `$`, and backticks in
+    # either path/name cannot alter the shell command.
+    exec-once = ${pkgs.coreutils}/bin/sh -c 'if [ -n "$2" ] && [ ! -e "$1" ]; then notify-send -t 15000 -u critical "mpvpaper" "Live wallpaper file not found: $1\nDownload it or change wallpaperVideo in home.nix, then run: systemctl --user restart mpvpaper mpvpaper-watchdog"; fi' sh ${lib.escapeShellArg wallpaperVideo} ${lib.escapeShellArg monitorOutput}
     # When `monitorOutput` is empty, manual Home Manager configuration does not create
     # the mpvpaper service and skips monitor validation. When set, verify the output name
     # at session startup and pass it as a separate argument for safe shell handling.
