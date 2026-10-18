@@ -330,7 +330,9 @@ echo ""
 wallpaper_video="/home/localhost/Downloads/arthur-leywin-the-beginning-after-the-end.3840x2160.mp4"
 expand_home_prefix() {
   local value="$1"
-  local tilde_prefix='~/'  # shellcheck disable=SC2088
+# shellcheck disable=SC2088
+# Intentional: match literal "~/" prefix from user input; do not expand.
+local tilde_prefix='~/'
   case "$value" in
     '~')                  printf '%s' "$HOME" ;;
     "$tilde_prefix"*)    printf '%s/%s' "$HOME" "${value:2}" ;;
