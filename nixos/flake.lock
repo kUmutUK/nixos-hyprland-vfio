@@ -16,7 +16,7 @@
       },
       "original": {
         "owner": "xddxdd",
-        "ref": "release",
+        "ref": "master",
         "repo": "nix-cachyos-kernel",
         "type": "github"
       }
