@@ -352,7 +352,7 @@ in
     hashedPasswordFile = "/etc/nixos/hashedPassword";
     shell = pkgs.fish;
     extraGroups = [
-      "wheel" "networkmanager" "video" "audio" "storage"
+      "wheel" "networkmanager" "video" "audio"
       "gamemode" "libvirtd" "kvm" "input" "render"
     ];
     openssh.authorizedKeys.keys = [
