@@ -194,7 +194,7 @@ in
   # guaranteed: power-profiles-daemon controls the governor, ananicy-cpp applies
   # nice/ioprio rules, and GameMode renices games to -10. This configuration accepts
   # the overlap; consider using a balanced desktop power profile outside games.
-  networking.hostName = "nixos-workstation";
+  networking.hostName = "nixos";
   networking.networkmanager.enable = true;
   time.timeZone = "Europe/Istanbul";
   i18n.supportedLocales = [ "en_US.UTF-8/UTF-8" ];
