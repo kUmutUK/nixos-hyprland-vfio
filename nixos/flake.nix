@@ -18,7 +18,7 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    cachyos-kernel.url = "github:xddxdd/nix-cachyos-kernel/master";
+    cachyos-kernel.url = "github:xddxdd/nix-cachyos-kernel/release";
     home-manager.url = "github:nix-community/home-manager";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
     # Keep Hyprland and its companion packages on the same nixpkgs input.
@@ -46,10 +46,10 @@
         ({ pkgs, ... }: {
           nixpkgs.config.allowUnfree = true;
           # Keep the CachyOS kernel and patch set on the upstream pinned nixpkgs revision.
-          # The package follows the upstream `master` input for the latest kernel source.
-          # The exact commit remains pinned by flake.lock until `nix flake update cachyos-kernel`.
-          # Review/update that lock intentionally before rebuilding. RT-Bore-LTO LTO is not
-          # in the binary cache, so this variant is expected to build locally even with `pinned`.
+          # The package follows the `release` input; its kernel version is not hard-coded here.
+          # Update the flake lock intentionally with `nix flake update cachyos-kernel` when
+          # upstream publishes a newer kernel. RT-Bore-LTO LTO is not in the binary cache,
+          # so this variant is expected to build locally even with `pinned`.
           nixpkgs.overlays = [ cachyos-kernel.overlays.pinned ];
           boot.kernelPackages = pkgs.cachyosKernels.linuxPackages-cachyos-rt-bore-lto;
           # Hyprland, its companion tools, and xdg-desktop-portal-hyprland
