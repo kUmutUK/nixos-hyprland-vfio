@@ -63,6 +63,38 @@ if lsblk -nrpo MOUNTPOINTS "$DISK" | grep -qE '[^[:space:]]'; then
   exit 1
 fi
 
+# Hedef diskten gelen etkin swap varsa bölüm tablosunu silme. `lsblk -s`,
+# doğrudan bölümün yanı sıra device-mapper/LUKS arkasındaki fiziksel diski de arar.
+DISK_REAL=$(readlink -f -- "$DISK") || {
+  echo "HATA: Hedef diskin kanonik aygıt yolu çözümlenemedi." >&2
+  exit 1
+}
+ACTIVE_SWAP_DEVICES=$(sudo swapon --noheadings --raw --show=NAME) || {
+  echo "HATA: Etkin swap aygıtları doğrulanamadı; güvenlik için devam edilmiyor." >&2
+  exit 1
+}
+while IFS= read -r swap_dev; do
+  [ -n "$swap_dev" ] || continue
+  # Swap dosyası bir hedef diskteyse o dosya sistemi bağlı olmak zorundadır;
+  # yukarıdaki mount kontrolü bunu yakalar. Burada blok aygıtı swap'ını izliyoruz.
+  [ -b "$swap_dev" ] || continue
+  SWAP_BACKING_DEVICES=$(lsblk --inverse --noheadings --raw --paths --output NAME "$swap_dev") || {
+    echo "HATA: $swap_dev swap aygıtının fiziksel kaynağı doğrulanamadı." >&2
+    exit 1
+  }
+  while IFS= read -r backing_dev; do
+    [ -n "$backing_dev" ] || continue
+    backing_real=$(readlink -f -- "$backing_dev") || {
+      echo "HATA: $backing_dev aygıtının kanonik yolu çözümlenemedi." >&2
+      exit 1
+    }
+    if [ "$backing_real" = "$DISK_REAL" ]; then
+      echo "HATA: $swap_dev etkin swap'ı $DISK diski üzerindedir. Swap'ı kapatıp hedef diski yeniden doğrulamadan devam etme." >&2
+      exit 1
+    fi
+  done <<< "$SWAP_BACKING_DEVICES"
+done <<< "$ACTIVE_SWAP_DEVICES"
+
 # sgdisk'teki G birimi GiB'dir. Bölümler toplam 809 GiB ayırır.
 MIN_DISK_BYTES=$((810 * 1024 * 1024 * 1024))
 DISK_BYTES=$(sudo blockdev --getsize64 "$DISK") || { echo "HATA: Disk kapasitesi okunamadı." >&2; exit 1; }
@@ -432,9 +464,10 @@ sudo virsh define /var/lib/libvirt/win10-diagnostic.xml
 sudo systemd-run --unit=vmstart --collect /run/current-system/sw/bin/virsh start win10
 ```
 
-Hook, `localhost` kullanıcısının oturumlarını ve seat0/VT'leri kapatabileceği için
-normal shell'den VM başlatmayın; `systemd-run` sistem yöneticisi tarafından başlatılan
-bağımsız hizmet kullanır. Başka bir oturumdan sonucu ve VNC ekranını kontrol edin:
+Hook, `seat0` üzerindeki yerel grafik oturumlarını kullanıcı ayrımı yapmadan
+sonlandırabileceği için normal grafik shell'inden VM başlatmayın; `systemd-run`
+sistem yöneticisi tarafından başlatılan bağımsız hizmet kullanır. SSH oturumu bu
+komutla hedeflenmez. Başka bir oturumdan sonucu ve VNC ekranını kontrol edin:
 
 ```bash
 sudo journalctl -u vmstart.service -b --no-pager
@@ -449,11 +482,23 @@ başlangıç/teşhis içindir; oyun için kalıcı çözüm değildir.
 > `Win10_22H2_English_x64v1.iso` ve `virtio-win-0.1.285.iso` →
 > `sudo cp <iso> /var/lib/libvirt/images/`
 >
-> ⚠️ **XML'deki PCI adresleri:** `install.sh`'ı çalıştırmadıysanız `win10.xml`
-> içindeki `<hostdev>` kaynak adresleri depodaki varsayılan
-> (`0000:0b:00.0` / `.1`) olarak kalır. `lspci` çıktınla eşleşmiyorsa elle
-> düzenleyin — aksi halde hook yeni adrese, libvirt eskisine bakar ve
-> "device not found" alırsınız.
+> ⚠️ **PCI adresleri (temiz kurulum):** `install.sh` çalıştırılmadığında hem
+> hook hem VM XML'i depodaki `0000:0b:00.0` / `0000:0b:00.1` varsayılanlarını
+> kullanır. Bu adreslerin hedef GPU'nun görüntü ve ses işlevleri olduğunu `lspci -Dnn`
+> ile doğrulayın. Farklıysa **iki kaynak dosyayı da** güncelleyin:
+>
+> - `/etc/nixos/nixos/hooks/qemu`: üstteki `GPU_PCI` ve `GPU_AUDIO` değerleri.
+> - `/etc/nixos/vm-xml/win10.xml`: iki PCI `<hostdev>` girdisindeki `<source><address .../>`
+>   değerleri (domain/bus/slot/function, `lspci` adresinin hex bileşenleriyle eşleşmeli).
+>
+> Depo kök dizininde `python3 scripts/test-vm-xml.py` çalıştırın; bu test hook ve XML
+> adreslerinin eşitliğini kontrol eder, fakat adreslerin gerçek donanımınızda doğru
+> olduğunu doğrulamaz. Ardından `sudo nixos-rebuild switch --flake /etc/nixos/nixos#nixos`
+> ile hook'u yeniden oluşturun. Daha önce VM XML'i dağıtıldıysa, etkin
+> `/var/lib/libvirt/win10.xml` dosyasını da yedekleyip doğrulanmış XML ile güncelleyin
+> ve `sudo virsh define /var/lib/libvirt/win10.xml` çalıştırın. Yalnızca XML'i
+> değiştirmek hook'u değiştirmez; yalnızca hook'u değiştirmek de VM'in PCI kaynaklarını
+> güncellemez.
 
 > ⚠️ XML'deki disk/NVRAM yolları sabit geliyor. Kendi diskine göre
 > düzenlemezsen `virsh start win10` "disk bulunamadı" ile başarısız olur.
@@ -478,15 +523,18 @@ başlangıç/teşhis içindir; oyun için kalıcı çözüm değildir.
 > `vfio-pci`'ye bağlandığını, reset durumunu ve (Navi2x'te mümkünse)
 > kurtarma adımını burada görürsün.
 >
-> **Oturum kapsamı:** hook artık `HOST_USER` kullanmaz ve `loginctl terminate-user`
-> çağırmaz. Yalnızca `seat0` üzerindeki yerel oturumları kapatır; SSH oturumu korunur.
-> GPU kullanım denetimi, arka planda GPU'yu tutan bir işlem kalırsa devri güvenli biçimde
-> iptal eder.
+> **Oturum kapsamı:** hook `HOST_USER` kullanmaz ve `loginctl terminate-user`
+> çağırmaz. `loginctl terminate-seat seat0` ile `seat0` üzerindeki yerel oturumları
+> sonlandırır; kullanıcıya göre filtreleme yapmaz ve SSH oturumunu bu komutla
+> hedeflemez. GPU kullanım denetimi, arka planda GPU'yu tutan bir işlem kalırsa devri
+> güvenli biçimde iptal eder.
 >
-> Gerçekten farklı bir kullanıcıyı hedeflemek istiyorsanız tek yol
-> NixOS modülünde hook'a ortam vermektir — `configuration.nix` içinde
-> `virtualisation.libvirtd.hooks.qemu.vfio` tanımına bir `environment`
-> seçeneği ekleyin (bkz. `nixos/configuration.nix` → `vfioHook`).
+> Bu davranış ortam değişkeni ekleyerek değiştirilemez: `virtualisation.libvirtd.hooks.qemu`
+> girdileri dosya yollarıdır ve hook şu anda bir kullanıcı değişkeni okumaz. Farklı bir
+> oturum kapsamı istenirse `nixos/hooks/qemu` içindeki oturum yönetimi kodu bilinçli
+> olarak değiştirilmeli, test edilmeli ve NixOS yeniden oluşturulmalıdır. Ayrı amaçlı
+> `VFIO_ALLOW_SUSPEND_RECOVERY` ayarı yalnızca isteğe bağlı VFIO kurtarma yolunu açar;
+> kullanıcı/seat seçimini değiştirmez.
 
 ### Önceki kernel ile donanım doğrulaması — 16 Ekim 2026
 
