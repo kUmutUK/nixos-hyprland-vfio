@@ -213,10 +213,11 @@ if ! bash "$monitor_test_dir/trim.sh"; then
   exit 1
 fi
 
-python3 - "$INSTALLER" <<'PY'
+python3 - "$INSTALLER" "$ROOT/vm-xml/win10.xml" <<'PY'
 import ast
 import re
 import sys
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 text = Path(sys.argv[1]).read_text(encoding="utf-8")
@@ -301,6 +302,35 @@ for name, (xml, should_pass) in fixtures.items():
                 raise SystemExit("FAIL: valid XML did not receive the selected GPU/audio addresses.")
             if ('<!-- ' + pci2 + ' -->') not in generated:
                 raise SystemExit("FAIL: a commented-out PCI example was altered by XML synchronization.")
+
+# On an installer rerun, preserve the deployed Windows image path instead of
+# silently replacing it with the repository template's clean-install image.
+with tempfile.TemporaryDirectory(prefix="installer-disk-preservation-test-") as temp:
+    temp_path = Path(temp)
+    src = temp_path / "template.xml"
+    dst = temp_path / "deployed.xml"
+    template_xml = Path(sys.argv[2]).read_text(encoding="utf-8")
+    template_root = ET.fromstring(template_xml)
+    primary_disk = template_root.find("./devices/disk[@device='disk']")
+    source = primary_disk.find("source") if primary_disk is not None else None
+    template_disk_path = source.get("file") if source is not None else None
+    if not template_disk_path:
+        raise SystemExit("FAIL: repository XML template must define a file-backed primary disk for preservation testing.")
+    prior_disk_path = "/var/lib/libvirt/images/win10-2.qcow2"
+    if template_disk_path not in template_xml:
+        raise SystemExit("FAIL: could not locate the template primary disk path in XML text.")
+    src.write_text(template_xml, encoding="utf-8")
+    dst.write_text(template_xml.replace(template_disk_path, prior_disk_path, 1), encoding="utf-8")
+    result = subprocess.run(
+        [sys.executable, "-", "0000:0b:00.0", "0000:0b:00.1", str(src), str(dst)],
+        input=embedded, text=True, capture_output=True,
+    )
+    if result.returncode != 0:
+        raise SystemExit(f"FAIL: updater rejected a valid existing VM XML: {result.stdout}{result.stderr}")
+    updated_root = ET.parse(dst).getroot()
+    updated_disk = updated_root.find("./devices/disk[@device='disk']/source")
+    if updated_disk is None or updated_disk.get("file") != prior_disk_path:
+        raise SystemExit("FAIL: installer overwrote the deployed Windows primary disk path.")
 PY
 
 python3 - "$README" <<'PY'
@@ -526,3 +556,60 @@ print(f"OK: CachyOS branch {branch!r}, lock, active docs, and host-name guidance
 PY_KERNEL_REF
 
 echo "OK: installer, VM/VFIO, English locale/UI, updateable RT-Bore-LTO selection, global Reflex, SSH access, and SSH-preserving VFIO handoff invariants passed."
+
+
+# The migration installer must fail closed on NixOS live media before any mutations.
+if ! grep -Fq 'findmnt -rn -M /iso -t iso9660' "$INSTALLER" \
+  || ! grep -Fq 'findmnt -rn -M /nix/.ro-store -t squashfs' "$INSTALLER"; then
+  echo "FAIL: installer must detect the NixOS live ISO and its read-only store in preflight." >&2
+  exit 1
+fi
+live_test_dir="$(mktemp -d)"
+trap 'rm -rf -- "${state_test_dir:-}" "${monitor_test_dir:-}" "${password_test_dir:-}" "${repo_guard_dir:-}" "${live_test_dir:-}"' EXIT
+awk '$0 == "is_nixos_live_installer() {" { capture=1 } capture { print } capture && /^}/ { exit }' "$INSTALLER" > "$live_test_dir/live-check.sh"
+cat > "$live_test_dir/findmnt" <<'SH'
+#!/usr/bin/env sh
+case "$*" in
+  *"/iso"*"iso9660"*) [ "${TEST_ISO_MOUNTED:-0}" = 1 ]; exit $? ;;
+  *"/nix/.ro-store"*"squashfs"*) [ "${TEST_RO_STORE_MOUNTED:-0}" = 1 ]; exit $? ;;
+esac
+exit 1
+SH
+chmod +x "$live_test_dir/findmnt"
+cat >> "$live_test_dir/live-check.sh" <<'SH'
+PATH="$TEST_FINDMNT_DIR:/usr/bin:/bin"
+export PATH
+export TEST_ISO_MOUNTED TEST_RO_STORE_MOUNTED
+TEST_ISO_MOUNTED=1 TEST_RO_STORE_MOUNTED=0
+if ! is_nixos_live_installer; then echo 'FAIL: ISO mount was not detected.' >&2; exit 1; fi
+TEST_ISO_MOUNTED=0 TEST_RO_STORE_MOUNTED=1
+if ! is_nixos_live_installer; then echo 'FAIL: read-only live store was not detected.' >&2; exit 1; fi
+TEST_ISO_MOUNTED=0 TEST_RO_STORE_MOUNTED=0
+if is_nixos_live_installer; then echo 'FAIL: normal installed system was falsely identified as live media.' >&2; exit 1; fi
+SH
+TEST_FINDMNT_DIR="$live_test_dir" PATH="$live_test_dir:/usr/bin:/bin" bash "$live_test_dir/live-check.sh"
+
+wallpaper_test_dir="$(mktemp -d)"
+awk '$0 == "expand_home_prefix() {" { capture=1 } capture { print } capture && /^}/ { exit }' "$INSTALLER" > "$wallpaper_test_dir/path-helper.sh"
+cat >> "$wallpaper_test_dir/path-helper.sh" <<'SH'
+error() { printf '%s\n' "$*" >&2; exit 1; }
+HOME=/home/test-user
+export HOME
+[ "$(expand_home_prefix '~/Downloads/wallpaper.mp4')" = '/home/test-user/Downloads/wallpaper.mp4' ]
+[ "$(expand_home_prefix '~')" = '/home/test-user' ]
+[ "$(expand_home_prefix '/mnt/media/wallpaper.mp4')" = '/mnt/media/wallpaper.mp4' ]
+SH
+bash "$wallpaper_test_dir/path-helper.sh"
+rm -rf -- "$wallpaper_test_dir"
+
+if ! grep -Fq 'DISK="$DISK_REAL"' "$ROOT/KURULUM.md" \
+  || ! grep -Fq 'holders_dir="/sys/class/block/${device##*/}/holders"' "$ROOT/KURULUM.md" \
+  || ! grep -Fq 'WIPE $DISK' "$ROOT/KURULUM.md"; then
+  echo "FAIL: disk guide must canonicalize by-id paths, reject active holders, and require explicit destructive confirmation." >&2
+  exit 1
+fi
+if ! grep -Fq 'SNAPSHOT_SUBVOL_CREATED=1' "$INSTALLER" \
+  || ! grep -Fq 'btrfs subvolume delete "$SNAPSHOT_SUBVOL"' "$INSTALLER"; then
+  echo "FAIL: installer rollback must track and safely clean up a newly-created empty snapshot subvolume." >&2
+  exit 1
+fi

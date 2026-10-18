@@ -149,3 +149,55 @@ set -e
   || fail 'rollback changed the dangling symbolic link target'
 
 printf 'OK: installer rollback restores files, active/dangling symlinks, and removes new targets.\n'
+
+
+# Snapshot cleanup is part of rollback only if this run created the subvolume.
+# Empty subvolumes may be removed; nonempty ones must be retained for safety.
+SNAPSHOT_HARNESS="$TMP_DIR/snapshot-rollback-harness.sh"
+cat > "$SNAPSHOT_HARNESS" <<'BASH'
+set -euo pipefail
+SNAPSHOT_SUBVOL="$1"
+BACKUP_DIR="$2"
+HELPERS="$3"
+TRANSACTION_PATHS=()
+declare -A TRANSACTION_EXISTED=()
+TRANSACTION_ACTIVE=1
+SNAPSHOT_SUBVOL_CREATED=1
+warn() { printf '%s\n' "$*" >&2; }
+sudo() {
+  if [[ "$1" == btrfs && "$2" == subvolume && "$3" == show ]]; then
+    [[ -d "$4" ]]
+  elif [[ "$1" == btrfs && "$2" == subvolume && "$3" == delete ]]; then
+    rm -rf -- "$4"
+  elif [[ "$1" == find ]]; then
+    shift
+    command find "$@"
+  elif [[ "$1" == chown ]]; then
+    return 0
+  else
+    command "$@"
+  fi
+}
+source "$HELPERS"
+rollback_deployment 1
+BASH
+
+EMPTY_SNAPSHOT="$TMP_DIR/new-empty-snapshot"
+mkdir -p "$EMPTY_SNAPSHOT"
+set +e
+bash "$SNAPSHOT_HARNESS" "$EMPTY_SNAPSHOT" "$BACKUP_DIR" "$HELPERS" >/dev/null 2>&1
+empty_snapshot_status=$?
+set -e
+[[ "$empty_snapshot_status" -eq 1 ]] || fail "snapshot rollback did not preserve original exit status for an empty subvolume"
+[[ ! -e "$EMPTY_SNAPSHOT" ]] || fail 'rollback did not remove the empty snapshot subvolume created in this run'
+
+NONEMPTY_SNAPSHOT="$TMP_DIR/new-nonempty-snapshot"
+mkdir -p "$NONEMPTY_SNAPSHOT"
+printf 'keep me\n' > "$NONEMPTY_SNAPSHOT/user-data"
+set +e
+bash "$SNAPSHOT_HARNESS" "$NONEMPTY_SNAPSHOT" "$BACKUP_DIR" "$HELPERS" >/dev/null 2>&1
+nonempty_snapshot_status=$?
+set -e
+[[ "$nonempty_snapshot_status" -eq 1 ]] || fail "snapshot rollback did not preserve original exit status for a nonempty subvolume"
+[[ -f "$NONEMPTY_SNAPSHOT/user-data" ]] || fail 'rollback removed data from a nonempty snapshot subvolume'
+printf 'OK: installer rollback removes only a newly-created empty snapshot subvolume and retains nonempty content.\n'
