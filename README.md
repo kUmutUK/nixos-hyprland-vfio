@@ -44,9 +44,9 @@ The active `boot.kernelParams` list does not set `amd_iommu=on` or `iommu=pt`. E
 
 ### Path A — Manual fresh installation (recommended for a new system)
 
-Follow [`KURULUM.md`](KURULUM.md) (Turkish) or its English version, [`INSTALLATION.md`](INSTALLATION.md), from the NixOS Live ISO. The guides cover partitioning, LUKS2, Btrfs subvolumes, machine-specific hardware configuration, password setup, and installation. The disk steps are **destructive**; do not copy them without substituting and re-checking your own target disk.
+Follow the English [`INSTALLATION.md`](INSTALLATION.md) guide from the NixOS Live ISO. `KURULUM.md` is retained only as an English compatibility pointer for older links. The guides cover partitioning, LUKS2, Btrfs subvolumes, machine-specific hardware configuration, password setup, and installation. The disk steps are **destructive**; do not copy them without substituting and re-checking your own target disk.
 
-The high-level flow is shown below. Perform the steps in [`KURULUM.md`](KURULUM.md) or [`INSTALLATION.md`](INSTALLATION.md) in order; do not skip the disk identity checks or typed confirmations.
+The high-level flow is shown below. Perform the steps in [`INSTALLATION.md`](INSTALLATION.md) in order; do not skip the disk identity checks or typed confirmations.
 
 ```bash
 set -Eeuo pipefail
@@ -93,7 +93,7 @@ sudo nixos-install --flake /mnt/etc/nixos/nixos#nixos
 
   A `diff` exit status of 1 means changes were found; status 2 indicates an error. Review any cache-trust prompt before accepting settings. Do not run commands targeting `/etc/nixos/nixos` from a Live ISO; for an intentional candidate update before first installation, target `/mnt/etc/nixos/nixos` instead.
 - For the first boot, review the `system.stateVersion` and `home.stateVersion` values rather than changing them just to match the installed release.
-- Verify the target disk before running any partitioning command. [`KURULUM.md`](KURULUM.md) contains commands that erase a partition table and format filesystems.
+- Verify the target disk before running any partitioning command. [`INSTALLATION.md`](INSTALLATION.md) contains commands that erase a partition table and format filesystems.
 
 ### Path B — Manual migration of an existing NixOS installation (recommended)
 
@@ -162,7 +162,7 @@ if [ ! -f /etc/nixos/nixos/hardware-configuration.nix ]; then
 fi
 ```
 
-**Preserve machine-specific settings.** Never copy `REPO/nixos/hardware-configuration.nix` just because the file exists in the repository. Use the file generated on this machine. If `/etc/nixos/nixos/hardware-configuration.nix` already exists, compare its UUIDs, mount points, and swap device with the generated `/etc/nixos/hardware-configuration.nix` and merge deliberately; do not blindly replace either. Edit `/etc/nixos/nixos/configuration.nix` and `/etc/nixos/nixos/home.nix` to preserve the previous `system.stateVersion` and `home.stateVersion` values, then review the `home.nix` values listed in [`KURULUM.md`](KURULUM.md) (`gitName`, `gitEmail`, monitor output, monitor rule, and wallpaper path).
+**Preserve machine-specific settings.** Never copy `REPO/nixos/hardware-configuration.nix` just because the file exists in the repository. Use the file generated on this machine. If `/etc/nixos/nixos/hardware-configuration.nix` already exists, compare its UUIDs, mount points, and swap device with the generated `/etc/nixos/hardware-configuration.nix` and merge deliberately; do not blindly replace either. Edit `/etc/nixos/nixos/configuration.nix` and `/etc/nixos/nixos/home.nix` to preserve the previous `system.stateVersion` and `home.stateVersion` values, then review the `home.nix` values listed in [`INSTALLATION.md`](INSTALLATION.md) (`gitName`, `gitEmail`, monitor output, monitor rule, and wallpaper path).
 
 7. Find the GPU display and HDMI/DP audio functions with `lspci -Dnn`. Edit `/etc/nixos/nixos/hooks/qemu` so `GPU_PCI` and `GPU_AUDIO` match the actual PCI addresses. Validate IOMMU groups and make sure no unrelated device shares an unsafe group before using passthrough.
 
@@ -176,6 +176,7 @@ bash "$REPO/scripts/test-installer-invariants.sh"
 bash "$REPO/scripts/test-installer-rollback.sh"
 bash "$REPO/scripts/test-vfio-hook-driver-state.sh"
 python3 "$REPO/scripts/test-vm-xml.py"
+python3 "$REPO/scripts/test-vm-xml-sync.py"
 python3 "$REPO/scripts/test-vm-diagnostic.py"
 sudo nixos-rebuild build --flake /etc/nixos/nixos#nixos
 sudo nixos-rebuild dry-activate --flake /etc/nixos/nixos#nixos
@@ -185,7 +186,7 @@ Only after reviewing the build and dry-activation output should you run `sudo ni
 
 ### Path C — Optional `install.sh` migration helper (advanced users only; not the default recommendation)
 
-Use this only if you have reviewed the script and intentionally prefer its automated migration flow over the manual steps above. It is **not** a fresh-installer or disk-partitioning tool. It replaces source files under `/etc/nixos/nixos` (including `/etc/nixos/nixos/hooks/qemu`) and writes `/var/lib/libvirt/win10.xml`; it does **not** directly replace the currently active libvirt hook or automatically define the updated VM XML. The active hook is generated from `nixos/configuration.nix` and is refreshed only after a successful NixOS rebuild/activation. Incorrect PCI addresses, state versions, mount settings, or VM paths can make the host or VM unusable. Its backup/rollback logic is best-effort and does not replace a full backup or a tested recovery method. The script does not automatically rebuild/activate the host or reboot, and it retains prior installer backups without automatically deleting them. Do not run it as root; keep its repository checkout outside `/etc/nixos`.
+Use this only if you have reviewed the script and intentionally prefer its automated migration flow over the manual steps above. It is **not** a fresh-installer or disk-partitioning tool. It replaces source files under `/etc/nixos/nixos` (including `/etc/nixos/nixos/hooks/qemu`) and writes `/var/lib/libvirt/win10.xml`; it does **not** directly replace the currently active libvirt hook or automatically define the updated VM XML. The active hook is generated from `nixos/configuration.nix` and is refreshed only after a successful NixOS rebuild/activation. When `/var/lib/libvirt/win10.xml` already exists, the helper now uses that file as its source and changes only the two PCI hostdev source addresses; it retains other XML settings, including custom CPU, firmware/NVRAM, device and disk configuration. The deployed XML is backed up first. If the existing XML is malformed, belongs to another domain, has an unsupported primary-disk layout, or does not contain exactly two synchronizable PCI hostdevs, the helper aborts so you can use the manual path. On a new VM, it starts from the repository template. Incorrect PCI addresses, state versions, or mount settings can still make the host or VM unusable. Backup/rollback remains best-effort and does not replace a full backup or a tested recovery method. The script does not automatically rebuild/activate the host, define the VM XML, or reboot, and it retains prior installer backups without automatically deleting them. Do not run it as root; keep its repository checkout outside `/etc/nixos`.
 
 ```bash
 # Review the whole script and the manual migration section first.
@@ -253,7 +254,7 @@ if [ ! -f /var/lib/libvirt/win10.xml ]; then
   sudo cp ./vm-xml/win10.xml /var/lib/libvirt/win10.xml
   echo "Source XML copied. Verify/update its GPU/audio PCI addresses before starting the VM."
 else
-  echo "Preserving existing deployed VM XML. Verify its GPU/audio PCI addresses before starting the VM."
+  echo "Preserving existing VM XML settings; verify its GPU/audio PCI addresses before starting the VM."
 fi
 if [ ! -f /var/lib/libvirt/images/win10new.qcow2 ]; then
   sudo qemu-img create -f qcow2 /var/lib/libvirt/images/win10new.qcow2 120G
@@ -380,6 +381,7 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 ## Known limitations
 
 - **RT-Bore-LTO validation:** the upstream release source provides this package but does not publish its LTO variant to the upstream binary cache. It must be built locally. Real-time preemption does not guarantee higher FPS or better game frametimes; benchmark the target games and retain a known-good boot generation until the new kernel is validated.
+- **Global Vulkan latency layer compatibility:** upstream `low_latency_layer` v0.2.0 documents an incompatibility with the `obs_vkcapture` Vulkan capture layer. If game capture or recording breaks while the layer is enabled, launch the affected game with `DISABLE_LOW_LATENCY_LAYER=1 %command%` and verify whether capture works again.
 - **Navi 2x reset behavior:** reliable reset and host rebind cannot be guaranteed from static analysis. The optional `remove`/`rtcwake`/`rescan` recovery path is disabled by default. Enabling `VFIO_ALLOW_SUSPEND_RECOVERY=1` can suspend the host briefly and should only be attempted after checking firmware support and arranging recovery access.
 - **Single-GPU host:** while the VM owns the GPU, the host does not have a normal graphical session. Keep a physical recovery TTY available. The hook ends only local `seat0` sessions and is designed to preserve SSH sessions. The device-node usage check still fails closed if a process retains the GPU, so test the full VM lifecycle on the target hardware.
 - **Local graphical-session scope:** the hook runs `loginctl terminate-seat seat0`; it ends local sessions on that seat without filtering by user, and does not target SSH sessions with that command. This is designed for a single-GPU host where the desktop must release the GPU.
@@ -394,9 +396,9 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 ```text
 .
 ├── README.md
-├── KURULUM.md                      # Turkish fresh-install guide
+├── KURULUM.md                      # English compatibility pointer to INSTALLATION.md
 ├── INSTALLATION.md                 # English fresh-install guide
-├── DEGISIKLIK_GECMISI.md           # Turkish detailed legacy changelog
+├── DEGISIKLIK_GECMISI.md           # English current-state summary + archive pointer
 ├── CONTRIBUTING.md
 ├── CHANGELOG.md
 ├── LICENSE
@@ -411,7 +413,9 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 │   ├── test-installer-invariants.sh
 │   ├── test-installer-rollback.sh
 │   ├── test-vfio-hook-driver-state.sh
+│   ├── sync-vm-xml.py
 │   ├── test-vm-diagnostic.py
+│   ├── test-vm-xml-sync.py
 │   └── test-vm-xml.py
 ├── vm-xml/win10.xml
 └── nixos/
@@ -434,6 +438,7 @@ nix develop ./nixos
 find ./nixos -type f -name '*.nix' -print0 | xargs -0 -r -n1 nixfmt
 shellcheck -S warning install.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh
 python3 scripts/test-vm-xml.py
+python3 scripts/test-vm-xml-sync.py
 python3 scripts/test-vm-diagnostic.py
 bash scripts/test-vfio-hook-driver-state.sh
 bash scripts/test-installer-invariants.sh

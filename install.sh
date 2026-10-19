@@ -44,7 +44,7 @@ echo -e "${YELLOW}POSSIBLE RISKS:${NC}"
 echo "  - NixOS may fail to boot or become unstable."
 echo "  - Display output may be lost during GPU passthrough and the desktop may not recover."
 echo "  - Incorrect UUID, filesystem, or mount settings may break boot."
-echo "  - Existing VM UUID/MAC/disk/firmware settings may be changed or the VM may become inaccessible."
+echo "  - Incorrect PCI addresses can make the VM inaccessible; unsupported existing XML is rejected for manual review."
 echo "  - Kernel, driver, ROCm, or hardware incompatibility."
 echo "  - Data loss or difficult recovery after partial rollback or inadequate backups."
 echo ""
@@ -78,7 +78,7 @@ is_nixos_live_installer() {
   return 1
 }
 if is_nixos_live_installer; then
-  error "A NixOS live installer environment was detected. Do not run this migration script from the live ISO; follow KURULUM.md for a fresh install or boot the installed NixOS system first."
+  error "A NixOS live installer environment was detected. Do not run this migration script from the live ISO; follow INSTALLATION.md for a fresh install or boot the installed NixOS system first."
 fi
 # The deployment target is /etc/nixos/nixos. A checkout anywhere inside
 # /etc/nixos can overlap its source and deployment paths, not only when the
@@ -721,178 +721,10 @@ else
   # libvirt's directory instead of modifying the source tree or setting
   # skip-worktree, which can hide changes and cause later merge conflicts.
   # Run the XML update as root: the destination is owned by the system.
-  if sudo mkdir -p /var/lib/libvirt && sudo "$PYTHON3" - "$gpu_pci" "$gpu_audio" "$REPO_DIR/vm-xml/win10.xml" "$PATCHED_XML" <<'PYEOF'
-import html, os, re, shutil, sys, time, uuid as uuidlib, secrets, tempfile, stat
-import xml.etree.ElementTree as ET
+  if sudo mkdir -p /var/lib/libvirt && sudo "$PYTHON3" "$REPO_DIR/scripts/sync-vm-xml.py" \
+    "$gpu_pci" "$gpu_audio" "$REPO_DIR/vm-xml/win10.xml" "$PATCHED_XML"; then
+    log "VM XML -> ${PATCHED_XML} (GPU=${gpu_pci}, Audio=${gpu_audio})"
 
-gpu, aud, src, dst = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
-
-def xml_attrs(addr):
-    m = re.match(r'^([0-9a-fA-F]{4}):([0-9a-fA-F]{2}):([0-9a-fA-F]{2})\.([0-9a-fA-F])$', addr)
-    if not m:
-        sys.exit(f"invalid PCI address: {addr}")
-    d, b, s, f = m.groups()
-    return f'domain="0x{d}" bus="0x{b}" slot="0x{s}" function="0x{f}"'
-
-data = open(src, encoding="utf-8").read()
-try:
-    xml_root = ET.fromstring(data)
-except ET.ParseError as exc:
-    sys.exit(f"ERROR: VM XML is malformed ({exc}); no file was written.")
-
-# Count actual XML elements with a parser (not raw text), so commented examples
-# cannot affect validation and malformed/unrecognized PCI nodes are not ignored.
-pci_hostdev_count = len(xml_root.findall(".//hostdev[@type='pci']"))
-
-# Give a new deployment a unique libvirt UUID and locally administered MAC.
-# If a destination XML already exists, preserve its identity on reruns so DHCP
-# reservations and Windows device identity do not change on every install.
-template_uuid = re.search(r'<uuid>([^<]+)</uuid>', data)
-template_mac = re.search(r'<mac\s+address="([^"]+)"\s*/>', data)
-if not template_uuid or not template_mac:
-    sys.exit("ERROR: no UUID or MAC address found in the XML template; no file was written.")
-
-old_data = ""
-if os.path.exists(dst):
-    with open(dst, encoding="utf-8") as old_file:
-        old_data = old_file.read()
-    if not old_data.strip():
-        sys.exit("ERROR: existing deployed VM XML is empty; refusing to replace it automatically.")
-
-old_uuid = re.search(r'<uuid>([^<]+)</uuid>', old_data)
-old_mac = re.search(r'<mac\s+address="([^"]+)"\s*/>', old_data)
-
-# On migration/reruns, the deployed XML may point at a real Windows installation
-# whose filename differs from the repository's clean-install default. Preserve
-# that primary disk path, and fail closed for an unrecognized XML/domain/source
-# shape rather than silently directing the VM at a new empty image.
-if old_data:
-    try:
-        old_root = ET.fromstring(old_data)
-    except ET.ParseError as exc:
-        sys.exit(f"ERROR: existing deployed VM XML is malformed ({exc}); refusing to replace it.")
-    if old_root.findtext("name") != xml_root.findtext("name"):
-        sys.exit("ERROR: existing deployed XML belongs to a different VM domain; refusing to overwrite it.")
-    old_disks = old_root.findall("./devices/disk[@device='disk']")
-    new_disks = xml_root.findall("./devices/disk[@device='disk']")
-    if len(old_disks) != 1 or len(new_disks) != 1:
-        sys.exit("ERROR: expected exactly one primary file-backed disk in both existing and template VM XML; refusing to overwrite it.")
-    old_disk_source = old_disks[0].find("source")
-    new_disk_source = new_disks[0].find("source")
-    old_disk_path = old_disk_source.get("file") if old_disk_source is not None else None
-    template_disk_path = new_disk_source.get("file") if new_disk_source is not None else None
-    if not old_disk_path or not template_disk_path:
-        sys.exit("ERROR: the deployed or template primary disk is not file-backed; inspect and migrate its source manually.")
-
-    main_disk_match = re.search(
-        r'(<disk\b(?=[^>]*\bdevice\s*=\s*["\']disk["\'])[^>]*>.*?</disk>)',
-        data, re.DOTALL)
-    if not main_disk_match:
-        sys.exit("ERROR: could not locate the template's primary disk block; no file was written.")
-    disk_block = main_disk_match.group(1)
-    source_match = re.search(r'<source\b[^>]*>', disk_block, re.DOTALL)
-    if not source_match:
-        sys.exit("ERROR: the template's primary disk source is unsupported; no file was written.")
-    source_tag = source_match.group(0)
-    escaped_path = html.escape(old_disk_path, quote=True)
-    source_tag_new, source_count = re.subn(
-        r'(\bfile\s*=\s*)(["\']).*?\2',
-        lambda match: match.group(1) + match.group(2) + escaped_path + match.group(2),
-        source_tag, count=1, flags=re.DOTALL)
-    if source_count != 1:
-        sys.exit("ERROR: the template primary disk source has no supported file attribute; no file was written.")
-    disk_block = disk_block[:source_match.start()] + source_tag_new + disk_block[source_match.end():]
-    data = data[:main_disk_match.start()] + disk_block + data[main_disk_match.end():]
-    if old_disk_path != template_disk_path:
-        print(f"NOTE: preserving existing Windows disk path -> {old_disk_path}")
-
-vm_uuid = old_uuid.group(1) if old_uuid else str(uuidlib.uuid4())
-vm_mac = old_mac.group(1) if old_mac else "52:54:00:" + ":".join(secrets.token_hex(3)[i:i+2] for i in (0, 2, 4))
-data = re.sub(r'<uuid>[^<]+</uuid>', f'<uuid>{vm_uuid}</uuid>', data, count=1)
-data = re.sub(r'<mac\s+address="[^"]+"\s*/>', f'<mac address="{vm_mac}"/>', data, count=1)
-
-pattern = re.compile(
-    r"(<hostdev\b(?=[^>]*\btype\s*=\s*['\"]pci['\"])[^>]*>\s*"
-    r"(?:<driver\b[^>]*/>\s*)?<source>\s*<address\s+)([^/]+)(/>)",
-    re.DOTALL)
-
-addrs = [xml_attrs(gpu), xml_attrs(aud)]
-counter = [0]
-comment_spans = [m.span() for m in re.finditer(r"<!--.*?-->", data, re.DOTALL)]
-
-def repl(m):
-    # Do not rewrite commented-out XML examples: they are not real hostdevs.
-    if any(start <= m.start() < end for start, end in comment_spans):
-        return m.group(0)
-    i = counter[0]
-    counter[0] += 1
-    return m.group(1) + (addrs[i] if i < len(addrs) else m.group(2)) + m.group(3)
-
-new = pattern.sub(repl, data)
-
-# Only PCI hostdev addresses are synchronized; USB hostdevs must remain untouched.
-# Require exactly two actual PCI nodes and exactly two address blocks the updater
-# understands. Abort before creating backups or replacing the deployed XML if the
-# pair is incomplete, contains extras, or has an unsupported XML structure.
-n = counter[0]
-if pci_hostdev_count != 2 or n != 2:
-    sys.exit(
-        "ERROR: VM XML must contain exactly two synchronizable PCI hostdev source "
-        f"addresses (found {pci_hostdev_count} PCI hostdev element(s), {n} supported); "
-        "no file was written."
-    )
-
-if os.path.exists(dst):
-    backup = f"{dst}.bak-{int(time.time())}"
-    shutil.copy2(dst, backup)
-    print(f"NOTE: existing XML backed up to -> {backup}")
-    previous_stat = os.stat(dst)
-    target_mode = stat.S_IMODE(previous_stat.st_mode)
-else:
-    previous_stat = None
-    # Match the usual mode of a newly-created text file under umask 022.
-    target_mode = 0o644
-
-# Write to a temporary file in the destination directory and atomically replace
-# the destination. A failed write leaves the previous XML untouched.
-target_dir = os.path.dirname(dst) or "."
-tmp_path = None
-try:
-    fd, tmp_path = tempfile.mkstemp(
-        dir=target_dir,
-        prefix=f".{os.path.basename(dst)}.",
-        suffix=".tmp",
-    )
-    with os.fdopen(fd, "w", encoding="utf-8") as tmp_file:
-        tmp_file.write(new)
-        tmp_file.flush()
-        os.fsync(tmp_file.fileno())
-    os.chmod(tmp_path, target_mode)
-    if previous_stat is not None:
-        os.chown(tmp_path, previous_stat.st_uid, previous_stat.st_gid)
-    os.replace(tmp_path, dst)
-    tmp_path = None
-    # Best-effort directory sync makes the rename durable across a sudden crash.
-    try:
-        dir_fd = os.open(target_dir, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
-        try:
-            os.fsync(dir_fd)
-        finally:
-            os.close(dir_fd)
-    except OSError:
-        pass
-except BaseException:
-    if tmp_path is not None:
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
-    raise
-
-print(f"OK: found exactly {pci_hostdev_count} PCI hostdev elements; synchronized GPU/audio addresses -> {dst}")
-PYEOF
-  then
-    log "vm-xml/win10.xml -> ${PATCHED_XML} (GPU=${gpu_pci}, Audio=${gpu_audio})"
     log "The source repository file was NOT modified."
     echo -e "     ${CYAN}sudo virsh define ${PATCHED_XML}${NC}"
   else
@@ -917,7 +749,7 @@ echo "   If the file already exists on this system:"
 echo -e "     ${CYAN}sudo cp ${NIXOS_DIR}/hardware-configuration.nix ${NIXOS_FLAKE_DIR}/${NC}"
 echo ""
 echo "   This migration installer is for an already booted NixOS host; do not run it from the live installer."
-echo "   For a fresh installation, follow KURULUM.md and generate hardware configuration for the mounted target."
+echo "   For a fresh installation, follow INSTALLATION.md and generate hardware configuration for the mounted target."
 echo "   The generated file must be installed at /mnt/etc/nixos/nixos/hardware-configuration.nix before nixos-install."
 fi
 
@@ -1082,7 +914,7 @@ echo -e "   ${YELLOW}Win10_22H2_English_x64v1.iso and virtio-win-0.1.285.iso${NC
 echo -e "   ${CYAN}sudo virsh define /var/lib/libvirt/win10.xml${NC}"
 echo -e "   ${CYAN}sudo virsh list --all${NC}   ${YELLOW}→ 'win10' should appear as shut off${NC}"
 echo -e "   ${YELLOW}The installer requires exactly two PCI hostdev elements (GPU + audio).${NC}"
-echo -e "   ${YELLOW}If the XML contains extra PCI hostdevs, remove/rework them in the template before rerunning; XML synchronization will stop otherwise.${NC}"
+echo -e "   ${YELLOW}If the deployed VM XML has extra PCI hostdevs or a nonstandard primary-disk layout, use manual migration; synchronization will stop rather than replace the XML.${NC}"
 ((step_num++))
 
 echo ""
