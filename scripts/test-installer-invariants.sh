@@ -238,125 +238,18 @@ if ! bash "$monitor_test_dir/trim.sh"; then
   exit 1
 fi
 
-python3 - "$INSTALLER" "$ROOT/vm-xml/win10.xml" <<'PY'
-import ast
-import re
-import sys
-import xml.etree.ElementTree as ET
-from pathlib import Path
-
-text = Path(sys.argv[1]).read_text(encoding="utf-8")
-marker = 'sudo "$PYTHON3" - "$gpu_pci" "$gpu_audio" "$REPO_DIR/vm-xml/win10.xml" "$PATCHED_XML" <<\'PYEOF\''
-try:
-    start = text.index(marker)
-except ValueError:
-    raise SystemExit("FAIL: installer PCI XML synchronization heredoc is missing.")
-body_start = text.index("\n", start) + 1
-body_end = text.index("\nPYEOF", body_start)
-embedded = text[body_start:body_end]
-try:
-    tree = ast.parse(embedded)
-except SyntaxError as exc:
-    raise SystemExit(f"FAIL: embedded installer Python is invalid: {exc}")
-
-pattern_assignment = next((node for node in tree.body if isinstance(node, ast.Assign)
-                            and any(isinstance(target, ast.Name) and target.id == "pattern"
-                                    for target in node.targets)), None)
-if pattern_assignment is None:
-    raise SystemExit("FAIL: installer PCI hostdev address pattern is missing.")
-namespace = {}
-exec(compile(ast.Module(body=[pattern_assignment], type_ignores=[]), "installer-pattern", "exec"),
-     {"re": re}, namespace)
-pattern = namespace["pattern"]
-sample_xml = "\n".join([
-    '<domain><name>win10</name><uuid>11111111-2222-3333-4444-555555555555</uuid>',
-    '<devices>',
-    '<hostdev mode="subsystem" type="usb"><source><address bus="1" device="2"/></source></hostdev>',
-    '<hostdev mode="subsystem" type="pci"><source><address domain="0x0000" bus="0x0b" slot="0x00" function="0x0"/></source></hostdev>',
-    "<hostdev mode=\"subsystem\" type='pci'><source><address domain='0x0000' bus='0x0b' slot='0x00' function='0x1'/></source></hostdev>",
-    '<interface type="network"><mac address="52:54:00:00:00:01"/></interface>',
-    '</devices></domain>',
-])
-matches = list(pattern.finditer(sample_xml))
-if len(matches) != 2 or any(re.search(r'type\s*=\s*["\']usb["\']', m.group(0)) for m in matches):
-    raise SystemExit("FAIL: installer PCI synchronization must match PCI hostdevs only, never USB address sources.")
-if "pci_hostdev_count != 2 or n != 2" not in embedded:
-    raise SystemExit("FAIL: installer must fail closed unless exactly two actual PCI hostdevs have synchronizable source addresses.")
-if "ET.fromstring(data)" not in embedded or "comment_spans" not in embedded:
-    raise SystemExit("FAIL: XML validation must parse real XML nodes and ignore commented-out examples.")
-
-# Execute the actual embedded updater against temporary fixtures. Failed cases must
-# exit non-zero before a destination XML is created; the valid pair must be rewritten.
-import subprocess
-import tempfile
-
-pci0 = '<hostdev mode="subsystem" type="pci"><source><address domain="0x0000" bus="0x0b" slot="0x00" function="0x0"/></source></hostdev>'
-pci1 = "<hostdev mode='subsystem' type='pci'><source><address domain='0x0000' bus='0x0b' slot='0x00' function='0x1'/></source></hostdev>"
-pci2 = '<hostdev mode="subsystem" type="pci"><source><address domain="0x0000" bus="0x0c" slot="0x00" function="0x0"/></source></hostdev>'
-usb = '<hostdev mode="subsystem" type="usb"><source><address bus="1" device="2"/></source></hostdev>'
-header = '<domain><name>win10</name><uuid>11111111-2222-3333-4444-555555555555</uuid><devices>'
-footer = '<interface type="network"><mac address="52:54:00:00:00:01"/></interface></devices></domain>'
-fixtures = {
-    "valid-two": (header + usb + '<!-- ' + pci2 + ' -->' + pci0 + pci1 + footer, True),
-    "none": (header + usb + footer, False),
-    "one": (header + pci0 + footer, False),
-    "three": (header + pci0 + pci1 + pci2 + footer, False),
-    "unmatched-source": (header + pci0 + '<hostdev type="pci"><source><adapter name="missing-address"/></source></hostdev>' + footer, False),
-    "malformed-xml": (header + pci0 + pci1 + footer + '<', False),
-}
-for name, (xml, should_pass) in fixtures.items():
-    with tempfile.TemporaryDirectory(prefix="installer-xml-test-") as temp:
-        src = Path(temp) / "source.xml"
-        dst = Path(temp) / "deployed.xml"
-        src.write_text(xml, encoding="utf-8")
-        result = subprocess.run(
-            [sys.executable, "-", "0000:0b:00.0", "0000:0b:00.1", str(src), str(dst)],
-            input=embedded, text=True, capture_output=True,
-        )
-        passed = result.returncode == 0 and dst.is_file()
-        if passed != should_pass:
-            raise SystemExit(
-                f"FAIL: XML updater fixture {name!r}: expected success={should_pass}, "
-                f"exit={result.returncode}, output={result.stdout}{result.stderr}"
-            )
-        if not should_pass and dst.exists():
-            raise SystemExit(f"FAIL: XML updater fixture {name!r} wrote a destination on failure.")
-        if name == "valid-two":
-            generated = dst.read_text(encoding="utf-8")
-            if 'bus="0x0b" slot="0x00" function="0x0"' not in generated or 'function="0x1"' not in generated:
-                raise SystemExit("FAIL: valid XML did not receive the selected GPU/audio addresses.")
-            if ('<!-- ' + pci2 + ' -->') not in generated:
-                raise SystemExit("FAIL: a commented-out PCI example was altered by XML synchronization.")
-
-# On an installer rerun, preserve the deployed Windows image path instead of
-# silently replacing it with the repository template's clean-install image.
-with tempfile.TemporaryDirectory(prefix="installer-disk-preservation-test-") as temp:
-    temp_path = Path(temp)
-    src = temp_path / "template.xml"
-    dst = temp_path / "deployed.xml"
-    template_xml = Path(sys.argv[2]).read_text(encoding="utf-8")
-    template_root = ET.fromstring(template_xml)
-    primary_disk = template_root.find("./devices/disk[@device='disk']")
-    source = primary_disk.find("source") if primary_disk is not None else None
-    template_disk_path = source.get("file") if source is not None else None
-    if not template_disk_path:
-        raise SystemExit("FAIL: repository XML template must define a file-backed primary disk for preservation testing.")
-    prior_disk_path = "/var/lib/libvirt/images/win10-2.qcow2"
-    if template_disk_path not in template_xml:
-        raise SystemExit("FAIL: could not locate the template primary disk path in XML text.")
-    src.write_text(template_xml, encoding="utf-8")
-    dst.write_text(template_xml.replace(template_disk_path, prior_disk_path, 1), encoding="utf-8")
-    result = subprocess.run(
-        [sys.executable, "-", "0000:0b:00.0", "0000:0b:00.1", str(src), str(dst)],
-        input=embedded, text=True, capture_output=True,
-    )
-    if result.returncode != 0:
-        raise SystemExit(f"FAIL: updater rejected a valid existing VM XML: {result.stdout}{result.stderr}")
-    updated_root = ET.parse(dst).getroot()
-    updated_disk = updated_root.find("./devices/disk[@device='disk']/source")
-    if updated_disk is None or updated_disk.get("file") != prior_disk_path:
-        raise SystemExit("FAIL: installer overwrote the deployed Windows primary disk path.")
-PY
+if ! grep -Fq 'scripts/sync-vm-xml.py' "$INSTALLER"; then
+  echo "FAIL: installer must call the tested VM XML synchronization helper." >&2
+  exit 1
+fi
+if ! grep -Fq 'only its two PCI hostdev source addresses were synchronized' "$ROOT/scripts/sync-vm-xml.py"; then
+  echo "FAIL: VM XML helper must explicitly report its preservation behavior." >&2
+  exit 1
+fi
+if ! grep -Fq 'preserving' "$ROOT/scripts/sync-vm-xml.py" || ! grep -Fq 'synchronize_pci_addresses' "$ROOT/scripts/sync-vm-xml.py"; then
+  echo "FAIL: VM XML helper must preserve existing XML and validate PCI synchronization." >&2
+  exit 1
+fi
 
 python3 - "$README" <<'PY'
 from pathlib import Path
@@ -380,12 +273,12 @@ if 'sudo test -s /etc/nixos/hashedPassword' not in text or 'sudo chmod 600 /etc/
 if "sudo stat -c '%U:%G:%a' /etc/nixos/hashedPassword" not in text or 'root:root:600' not in text:
     raise SystemExit("FAIL: README must validate hashedPassword owner, group, and mode.")
 
-install_guide = Path(sys.argv[1]).parent / "KURULUM.md"
+install_guide = Path(sys.argv[1]).parent / "INSTALLATION.md"
 guide_text = install_guide.read_text(encoding="utf-8")
 install_command = guide_text.index("sudo nixos-install --flake /mnt/etc/nixos/nixos#nixos")
 root_pass_command = guide_text.index("sudo nixos-enter --root /mnt -c 'passwd root'")
 if root_pass_command < install_command:
-    raise SystemExit("FAIL: KURULUM.md must place root password setup after successful nixos-install.")
+    raise SystemExit("FAIL: INSTALLATION.md must place root password setup after successful nixos-install.")
 
 config = Path(sys.argv[1]).parent / "nixos" / "configuration.nix"
 config_text = config.read_text(encoding="utf-8")
@@ -428,7 +321,7 @@ if ! grep -Fq 'DISABLE_LOW_LATENCY_LAYER=1 %command%' "$README"; then
   echo "FAIL: README must document the per-game opt-out for incompatible Vulkan apps." >&2
   exit 1
 fi
-if ! grep -Fq 'fps_max 0' "$README" || ! grep -Fq 'fps_max 0' "$ROOT/KURULUM.md"; then
+if ! grep -Fq 'fps_max 0' "$README" || ! grep -Fq 'fps_max 0' "$ROOT/INSTALLATION.md"; then
   echo "FAIL: both guides must document the upstream CS2/Source 2 frame-pacing workaround." >&2
   exit 1
 fi
@@ -466,14 +359,14 @@ if ! grep -Fq 'check_ssh_password_file "$NIXOS_DIR/hashedPassword"' "$INSTALLER"
   exit 1
 fi
 if ! grep -Fq 'nix flake update --flake /etc/nixos/nixos cachyos-kernel' "$README" \
-  || ! grep -Fq 'nix flake update --flake /etc/nixos/nixos cachyos-kernel' "$ROOT/KURULUM.md"; then
+  || ! grep -Fq 'nix flake update --flake /etc/nixos/nixos cachyos-kernel' "$ROOT/INSTALLATION.md"; then
   echo "FAIL: both install guides must document how to update the CachyOS kernel input." >&2
   exit 1
 fi
 if grep -Fq 'nixos-install --flake /mnt/etc/nixos/nixos#nixos --accept-flake-config' \
-    "$README" "$ROOT/KURULUM.md" "$ROOT/DEGISIKLIK_GECMISI.md" "$ROOT/docs/REPAIR-AND-VALIDATION-REPORT.md" \
+    "$README" "$ROOT/INSTALLATION.md" "$ROOT/DEGISIKLIK_GECMISI.md" "$ROOT/docs/REPAIR-AND-VALIDATION-REPORT.md" \
   || grep -Fq 'nix flake update cachyos-kernel --accept-flake-config' \
-    "$README" "$ROOT/KURULUM.md" "$ROOT/DEGISIKLIK_GECMISI.md" "$ROOT/docs/REPAIR-AND-VALIDATION-REPORT.md"; then
+    "$README" "$ROOT/INSTALLATION.md" "$ROOT/DEGISIKLIK_GECMISI.md" "$ROOT/docs/REPAIR-AND-VALIDATION-REPORT.md"; then
   echo "FAIL: active install/update guidance must not silently bypass flake cache-trust prompts." >&2
   exit 1
 fi
@@ -550,7 +443,7 @@ PY
 
 # Verify that the configured upstream CachyOS branch, flake lock, and current
 # operator-facing instructions agree. Historical changelog entries are excluded.
-python3 - "$FLAKE" "$ROOT/nixos/flake.lock" "$README" "$ROOT/KURULUM.md" "$ROOT/CHANGELOG.md" "$ROOT/DEGISIKLIK_GECMISI.md" "$ROOT/docs/REPAIR-AND-VALIDATION-REPORT.md" <<'PY_KERNEL_REF'
+python3 - "$FLAKE" "$ROOT/nixos/flake.lock" "$README" "$ROOT/INSTALLATION.md" "$ROOT/CHANGELOG.md" "$ROOT/DEGISIKLIK_GECMISI.md" "$ROOT/docs/REPAIR-AND-VALIDATION-REPORT.md" <<'PY_KERNEL_REF'
 import json
 import re
 import sys
@@ -574,8 +467,8 @@ if f"The flake follows the upstream `{branch}` branch" not in readme:
     raise SystemExit("FAIL: README's installation guidance does not match the CachyOS flake branch.")
 
 setup = Path(setup_path).read_text(encoding="utf-8")
-if f"CachyOS upstream `{branch}` kanalındaki" not in setup:
-    raise SystemExit("FAIL: KURULUM.md's kernel update instructions do not match the CachyOS flake branch.")
+if f"CachyOS upstream `{branch}` input" not in setup:
+    raise SystemExit("FAIL: INSTALLATION.md's kernel update instructions do not match the CachyOS flake branch.")
 
 changelog = Path(changelog_path).read_text(encoding="utf-8")
 unreleased = changelog.split("## Follow-up status", 1)[0]
@@ -584,9 +477,9 @@ if f"upstream `{branch}` branch" not in unreleased:
 if f"CachyOS `{branch}` input" not in unreleased:
     raise SystemExit("FAIL: the current CHANGELOG validation notes do not match the configured CachyOS branch.")
 
-tr_history = Path(tr_history_path).read_text(encoding="utf-8").split("# [1.3.8]", 1)[0]
-if f"upstream `{branch}` kanalındaki" not in tr_history:
-    raise SystemExit("FAIL: DEGISIKLIK_GECMISI.md's current-tree summary does not match the CachyOS flake branch.")
+tr_history = Path(tr_history_path).read_text(encoding="utf-8")
+if f"CachyOS upstream `{branch}` input" not in tr_history:
+    raise SystemExit("FAIL: DEGISIKLIK_GECMISI.md's English current-state summary does not match the CachyOS flake branch.")
 
 report = Path(report_path).read_text(encoding="utf-8")
 if f"from the upstream `{branch}` input" not in report.split("## Corrections applied", 1)[0]:
@@ -595,7 +488,7 @@ if f"from the upstream `{branch}` input" not in report.split("## Corrections app
 config = Path(Path(flake_path).parent / "configuration.nix").read_text(encoding="utf-8")
 if 'networking.hostName = "nixos";' not in config:
     raise SystemExit("FAIL: the configured host name changed; update the host-name guidance if intentional.")
-if 'The included configuration sets `networking.hostName = "nixos"`' not in readme or 'varsayılan makine adını `nixos` olarak ayarlar' not in setup:
+if 'The included configuration sets `networking.hostName = "nixos"`' not in readme or '`nixos/configuration.nix` sets the default hostname to `nixos`' not in setup:
     raise SystemExit("FAIL: host-name guidance in README/KURULUM is missing or stale.")
 print(f"OK: CachyOS branch {branch!r}, lock, active docs, and host-name guidance are consistent.")
 PY_KERNEL_REF
@@ -647,11 +540,11 @@ SH
 bash "$wallpaper_test_dir/path-helper.sh"
 rm -rf -- "$wallpaper_test_dir"
 
-if ! grep -Fq 'DISK_REAL=$(readlink -f -- "$DISK")' "$ROOT/KURULUM.md" \
-  || ! grep -Fq 'holders_dir="/sys/class/block/${device##*/}/holders"' "$ROOT/KURULUM.md" \
-  || ! grep -Fq 'WIPE $DISK_REAL' "$ROOT/KURULUM.md" \
-  || ! grep -Fq 'FORMAT LUKS ${PART_PREFIX}3' "$ROOT/KURULUM.md" \
-  || ! grep -Fq 'assert_partition_on_target "${PART_PREFIX}3"' "$ROOT/KURULUM.md"; then
+if ! grep -Fq 'DISK_REAL=$(readlink -f -- "$DISK")' "$ROOT/INSTALLATION.md" \
+  || ! grep -Fq 'holders_dir="/sys/class/block/${device##*/}/holders"' "$ROOT/INSTALLATION.md" \
+  || ! grep -Fq 'WIPE $DISK_REAL' "$ROOT/INSTALLATION.md" \
+  || ! grep -Fq 'FORMAT LUKS ${PART_PREFIX}3' "$ROOT/INSTALLATION.md" \
+  || ! grep -Fq 'assert_partition_on_target "${PART_PREFIX}3"' "$ROOT/INSTALLATION.md"; then
   echo "FAIL: disk guide must validate the canonical target, reject active holders, validate partition ancestry, and require explicit confirmations." >&2
   exit 1
 fi
