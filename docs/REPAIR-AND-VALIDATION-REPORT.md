@@ -1,5 +1,11 @@
 # Repair and validation report — 2026-10-16
 
+## Delivery-scope clarification — 2026-10-19
+
+This report contains historical notes about earlier correction bundles; those dated notes must not be read as a description of the original full-project archive currently under review. The original uploaded archive (`nixos-hyprland-vfio(5).zip`) included the full project tree and `.git/`, and its `install.sh` ZIP entry did not preserve the Unix executable bit. The English `README.md` also contained one Turkish error message.
+
+The corrective ZIP produced from this review is a **patch-only bundle** containing only the three files corrected for these findings: `README.md`, `install.sh` (stored with Unix mode `100755`), and this report. It excludes `.git/` and unchanged project files. Applying it overlays those paths onto the matching project tree; it is not a replacement for the full source archive. This bundle addresses the confirmed packaging/documentation findings only and does not claim Nix evaluation, libvirt validation, or real hardware/VM lifecycle verification.
+
 ## Follow-up corrections — 2026-10-19
 
 This follow-up patch-only bundle contains only the files modified in this correction set: `README.md`, `scripts/test-installer-invariants.sh`, `.github/workflows/check.yml`, `CHANGELOG.md`, this report, and `install.sh` (mode correction only). It excludes `.git/` and does not duplicate the full source tree. The user-supplied full-project ZIP included `.git/` and did not preserve executable permission for `install.sh`; this patch ZIP explicitly stores that entry as Unix mode `100755`.
