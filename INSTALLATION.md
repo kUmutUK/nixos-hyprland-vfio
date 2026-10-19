@@ -1,6 +1,6 @@
 # NixOS Hyprland + VFIO Installation Guide
 
-Turkish version: [KURULUM.md](KURULUM.md)
+Legacy filename: [KURULUM.md](KURULUM.md) (English pointer to this guide)
 
 This guide walks through an AMD-oriented **NixOS + LUKS2 + Btrfs + Hyprland + VFIO** installation.
 
@@ -514,6 +514,8 @@ sudo nixos-enter --root /mnt -c 'passwd root'
 
 **CS2 / Source 2 low-latency note:** the [low_latency_layer v0.2.0 upstream release notes](https://github.com/Korthos-Software/low_latency_layer/releases/tag/v0.2.0) describe in-game FPS caps causing frame-pacing problems while the layer is enabled. Until the upstream issue is fixed, use `fps_max 0` in the CS2 console. External limiters such as MangoHud have not been reported to cause the same issue. If stuttering persists, compare frame times after disabling the layer only for CS2 with `DISABLE_LOW_LATENCY_LAYER=1 %command%` in Steam launch options.
 
+**OBS Vulkan capture compatibility:** upstream `low_latency_layer` v0.2.0 also documents an incompatibility with the `obs_vkcapture` Vulkan layer. If capture or recording fails, test the game with `DISABLE_LOW_LATENCY_LAYER=1 %command%` and compare behavior.
+
 ---
 
 > ⚠️ **VM preparation:** the XML and qcow2 files are prepared after installation on the first boot; see Section 10b.
@@ -563,7 +565,7 @@ sudo chmod 0660 /var/lib/libvirt/images/win10new.qcow2
 if [ ! -f /var/lib/libvirt/win10.xml ]; then
   sudo cp /etc/nixos/vm-xml/win10.xml /var/lib/libvirt/
 else
-  echo "Preserving existing XML; verify that its PCI addresses match the GPU hook."
+  echo "Preserving existing XML settings; verify that its PCI addresses match the GPU hook."
 fi
 
 sudo virsh define /var/lib/libvirt/win10.xml

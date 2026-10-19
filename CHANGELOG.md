@@ -1,10 +1,12 @@
 # Changelog
 
-This file summarizes notable changes in English. The original detailed Turkish history is preserved in [`DEGISIKLIK_GECMISI.md`](DEGISIKLIK_GECMISI.md).
+This file summarizes notable changes in English. The original detailed Turkish history is preserved unchanged in [`docs/archive/DEGISIKLIK_GECMISI.md`](docs/archive/DEGISIKLIK_GECMISI.md).
 
 ## Unreleased — 2026-10-19
 
 ### Follow-up audit fixes
+- Preserved an existing deployed VM XML as the source of truth during migration and synchronized only the two GPU/audio PCI addresses. The helper retains the existing VM identity, custom CPU/firmware/NVRAM/device settings, disk path, USB passthrough entries, and extra source-address attributes; unsupported layouts fail closed. Added regression tests for new VM identity, existing XML preservation, backups, and unsafe XML refusal.
+- Documented the upstream `low_latency_layer` v0.2.0 incompatibility with the `obs_vkcapture` Vulkan capture layer and the per-game opt-out.
 - Added regression coverage for the README's manual migration guard (copy when the generated source exists, preserve an existing target, and fail closed when the source is missing). The supplied README already checked the correct source path; the earlier audit's quoted faulty snippet did not match the actual archive.
 - CI now builds and validates one canonical Git archive and uploads that same ZIP as the `nixos-hyprland-vfio-source` workflow artifact after all required checks pass, preventing an independently repackaged archive from being mistaken for the tested source bundle.
 - Clarified the repair report so historical full-project and patch-only archives are not conflated. The `install.sh` contents are unchanged; this patch ZIP preserves its executable mode.
@@ -56,4 +58,4 @@ This file summarizes notable changes in English. The original detailed Turkish h
 
 ## Historical releases
 
-The detailed Turkish changelog is preserved in [`DEGISIKLIK_GECMISI.md`](DEGISIKLIK_GECMISI.md). This English index intentionally avoids restating historical claims as if they were re-tested against the current tree; consult the Turkish file for the release entries it actually contains.
+The original detailed Turkish changelog is preserved unchanged in [`docs/archive/DEGISIKLIK_GECMISI.md`](docs/archive/DEGISIKLIK_GECMISI.md). This English index intentionally avoids restating historical claims as if they were re-tested against the current tree; consult the Turkish file for the release entries it actually contains.
