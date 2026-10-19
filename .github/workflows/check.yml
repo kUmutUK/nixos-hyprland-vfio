@@ -26,10 +26,10 @@ jobs:
           fi
           echo "  install.sh executable mode OK"
 
-      - name: source ZIP preserves Unix executable mode
+      - name: create and validate canonical source ZIP
         run: |
-          archive="$(mktemp --suffix=.zip)"
-          trap 'rm -f "$archive"' EXIT
+          archive="$RUNNER_TEMP/nixos-hyprland-vfio-source.zip"
+          rm -f "$archive"
           git archive --format=zip --prefix=nixos-hyprland-vfio/ \
             --output="$archive" HEAD
           python3 - "$archive" <<'PY'
@@ -204,10 +204,9 @@ jobs:
             || echo "::warning::deadnix findings present (informational only)"
 
       # Detect lock-file drift permanently
-      # Keep this step last. Any step that evaluates the flake, including `nix develop`,
-      # could rewrite the lock file. `--no-update-lock-file` is set on current Nix steps,
-      # but future workflow edits may forget it. If a later step can mutate the lock,
-      # the guard must run after it; otherwise non-canonical state can be missed.
+      # Keep this guard after every command that evaluates the flake, including `nix develop`,
+      # because evaluation could rewrite the lock file. A final artifact upload may follow
+      # because it does not evaluate Nix or mutate the checkout.
 
 
       - name: flake.lock unchanged
@@ -219,3 +218,14 @@ jobs:
             exit 1
           fi
           echo "  flake.lock clean"
+
+      # Upload the exact ZIP validated above, only after all required checks pass.
+      # The artifact contains the source ZIP as a file; its inner ZIP preserves
+      # the Unix executable bit and excludes .git.
+      - name: upload validated source ZIP
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: nixos-hyprland-vfio-source
+          path: ${{ runner.temp }}/nixos-hyprland-vfio-source.zip
+          if-no-files-found: error
+          retention-days: 14
