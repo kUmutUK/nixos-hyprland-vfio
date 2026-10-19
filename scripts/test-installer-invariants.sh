@@ -304,7 +304,9 @@ if ! grep -Fq 'boot.kernelPackages = pkgs.cachyosKernels.linuxPackages-cachyos-r
 fi
 # A blank monitorOutput intentionally disables live wallpaper, so the missing-file
 # notification must be gated by the monitor argument rather than shown at every login.
-if ! grep -Fq 'if [ -n "$2" ] && [ ! -e "$1" ]; then notify-send -t 15000 -u critical "mpvpaper" "Live wallpaper file not found: $1' "$HOME_CONFIG" \
+# Commands are stored as ordinary Nix double-quoted strings so their Lua/shell
+# arguments can be serialized safely. Literal shell quotes are escaped in the source.
+if ! grep -Fq 'if [ -n \"$2\" ] && [ ! -e \"$1\" ]; then notify-send -t 15000 -u critical \"mpvpaper\" \"Live wallpaper file not found: $1' "$HOME_CONFIG" \
   || ! grep -Fq '${lib.escapeShellArg wallpaperVideo} ${lib.escapeShellArg monitorOutput}' "$HOME_CONFIG"; then
   echo "FAIL: missing-wallpaper notification must only run when live wallpaper is enabled." >&2
   exit 1
