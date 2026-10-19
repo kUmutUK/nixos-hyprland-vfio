@@ -380,8 +380,8 @@ values. Because you are not running `install.sh`, the following values in `home.
 
 | # | Setting | Default | What happens if it is wrong |
 |---|---|---|---|
-| 1 | `hyprlandMonitorLine` | `"monitor = ,preferred,auto,1"` | An empty monitor name is a catch-all rule for outputs not explicitly configured; it does not mirror workspaces. If you do not want `preferred/auto/1` applied to every output, set the actual output name, especially on multi-monitor setups. |
-| 2 | `monitorOutput` | `""` (empty) | An incorrect output name prevents `mpvpaper` from starting. An empty value disables live wallpaper and does not show a missing-file warning. |
+| 1 | `hyprlandMonitorMode` | `"preferred"` | Preferred mode by default. Set a fixed mode such as `"2560x1440@170"` when needed; the installer accepts only `preferred` or a width × height mode with an optional refresh rate. |
+| 2 | `monitorOutput` | `""` (empty) | The exact output name used for the Hyprland monitor rule and optional `mpvpaper` wallpaper. A manually empty value keeps Hyprland's catch-all monitor rule and disables live wallpaper; the installer asks for a real output name. |
 | 3 | `gitName` | `"changeme"` | Commits are attributed to a placeholder name. |
 | 4 | `gitEmail` | `"you@example.com"` | Commits are attributed to a placeholder email address. |
 | 5 | `wallpaperVideo` | `~/Downloads/arthur-leywin-….mp4` | If the file is missing, `Unit.ConditionPathExists` prevents the service from starting. A login-time warning is shown only when `monitorOutput` is non-empty. |
@@ -404,31 +404,32 @@ near the top of `/mnt/etc/nixos/nixos/home.nix` (approximately lines 4–12):
 ```nix
   gitName            = "Your Name";
   gitEmail           = "you@example.com";
-  monitorOutput      = "DP-1";                              # Output name found above
-  hyprlandMonitorLine = "monitor = DP-1,preferred,auto,1";  # Use an explicit output name
+  monitorOutput      = "DP-1";                              # Exact output name from hyprctl monitors
+  hyprlandMonitorMode = "2560x1440@170";                   # Or "preferred"
   wallpaperVideo     = "${config.home.homeDirectory}/Downloads/wallpaper.mp4";
 ```
-> An empty monitor name in `hyprlandMonitorLine` is a catch-all rule; it does not mirror
-> workspaces by itself. For a more explicit manual setup, use a real output name such as
-> `DP-1` so it is clear which outputs the rule applies to.
+> The Lua `hl.monitor` rule uses `monitorOutput` and `hyprlandMonitorMode`. An empty
+> `monitorOutput` is a catch-all for manual setups; it does not mirror workspaces. Prefer
+> an explicit name such as `DP-1` on a multi-monitor system.
 
-### About `hyprland.lua` shadowing
+### Native Hyprland Lua configuration
 
-This configuration uses `.conf`. Hyprland 0.56.2 prefers `~/.config/hypr/hyprland.lua` if
-that file exists, silently ignoring the `.conf` file with no warning or error; the desktop
-then falls back to Hyprland defaults.
+Hyprland 0.55+ uses the Lua API. The config is declared inline in `nixos/home.nix` and
+Home Manager writes it to `~/.config/hypr/hyprland.lua`; the greetd wrapper and
+`HYPRLAND_CONFIG` both point to that exact file. There is no parallel `hyprland.conf`
+source to drift out of sync. Old manually copied `.conf` files are not the active config.
 
-`home.nix` pins `HYPRLAND_CONFIG` in the session environment, so this shadowing cannot occur
-with this setup. In addition, the WuWa screen-reading regions are validated against the
-screen resolution in `wuwa-auto.sh`; if they do not fit, the script warns and exits instead
-of entering a loop.
-
-Check this once after installation:
+Check this after installation:
 
 ```bash
-echo "$HYPRLAND_CONFIG"   # /home/localhost/.config/hypr/hyprland.conf
+echo "$HYPRLAND_CONFIG"   # /home/localhost/.config/hypr/hyprland.lua
 hyprctl configversion
+hyprctl monitors
 ```
+The Lua configuration keeps the existing gaming rules, Turkish keyboard layout,
+Waybar/notification startup, scratchpads, translation helpers, and optional `mpvpaper`
+services. A real monitor name is used for the output rule; select `preferred` or a fixed
+mode in `hyprlandMonitorMode`.
 ---
 
 # 🔑 8. Passwords (root + localhost)

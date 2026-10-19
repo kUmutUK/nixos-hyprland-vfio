@@ -374,7 +374,7 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 - `zramSwap.priority = 100` is higher than disk swap priority `10`, so zram is preferred.
 - `vm.swappiness = 180` is an intentional aggressive swap tendency, not a priority setting. It can increase major page faults and frametime spikes if disk swap is used.
 - `hypridle` requests suspend after 900 seconds; Hyprlock is invoked through the configured pre-sleep command.
-- `HYPRLAND_CONFIG` is passed through the greetd environment wrapper, preventing Hyprland from accidentally selecting a different configuration format.
+- `HYPRLAND_CONFIG` is passed through the greetd wrapper and points to the native Lua config generated from `nixos/home.nix` at `~/.config/hypr/hyprland.lua`.
 - `nowatchdog` and `nmi_watchdog=0` reduce watchdog-based lockup diagnostics in exchange for less diagnostic data.
 - `usbcore.autosuspend=-1` and `kvm.ignore_msrs=1` are **not enabled by default** in `nixos/configuration.nix`. The former disables USB autosuspend and may increase idle power consumption; the latter suppresses some unknown MSR access failures and can hide guest problems. Add either only when the target hardware/guest needs it and after considering the trade-offs.
 
@@ -427,7 +427,7 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
     └── hooks/qemu
 ```
 
-Hyprland, Hyprlock, Waybar, Pyprland, MangoHud, lsfg-vk, and helper scripts are declared inline in `nixos/home.nix`; there is no parallel config tree for those entries.
+Hyprland's native Lua configuration, Hyprlock, Waybar, Pyprland, MangoHud, lsfg-vk, and helper scripts are declared inline in `nixos/home.nix`; there is no parallel Hyprland config file to keep in sync.
 
 ## Validation
 
