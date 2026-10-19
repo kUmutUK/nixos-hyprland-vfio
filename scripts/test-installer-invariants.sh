@@ -610,7 +610,7 @@ if ! grep -Fq 'findmnt -rn -M /iso -t iso9660' "$INSTALLER" \
   exit 1
 fi
 live_test_dir="$(mktemp -d)"
-trap 'rm -rf -- "${state_test_dir:-}" "${monitor_test_dir:-}" "${password_test_dir:-}" "${repo_guard_dir:-}" "${live_test_dir:-}"' EXIT
+trap 'rm -rf -- "${state_test_dir:-}" "${monitor_test_dir:-}" "${password_test_dir:-}" "${repo_guard_dir:-}" "${live_test_dir:-}" "${migration_test_dir:-}"' EXIT
 awk '$0 == "is_nixos_live_installer() {" { capture=1 } capture { print } capture && /^}/ { exit }' "$INSTALLER" > "$live_test_dir/live-check.sh"
 cat > "$live_test_dir/findmnt" <<'SH'
 #!/usr/bin/env sh
@@ -660,3 +660,50 @@ if ! grep -Fq 'SNAPSHOT_SUBVOL_CREATED=1' "$INSTALLER" \
   echo "FAIL: installer rollback must track and safely clean up a newly-created empty snapshot subvolume." >&2
   exit 1
 fi
+
+# Regression-test the exact hardware-configuration migration snippet in README.
+# Substitute temporary paths so no host /etc/nixos files can be read or changed.
+migration_test_dir="$(mktemp -d)"
+hardware_source="$migration_test_dir/source/hardware-configuration.nix"
+hardware_target="$migration_test_dir/target/hardware-configuration.nix"
+mkdir -p "$(dirname "$hardware_source")" "$(dirname "$hardware_target")"
+awk '$0 == "if [ ! -f /etc/nixos/nixos/hardware-configuration.nix ]; then" { capture=1 } capture { print } capture && $0 == "fi" { exit }' "$README" \
+  | sed -e "s|/etc/nixos/nixos/hardware-configuration.nix|$hardware_target|g" \
+        -e "s|/etc/nixos/hardware-configuration.nix|$hardware_source|g" \
+  > "$migration_test_dir/readme-snippet.sh"
+if ! grep -Fq 'test -f '"$hardware_source" "$migration_test_dir/readme-snippet.sh" \
+  || ! grep -Fq 'install -m 0644 '"$hardware_source" "$migration_test_dir/readme-snippet.sh"; then
+  echo "FAIL: README migration snippet must verify and copy the machine-generated source file." >&2
+  exit 1
+fi
+{
+  printf 'sudo() { "$@"; }\n'
+  cat "$migration_test_dir/readme-snippet.sh"
+} > "$migration_test_dir/run-snippet.sh"
+printf 'machine-specific hardware config\n' > "$hardware_source"
+if ! bash "$migration_test_dir/run-snippet.sh"; then
+  echo "FAIL: README migration should copy the generated source when the target is missing." >&2
+  exit 1
+fi
+if ! cmp -s "$hardware_source" "$hardware_target"; then
+  echo "FAIL: README migration did not copy the machine-generated hardware configuration." >&2
+  exit 1
+fi
+# An existing target must remain untouched and must not require the source file.
+rm -f "$hardware_source"
+printf 'keep-existing-target\n' > "$hardware_target"
+if ! bash "$migration_test_dir/run-snippet.sh" || ! grep -Fxq 'keep-existing-target' "$hardware_target"; then
+  echo "FAIL: README migration must preserve an existing hardware configuration." >&2
+  exit 1
+fi
+# Missing source and target must fail closed without creating a target.
+rm -f "$hardware_target"
+if bash "$migration_test_dir/run-snippet.sh" >/dev/null 2>&1; then
+  echo "FAIL: README migration must stop when the machine-generated source is missing." >&2
+  exit 1
+fi
+if [ -e "$hardware_target" ]; then
+  echo "FAIL: README migration created a target despite a missing machine-generated source." >&2
+  exit 1
+fi
+echo "OK: README hardware-configuration migration checks source, preserves existing target, and fails closed."
