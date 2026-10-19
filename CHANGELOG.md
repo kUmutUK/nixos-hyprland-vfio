@@ -4,6 +4,11 @@ This file summarizes notable changes in English. The original detailed Turkish h
 
 ## Unreleased — 2026-10-19
 
+### Follow-up audit fixes
+- Added regression coverage for the README's manual migration guard (copy when the generated source exists, preserve an existing target, and fail closed when the source is missing). The supplied README already checked the correct source path; the earlier audit's quoted faulty snippet did not match the actual archive.
+- CI now builds and validates one canonical Git archive and uploads that same ZIP as the `nixos-hyprland-vfio-source` workflow artifact after all required checks pass, preventing an independently repackaged archive from being mistaken for the tested source bundle.
+- Clarified the repair report so historical full-project and patch-only archives are not conflated. The `install.sh` contents are unchanged; this patch ZIP preserves its executable mode.
+
 ### Changed
 - Switched the selected kernel from standard CachyOS BORE-LTO to `linuxPackages-cachyos-rt-bore-lto`. The version is not hard-coded: the flake follows the upstream `master` branch and the lock can be updated for newer upstream revisions with `nix flake update cachyos-kernel`. Upstream does not cache the RT-Bore-LTO LTO build, so it is expected to compile locally. The prior successful target-system test used standard BORE-LTO and does not validate this new kernel.
 - Enabled the Vulkan low-latency layer and Reflex system-wide through PAM session variables `LOW_LATENCY_LAYER=1` and `LOW_LATENCY_LAYER_REFLEX=1`. Applications with compatibility issues can opt out with `DISABLE_LOW_LATENCY_LAYER=1` in their Steam launch options.
