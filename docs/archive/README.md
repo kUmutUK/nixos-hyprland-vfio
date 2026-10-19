@@ -2,9 +2,11 @@
 
 **Status:** historical snapshots only; not a current defect list.
 
-The reports in this directory describe older ZIP files or commits and may contain findings that were later fixed, disproved, or superseded. Check the current source before acting on any old recommendation. The Turkish changelog with the original release-by-release history is preserved at the repository root as `DEGISIKLIK_GECMISI.md`.
+The reports in this directory describe older ZIP files or commits and may contain findings that were later fixed, disproved, or superseded. Check the current source before acting on any old recommendation. The original Turkish release-by-release changelog is preserved unchanged here as [`DEGISIKLIK_GECMISI.md`](DEGISIKLIK_GECMISI.md); the repository-root `DEGISIKLIK_GECMISI.md` is now an English current-state summary and pointer.
 
 ## Contents
+
+- [`DEGISIKLIK_GECMISI.md`](DEGISIKLIK_GECMISI.md): original detailed Turkish change history retained unchanged for provenance.
 
 - [`HISTORICAL-AUDITS.md`](HISTORICAL-AUDITS.md): provenance, retractions, and live-only checks.
 - [`ANALYSIS-2026-10-05-ZIP3-SUPERSEDED.md`](ANALYSIS-2026-10-05-ZIP3-SUPERSEDED.md): early ZIP3 snapshot.
