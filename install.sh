@@ -359,8 +359,13 @@ while [[ -z "${monitor_output//[[:space:]]/}" ]]; do
 done
 
 echo ""
-read -rp "Hyprland monitor line (e.g. monitor = DP-3,2560x1440@170,auto,1) [monitor = ${monitor_output},preferred,auto,1]: " hypr_mon_line
-hypr_mon_line="${hypr_mon_line:-monitor = ${monitor_output},preferred,auto,1}"
+read -rp "Hyprland monitor mode (preferred or WIDTHxHEIGHT[@HZ]) [preferred]: " hypr_mon_mode
+hypr_mon_mode="${hypr_mon_mode:-preferred}"
+while [[ ! "$hypr_mon_mode" =~ ^(preferred|[0-9]{3,5}x[0-9]{3,5}(@[0-9]{1,3}([.][0-9]{1,3})?)?)$ ]]; do
+  warn "Invalid monitor mode. Use 'preferred' or a mode such as 2560x1440@170."
+  read -rp "Hyprland monitor mode [preferred]: " hypr_mon_mode
+  hypr_mon_mode="${hypr_mon_mode:-preferred}"
+done
 
 echo ""
 wallpaper_video="/home/localhost/Downloads/arthur-leywin-the-beginning-after-the-end.3840x2160.mp4"
@@ -853,7 +858,7 @@ fi
 apply_var "gitName" "$git_name"
 apply_var "gitEmail" "$git_email"
 apply_var "monitorOutput" "$monitor_output"
-apply_var "hyprlandMonitorLine" "$hypr_mon_line"
+apply_var "hyprlandMonitorMode" "$hypr_mon_mode"
 apply_var "wallpaperVideo" "$wallpaper_video"
 
 # ─── Final checklist ────────────────────────────────────
@@ -863,7 +868,7 @@ echo -e "  CPU:          ${CYAN}$CPU_VENDOR${NC}"
 echo -e "  GPU:          ${CYAN}$GPU_VENDOR${NC}"
 echo -e "  GPU PCI:      ${CYAN}${gpu_pci}${NC}  /  Audio: ${CYAN}${gpu_audio}${NC}"
 echo -e "  Monitor out:  ${CYAN}${monitor_output}${NC}"
-echo -e "  Hyprland:     ${CYAN}${hypr_mon_line}${NC}"
+echo -e "  Hyprland mode:${CYAN} ${hypr_mon_mode}${NC}"
 echo -e "  Wallpaper:    ${CYAN}${wallpaper_video}${NC}"
 echo -e "  Git:          ${CYAN}${git_name} <${git_email}>${NC}"
 echo ""
