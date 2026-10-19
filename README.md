@@ -56,7 +56,7 @@ git clone https://github.com/kUmutUK/nixos-hyprland-vfio.git /tmp/repo
 cp /mnt/etc/nixos/hardware-configuration.nix /tmp/repo/nixos/hardware-configuration.nix
 TARGET_BACKUP="/mnt/etc/nixos-generated-backup-$(date +%Y%m%d-%H%M%S)"
 if [ -e "$TARGET_BACKUP" ] || [ -L "$TARGET_BACKUP" ]; then
-  echo "HATA: Yedek yolu zaten var: $TARGET_BACKUP" >&2
+  echo "ERROR: Backup path already exists: $TARGET_BACKUP" >&2
   exit 1
 fi
 sudo mv /mnt/etc/nixos "$TARGET_BACKUP"
