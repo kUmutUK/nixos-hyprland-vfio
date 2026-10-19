@@ -4,10 +4,9 @@ let
   gitName            = "changeme";
   gitEmail           = "you@example.com";
   monitorOutput      = "";
-  # Retraction (2026-10-12): the earlier explanation was incorrect. `monitor = ,preferred,auto,1`
-  # is a catch-all rule with an empty monitor name; it does not set a workspace or mirror.
-  # The installer writes the actual output name. For manual setups, replace it below.
-  hyprlandMonitorLine = "monitor = ,preferred,auto,1";
+  # Hyprland 0.55+ uses Lua configuration. The monitor output is set by the installer;
+  # an empty value remains a catch-all for manual setups.
+  hyprlandMonitorMode = "preferred";
   wallpaperVideo     = "${config.home.homeDirectory}/Downloads/arthur-leywin-the-beginning-after-the-end.3840x2160.mp4";
 
   # Reuse Bibata's designed plus cursor as the default pointer while preserving
@@ -40,6 +39,19 @@ EOF
   # specifier and environment-variable expansion.
   escapeSystemdExecArg = arg:
     lib.replaceStrings [ "%" "$" ] [ "%%" "$$" ] (builtins.toJSON arg);
+
+  # Keep command strings in Nix and serialize them as Lua string literals with toJSON;
+  # this avoids hand-written Lua/shell quoting bugs during the hyprlang -> Lua migration.
+  hyprlockCommand = "${pkgs.hyprlock}/bin/hyprlock";
+  hyprpickerCommand = "${pkgs.hyprpicker}/bin/hyprpicker -a && notify-send 'Color' \"$(wl-paste)\" -t 2000";
+  pcmanfmDesktopCommand = "${pkgs.pcmanfm}/bin/pcmanfm --desktop";
+  hyprpolkitagentCommand = "${pkgs.hyprpolkitagent}/bin/hyprpolkitagent";
+  clipboardTranslateCommand = "sh -c 'T=$(grim -g \"$(slurp)\" - | tesseract - stdout -l eng 2>/dev/null | trans -b :tr); [ -n \"$T\" ] && notify-send -t 10000 \"Translation\" \"$T\"'";
+  screenshotCommand = "grim -g \"$(slurp)\" - | wl-copy";
+  sattyScreenshotCommand = "grim -g \"$(slurp)\" - | satty -f - | wl-copy";
+  systemdEnvironmentCommand = "${pkgs.bash}/bin/bash -c 'systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE HYPRLAND_INSTANCE_SIGNATURE HYPRLAND_DISPLAY; dbus-update-activation-environment --systemd --all; systemctl --user start gamemode-notify; if [ -n \"$1\" ]; then systemctl --user start mpvpaper-watchdog; fi' sh ${lib.escapeShellArg monitorOutput}";
+  wallpaperMissingCommand = "${pkgs.bash}/bin/bash -c 'if [ -n \"$2\" ] && [ ! -e \"$1\" ]; then notify-send -t 15000 -u critical \"mpvpaper\" \"Live wallpaper file not found: $1. Change wallpaperVideo in home.nix, then restart mpvpaper-watchdog.\"; fi' sh ${lib.escapeShellArg wallpaperVideo} ${lib.escapeShellArg monitorOutput}";
+  monitorValidationCommand = "${pkgs.bash}/bin/bash -c 'if [ -n \"$1\" ] && ! hyprctl monitors 2>/dev/null | grep -Fq -- \"Monitor $1 (\"; then notify-send -t 15000 -u critical \"mpvpaper\" \"Monitor output not found: $1. Set monitorOutput in home.nix to the exact hyprctl monitors name.\"; fi' sh ${lib.escapeShellArg monitorOutput}";
 
   gamemodeNotifyScript = pkgs.writeShellScriptBin "gamemode-notify" ''
     NOTIFY_SEND="${pkgs.libnotify}/bin/notify-send"
@@ -185,231 +197,212 @@ EOF
     calendar:selected { background: @accent_bg_color; color: @accent_fg_color; }
   '';
 
-  hyprlandConf = ''
-    ${hyprlandMonitorLine}
+  hyprlandLua = ''
+    -- Declarative Hyprland Lua configuration, kept in nixos/home.nix.
+    -- Inspired by the Steins-Rice palette/rounded look; core desktop services and
+    -- established shortcuts from this configuration are retained.
 
-    # Bocchi-inspired palette: rose, teal, gold, and deep navy.
-    $accent = 0xeab2c2ff
-    $accentAlt = 0x76c4d7ff
-    $bg = 0x1b1e25ff
+    local mainMod = "SUPER"
+    local monitorOutput = ${builtins.toJSON monitorOutput}
+    local monitorMode = ${builtins.toJSON hyprlandMonitorMode}
 
+    hl.monitor({
+        output = monitorOutput,
+        mode = monitorMode,
+        position = "auto",
+        scale = "1",
+    })
 
-    input {
-        kb_layout = tr
-        follow_mouse = 1
-        sensitivity = 0
-        accel_profile = flat
-    }
+    -- Rose / teal / gold accent palette used by the Rofi, Kitty, and GTK themes.
+    local accent = "rgba(eab2c2ff)"
+    local accentAlt = "rgba(76c4d7ff)"
+    local background = "rgba(1b1e25ff)"
 
-    general {
-        gaps_in = 4
-        gaps_out = 8
-        border_size = 2
-        col.active_border = $accent $accentAlt 45deg
-        col.inactive_border = $bg
-        layout = dwindle
-        allow_tearing = true
-        resize_on_border = true
-        no_focus_fallback = false
-    }
+    hl.config({
+        general = {
+            gaps_in = 4,
+            gaps_out = 8,
+            border_size = 2,
+            col = {
+                active_border = { colors = { accent, accentAlt }, angle = 45 },
+                inactive_border = background,
+            },
+            layout = "dwindle",
+            allow_tearing = true,
+            resize_on_border = true,
+            no_focus_fallback = false,
+        },
+        input = {
+            kb_layout = "tr",
+            follow_mouse = 1,
+            sensitivity = 0,
+            accel_profile = "flat",
+        },
+        dwindle = {
+            smart_resizing = true,
+        },
+        decoration = {
+            rounding = 12,
+            rounding_power = 2,
+            dim_inactive = false,
+            shadow = {
+                enabled = true,
+                range = 20,
+                render_power = 3,
+                offset = { 0, 5 },
+                color = background,
+            },
+            blur = {
+                enabled = true,
+                size = 5,
+                passes = 3,
+                noise = 0.05,
+                vibrancy = 0.25,
+            },
+        },
+        misc = {
+            vrr = 2,
+            mouse_move_enables_dpms = true,
+            key_press_enables_dpms = true,
+            disable_hyprland_logo = true,
+            disable_splash_rendering = true,
+            force_default_wallpaper = 0,
+            animate_manual_resizes = false,
+            animate_mouse_windowdragging = false,
+            allow_session_lock_restore = true,
+            session_lock_xray = true,
+            enable_swallow = true,
+            swallow_regex = "(kitty.*)",
+        },
+        cursor = {
+            no_hardware_cursors = false,
+            inactive_timeout = 3,
+        },
+        animations = {
+            enabled = true,
+        },
+    })
 
-    dwindle {
-        smart_resizing = true
-    }
+    -- Current Lua API equivalent of the old bezier and animation declarations.
+    hl.curve("smoothOut", { type = "bezier", points = { { 0.25, 0.05 }, { 0.1, 1.0 } } })
+    hl.curve("overshot", { type = "bezier", points = { { 0.05, 0.9 }, { 0.1, 1.1 } } })
+    hl.curve("bounce", { type = "bezier", points = { { 0.3, 1.6 }, { 0.6, 1.0 } } })
+    hl.animation({ leaf = "windowsIn", enabled = true, speed = 7, bezier = "smoothOut", style = "slide" })
+    hl.animation({ leaf = "windowsOut", enabled = true, speed = 7, bezier = "smoothOut", style = "slide" })
+    hl.animation({ leaf = "fade", enabled = true, speed = 4, bezier = "smoothOut" })
+    hl.animation({ leaf = "workspaces", enabled = true, speed = 5, bezier = "overshot", style = "slide" })
+    hl.animation({ leaf = "layers", enabled = true, speed = 6, bezier = "overshot", style = "fade" })
+    hl.animation({ leaf = "border", enabled = true, speed = 10, bezier = "smoothOut" })
+    hl.animation({ leaf = "specialWorkspace", enabled = true, speed = 6, bezier = "overshot", style = "slidevert" })
 
-    decoration {
-        rounding = 10
-        dim_inactive = false
-        shadow {
-            enabled = true
-            range = 50
-            render_power = 10
-            offset = 0 5
-            color = $bg
-        }
-    }
+    -- Applications and utility bindings.
+    hl.bind(mainMod .. " + A", hl.dsp.exec_cmd("rofi -show drun"))
+    hl.bind(mainMod .. " + C", hl.dsp.exec_cmd("kitty"))
+    hl.bind(mainMod .. " + Q", hl.dsp.window.close())
+    hl.bind(mainMod .. " + Return", hl.dsp.exec_cmd("kitty"))
+    hl.bind(mainMod .. " + F", hl.dsp.window.fullscreen({ action = "toggle" }))
+    hl.bind(mainMod .. " + V", hl.dsp.window.float({ action = "toggle" }))
+    hl.bind(mainMod .. " + P", hl.dsp.exec_cmd(${builtins.toJSON screenshotCommand}))
+    hl.bind(mainMod .. " + SHIFT + P", hl.dsp.exec_cmd(${builtins.toJSON sattyScreenshotCommand}))
+    hl.bind(mainMod .. " + Escape", hl.dsp.exec_cmd(${builtins.toJSON hyprlockCommand}))
+    hl.bind(mainMod .. " + S", hl.dsp.exec_cmd("pypr toggle term"))
+    hl.bind(mainMod .. " + SHIFT + S", hl.dsp.exec_cmd("pypr toggle music"))
+    hl.bind(mainMod .. " + CTRL + S", hl.dsp.exec_cmd("pypr toggle filemanager"))
 
-    animations {
-        enabled = true
-        bezier = smoothOut, 0.25, 0.05, 0.1, 1.0
-        bezier = overshot, 0.05, 0.9, 0.1, 1.1
-        bezier = bounce, 0.3, 1.6, 0.6, 1.0
-        animation = windowsIn,  1, 7, smoothOut, slide
-        animation = windowsOut, 1, 7, smoothOut, slide
-        animation = fade,       1, 4, smoothOut
-        animation = workspaces, 1, 5, overshot, slide
-        animation = layers, 1, 6, overshot, fade
-        animation = border, 1, 10, smoothOut
-        animation = specialWorkspace, 1, 6, overshot, slidevert
-    }
+    -- Mouse wheel cycles through existing workspaces (not windows).
+    hl.bind(mainMod .. " + mouse_down", hl.dsp.focus({ workspace = "e+1" }))
+    hl.bind(mainMod .. " + mouse_up", hl.dsp.focus({ workspace = "e-1" }))
 
-    misc {
-        vrr = 2
-        mouse_move_enables_dpms = true
-        key_press_enables_dpms = true
-        disable_hyprland_logo = true
-        disable_splash_rendering = true
-        force_default_wallpaper = 0
-        animate_manual_resizes = false
-        animate_mouse_windowdragging = false
-        allow_session_lock_restore = true
-        session_lock_xray = true
-        enable_swallow = true
-        swallow_regex = (kitty.*)
-    }
+    -- Move, focus, and resize windows.
+    for _, direction in ipairs({ "left", "right", "up", "down" }) do
+        local shortDirection = ({ left = "l", right = "r", up = "u", down = "d" })[direction]
+        hl.bind(mainMod .. " + SHIFT + " .. direction, hl.dsp.window.move({ direction = shortDirection }))
+        hl.bind(mainMod .. " + " .. direction, hl.dsp.focus({ direction = shortDirection }))
+    end
+    hl.bind(mainMod .. " + CTRL + right", hl.dsp.window.resize({ x = 40, y = 0, relative = true }))
+    hl.bind(mainMod .. " + CTRL + left", hl.dsp.window.resize({ x = -40, y = 0, relative = true }))
+    hl.bind(mainMod .. " + CTRL + up", hl.dsp.window.resize({ x = 0, y = -40, relative = true }))
+    hl.bind(mainMod .. " + CTRL + down", hl.dsp.window.resize({ x = 0, y = 40, relative = true }))
+    hl.bind(mainMod .. " + H", hl.dsp.focus({ direction = "left" }))
+    hl.bind(mainMod .. " + L", hl.dsp.focus({ direction = "right" }))
+    hl.bind(mainMod .. " + J", hl.dsp.focus({ direction = "down" }))
+    hl.bind(mainMod .. " + K", hl.dsp.focus({ direction = "up" }))
+    hl.bind(mainMod .. " + SHIFT + H", hl.dsp.window.move({ direction = "l" }))
+    hl.bind(mainMod .. " + SHIFT + L", hl.dsp.window.move({ direction = "r" }))
+    hl.bind(mainMod .. " + SHIFT + J", hl.dsp.window.move({ direction = "d" }))
+    hl.bind(mainMod .. " + SHIFT + K", hl.dsp.window.move({ direction = "u" }))
+    hl.bind(mainMod .. " + CTRL + H", hl.dsp.window.resize({ x = -50, y = 0, relative = true }))
+    hl.bind(mainMod .. " + CTRL + L", hl.dsp.window.resize({ x = 50, y = 0, relative = true }))
+    hl.bind(mainMod .. " + CTRL + J", hl.dsp.window.resize({ x = 0, y = 50, relative = true }))
+    hl.bind(mainMod .. " + CTRL + K", hl.dsp.window.resize({ x = 0, y = -50, relative = true }))
 
-    cursor {
-        no_hardware_cursors = false
-        inactive_timeout = 3
-    }
+    -- Workspaces 1-10 (Super+0 is workspace 10).
+    for i = 1, 10 do
+        local key = i % 10
+        hl.bind(mainMod .. " + " .. key, hl.dsp.focus({ workspace = i }))
+        hl.bind(mainMod .. " + SHIFT + " .. key, hl.dsp.window.move({ workspace = i, follow = false }))
+    end
+    hl.bind(mainMod .. " + G", hl.dsp.group.toggle({}))
+    hl.bind(mainMod .. " + Tab", hl.dsp.focus({ workspace = "previous" }))
 
-    $mainMod = SUPER
+    -- Multimedia keys; repeating volume binds retain the old binde behavior.
+    hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+"), { locked = true, repeating = true })
+    hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"), { locked = true, repeating = true })
+    hl.bind("XF86AudioMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"), { locked = true })
+    hl.bind(mainMod .. " + SHIFT + C", hl.dsp.exec_cmd(${builtins.toJSON hyprpickerCommand}))
+    hl.bind(mainMod .. " + SHIFT + E", hl.dsp.exit())
+    hl.bind(mainMod .. " + Y", hl.dsp.exec_cmd(${builtins.toJSON "${config.home.homeDirectory}/.config/hypr/scripts/toggle-wuwa.sh"}))
+    hl.bind(mainMod .. " + SHIFT + T", hl.dsp.exec_cmd(${builtins.toJSON clipboardTranslateCommand}))
+    hl.bind(mainMod .. " + ALT + T", hl.dsp.exec_cmd(${builtins.toJSON "${config.home.homeDirectory}/.config/hypr/scripts/toggle-auto-translate.sh"}))
+    hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(), { mouse = true })
+    hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
 
-    # Rofi loads its theme from ~/.config/rofi/config.rasi.
-    bind = $mainMod, A, exec, rofi -show drun
-    bind = $mainMod, C, exec, kitty
-    bind = $mainMod, Q, killactive
-    bind = $mainMod, Return, exec, kitty
-    bind = $mainMod, F, fullscreen
-    bind = $mainMod, V, togglefloating
-    bind = $mainMod, P, exec, grim -g "$(slurp)" - | wl-copy
-    bind = $mainMod SHIFT, P, exec, grim -g "$(slurp)" - | satty -f - | wl-copy
-    bind = $mainMod, Escape, exec, ${pkgs.hyprlock}/bin/hyprlock          # Hyprlock lock-screen shortcut
+    -- Keep gaming windows direct/fullscreen and free from blur/shadow/animation.
+    hl.window_rule({
+        name = "cs2-gaming",
+        match = { class = "^(cs2)$" },
+        immediate = true,
+        fullscreen = true,
+        no_blur = true,
+        no_shadow = true,
+        no_anim = true,
+        rounding = 0,
+    })
+    hl.window_rule({
+        name = "gamescope-gaming",
+        match = { class = "^(gamescope|Gamescope)$" },
+        immediate = true,
+        fullscreen = true,
+        no_blur = true,
+        no_shadow = true,
+        no_anim = true,
+        rounding = 0,
+    })
+    hl.window_rule({ name = "pavucontrol-float", match = { class = "^(pavucontrol)$" }, float = true, size = { 500, 600 } })
+    hl.window_rule({ name = "nm-connection-editor-float", match = { class = "^(nm-connection-editor)$" }, float = true })
+    hl.window_rule({
+        name = "scratchterm-float",
+        match = { title = "^(scratchterm)$" },
+        float = true,
+        size = { "monitor_w * 0.6", "monitor_h * 0.6" },
+    })
 
-    bind = $mainMod, S, exec, pypr toggle term
-    bind = $mainMod SHIFT, S, exec, pypr toggle music
-    bind = $mainMod CTRL, S, exec, pypr toggle filemanager
-
-    ## Workspace cycling with the mouse wheel
-    # The bindings use Hyprland's `mouse_down`/`mouse_up` axis-event names; the older
-    # `scroll:down`/`scroll:up` bindings did nothing. `cyclenext` is the dispatcher for
-    # cycling windows (`prev` selects the previous window); `layoutmsg, cyclenext scroll`
-    # is not a valid layout command. Wheel events are distinct from BTN_LEFT/BTN_RIGHT
-    # mouse-button events, so the drag bindings below remain separate. Touchpad behavior
-    # depends on the event source and should be checked on the target Hyprland version.
-    bind = $mainMod, mouse_down, cyclenext
-    bind = $mainMod, mouse_up, cyclenext, prev
-
-    # The `$mainMod + M` monocle binding is intentionally disabled. The former
-    # `hyprctl dispatch layoutmsg set monocle` command is invalid for the configured
-    # layout. Monocle requires a workspace rule or a dedicated plugin, neither of which
-    # is enabled in this configuration.
-
-    bind = $mainMod SHIFT, left,  movewindow, l
-    bind = $mainMod SHIFT, right, movewindow, r
-    bind = $mainMod SHIFT, up,    movewindow, u
-    bind = $mainMod SHIFT, down,  movewindow, d
-
-    bind = $mainMod, left,  movefocus, l
-    bind = $mainMod, right, movefocus, r
-    bind = $mainMod, up,    movefocus, u
-    bind = $mainMod, down,  movefocus, d
-
-    bind = $mainMod CTRL, right, resizeactive,  40   0
-    bind = $mainMod CTRL, left,  resizeactive, -40   0
-    bind = $mainMod CTRL, up,    resizeactive,   0 -40
-    bind = $mainMod CTRL, down,  resizeactive,   0  40
-
-    bind = $mainMod, H, movefocus, l
-    bind = $mainMod, L, movefocus, r
-    bind = $mainMod, J, movefocus, d
-    bind = $mainMod, K, movefocus, u
-
-    bind = $mainMod SHIFT, H, movewindow, l
-    bind = $mainMod SHIFT, L, movewindow, r
-    bind = $mainMod SHIFT, J, movewindow, d
-    bind = $mainMod SHIFT, K, movewindow, u
-
-    bind = $mainMod CTRL, H, resizeactive, -50 0
-    bind = $mainMod CTRL, L, resizeactive,  50 0
-    bind = $mainMod CTRL, J, resizeactive,  0  50
-    bind = $mainMod CTRL, K, resizeactive,  0 -50
-
-    bind = $mainMod, 1, workspace, 1
-    bind = $mainMod, 2, workspace, 2
-    bind = $mainMod, 3, workspace, 3
-    bind = $mainMod, 4, workspace, 4
-    bind = $mainMod, 5, workspace, 5
-    bind = $mainMod, 6, workspace, 6
-    bind = $mainMod, 7, workspace, 7
-    bind = $mainMod, 8, workspace, 8
-    bind = $mainMod, 9, workspace, 9
-    bind = $mainMod, 0, workspace, 10
-
-    bind = $mainMod SHIFT, 1, movetoworkspace, 1
-    bind = $mainMod SHIFT, 2, movetoworkspace, 2
-    bind = $mainMod SHIFT, 3, movetoworkspace, 3
-    bind = $mainMod SHIFT, 4, movetoworkspace, 4
-    bind = $mainMod SHIFT, 5, movetoworkspace, 5
-    bind = $mainMod SHIFT, 6, movetoworkspace, 6
-    bind = $mainMod SHIFT, 7, movetoworkspace, 7
-    bind = $mainMod SHIFT, 8, movetoworkspace, 8
-    bind = $mainMod SHIFT, 9, movetoworkspace, 9
-    bind = $mainMod SHIFT, 0, movetoworkspace, 10
-
-    bind = $mainMod, G, togglegroup
-    
-    bind = $mainMod, Tab, workspace, previous
-
-    binde = , XF86AudioRaiseVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+
-    binde = , XF86AudioLowerVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-
-    bind  = , XF86AudioMute,        exec, wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
-
-    bind = $mainMod SHIFT, C, exec, ${pkgs.hyprpicker}/bin/hyprpicker -a && notify-send "Color" "$(wl-paste)" -t 2000
-
-    bind = $mainMod SHIFT, E, exit
-
-    # WuWa automatic-translation toggle (Y). The old `pkill -f wuwa-auto.sh || ...`
-    # command ran through `sh -c`; `pkill -f` matched and killed its own wrapper, so the
-    # fallback never ran. A dedicated `toggle-wuwa.sh` avoids matching itself.
-    bind = $mainMod, Y, exec, ~/.config/hypr/scripts/toggle-wuwa.sh
-
-    # Manual OCR translation (SHIFT+T). Capture all output rather than using `read -r`,
-    # which reads only the first line and discards the rest of a multiline translation.
-    bind = $mainMod SHIFT, T, exec, sh -c 'T=$(grim -g "$(slurp)" - | tesseract - stdout -l eng 2>/dev/null | trans -b :tr); [ -n "$T" ] && notify-send -t 10000 "Translation" "$T"'
-
-    # Continuous clipboard translation toggle (ALT+T). The script existed in the
-    # repository but was not bound to a shortcut; a dedicated toggle also avoids the
-    # self-killing `pkill -f` pattern.
-    bind = $mainMod ALT, T, exec, ~/.config/hypr/scripts/toggle-auto-translate.sh
-
-    # Super + left/right mouse-button drag. BTN_LEFT/BTN_RIGHT (272/273) are actual
-    # mouse-button codes, not wheel-axis events, so these bindings remain independent.
-    bindm = $mainMod, mouse:272, movewindow
-    bindm = $mainMod, mouse:273, resizewindow
-
-    windowrule = match:class ^(cs2)$, immediate on, fullscreen on, no_blur on, no_shadow on, no_anim on, rounding 0
-    windowrule = match:class ^(gamescope|Gamescope)$, immediate on, fullscreen on, no_blur on, no_shadow on, no_anim on, rounding 0
-    windowrule = match:class ^(pavucontrol)$, float on, size 500 600
-    windowrule = match:class ^(nm-connection-editor)$, float on
-    windowrule = match:title ^(scratchterm)$, float on, size 60% 60%
-
-    # Avoid duplicate service startup: mpvpaper, its watchdog, and gamemode-notify are
-    # started only by their systemd user units, not by both Hyprland and systemd.
-    exec-once = ${pkgs.pcmanfm}/bin/pcmanfm --desktop
-    exec-once = hyprctl setcursor Plus-Cursor 20
-    exec-once = waybar
-    exec-once = dunst
-    exec-once = wl-paste --watch cliphist store
-    exec-once = nm-applet --indicator
-    exec-once = ${pkgs.hyprpolkitagent}/bin/hyprpolkitagent
-    exec-once = dbus-update-activation-environment --systemd DISPLAY
-    exec-once = pypr
-    # The systemd user environment lacked `HYPRLAND_INSTANCE_SIGNATURE`, so the
-    # mpvpaper watchdog could not find the Hyprland socket and restarted repeatedly.
-    # Import the environment before starting the watchdog.
-    exec-once = ${pkgs.coreutils}/bin/sh -c 'systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE HYPRLAND_INSTANCE_SIGNATURE HYPRLAND_DISPLAY; systemctl --user start gamemode-notify; if [ -n "$1" ]; then systemctl --user start mpvpaper-watchdog; fi' sh ${lib.escapeShellArg monitorOutput}
-    # Only check the wallpaper file when live wallpaper is enabled. An empty
-    # `monitorOutput` intentionally disables the service and must not produce a warning.
-    # Pass both values as separate arguments so spaces, quotes, `$`, and backticks in
-    # either path/name cannot alter the shell command.
-    exec-once = ${pkgs.coreutils}/bin/sh -c 'if [ -n "$2" ] && [ ! -e "$1" ]; then notify-send -t 15000 -u critical "mpvpaper" "Live wallpaper file not found: $1\nDownload it or change wallpaperVideo in home.nix, then run: systemctl --user restart mpvpaper mpvpaper-watchdog"; fi' sh ${lib.escapeShellArg wallpaperVideo} ${lib.escapeShellArg monitorOutput}
-    # When `monitorOutput` is empty, manual Home Manager configuration does not create
-    # the mpvpaper service and skips monitor validation. When set, verify the output name
-    # at session startup and pass it as a separate argument for safe shell handling.
-    exec-once = ${pkgs.coreutils}/bin/sh -c 'if [ -n "$1" ] && ! hyprctl monitors 2>/dev/null | grep -Fq -- "Monitor $1 ("; then notify-send -t 15000 -u critical "mpvpaper" "Monitor output not found: $1\nGet the exact name from hyprctl monitors, update monitorOutput in home.nix (e.g. DP-1), then run: systemctl --user restart mpvpaper mpvpaper-watchdog"; fi' sh ${lib.escapeShellArg monitorOutput}
+    -- Start the existing desktop tools once, after Hyprland has initialized.
+    -- Environment import precedes the optional mpvpaper watchdog start.
+    hl.on("hyprland.start", function()
+        hl.exec_cmd(${builtins.toJSON pcmanfmDesktopCommand})
+        hl.exec_cmd("hyprctl setcursor Plus-Cursor 20")
+        hl.exec_cmd("waybar")
+        hl.exec_cmd("dunst")
+        hl.exec_cmd("wl-paste --watch cliphist store")
+        hl.exec_cmd("nm-applet --indicator")
+        hl.exec_cmd(${builtins.toJSON hyprpolkitagentCommand})
+        hl.exec_cmd("pypr")
+        hl.exec_cmd(${builtins.toJSON systemdEnvironmentCommand})
+        hl.exec_cmd(${builtins.toJSON wallpaperMissingCommand})
+        hl.exec_cmd(${builtins.toJSON monitorValidationCommand})
+    end)
   '';
-
   hyprlockConf = ''
     # Hyprlock 0.9.6 no longer accepts the old `grace` and `disable_loading_bar` options.
     # They were ignored with a warning. Grace is a CLI option and the loading bar was
@@ -688,21 +681,16 @@ in
   home.homeDirectory = "/home/localhost";
   home.stateVersion = "26.05";
 
-  # Explicitly set `HYPRLAND_CONFIG` so Hyprland never silently selects a generated
-  # `hyprland.lua` ahead of the declarative `hyprland.conf`. Search precedence favors an
-  # explicit environment variable, then XDG config files; PATH is not searched. Without
-  # the explicit variable, starting Hyprland before Home Manager activation could create
-  # a sample Lua config that shadows the managed configuration. Remove this setting only
-  # if the system intentionally migrates to Lua.
+  # Pin the native Lua configuration explicitly, including when greetd starts Hyprland
+  # before another desktop-session environment has been imported.
   home.sessionVariables = {
-    HYPRLAND_CONFIG = "${config.home.homeDirectory}/.config/hypr/hyprland.conf";
+    HYPRLAND_CONFIG = "${config.home.homeDirectory}/.config/hypr/hyprland.lua";
     XCURSOR_THEME = "Plus-Cursor";
     XCURSOR_SIZE = "20";
   };
 
-  # Verify the active config with `hyprctl configversion`. Check for
-  # `~/.config/hypr/hyprland.lua`; with `HYPRLAND_CONFIG` set, it should not shadow the
-  # managed `.conf` file.
+  # Verify the active config with `hyprctl configversion` and inspect the log if Lua
+  # reports a syntax/API error during startup.
 
   dconf.settings = {
     "org/gnome/desktop/interface" = {
@@ -857,7 +845,7 @@ in
           end
       end
     '';
-    "hypr/hyprland.conf".text = hyprlandConf;
+    "hypr/hyprland.lua".text = hyprlandLua;
     "hypr/hyprlock.conf".text = hyprlockConf;
     "waybar/style.css".text = waybarStyle;
     "waybar/config.jsonc".text = waybarConfig;
@@ -1003,7 +991,7 @@ in
       [pyprland]
       plugins = [ "scratchpads" ]
 
-      # hyprland.conf: bind = $mainMod, S, exec, pypr toggle term
+      # Hyprland Lua binding: SUPER+S runs `pypr toggle term`.
       [scratchpads.term]
       animation = "fromTop"
       command = "kitty --class pypr-term"
@@ -1021,7 +1009,7 @@ in
       unfocus = "hide"
       lazy = true
 
-      # bind = $mainMod CTRL, S, exec, pypr toggle filemanager
+      # Hyprland Lua binding: SUPER+CTRL+S runs `pypr toggle filemanager`.
       [scratchpads.filemanager]
       animation = "fromRight"
       command = "pcmanfm"

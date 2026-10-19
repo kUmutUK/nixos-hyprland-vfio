@@ -1,11 +1,11 @@
 { config, pkgs, lib, ... }:
 
 let
-  # Pass HYPRLAND_CONFIG directly to the Hyprland process through this wrapper.
+  # Pass the native Lua config path directly to Hyprland through this wrapper.
   # Do not depend on environment.d or a systemd user environment being imported
   # before greetd/tuigreet starts the session.
   greetdHyprlandSession = pkgs.writeShellScript "greetd-hyprland-session" ''
-    export HYPRLAND_CONFIG="/home/localhost/.config/hypr/hyprland.conf"
+    export HYPRLAND_CONFIG="/home/localhost/.config/hypr/hyprland.lua"
     exec ${pkgs.hyprland}/bin/Hyprland "$@"
   '';
 
@@ -264,7 +264,7 @@ in
   services.greetd = {
     enable = true;
     settings.default_session = {
-      # The wrapper exports HYPRLAND_CONFIG and execs Hyprland without
+      # The wrapper exports the Lua HYPRLAND_CONFIG and execs Hyprland without
       # replacing/skipping tuigreet; its store path contains no shell quoting.
       command = "${pkgs.tuigreet}/bin/tuigreet --remember --time --cmd ${greetdHyprlandSession}";
       user = "greeter";
