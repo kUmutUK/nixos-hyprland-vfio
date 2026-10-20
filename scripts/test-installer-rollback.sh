@@ -150,6 +150,63 @@ set -e
 
 printf 'OK: installer rollback restores files, active/dangling symlinks, and removes new targets.\n'
 
+# When /etc/nixos/nixos did not exist before installation, rollback should remove
+# the new directory only after deleting managed targets and only if it is empty.
+NEW_DIR_HARNESS="$TMP_DIR/new-directory-rollback-harness.sh"
+cat > "$NEW_DIR_HARNESS" <<'BASH'
+set -euo pipefail
+NIXOS_FLAKE_DIR="$1"
+BACKUP_DIR="$2"
+HELPERS="$3"
+PATCHED_XML="$4"
+KEEP_EXTRA="$5"
+TRANSACTION_PATHS=(
+  "$NIXOS_FLAKE_DIR/configuration.nix"
+  "$NIXOS_FLAKE_DIR/home.nix"
+  "$NIXOS_FLAKE_DIR/flake.nix"
+  "$NIXOS_FLAKE_DIR/flake.lock"
+  "$NIXOS_FLAKE_DIR/hooks"
+  "$NIXOS_FLAKE_DIR/hardware-configuration.nix"
+  "$PATCHED_XML"
+)
+declare -A TRANSACTION_EXISTED=()
+for target in "${TRANSACTION_PATHS[@]}"; do
+  TRANSACTION_EXISTED["$target"]=0
+done
+NIXOS_FLAKE_DIR_EXISTED=0
+TRANSACTION_ACTIVE=1
+mkdir -p "$NIXOS_FLAKE_DIR/hooks"
+printf 'created by failed installer\n' > "$NIXOS_FLAKE_DIR/configuration.nix"
+if [[ "$KEEP_EXTRA" == "yes" ]]; then
+  printf 'preserve unrelated content\n' > "$NIXOS_FLAKE_DIR/user-notes.txt"
+fi
+sudo() {
+  if [[ "$1" == chown ]]; then return 0; fi
+  "$@"
+}
+warn() { printf '%s\n' "$*" >&2; }
+source "$HELPERS"
+rollback_deployment 1
+BASH
+
+NEW_FLAKE_DIR="$TEST_ROOT/etc/nixos/new-nixos-flake"
+NEW_XML="$TEST_ROOT/var/lib/libvirt/new-win10.xml"
+set +e
+bash "$NEW_DIR_HARNESS" "$NEW_FLAKE_DIR" "$BACKUP_DIR" "$HELPERS" "$NEW_XML" no >/dev/null 2>&1
+new_dir_status=$?
+set -e
+[[ "$new_dir_status" -eq 1 ]] || fail "new-directory rollback should preserve original exit status 1 (got $new_dir_status)"
+[[ ! -e "$NEW_FLAKE_DIR" ]] || fail 'rollback left the empty deployment directory created by this run'
+printf 'OK: rollback removes an empty deployment directory created by the failed run.\n'
+
+NEW_FLAKE_DIR_WITH_EXTRA="$TEST_ROOT/etc/nixos/new-nixos-flake-with-extra"
+set +e
+bash "$NEW_DIR_HARNESS" "$NEW_FLAKE_DIR_WITH_EXTRA" "$BACKUP_DIR" "$HELPERS" "$NEW_XML" yes >/dev/null 2>&1
+new_dir_extra_status=$?
+set -e
+[[ "$new_dir_extra_status" -eq 1 ]] || fail "nonempty-directory rollback should preserve original exit status 1 (got $new_dir_extra_status)"
+[[ -f "$NEW_FLAKE_DIR_WITH_EXTRA/user-notes.txt" ]] || fail 'rollback removed unrelated content from the new deployment directory'
+printf 'OK: rollback retains a newly created deployment directory when unrelated content remains.\n'
 
 # Snapshot cleanup is part of rollback only if this run created the subvolume.
 # Empty subvolumes may be removed; nonempty ones must be retained for safety.
