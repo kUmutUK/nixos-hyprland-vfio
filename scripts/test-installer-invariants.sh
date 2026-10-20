@@ -256,10 +256,10 @@ from pathlib import Path
 import sys
 
 text = Path(sys.argv[1]).read_text(encoding="utf-8")
-guard = 'if [ ! -f /var/lib/libvirt/win10.xml ]; then'
-copy = 'sudo cp ./vm-xml/win10.xml /var/lib/libvirt/win10.xml'
-if guard not in text or copy not in text or text.index(guard) > text.index(copy):
-    raise SystemExit("FAIL: README must only copy the repository VM XML when no deployed XML exists.")
+helper_call = 'sudo python3 "$REPO/scripts/sync-vm-xml.py"'
+unsafe_copy = 'sudo cp ./vm-xml/win10.xml /var/lib/libvirt/win10.xml'
+if helper_call not in text or 'generates a fresh UUID and MAC' not in text or unsafe_copy in text:
+    raise SystemExit("FAIL: README must use the VM XML helper to synchronize PCI addresses and generate fresh identity for a new VM.")
 if text.index('Path B — Manual migration of an existing NixOS installation (recommended)') > text.index('Path C — Optional `install.sh` migration helper (advanced users only; not the default recommendation)'):
     raise SystemExit("FAIL: README must put manual migration before the optional installer script.")
 if 'use the manual installation steps first' not in text:
@@ -275,6 +275,8 @@ if "sudo stat -c '%U:%G:%a' /etc/nixos/hashedPassword" not in text or 'root:root
 
 install_guide = Path(sys.argv[1]).parent / "INSTALLATION.md"
 guide_text = install_guide.read_text(encoding="utf-8")
+if 'sudo python3 "$REPO/scripts/sync-vm-xml.py"' not in guide_text or '/etc/nixos/vm-xml/win10.xml' in guide_text:
+    raise SystemExit("FAIL: INSTALLATION.md must use the checked-out XML helper instead of assuming the repository is inside /etc/nixos.")
 install_command = guide_text.index("sudo nixos-install --flake /mnt/etc/nixos/nixos#nixos")
 root_pass_command = guide_text.index("sudo nixos-enter --root /mnt -c 'passwd root'")
 if root_pass_command < install_command:
