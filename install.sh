@@ -424,6 +424,15 @@ assert_no_symlink_transaction_targets() {
 }
 assert_no_symlink_transaction_targets
 
+# The deployment directory itself is not a transaction target. Remember whether
+# it existed before this run so rollback can remove it only when this installer
+# created it and all managed targets have been cleaned up.
+if [[ -e "$NIXOS_FLAKE_DIR" ]]; then
+  NIXOS_FLAKE_DIR_EXISTED=1
+else
+  NIXOS_FLAKE_DIR_EXISTED=0
+fi
+
 declare -A TRANSACTION_EXISTED=()
 
 # ─── Backup ──────────────────────────────────────────────
@@ -507,6 +516,19 @@ rollback_deployment() {
         fi
       fi
     done
+
+    # Remove the deployment directory only if it did not exist before this run.
+    # Use rmdir rather than rm -rf: anything untracked or added concurrently must
+    # be retained, even if that means the rollback is reported as incomplete.
+    if [[ "${NIXOS_FLAKE_DIR_EXISTED:-1}" = "0" && -d "$NIXOS_FLAKE_DIR" ]]; then
+      if sudo rmdir -- "$NIXOS_FLAKE_DIR"; then
+        warn "Removed the empty deployment directory created by this failed installer run."
+      else
+        warn "Retained the newly created deployment directory because it is not empty or could not be removed: $NIXOS_FLAKE_DIR"
+        failed=1
+      fi
+    fi
+
     if [ "${SNAPSHOT_SUBVOL_CREATED:-0}" = "1" ]; then
       if sudo btrfs subvolume show "$SNAPSHOT_SUBVOL" >/dev/null 2>&1; then
         local snapshot_contents
@@ -615,8 +637,10 @@ read_state_version "home.stateVersion" "$NIXOS_FLAKE_DIR/home.nix" "$NIXOS_DIR/h
 HOME_STATE_VERSION="$STATE_VERSION_VALUE"
 log "home.stateVersion source: $STATE_VERSION_SOURCE${HOME_STATE_VERSION:+ (value $HOME_STATE_VERSION)}"
 
-sudo mkdir -p "$NIXOS_FLAKE_DIR"
+# Start the transaction before the first filesystem mutation so a partial
+# mkdir failure is covered by the EXIT rollback handler too.
 TRANSACTION_ACTIVE=1
+sudo mkdir -p "$NIXOS_FLAKE_DIR"
 for f in configuration.nix home.nix flake.nix flake.lock; do
     if [ -f "$REPO_DIR/nixos/$f" ]; then
         sudo cp "$REPO_DIR/nixos/$f" "$NIXOS_FLAKE_DIR/$f"
