@@ -540,15 +540,26 @@ sudo reboot
 > **USB keyboard/mouse IDs:** the default XML actively passes through USB devices `1532:0098`
 > and `05ac:024f`; the installer does not detect these IDs automatically. Verify with
 > `lsusb -nn` that both IDs belong to the devices you intend to pass through. If either is
-> wrong, edit the source template `/etc/nixos/vm-xml/win10.xml` before the first VM definition.
+> wrong, edit the source template `$REPO/vm-xml/win10.xml` before creating a new deployed XML.
 > If `/var/lib/libvirt/win10.xml` already exists, edit the deployed file instead; editing only
 > the source template does not update an existing VM definition. Then re-define the active file
 > with `sudo virsh define /var/lib/libvirt/win10.xml`.
 
 ```bash
 # Run these commands after the first reboot, not from the live ISO.
-# The source XML is at /etc/nixos/vm-xml/win10.xml on the target system.
+# Keep the repository checkout outside /etc/nixos, as described in README.md.
+set -euo pipefail
+REPO="$HOME/nixos-hyprland-vfio"  # change this if the checkout is elsewhere
+test -f "$REPO/scripts/sync-vm-xml.py"
 sudo mkdir -p /var/lib/libvirt/images /var/lib/libvirt/qemu
+
+# Copy the exact GPU_PCI and GPU_AUDIO values from the deployed /etc/nixos/nixos/hooks/qemu.
+# The helper generates a fresh UUID/MAC for a new XML and preserves an existing VM XML.
+read -rp "GPU display PCI address from /etc/nixos/nixos/hooks/qemu: " GPU_PCI
+read -rp "GPU audio PCI address from /etc/nixos/nixos/hooks/qemu: " GPU_AUDIO
+sudo python3 "$REPO/scripts/sync-vm-xml.py" \
+  "$GPU_PCI" "$GPU_AUDIO" \
+  "$REPO/vm-xml/win10.xml" /var/lib/libvirt/win10.xml
 
 # Create the qcow2 disk referenced by the XML. Do not overwrite an existing disk.
 if [ ! -f /var/lib/libvirt/images/win10new.qcow2 ]; then
@@ -559,15 +570,6 @@ fi
 # qemu.runAsRoot = false, so set the disk owner and mode explicitly.
 sudo chown qemu-libvirtd:qemu-libvirtd /var/lib/libvirt/images/win10new.qcow2
 sudo chmod 0660 /var/lib/libvirt/images/win10new.qcow2
-
-# If install.sh was not run, copy the source XML. If it was run,
-# /var/lib/libvirt/win10.xml may already contain synchronized PCI addresses;
-# do not overwrite an existing deployed file with the source template.
-if [ ! -f /var/lib/libvirt/win10.xml ]; then
-  sudo cp /etc/nixos/vm-xml/win10.xml /var/lib/libvirt/
-else
-  echo "Preserving existing XML settings; verify that its PCI addresses match the GPU hook."
-fi
 
 sudo virsh define /var/lib/libvirt/win10.xml
 sudo virsh list --all     # win10 should appear as "shut off"
@@ -608,16 +610,18 @@ only for startup troubleshooting; it is not a permanent gaming configuration.
 > these are the target GPU's display and audio functions. If they differ, update **both** files:
 >
 > - `/etc/nixos/nixos/hooks/qemu`: the `GPU_PCI` and `GPU_AUDIO` values near the top.
-> - `/etc/nixos/vm-xml/win10.xml`: the `<source><address .../>` values in both PCI `<hostdev>`
->   entries (domain/bus/slot/function must match the hexadecimal components from `lspci`).
+> - `$REPO/vm-xml/win10.xml` is the source template; keep it separate from the deployed VM XML.
+>   Do not copy it over an existing VM. After updating the deployed hook, use the
+>   `scripts/sync-vm-xml.py` command documented above to synchronize PCI addresses safely; it
+>   backs up and preserves an existing deployed XML, and only writes to
+>   `/var/lib/libvirt/win10.xml`.
 >
 > Run `python3 scripts/test-vm-xml.py` from the repository root. It checks that the hook and XML
 > addresses match each other, but it cannot prove those addresses identify the correct physical
 > devices on your machine. Then rebuild the hook with
-> `sudo nixos-rebuild switch --flake /etc/nixos/nixos#nixos`. If a VM XML was already deployed,
-> back up the active `/var/lib/libvirt/win10.xml`, replace it with the verified XML, and run
-> `sudo virsh define /var/lib/libvirt/win10.xml`. Updating only the XML does not update the hook;
-> updating only the hook does not update the VM's PCI resources.
+> `sudo nixos-rebuild switch --flake /etc/nixos/nixos#nixos`. Finally, define the synchronized
+> active file with `sudo virsh define /var/lib/libvirt/win10.xml`. Updating only the hook does not
+> update the VM's PCI resources, and updating only an XML does not activate the new hook.
 
 > ⚠️ The XML contains fixed disk and NVRAM paths. If they do not match your own files,
 > `virsh start win10` fails because a disk or NVRAM file cannot be found.

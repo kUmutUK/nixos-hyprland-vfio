@@ -166,7 +166,7 @@ fi
 
 7. Find the GPU display and HDMI/DP audio functions with `lspci -Dnn`. Edit `/etc/nixos/nixos/hooks/qemu` so `GPU_PCI` and `GPU_AUDIO` match the actual PCI addresses. Validate IOMMU groups and make sure no unrelated device shares an unsafe group before using passthrough.
 
-8. For an existing VM, **do not replace its XML with the repository template**. Preserve its UUID, MAC, firmware/NVRAM and primary Windows disk path. Back up `/var/lib/libvirt/win10.xml`, then edit only the two PCI `hostdev` source addresses to match the hook. If no deployed XML exists and this is a new VM, copy `REPO/vm-xml/win10.xml` only after reviewing its disk/ISO paths, USB IDs, UUID/MAC, and PCI addresses. Define the reviewed XML with `sudo virsh define /var/lib/libvirt/win10.xml` after the guest is shut down.
+8. For an existing VM, **do not replace its XML with the repository template**. Preserve its UUID, MAC, firmware/NVRAM and primary Windows disk path. The `scripts/sync-vm-xml.py` helper backs up and preserves an existing deployed XML while synchronizing only the two GPU/audio PCI addresses. For a new VM, use the helper in [Preparing and starting the VM](#preparing-and-starting-the-vm) instead of copying the template directly; it generates a fresh UUID and MAC and leaves the source template unchanged. Review the disk/ISO paths and USB IDs before defining the XML. Define it with `sudo virsh define /var/lib/libvirt/win10.xml` after the guest is shut down.
 
 9. Check the password file, run the test suite available on the host, and build before switching:
 
@@ -244,27 +244,29 @@ The VM domain is named `win10`. The default `vm-xml/win10.xml` expects these fil
 
 > **Windows 10 lifecycle:** Standard support for Windows 10 Home and Pro ended on October 14, 2025 ([Microsoft lifecycle policy](https://learn.microsoft.com/en-us/lifecycle/products/windows-10-home-and-pro)). Before using this guest for network-connected or sensitive activity, verify that the installed edition is covered by applicable Extended Security Updates (ESU) or its own supported lifecycle (for example, an eligible LTSC edition), and that updates are installed. The ISO filename alone does not establish ESU eligibility.
 
-After the first system activation and reboot, prepare the VM disk and define the domain:
+After the first system activation and reboot, prepare the VM disk and define the domain. Run the following block from the repository root, after reviewing the XML's disk/ISO paths and USB passthrough IDs. Enter the exact `GPU_PCI` and `GPU_AUDIO` values from the deployed hook at `/etc/nixos/nixos/hooks/qemu`:
 
 ```bash
+set -euo pipefail
+REPO="$(pwd)"
+test -f "$REPO/scripts/sync-vm-xml.py"
 sudo mkdir -p /var/lib/libvirt/images /var/lib/libvirt/qemu
-# Run this block from the repository root if install.sh did not create the deployed XML.
-# Preserve an XML already synchronized by install.sh; it contains this host's PCI addresses.
-if [ ! -f /var/lib/libvirt/win10.xml ]; then
-  sudo cp ./vm-xml/win10.xml /var/lib/libvirt/win10.xml
-  echo "Source XML copied. Verify/update its GPU/audio PCI addresses before starting the VM."
-else
-  echo "Preserving existing VM XML settings; verify its GPU/audio PCI addresses before starting the VM."
-fi
+read -rp "GPU display PCI address from /etc/nixos/nixos/hooks/qemu: " GPU_PCI
+read -rp "GPU audio PCI address from /etc/nixos/nixos/hooks/qemu: " GPU_AUDIO
+sudo python3 "$REPO/scripts/sync-vm-xml.py" \
+  "$GPU_PCI" "$GPU_AUDIO" \
+  "$REPO/vm-xml/win10.xml" /var/lib/libvirt/win10.xml
 if [ ! -f /var/lib/libvirt/images/win10new.qcow2 ]; then
   sudo qemu-img create -f qcow2 /var/lib/libvirt/images/win10new.qcow2 120G
+else
+  echo "Preserving existing VM disk: /var/lib/libvirt/images/win10new.qcow2"
 fi
 sudo chown qemu-libvirtd:qemu-libvirtd /var/lib/libvirt/images/win10new.qcow2
 sudo chmod 0660 /var/lib/libvirt/images/win10new.qcow2
 sudo virsh define /var/lib/libvirt/win10.xml
 ```
 
-Use the disk and ISO filenames that actually exist on your host. The XML's PCI addresses must match `GPU_PCI` and `GPU_AUDIO` in `/etc/nixos/nixos/hooks/qemu`; `install.sh` performs this synchronization when run successfully. If you configured the VM manually, verify both PCI host devices with `lspci` and edit the deployed XML accordingly.
+The helper creates a fresh UUID and MAC when the deployed XML does not exist. If it already exists, the helper makes a timestamped backup, preserves the existing VM settings and changes only the two GPU/audio PCI addresses. It refuses to replace a symlink, malformed XML, a different VM domain, or an unsupported disk/PCI layout. It never edits `vm-xml/win10.xml`. Use the disk and ISO filenames that actually exist on your host. The XML's PCI addresses must match `GPU_PCI` and `GPU_AUDIO` in `/etc/nixos/nixos/hooks/qemu`; `install.sh` performs this synchronization when run successfully.
 
 The default XML contains two active USB passthrough entries with fixed vendor/product IDs `1532:0098` and `05ac:024f`; they are not detected or substituted automatically by the installer. Confirm with `lsusb` that these IDs identify the devices you intend to pass through, and edit or remove the corresponding USB `<hostdev>` entries in `/var/lib/libvirt/win10.xml` before starting the VM if they do not. The XML intentionally has no emulated graphics console, so verify that the guest has a usable display and input path before handing it the only GPU.
 
