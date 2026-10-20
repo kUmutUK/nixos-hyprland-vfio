@@ -788,38 +788,6 @@ in
       element-icon { size: 1.2em; background-color: inherit; }
       scrollbar { handle-width: 4px; border: 0; border-color: @main-bg; }
     '';
-    "kitty/kitty.conf".text = ''
-      font_family JetBrainsMono Nerd Font
-      font_size 11.0
-      window_padding_width 20
-      confirm_os_window_close 0
-      background_opacity 0.97
-      include themes/theme.conf
-    '';
-    "kitty/themes/theme.conf".text = ''
-      foreground #CCD9FF
-      background #1B1E25
-      cursor #EAB2C2
-      cursor_text_color #1B1E25
-      selection_background #EAB2C2
-      selection_foreground #1B1E25
-      color0  #1B1E25
-      color1  #EAB2C2
-      color2  #76C4D7
-      color3  #D9C95E
-      color4  #76C4D7
-      color5  #EAB2C2
-      color6  #76C4D7
-      color7  #CCD9FF
-      color8  #8290A8
-      color9  #F2C6D2
-      color10 #97D5E2
-      color11 #E8D982
-      color12 #91D2E0
-      color13 #F0C4D1
-      color14 #A6DFE9
-      color15 #FFFFFF
-    '';
     "ranger/rc.conf".text = ''
       set preview_images true
       set preview_images_method kitty
@@ -1395,9 +1363,6 @@ done
     fish = {
       enable = true;
       shellAliases = {
-        ll = "eza -la --icons";
-        la = "eza -a --icons";
-        l = "eza -lah --icons";
         cat = "bat";
         nrs = "sudo nixos-rebuild switch --flake /etc/nixos/nixos#nixos";
         nup = "sudo nix flake update --flake /etc/nixos/nixos cachyos-kernel";
@@ -1532,6 +1497,9 @@ done
       };
     };
 
+    # Keep Kitty settings in this Home Manager module only. The theme matches the
+    # rose/teal/gold palette used by Hyprland and Rofi; don't declare kitty.conf again
+    # through xdg.configFile, or the generated file has competing owners.
     kitty = {
       enable = true;
       font = {
@@ -1539,32 +1507,37 @@ done
         size = 11;
       };
       settings = {
-        foreground = "#ffffff";
-        background = "#000000";
-        selection_foreground = "#000000";
-        selection_background = "#cba6f7";
-        cursor = "#cba6f7";
-        cursor_text_color = "#000000";
-        url_color = "#cba6f7";
-        active_tab_foreground = "#000000";
-        active_tab_background = "#cba6f7";
-        inactive_tab_foreground = "#ffffff";
-        inactive_tab_background = "#111111";
-        color0  = "#45475a"; color1  = "#f38ba8";
-        color2  = "#a6e3a1"; color3  = "#f9e2af";
-        color4  = "#89b4fa"; color5  = "#f5c2e7";
-        color6  = "#94e2d5"; color7  = "#bac2de";
-        color8  = "#585b70"; color9  = "#f38ba8";
-        color10 = "#a6e3a1"; color11 = "#f9e2af";
-        color12 = "#89b4fa"; color13 = "#f5c2e7";
-        color14 = "#94e2d5"; color15 = "#a6adc8";
-        window_padding_width = 10;
+        foreground = "#CCD9FF";
+        background = "#1B1E25";
+        selection_foreground = "#1B1E25";
+        selection_background = "#EAB2C2";
+        cursor = "#EAB2C2";
+        cursor_text_color = "#1B1E25";
+        url_color = "#76C4D7";
+        color0  = "#1B1E25";
+        color1  = "#EAB2C2";
+        color2  = "#76C4D7";
+        color3  = "#D9C95E";
+        color4  = "#76C4D7";
+        color5  = "#EAB2C2";
+        color6  = "#76C4D7";
+        color7  = "#CCD9FF";
+        color8  = "#8290A8";
+        color9  = "#F2C6D2";
+        color10 = "#97D5E2";
+        color11 = "#E8D982";
+        color12 = "#91D2E0";
+        color13 = "#F0C4D1";
+        color14 = "#A6DFE9";
+        color15 = "#FFFFFF";
+        window_padding_width = 20;
+        confirm_os_window_close = 0;
         cursor_shape = "beam";
         cursor_blink_interval = "0.5";
         scrollback_lines = 10000;
         repaint_delay = 10;
         input_delay = 3;
-        background_opacity = "1.0";
+        background_opacity = "0.97";
         tab_bar_edge = "bottom";
         tab_bar_style = "fade";
         enable_audio_bell = false;
