@@ -1,15 +1,15 @@
-# Repair and validation report — 2026-10-16
+# Repair and validation report — updated 2026-10-21
 
 ## Current corrective patch — 2026-10-21
 
-The current patch-only ZIP contains only the files corrected for this review: `README.md`, `CHANGELOG.md`, the root `DEGISIKLIK_GECMISI.md` current-state index, this report, and `install.sh` stored with Unix mode `100755`. It excludes `.git/` and unchanged project files; overlay it onto the matching project tree rather than treating it as a full-source archive.
+The current patch-only ZIP contains only the files corrected for this review: `CHANGELOG.md`, this report, `install.sh` (content unchanged, ZIP Unix mode `100755`), `scripts/sync-vm-xml.py`, and `scripts/test-vm-xml-sync.py`. It excludes `.git/` and all unchanged project files. Overlay it onto the matching project tree; it is not a full-source archive and does not replace the original project ZIP.
 
-- Corrected the README mouse-wheel binding description to say that the shortcut changes workspaces, matching `nixos/home.nix`.
-- Clarified that the original Turkish release-by-release changelog in `docs/archive/DEGISIKLIK_GECMISI.md` is intentionally preserved and is an exception to the English active-document policy. Updated the README repository map to label this historical archive accurately.
-- Updated the current changelog and current-state index dates to 2026-10-21 so they no longer predate the 2026-10-20 follow-up section below.
-- Restored the executable bit on `install.sh` in the patch ZIP. Its file content is unchanged; the original supplied ZIP failed to preserve Git's tracked mode `100755`.
+- Corrected the changelog's language-policy description: the root `KURULUM.md` and `DEGISIKLIK_GECMISI.md` are English compatibility/current-state pointers, while the original Turkish release-by-release history is in `docs/archive/DEGISIKLIK_GECMISI.md`.
+- Corrected VM XML GPU/audio role identification. The helper now matches each PCI hostdev's guest-side PCI target against the reviewed template's role map, so reordering the two XML blocks no longer swaps GPU/audio source addresses. Unknown target addresses fail closed before a destination or backup is modified.
+- Added regression tests for reordered PCI hostdev blocks and unrecognized guest-side target addresses, in addition to the existing preservation/backup/unsupported-layout tests.
+- Preserved `install.sh`'s tracked executable mode (`100755`) in this patch ZIP. Its contents are unchanged. The full-source ZIP supplied for review had dropped that mode and included `.git/`; this patch-only ZIP intentionally excludes `.git/` and is not a repackaged full source bundle.
 
-Validation for this patch: the six regression test files passed; Bash syntax checks, Python compilation, `flake.lock` JSON parsing, XML parsing, embedded-script extraction/count, and Markdown relative-link checks passed. `nix`, `shellcheck`, and `xmllint` are unavailable in this review environment, so Nix evaluation/build, ShellCheck, and libvirt semantic validation were not run. No real GPU/VM lifecycle behavior is claimed.
+Validation for this patch: all six regression suites passed (`test-vm-xml.py`, `test-vm-xml-sync.py`, `test-vm-diagnostic.py`, installer invariants, installer rollback, and VFIO driver/service-state tests). Bash syntax checks, Python source compilation, `flake.lock` JSON parsing, template XML parsing, extraction and `bash -n` checks for all seven embedded scripts, and all 38 Markdown relative-link checks also passed. Nix evaluation/build, ShellCheck, and libvirt semantic validation were not run in this environment; no real GPU/VM lifecycle behavior is claimed.
 
 
 ## Delivery-scope clarification — 2026-10-19
