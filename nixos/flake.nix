@@ -26,33 +26,22 @@
     # Hyprland and clients built against the system package set.
     lsfg-vk-flake.url = "github:pabloaul/lsfg-vk-flake/main";
     lsfg-vk-flake.inputs.nixpkgs.follows = "nixpkgs";
-    # Serpantinum is an optional desktop-shell alternative. Keep it on the same
-    # nixpkgs revision as Hyprland to avoid Qt / Wayland ABI mismatches.
-    serpantinum.url = "github:ilyamiro/serpantinum";
-    serpantinum.inputs.nixpkgs.follows = "nixpkgs";
     # Impermanence is intentionally not imported: this configuration does
     # not define a persistent-storage layout. Reintroduce the input only
     # together with matching environment.persistence and Home Manager settings.
   };
 
-  outputs = {
-    self, nixpkgs, cachyos-kernel, home-manager, lsfg-vk-flake, serpantinum, ...
-  }:
+  outputs = { self, nixpkgs, cachyos-kernel, home-manager, lsfg-vk-flake, ... }:
   let
     system = "x86_64-linux";
     pkgs = nixpkgs.legacyPackages.${system};
-    # Leave the established Waybar / Dunst / live-wallpaper session untouched by
-    # default. Set this single switch to true to try Serpantinum as the desktop shell.
-    enableSerpantinum = false;
   in
   {
     nixosConfigurations.nixos = nixpkgs.lib.nixosSystem {
       inherit system;
-      specialArgs = { inherit serpantinum enableSerpantinum; };
       modules = [
         home-manager.nixosModules.home-manager
         lsfg-vk-flake.nixosModules.default
-        serpantinum.nixosModules.default
 
         ({ pkgs, ... }: {
           nixpkgs.config.allowUnfree = true;
