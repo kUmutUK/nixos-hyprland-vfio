@@ -1,8 +1,10 @@
 # Repair and validation report — updated 2026-10-21
 
-## Current corrective patch — 2026-10-21
+> **Delivery-scope note:** This report is included in the full project tree. References below to “patch-only ZIP” describe correction bundles produced on the dates stated in each section; they do not describe the full-source ZIP that currently contains this report. To create a canonical full-source ZIP, use the `git archive` command documented in `README.md`; that excludes `.git/` and preserves the tracked executable mode of `install.sh`.
 
-The current patch-only ZIP contains only the files corrected for this review: `CHANGELOG.md`, this report, `install.sh` (content unchanged, ZIP Unix mode `100755`), `scripts/sync-vm-xml.py`, and `scripts/test-vm-xml-sync.py`. It excludes `.git/` and all unchanged project files. Overlay it onto the matching project tree; it is not a full-source archive and does not replace the original project ZIP.
+## Historical correction record — 2026-10-21
+
+The patch-only ZIP created for the 2026-10-21 correction set contained `CHANGELOG.md`, this report, `install.sh` (content unchanged, ZIP Unix mode `100755`), `scripts/sync-vm-xml.py`, and `scripts/test-vm-xml-sync.py`. It excluded `.git/` and all unchanged project files. It was an overlay for the matching project tree, not a full-source archive or replacement for the original project ZIP.
 
 - Corrected the changelog's language-policy description: the root `KURULUM.md` and `DEGISIKLIK_GECMISI.md` are English compatibility/current-state pointers, while the original Turkish release-by-release history is in `docs/archive/DEGISIKLIK_GECMISI.md`.
 - Corrected VM XML GPU/audio role identification. The helper now matches each PCI hostdev's guest-side PCI target against the reviewed template's role map, so reordering the two XML blocks no longer swaps GPU/audio source addresses. Unknown target addresses fail closed before a destination or backup is modified.
