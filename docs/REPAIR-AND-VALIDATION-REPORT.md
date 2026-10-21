@@ -1,5 +1,17 @@
 # Repair and validation report — 2026-10-16
 
+## Current corrective patch — 2026-10-21
+
+The current patch-only ZIP contains only the files corrected for this review: `README.md`, `CHANGELOG.md`, the root `DEGISIKLIK_GECMISI.md` current-state index, this report, and `install.sh` stored with Unix mode `100755`. It excludes `.git/` and unchanged project files; overlay it onto the matching project tree rather than treating it as a full-source archive.
+
+- Corrected the README mouse-wheel binding description to say that the shortcut changes workspaces, matching `nixos/home.nix`.
+- Clarified that the original Turkish release-by-release changelog in `docs/archive/DEGISIKLIK_GECMISI.md` is intentionally preserved and is an exception to the English active-document policy. Updated the README repository map to label this historical archive accurately.
+- Updated the current changelog and current-state index dates to 2026-10-21 so they no longer predate the 2026-10-20 follow-up section below.
+- Restored the executable bit on `install.sh` in the patch ZIP. Its file content is unchanged; the original supplied ZIP failed to preserve Git's tracked mode `100755`.
+
+Validation for this patch: the six regression test files passed; Bash syntax checks, Python compilation, `flake.lock` JSON parsing, XML parsing, embedded-script extraction/count, and Markdown relative-link checks passed. `nix`, `shellcheck`, and `xmllint` are unavailable in this review environment, so Nix evaluation/build, ShellCheck, and libvirt semantic validation were not run. No real GPU/VM lifecycle behavior is claimed.
+
+
 ## Delivery-scope clarification — 2026-10-19
 
 This report contains historical notes about earlier correction bundles; those dated notes must not be read as a description of the original full-project archive currently under review. The original uploaded archive (`nixos-hyprland-vfio(5).zip`) included the full project tree and `.git/`, and its `install.sh` ZIP entry did not preserve the Unix executable bit. The English `README.md` also contained one Turkish error message.
