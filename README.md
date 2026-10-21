@@ -12,6 +12,7 @@ A flake-based NixOS gaming desktop that passes its single AMD Radeon GPU through
 - [Preparing and starting the VM](#preparing-and-starting-the-vm)
 - [Keyboard shortcuts](#keyboard-shortcuts)
 - [Gaming stack](#gaming-stack)
+- [Optional Serpantinum shell](#optional-serpantinum-shell)
 - [Important configuration decisions](#important-configuration-decisions)
 - [Known limitations](#known-limitations)
 - [Repository map](#repository-map)
@@ -368,6 +369,32 @@ The upstream Vulkan manifest defines `enable_environment` for `LOW_LATENCY_LAYER
 VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 ```
 
+## Optional Serpantinum shell
+
+An optional [Serpantinum](https://github.com/ilyamiro/serpantinum) desktop-shell profile is wired through its official NixOS and Home Manager modules. It is **disabled by default**; the existing Waybar, Dunst, Hyprland shortcuts, GTK theme, and Arthur live wallpaper remain the default. No kernel, VFIO, VM XML, or low-latency settings are changed by this feature.
+
+Before committing this integration, add and resolve the new upstream flake input from the `nixos/` directory and review the lock-file diff:
+
+```bash
+cd nixos
+nix flake lock
+git diff -- flake.lock
+```
+
+This step is required because the project's CI intentionally evaluates flakes with lock updates disabled. The flake input follows this repository's `nixpkgs` input to reduce Qt/Wayland ABI mismatch risk. Commit the generated `nixos/flake.lock` together with the integration files; do not hand-write its NAR hashes.
+
+To try Serpantinum, change `enableSerpantinum = false;` to `enableSerpantinum = true;` in the `let` block of `nixos/flake.nix`, then rebuild from that directory:
+
+```bash
+sudo nixos-rebuild switch --flake .#nixos
+```
+
+When enabled, Serpantinum replaces the running Waybar and Dunst instances with its bar, dock, and notification UI. It starts from the existing Hyprland startup hook; its separate Home Manager systemd service is disabled to avoid launching a duplicate instance. The existing `SUPER+A` Rofi shortcut is deliberately retained; when Serpantinum is enabled, `SUPER+D` opens its Start view. The live Arthur video remains managed by the project's existing mpvpaper watchdog; Serpantinum's wallpaper picker is pointed to `~/Pictures/Wallpapers` and does not replace the live wallpaper.
+
+This is an **opt-in test profile**, not a claim that Serpantinum has been benchmarked on the target GPU. After enabling it, verify startup and shutdown, idle CPU/RAM use, clipboard text and image history, notifications, and CS2 frametimes at the target refresh rate. To revert, set `enableSerpantinum = false;` and rebuild. The upstream Serpantinum dependency is licensed separately under AGPL-3.0-or-later; this repository's own license is unchanged.
+
+See [`docs/SERPANTINUM-INTEGRATION.md`](docs/SERPANTINUM-INTEGRATION.md) for the complete enable/disable and validation notes.
+
 ## Important configuration decisions
 
 - `systemd-boot` is used; UEFI is required.
@@ -408,6 +435,7 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 ├── .github/workflows/check.yml
 ├── docs/
 │   ├── REPAIR-AND-VALIDATION-REPORT.md
+│   ├── SERPANTINUM-INTEGRATION.md  # Optional desktop-shell profile and test plan
 │   └── archive/                    # Historical audits and original Turkish release history
 ├── scripts/
 │   ├── extract-embedded-scripts.py
