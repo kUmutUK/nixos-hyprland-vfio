@@ -460,7 +460,7 @@ EOF
     }
     label {
         position = 0, -260; halign = center; valign = center;
-        text = Press SUPER + SHIFT + E to exit the session
+        text = Unlock the screen to access session shortcuts
         font_family = JetBrainsMono Nerd Font; font_size = 14;
         font_color = rgba(204, 217, 255, 0.45); shadow_passes = 0;
     }
