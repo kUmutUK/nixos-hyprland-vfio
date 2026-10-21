@@ -324,7 +324,7 @@ VNC listens only on `127.0.0.1`. Use an SSH tunnel for remote viewing; do not ex
 | `SUPER` + arrow keys / `H J K L` | Move focus between windows |
 | `SUPER` + `SHIFT` + arrows / `H J K L` | Move a window |
 | `SUPER` + `CTRL` + arrows / `H J K L` | Resize a window |
-| `SUPER` + mouse wheel | Cycle windows |
+| `SUPER` + mouse wheel | Cycle workspaces |
 | `SUPER` + left-drag | Move a window |
 | `SUPER` + right-drag | Resize a window |
 | `SUPER` + `1`…`9`, `0` | Switch to workspaces 1–10 |
@@ -408,7 +408,7 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 ├── .github/workflows/check.yml
 ├── docs/
 │   ├── REPAIR-AND-VALIDATION-REPORT.md
-│   └── archive/                    # English historical audit summaries
+│   └── archive/                    # Historical audits and original Turkish release history
 ├── scripts/
 │   ├── extract-embedded-scripts.py
 │   ├── prepare-vm-diagnostic.py

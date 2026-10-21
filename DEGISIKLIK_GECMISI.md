@@ -2,7 +2,7 @@
 
 This legacy filename now contains an English current-state summary so older links remain useful. The maintained and current change log is [`CHANGELOG.md`](CHANGELOG.md).
 
-## Current configuration notes — 2026-10-19
+## Current configuration notes — 2026-10-21
 
 - The active kernel package is `linuxPackages-cachyos-rt-bore-lto` from the CachyOS upstream `master` input. The kernel version is not hard-coded in `nixos/flake.nix`; `nixos/flake.lock` records the resolved revision for reproducibility. To advance the CachyOS input, use `sudo nix flake update --flake /etc/nixos/nixos cachyos-kernel`, inspect the lock diff, and validate the resulting build. The RT-Bore-LTO LTO package is not published in the upstream binary cache, so a local build is expected. The previously reported successful target test used standard BORE-LTO and does not validate RT-Bore-LTO.
 - The system uses `LOW_LATENCY_LAYER=1` and `LOW_LATENCY_LAYER_REFLEX=1` by default. Incompatible games can opt out with `DISABLE_LOW_LATENCY_LAYER=1 %command%`. The upstream `low_latency_layer` v0.2.0 release also documents an incompatibility with `obs_vkcapture`.
