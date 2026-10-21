@@ -1,4 +1,4 @@
-{ config, pkgs, lib, serpantinum, enableSerpantinum, ... }:
+{ config, pkgs, lib, ... }:
 
 let
   # Pass the native Lua config path directly to Hyprland through this wrapper.
@@ -362,10 +362,6 @@ in
     ];
   };
 
-  # The switch is defined once in flake.nix and controls both NixOS prerequisites
-  # and the Home Manager module. Serpantinum remains off unless explicitly requested.
-  programs.serpantinum.enable = enableSerpantinum;
-  home-manager.extraSpecialArgs = { inherit serpantinum enableSerpantinum; };
   home-manager.users.localhost = import ./home.nix;
   home-manager.backupFileExtension = "backup";
 
