@@ -10,6 +10,7 @@ This file summarizes notable changes in English. The original detailed Turkish h
 - Added regression coverage for the README's manual migration guard (copy when the generated source exists, preserve an existing target, and fail closed when the source is missing). The supplied README already checked the correct source path; the earlier audit's quoted faulty snippet did not match the actual archive.
 - CI now builds and validates one canonical Git archive and uploads that same ZIP as the `nixos-hyprland-vfio-source` workflow artifact after all required checks pass, preventing an independently repackaged archive from being mistaken for the tested source bundle.
 - Clarified the repair report so historical full-project and patch-only archives are not conflated. The `install.sh` contents are unchanged; this patch ZIP preserves its executable mode.
+- Marked the 2026-10-21 patch-bundle description explicitly as historical, so the repair report no longer describes the full-source tree that contains it as a “current patch-only ZIP”.
 - Fixed GPU/audio PCI role assignment in the VM XML sync helper: existing hostdev blocks are matched by the reviewed guest-side PCI target addresses rather than XML order. Unknown/custom target addresses now fail closed, and regression tests cover reordered blocks and unknown targets.
 
 ### Changed
