@@ -140,6 +140,76 @@ def main() -> int:
         if len(backups) != 1 or backups[0].read_text(encoding="utf-8") != custom_data:
             return fail("existing deployed VM XML was not backed up byte-for-byte")
 
+    # Reversing the two PCI hostdev blocks must not reverse GPU/audio roles.
+    # The reviewed guest-side PCI target addresses, not document order, identify roles.
+    with tempfile.TemporaryDirectory(prefix="vm-xml-sync-reordered-") as temp:
+        temp_path = Path(temp)
+        template = temp_path / "template.xml"
+        deployed = temp_path / "win10.xml"
+        template.write_text(template_data, encoding="utf-8")
+        pci_blocks = list(
+            re.finditer(
+                r'<hostdev\b(?=[^>]*\btype=["\']pci["\'])[^>]*>.*?</hostdev>',
+                template_data,
+                re.DOTALL,
+            )
+        )
+        if len(pci_blocks) != 2:
+            return fail("could not identify exactly two PCI hostdev blocks for reorder test")
+        first, second = pci_blocks
+        first_block = template_data[first.start():first.end()]
+        second_block = template_data[second.start():second.end()]
+        reordered = (
+            template_data[:first.start()]
+            + second_block
+            + template_data[first.end():second.start()]
+            + first_block
+            + template_data[second.end():]
+        )
+        deployed.write_text(reordered, encoding="utf-8")
+        result = run_sync(template, deployed)
+        if result.returncode != 0:
+            return fail(f"reordered but otherwise supported PCI hostdev XML was rejected: {result.stdout}{result.stderr}")
+        updated = ET.parse(deployed).getroot()
+        role_sources: dict[str, str | None] = {}
+        for hostdev in updated.findall("./devices/hostdev[@type='pci']"):
+            target = hostdev.find("./address")
+            if target is None:
+                return fail("reordered PCI hostdev lost its guest-side target address")
+            try:
+                target_key = tuple(
+                    int(target.get(key, ""), 0)
+                    for key in ("domain", "bus", "slot", "function")
+                )
+            except ValueError:
+                return fail("reordered PCI hostdev has an invalid guest-side target address")
+            role_sources[str(target_key)] = source_bdf(hostdev)
+        expected = {"(0, 6, 0, 0)": GPU, "(0, 7, 0, 0)": AUDIO}
+        if role_sources != expected:
+            return fail(f"GPU/audio roles changed when PCI hostdev blocks were reordered: {role_sources!r}")
+
+    # Unknown guest-side targets make the GPU/audio role ambiguous and must fail closed.
+    with tempfile.TemporaryDirectory(prefix="vm-xml-sync-unknown-target-") as temp:
+        temp_path = Path(temp)
+        template = temp_path / "template.xml"
+        deployed = temp_path / "win10.xml"
+        template.write_text(template_data, encoding="utf-8")
+        unknown_target = template_data.replace(
+            '<address type="pci" domain="0x0000" bus="0x06" slot="0x00" function="0x0"/>',
+            '<address type="pci" domain="0x0000" bus="0x08" slot="0x00" function="0x0"/>',
+            1,
+        )
+        if unknown_target == template_data:
+            return fail("test fixture failed to change the guest-side PCI target")
+        deployed.write_text(unknown_target, encoding="utf-8")
+        result = run_sync(template, deployed)
+        if result.returncode == 0:
+            return fail("unknown guest-side PCI target was not rejected")
+        if deployed.read_text(encoding="utf-8") != unknown_target:
+            return fail("unknown guest-side PCI target was modified despite validation failure")
+        if list(temp_path.glob("win10.xml.bak-*")):
+            return fail("unknown guest-side PCI target should fail before creating a backup")
+
     # Unsupported custom XML must fail closed and must leave the current XML intact.
     with tempfile.TemporaryDirectory(prefix="vm-xml-sync-unsupported-") as temp:
         temp_path = Path(temp)
@@ -167,7 +237,7 @@ def main() -> int:
         if result.returncode == 0 or deployed.exists():
             return fail("duplicate GPU/audio PCI addresses were not rejected before writing")
 
-    print("OK: VM XML sync preserves existing custom settings and identity, updates only PCI addresses, backs up first, and fails closed on unsupported XML.")
+    print("OK: VM XML sync preserves custom settings and identity, maps GPU/audio by reviewed guest PCI targets regardless of XML order, backs up first, and fails closed on unsupported layouts.")
     return 0
 
 
