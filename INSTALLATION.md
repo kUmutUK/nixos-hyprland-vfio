@@ -372,11 +372,12 @@ tar --exclude='./.git' -C /tmp/repo -cf - . | sudo tar --no-same-owner -C /mnt/e
 
 ---
 
-# ⚠️ 7b. Five values you must edit manually
+# ⚠️ 7b. Five settings to review and customize as needed
 
 The manual path copies the `nixos/` directory as-is and does not prompt for machine-specific
-values. Because you are not running `install.sh`, the following values in `home.nix` remain
-**placeholders** and must be reviewed before installation:
+values. Before installation, review these five settings in `home.nix` and customize the ones
+that do not match your setup. Some defaults (such as `hyprlandMonitorMode = "preferred"`) are
+valid as-is; placeholder identity values and paths should be replaced where applicable:
 
 | # | Setting | Default | What happens if it is wrong |
 |---|---|---|---|
