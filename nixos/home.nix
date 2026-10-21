@@ -1,4 +1,4 @@
-{ config, pkgs, lib, ... }:
+{ config, pkgs, lib, serpantinum, enableSerpantinum, ... }:
 
 let
   gitName            = "changeme";
@@ -8,6 +8,9 @@ let
   # an empty value remains a catch-all for manual setups.
   hyprlandMonitorMode = "preferred";
   wallpaperVideo     = "${config.home.homeDirectory}/Downloads/arthur-leywin-the-beginning-after-the-end.3840x2160.mp4";
+  serpantinumPackage = serpantinum.packages.${pkgs.stdenv.hostPlatform.system}.default;
+  serpantinumdCommand = "${serpantinumPackage}/bin/serpantinumd start";
+  serpantinumLauncherCommand = "${serpantinumPackage}/bin/serpantinum launch start";
 
   # Reuse Bibata's designed plus cursor as the default pointer while preserving
   # its hand, text, resize, busy, and other context-specific cursors.
@@ -50,6 +53,20 @@ EOF
   screenshotCommand = "grim -g \"$(slurp)\" - | wl-copy";
   sattyScreenshotCommand = "grim -g \"$(slurp)\" - | satty -f - | wl-copy";
   systemdEnvironmentCommand = "${pkgs.bash}/bin/bash -c 'systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE HYPRLAND_INSTANCE_SIGNATURE HYPRLAND_DISPLAY; dbus-update-activation-environment --systemd --all; systemctl --user start gamemode-notify; if [ -n \"$1\" ]; then systemctl --user start mpvpaper-watchdog; fi' sh ${lib.escapeShellArg monitorOutput}";
+  # Only the optional Serpantinum profile replaces Waybar and Dunst. Keep the
+  # existing clipboard flow, theme, Arthur live wallpaper, and other daemons intact.
+  desktopShellStartupLua = if enableSerpantinum then ''
+        hl.exec_cmd(${builtins.toJSON serpantinumdCommand})
+        hl.exec_cmd("wl-paste --type text --watch cliphist store")
+        hl.exec_cmd("wl-paste --type image --watch cliphist store")
+  '' else ''
+        hl.exec_cmd("waybar")
+        hl.exec_cmd("dunst")
+        hl.exec_cmd("wl-paste --watch cliphist store")
+  '';
+  desktopShellLauncherBindingLua = if enableSerpantinum then ''
+    hl.bind(mainMod .. " + D", hl.dsp.exec_cmd(${builtins.toJSON serpantinumLauncherCommand}))
+  '' else "";
   wallpaperMissingCommand = "${pkgs.bash}/bin/bash -c 'if [ -n \"$2\" ] && [ ! -e \"$1\" ]; then notify-send -t 15000 -u critical \"mpvpaper\" \"Live wallpaper file not found: $1. Change wallpaperVideo in home.nix, then restart mpvpaper-watchdog.\"; fi' sh ${lib.escapeShellArg wallpaperVideo} ${lib.escapeShellArg monitorOutput}";
   monitorValidationCommand = "${pkgs.bash}/bin/bash -c 'if [ -n \"$1\" ] && ! hyprctl monitors 2>/dev/null | grep -Fq -- \"Monitor $1 (\"; then notify-send -t 15000 -u critical \"mpvpaper\" \"Monitor output not found: $1. Set monitorOutput in home.nix to the exact hyprctl monitors name.\"; fi' sh ${lib.escapeShellArg monitorOutput}";
 
@@ -297,6 +314,9 @@ EOF
 
     -- Applications and utility bindings.
     hl.bind(mainMod .. " + A", hl.dsp.exec_cmd("rofi -show drun"))
+    -- Keep the existing Rofi shortcut; Super+D opens Serpantinum's Start view only
+    -- when its optional profile is enabled.
+    ${desktopShellLauncherBindingLua}
     hl.bind(mainMod .. " + C", hl.dsp.exec_cmd("kitty"))
     hl.bind(mainMod .. " + Q", hl.dsp.window.close())
     hl.bind(mainMod .. " + Return", hl.dsp.exec_cmd("kitty"))
@@ -392,9 +412,7 @@ EOF
     hl.on("hyprland.start", function()
         hl.exec_cmd(${builtins.toJSON pcmanfmDesktopCommand})
         hl.exec_cmd("hyprctl setcursor Plus-Cursor 20")
-        hl.exec_cmd("waybar")
-        hl.exec_cmd("dunst")
-        hl.exec_cmd("wl-paste --watch cliphist store")
+        ${desktopShellStartupLua}
         hl.exec_cmd("nm-applet --indicator")
         hl.exec_cmd(${builtins.toJSON hyprpolkitagentCommand})
         hl.exec_cmd("pypr")
@@ -677,9 +695,93 @@ EOF
   };
 in
 {
+  imports = lib.optionals enableSerpantinum [
+    serpantinum.homeManagerModules.default
+  ];
+
   home.username = "localhost";
   home.homeDirectory = "/home/localhost";
   home.stateVersion = "26.05";
+
+  # Serpantinum uses its own palette and shell widgets; matugen is kept off so
+  # the established GTK / Hyprland colors and Arthur live wallpaper are not changed.
+  programs.serpantinum = lib.optionalAttrs enableSerpantinum {
+    enable = true;
+    # This configuration launches the shell from the Hyprland Lua startup hook,
+    # so the module must not also launch a second copy through systemd --user.
+    systemd.enable = false;
+    settings = {
+      wallpaperDir = "${config.home.homeDirectory}/Pictures/Wallpapers";
+      general = {
+        language = "en";
+        workspaceCount = 10;
+        weatherUnit = "metric";
+        weatherInterval = 30;
+        location.timezone = "Europe/Istanbul";
+      };
+      bar = {
+        position = "top";
+        style = "modular";
+        width = 100;
+        workspaceCount = 10;
+        modules = {
+          left = [ "workspaces" ];
+          center = [ "time" ];
+          right = [ "tray" [ "kb" "wifi" "bt" "vol" "bat" ] ];
+        };
+      };
+      dock = {
+        enabled = true;
+        position = "bottom";
+        floating = true;
+        autohide = true;
+        smartAutohide = true;
+        elementSize = 48;
+        hoverScale = 120;
+        focusRunning = true;
+        showRunningIndicators = true;
+        showRunningApps = true;
+        runningScope = "workspace";
+      };
+      launcher = {
+        position = "center";
+        terminalCommand = "kitty -e";
+      };
+      theme = {
+        fontFamily = "JetBrainsMono Nerd Font";
+        borderRadius = 12;
+        activePreset = "Catppuccin Mocha";
+        mode = "dark";
+        matugen = false;
+        colors = {
+          base = "#1B1E25";
+          crust = "#111319";
+          mantle = "#171A21";
+          surface0 = "#232936";
+          surface1 = "#2F364A";
+          surface2 = "#394257";
+          text = "#CCD9FF";
+          mauve = "#EAB2C2";
+          red = "#EAB2C2";
+          peach = "#D9C95E";
+          blue = "#76C4D7";
+          sapphire = "#76C4D7";
+          green = "#76C4D7";
+        };
+      };
+      notifications = {
+        dnd = false;
+        position = "top right";
+        sound = false;
+      };
+    };
+  };
+
+  home.activation = lib.optionalAttrs enableSerpantinum {
+    serpantinumWallpaperDirectory = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+      run mkdir -p ${lib.escapeShellArg "${config.home.homeDirectory}/Pictures/Wallpapers"}
+    '';
+  };
 
   # Pin the native Lua configuration explicitly, including when greetd starts Hyprland
   # before another desktop-session environment has been imported.
