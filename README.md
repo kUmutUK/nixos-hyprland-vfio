@@ -249,24 +249,72 @@ After the first system activation and reboot, prepare the VM disk and define the
 ```bash
 set -euo pipefail
 REPO="$(pwd)"
+VM_XML=/var/lib/libvirt/win10.xml
 test -f "$REPO/scripts/sync-vm-xml.py"
 sudo mkdir -p /var/lib/libvirt/images /var/lib/libvirt/qemu
+
+# Remember whether this is an existing VM before the helper writes/updates its XML.
+if sudo test -e "$VM_XML" || sudo test -L "$VM_XML"; then
+  EXISTING_VM_XML=1
+else
+  EXISTING_VM_XML=0
+fi
+
 read -rp "GPU display PCI address from /etc/nixos/nixos/hooks/qemu: " GPU_PCI
 read -rp "GPU audio PCI address from /etc/nixos/nixos/hooks/qemu: " GPU_AUDIO
 sudo python3 "$REPO/scripts/sync-vm-xml.py" \
   "$GPU_PCI" "$GPU_AUDIO" \
-  "$REPO/vm-xml/win10.xml" /var/lib/libvirt/win10.xml
-if [ ! -f /var/lib/libvirt/images/win10new.qcow2 ]; then
-  sudo qemu-img create -f qcow2 /var/lib/libvirt/images/win10new.qcow2 120G
+  "$REPO/vm-xml/win10.xml" "$VM_XML"
+
+# Read the primary disk path from the synchronized XML; do not assume a filename.
+DISK_PATH="$(sudo python3 - "$VM_XML" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+
+root = ET.parse(sys.argv[1]).getroot()
+disks = root.findall("./devices/disk[@device='disk']")
+if len(disks) != 1:
+    raise SystemExit("Expected exactly one primary disk; inspect the VM XML manually.")
+source = disks[0].find("source")
+path = source.get("file") if source is not None else None
+if not path or not path.startswith("/"):
+    raise SystemExit("The primary disk has no absolute file path; inspect the VM XML manually.")
+print(path)
+PY
+)"
+echo "Primary disk path in $VM_XML: $DISK_PATH"
+
+if [ "$EXISTING_VM_XML" -eq 1 ]; then
+  # Never replace or change permissions on a disk belonging to an existing VM.
+  if ! sudo test -f "$DISK_PATH"; then
+    echo "ERROR: Existing VM disk is missing: $DISK_PATH" >&2
+    echo "Restore/find the original disk or repair the XML manually; no replacement was created." >&2
+    exit 1
+  fi
+  echo "Preserving existing VM disk and its permissions: $DISK_PATH"
+  echo "Verify that the configured libvirt/QEMU service can read and write this file before starting the VM."
 else
-  echo "Preserving existing VM disk: /var/lib/libvirt/images/win10new.qcow2"
+  # Only auto-create the reviewed default disk for a genuinely new deployment.
+  if [ "$DISK_PATH" != "/var/lib/libvirt/images/win10new.qcow2" ]; then
+    echo "ERROR: New XML references a non-default disk path: $DISK_PATH" >&2
+    echo "Review its size and create/configure it manually; refusing to guess." >&2
+    exit 1
+  fi
+  if sudo test -e "$DISK_PATH" || sudo test -L "$DISK_PATH"; then
+    echo "ERROR: A disk file already exists but no deployed VM XML was present: $DISK_PATH" >&2
+    echo "Verify the file's identity and configure it manually; refusing to adopt it implicitly." >&2
+    exit 1
+  fi
+  sudo qemu-img create -f qcow2 "$DISK_PATH" 120G
+  sudo chown qemu-libvirtd:qemu-libvirtd "$DISK_PATH"
+  sudo chmod 0660 "$DISK_PATH"
 fi
-sudo chown qemu-libvirtd:qemu-libvirtd /var/lib/libvirt/images/win10new.qcow2
-sudo chmod 0660 /var/lib/libvirt/images/win10new.qcow2
-sudo virsh define /var/lib/libvirt/win10.xml
+
+# The XML's Windows and VirtIO ISO source paths must also point to existing files.
+sudo virsh define "$VM_XML"
 ```
 
-The helper creates a fresh UUID and MAC when the deployed XML does not exist. If it already exists, the helper makes a timestamped backup, preserves the existing VM settings and changes only the two GPU/audio PCI addresses. It refuses to replace a symlink, malformed XML, a different VM domain, or an unsupported disk/PCI layout. It never edits `vm-xml/win10.xml`. Use the disk and ISO filenames that actually exist on your host. The XML's PCI addresses must match `GPU_PCI` and `GPU_AUDIO` in `/etc/nixos/nixos/hooks/qemu`; `install.sh` performs this synchronization when run successfully.
+The helper creates a fresh UUID and MAC when the deployed XML does not exist. If it already exists, the helper makes a timestamped backup, preserves the existing VM settings and changes only the two GPU/audio PCI addresses. It refuses to replace a symlink, malformed XML, a different VM domain, or an unsupported disk/PCI layout. It never edits `vm-xml/win10.xml`. The disk setup above reads the actual primary disk path from the synchronized XML: existing VM disks are preserved and are never auto-created, re-owned, or re-permissioned; a missing disk for an existing VM stops for manual recovery. Automatic creation is limited to the reviewed 120G default path for a new VM. Verify the Windows and VirtIO ISO paths in the deployed XML exist before starting the guest. The XML's PCI addresses must match `GPU_PCI` and `GPU_AUDIO` in `/etc/nixos/nixos/hooks/qemu`; `install.sh` performs this synchronization when run successfully.
 
 The default XML contains two active USB passthrough entries with fixed vendor/product IDs `1532:0098` and `05ac:024f`; they are not detected or substituted automatically by the installer. Confirm with `lsusb` that these IDs identify the devices you intend to pass through, and edit or remove the corresponding USB `<hostdev>` entries in `/var/lib/libvirt/win10.xml` before starting the VM if they do not. The XML intentionally has no emulated graphics console, so verify that the guest has a usable display and input path before handing it the only GPU.
 
