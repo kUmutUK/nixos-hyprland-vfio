@@ -546,13 +546,27 @@ sudo reboot
 > the source template does not update an existing VM definition. Then re-define the active file
 > with `sudo virsh define /var/lib/libvirt/win10.xml`.
 
+> **Check ISO prerequisites before defining or starting the VM.** The default XML expects
+> `Win10_22H2_English_x64v1.iso` and `virtio-win-0.1.285.iso` under
+> `/var/lib/libvirt/images/`. Confirm that both files exist at the exact paths shown by the
+> deployed XML; if you use different filenames or locations, edit those XML source paths first.
+> A missing Windows or VirtIO ISO prevents the VM from starting or completing Windows setup.
+>
 ```bash
 # Run these commands after the first reboot, not from the live ISO.
 # Keep the repository checkout outside /etc/nixos, as described in README.md.
 set -euo pipefail
 REPO="$HOME/nixos-hyprland-vfio"  # change this if the checkout is elsewhere
+VM_XML=/var/lib/libvirt/win10.xml
 test -f "$REPO/scripts/sync-vm-xml.py"
 sudo mkdir -p /var/lib/libvirt/images /var/lib/libvirt/qemu
+
+# Remember whether this is an existing VM before the helper writes/updates its XML.
+if sudo test -e "$VM_XML" || sudo test -L "$VM_XML"; then
+  EXISTING_VM_XML=1
+else
+  EXISTING_VM_XML=0
+fi
 
 # Copy the exact GPU_PCI and GPU_AUDIO values from the deployed /etc/nixos/nixos/hooks/qemu.
 # The helper generates a fresh UUID/MAC for a new XML and preserves an existing VM XML.
@@ -560,19 +574,54 @@ read -rp "GPU display PCI address from /etc/nixos/nixos/hooks/qemu: " GPU_PCI
 read -rp "GPU audio PCI address from /etc/nixos/nixos/hooks/qemu: " GPU_AUDIO
 sudo python3 "$REPO/scripts/sync-vm-xml.py" \
   "$GPU_PCI" "$GPU_AUDIO" \
-  "$REPO/vm-xml/win10.xml" /var/lib/libvirt/win10.xml
+  "$REPO/vm-xml/win10.xml" "$VM_XML"
 
-# Create the qcow2 disk referenced by the XML. Do not overwrite an existing disk.
-if [ ! -f /var/lib/libvirt/images/win10new.qcow2 ]; then
-  sudo qemu-img create -f qcow2 /var/lib/libvirt/images/win10new.qcow2 120G
+# Read the primary disk path from the synchronized XML; do not assume a filename.
+DISK_PATH="$(sudo python3 - "$VM_XML" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+
+root = ET.parse(sys.argv[1]).getroot()
+disks = root.findall("./devices/disk[@device='disk']")
+if len(disks) != 1:
+    raise SystemExit("Expected exactly one primary disk; inspect the VM XML manually.")
+source = disks[0].find("source")
+path = source.get("file") if source is not None else None
+if not path or not path.startswith("/"):
+    raise SystemExit("The primary disk has no absolute file path; inspect the VM XML manually.")
+print(path)
+PY
+)"
+echo "Primary disk path in $VM_XML: $DISK_PATH"
+
+if [ "$EXISTING_VM_XML" -eq 1 ]; then
+  # Never replace or change permissions on a disk belonging to an existing VM.
+  if ! sudo test -f "$DISK_PATH"; then
+    echo "ERROR: Existing VM disk is missing: $DISK_PATH" >&2
+    echo "Restore/find the original disk or repair the XML manually; no replacement was created." >&2
+    exit 1
+  fi
+  echo "Preserving existing VM disk and its permissions: $DISK_PATH"
+  echo "Verify that the configured libvirt/QEMU service can read and write this file before starting the VM."
 else
-  echo "Preserving existing VM disk: /var/lib/libvirt/images/win10new.qcow2"
+  # Only auto-create the reviewed default disk for a genuinely new deployment.
+  if [ "$DISK_PATH" != "/var/lib/libvirt/images/win10new.qcow2" ]; then
+    echo "ERROR: New XML references a non-default disk path: $DISK_PATH" >&2
+    echo "Review its size and create/configure it manually; refusing to guess." >&2
+    exit 1
+  fi
+  if sudo test -e "$DISK_PATH" || sudo test -L "$DISK_PATH"; then
+    echo "ERROR: A disk file already exists but no deployed VM XML was present: $DISK_PATH" >&2
+    echo "Verify the file's identity and configure it manually; refusing to adopt it implicitly." >&2
+    exit 1
+  fi
+  sudo qemu-img create -f qcow2 "$DISK_PATH" 120G
+  sudo chown qemu-libvirtd:qemu-libvirtd "$DISK_PATH"
+  sudo chmod 0660 "$DISK_PATH"
 fi
-# qemu.runAsRoot = false, so set the disk owner and mode explicitly.
-sudo chown qemu-libvirtd:qemu-libvirtd /var/lib/libvirt/images/win10new.qcow2
-sudo chmod 0660 /var/lib/libvirt/images/win10new.qcow2
 
-sudo virsh define /var/lib/libvirt/win10.xml
+# The Windows and VirtIO ISO paths in $VM_XML must already point to existing files.
+sudo virsh define "$VM_XML"
 sudo virsh list --all     # win10 should appear as "shut off"
 ```
 ### Temporary display channel on first start (optional diagnostics)
@@ -602,10 +651,6 @@ VNC listens only on `127.0.0.1`. After testing, shut down the VM and restore the
 XML definition with `sudo virsh define /var/lib/libvirt/win10.xml`. This diagnostic setup is
 only for startup troubleshooting; it is not a permanent gaming configuration.
 
-> ⚠️ **ISO files:** `virsh start win10` requires both `Win10_22H2_English_x64v1.iso` and
-> `virtio-win-0.1.285.iso`; copy them to `/var/lib/libvirt/images/` with
-> `sudo cp <iso> /var/lib/libvirt/images/`.
->
 > ⚠️ **PCI addresses (clean install):** if `install.sh` was not run, both the hook and VM XML
 > use the repository defaults `0000:0b:00.0` / `0000:0b:00.1`. Verify with `lspci -Dnn` that
 > these are the target GPU's display and audio functions. If they differ, update **both** files:
