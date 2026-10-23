@@ -100,12 +100,12 @@ The previously reported successful target-machine build and VM display recovery 
 - Added validation that the response includes a non-empty string `response` property.
 - Removed use of `xargs` as a generic whitespace trimmer, so quotes/backslashes are not reinterpreted. Empty/error responses now fail and are not appended to the translation cache.
 
-### Documentation and language consistency
+### Documentation and language consistency (current state, 2026-10-23)
 
-- Rewrote the English-named `README.md`, `CONTRIBUTING.md`, and `CHANGELOG.md` in English. Preserved the full historical Turkish changelog in the Turkish-named `DEGISIKLIK_GECMISI.md`.
-- Kept `KURULUM.md` in Turkish and translated comments embedded in its command examples into English.
-- Translated installer prompts, warnings, desktop labels, status messages, notifications, service descriptions, and VFIO hook comments into English; translated the remaining LLM-fallback comment in `nixos/home.nix` as well. The translation result itself remains Turkish by design because the OCR utility translates English game text into Turkish.
-- Renamed archived reports with English filenames and replaced obsolete Turkish audit snapshots with English historical summaries. The current audit scope and known limitations are documented here.
+- `README.md`, `CONTRIBUTING.md`, and `CHANGELOG.md` are maintained in English. The root `KURULUM.md` is an English compatibility pointer to `INSTALLATION.md`; it is not the canonical Turkish installation guide.
+- The root `DEGISIKLIK_GECMISI.md` is an English current-state/compatibility summary. The full historical Turkish change log is preserved at `docs/archive/DEGISIKLIK_GECMISI.md`.
+- Installer prompts, warnings, desktop labels, status messages, notifications, service descriptions, and VFIO hook comments are maintained in English. The OCR/game-translation utility intentionally translates recognized English game text into Turkish.
+- Older statements in this report that described the root `KURULUM.md` as Turkish or the root `DEGISIKLIK_GECMISI.md` as the full Turkish history were true only of an earlier project state and were superseded by the documentation migration recorded on 2026-10-19. They should not be treated as descriptions of the current tree.
 
 ## Checks performed in this environment
 
