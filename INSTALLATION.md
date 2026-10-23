@@ -427,10 +427,7 @@ echo "$HYPRLAND_CONFIG"   # /home/localhost/.config/hypr/hyprland.lua
 hyprctl configversion
 hyprctl monitors
 ```
-The Lua configuration keeps the existing gaming rules, Turkish keyboard layout,
-Waybar/notification startup, scratchpads, translation helpers, and optional `mpvpaper`
-services. A real monitor name is used for the output rule; select `preferred` or a fixed
-mode in `hyprlandMonitorMode`.
+The Lua configuration keeps the existing gaming rules, Turkish keyboard layout, scratchpads, translation helpers, and optional `mpvpaper` services. Serpantinum is managed by its upstream NixOS and Home Manager modules and provides the active bar, dock, launcher, system/network/audio panels, clipboard history, and notification center. The old Waybar config is retained as a manual fallback but is not started alongside Serpantinum; Dunst and `nm-applet` are likewise not auto-started to avoid duplicate notification/tray/network surfaces. `hypridle` remains the only idle scheduler, and Serpantinum idle actions are disabled. A real monitor name is used for the output rule; select `preferred` or a fixed mode in `hyprlandMonitorMode`.
 ---
 
 # 🔑 8. Passwords (root + localhost)
@@ -478,6 +475,8 @@ Because `flake.nix` is in the `nixos/` subdirectory rather than the repository r
 path before `#nixos` must include that subdirectory:
 
 ```bash
+# First-time lock: add Serpantinum and its transitive inputs to flake.lock.
+sudo nix flake lock
 # On the first run, review and accept the configured binary cache if trusted.
 sudo nixos-install --flake /mnt/etc/nixos/nixos#nixos
 ```
