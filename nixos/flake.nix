@@ -23,7 +23,7 @@
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
     # Serpantinum is integrated as an upstream Wayland shell, not vendored into
     # this repository. Follow the same nixpkgs revision to avoid a second package set.
-    serpantinum.url = "github:ilyamiro/serpantinum";
+    serpantinum.url = "github:ilyamiro/serpantinum/e0c1d79375bc7adfd01fecb8a4e319d521df1ea9";
     serpantinum.inputs.nixpkgs.follows = "nixpkgs";
     # Keep Hyprland and its companion packages on the same nixpkgs input.
     # A separate version-pinning overlay can create ABI mismatches between
