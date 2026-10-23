@@ -21,6 +21,10 @@
     cachyos-kernel.url = "github:xddxdd/nix-cachyos-kernel/master";
     home-manager.url = "github:nix-community/home-manager";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
+    # Serpantinum is integrated as an upstream Wayland shell, not vendored into
+    # this repository. Follow the same nixpkgs revision to avoid a second package set.
+    serpantinum.url = "github:ilyamiro/serpantinum";
+    serpantinum.inputs.nixpkgs.follows = "nixpkgs";
     # Keep Hyprland and its companion packages on the same nixpkgs input.
     # A separate version-pinning overlay can create ABI mismatches between
     # Hyprland and clients built against the system package set.
@@ -31,7 +35,7 @@
     # together with matching environment.persistence and Home Manager settings.
   };
 
-  outputs = { self, nixpkgs, cachyos-kernel, home-manager, lsfg-vk-flake, ... }:
+  outputs = { self, nixpkgs, cachyos-kernel, home-manager, lsfg-vk-flake, serpantinum, ... }:
   let
     system = "x86_64-linux";
     pkgs = nixpkgs.legacyPackages.${system};
@@ -42,7 +46,13 @@
       modules = [
         home-manager.nixosModules.home-manager
         lsfg-vk-flake.nixosModules.default
+        serpantinum.nixosModules.default
 
+        # Pass the external flake to the Home Manager user module for the
+        # Serpantinum Home Manager module import.
+        ({ ... }: {
+          home-manager.extraSpecialArgs = { inherit serpantinum; };
+        })
         ({ pkgs, ... }: {
           nixpkgs.config.allowUnfree = true;
           # Keep the CachyOS kernel and patch set on the upstream pinned nixpkgs revision.
