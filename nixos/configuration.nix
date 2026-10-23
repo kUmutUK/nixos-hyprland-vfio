@@ -253,6 +253,10 @@ in
   programs.fish.enable = true;
   programs.hyprland.enable = true;
   programs.hyprland.xwayland.enable = true;
+
+  # System prerequisites for the Serpantinum Wayland shell. Its user-side UI
+  # and service are managed by the Home Manager module in home.nix.
+  programs.serpantinum.enable = true;
   xdg.portal = {
     enable = true;
     extraPortals = with pkgs; [ xdg-desktop-portal-hyprland xdg-desktop-portal-gtk ];
