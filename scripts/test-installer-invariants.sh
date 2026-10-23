@@ -5,6 +5,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 INSTALLER="$ROOT/install.sh"
 README="$ROOT/README.md"
+CONTRIBUTING="$ROOT/CONTRIBUTING.md"
 ENGLISH_GUIDE="$ROOT/INSTALLATION.md"
 CONFIG="$ROOT/nixos/configuration.nix"
 FLAKE="$ROOT/nixos/flake.nix"
@@ -388,6 +389,22 @@ if grep -Eq '^[[:space:]]*loginctl[[:space:]]+terminate-user' "$HOOK" || ! grep 
 fi
 if ! grep -Fq 'Target-system validation update — 2026-10-23' "$README" || ! grep -Fq 'RT-Bore-LTO ThinLTO kernel compiled successfully' "$README"; then
   echo "FAIL: README must record the latest owner-reported RT-Bore-LTO target-system validation." >&2
+  exit 1
+fi
+if ! grep -Fq 'On 2026-10-16' "$README" || grep -Fq 'The current RT-Bore-LTO variant has not yet been built or tested' "$README"; then
+  echo "FAIL: README must keep the 2026-10-16 BORE-LTO result explicitly historical." >&2
+  exit 1
+fi
+if ! grep -Fq 'In a later update dated 2026-10-23' "$CONTRIBUTING" || ! grep -Fq 'RT-Bore-LTO ThinLTO' "$CONTRIBUTING"; then
+  echo "FAIL: CONTRIBUTING.md must describe the latest owner-reported RT-Bore-LTO validation." >&2
+  exit 1
+fi
+if ! grep -Fq 'Target-system validation update — 23 October 2026' "$ENGLISH_GUIDE" || grep -Fq 'current RT-Bore-LTO kernel has not yet been validated' "$ENGLISH_GUIDE"; then
+  echo "FAIL: INSTALLATION.md must distinguish the historical result from the latest RT-Bore-LTO validation." >&2
+  exit 1
+fi
+if ! grep -Fq 'Monitor output name (for Hyprland monitor rule and mpvpaper wallpaper)' "$INSTALLER"; then
+  echo "FAIL: the monitor prompt must explain that the setting affects both the Hyprland rule and mpvpaper." >&2
   exit 1
 fi
 if ! grep -Fq 'not published in the upstream CachyOS binary cache' "$README"; then
