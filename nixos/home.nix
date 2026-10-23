@@ -311,15 +311,23 @@ pywal16Fixed = pkgs.pywal16.overridePythonAttrs (_: {
 
     -- Applications and utility bindings.
     -- Keep Rofi on Super+A for backwards compatibility; Serpantinum owns the
-    -- dedicated launcher/system/network/media/clipboard/notification overlays.
+    -- dedicated launcher/system/network/media/volume/calendar/wallpaper,
+    -- clipboard/notification overlays. These use documented Serpantinum CLI targets.
     hl.bind(mainMod .. " + SPACE", hl.dsp.exec_cmd("serpantinum msg toggle launcher"))
     hl.bind(mainMod .. " + I", hl.dsp.exec_cmd("serpantinum msg toggle system"))
     hl.bind(mainMod .. " + N", hl.dsp.exec_cmd("serpantinum msg toggle network"))
     hl.bind(mainMod .. " + M", hl.dsp.exec_cmd("serpantinum msg toggle music"))
+    hl.bind(mainMod .. " + SHIFT + M", hl.dsp.exec_cmd("serpantinum msg toggle volume"))
+    hl.bind(mainMod .. " + O", hl.dsp.exec_cmd("serpantinum msg toggle calendar"))
+    hl.bind(mainMod .. " + W", hl.dsp.exec_cmd(${builtins.toJSON "${config.home.homeDirectory}/.local/bin/serpantinum-wallpaper-picker"}))
     hl.bind(mainMod .. " + SHIFT + V", hl.dsp.exec_cmd("serpantinum msg toggle clipboard"))
     hl.bind(mainMod .. " + SHIFT + N", hl.dsp.exec_cmd("serpantinum msg toggle notifications"))
     hl.bind(mainMod .. " + SHIFT + I", hl.dsp.exec_cmd("serpantinum msg toggle settings keybinds"))
     hl.bind(mainMod .. " + SHIFT + B", hl.dsp.exec_cmd("serpantinum msg toggle autohide"))
+    hl.bind(mainMod .. " + SHIFT + D", hl.dsp.exec_cmd("serpantinum set dnd toggle"))
+    hl.bind(mainMod .. " + R", hl.dsp.exec_cmd("serpantinum screenshot"))
+    hl.bind(mainMod .. " + SHIFT + R", hl.dsp.exec_cmd("serpantinum screenshot --record"))
+    hl.bind(mainMod .. " + ALT + R", hl.dsp.exec_cmd("serpantinum screenshot --scan-qr"))
     hl.bind(mainMod .. " + A", hl.dsp.exec_cmd("rofi -show drun"))
     hl.bind(mainMod .. " + C", hl.dsp.exec_cmd("kitty"))
     hl.bind(mainMod .. " + Q", hl.dsp.window.close())
@@ -376,6 +384,9 @@ pywal16Fixed = pkgs.pywal16.overridePythonAttrs (_: {
     hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+"), { locked = true, repeating = true })
     hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"), { locked = true, repeating = true })
     hl.bind("XF86AudioMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"), { locked = true })
+    hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd("serpantinum volume mic-toggle"), { locked = true })
+    hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd("serpantinum brightness raise"), { locked = true, repeating = true })
+    hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("serpantinum brightness lower"), { locked = true, repeating = true })
     hl.bind(mainMod .. " + SHIFT + C", hl.dsp.exec_cmd(${builtins.toJSON hyprpickerCommand}))
     hl.bind(mainMod .. " + SHIFT + E", hl.dsp.exit())
     hl.bind(mainMod .. " + Y", hl.dsp.exec_cmd(${builtins.toJSON "${config.home.homeDirectory}/.config/hypr/scripts/toggle-wuwa.sh"}))
@@ -707,6 +718,12 @@ in
 {
   imports = [ serpantinum.homeManagerModules.default ];
 
+  # Serpantinum's wallpaper picker expects its configured directory to exist.
+  # Create the directory declaratively without downloading or overwriting user wallpapers.
+  home.activation.serpantinumWallpaperDirectory = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    run mkdir -p ${lib.escapeShellArg (config.home.homeDirectory + "/Pictures/Wallpapers")}
+  '';
+
   programs.serpantinum = {
     enable = true;
     systemd.enable = true;
@@ -718,19 +735,31 @@ in
         weatherUnit = "metric";
         weatherInterval = 30;
         muteSfx = true;
+        quickactions = true;
+        # Prefer release-to-capture for the shell's screenshot overlay.
+        screenshotCaptureOnRelease = true;
+        # Keep settings as an overlay rather than a tiled standalone window.
+        settingsSeparateWindow = false;
       };
 
       bar = {
         position = "top";
         width = 100;
+        opacity = 96;
         style = "modular";
         workspaceCount = 10;
+        hideEmptyWorkspaces = false;
+        mediaWidth = 160;
+        mediaShowControls = true;
+        # Do not expose SSIDs or paired-device aliases in screen recordings.
+        wifiShowName = false;
+        btShowName = false;
         workspacesStyle = "pills";
         timeStyle = "classic";
         time = { format = "HH:mm"; };
         timeShowDate = true;
         sysmonStyle = "wave";
-        sysmonStats = [ "cpu" "ram" "temp" ];
+        sysmonStats = [ "cpu" "ram" "temp" "disk" ];
         # This is a desktop, so no laptop battery module. Weather is omitted to
         # avoid background location lookups; time, system stats and connectivity remain.
         modules = {
@@ -782,6 +811,11 @@ in
         autohide = true;
         smartAutohide = true;
         autohideTimeout = 800;
+        enableScrolling = true;
+        visibleElements = 7;
+        cascadeScale = true;
+        focusRunning = true;
+        showRunningIndicators = true;
         showRunningApps = true;
         runningScope = "workspace";
         apps = [
@@ -791,6 +825,20 @@ in
           { name = "Steam"; comment = "Games"; desktop_id = "steam.desktop"; icon = "steam"; }
         ];
       };
+
+      osd = {
+        horizontalPosition = 50;
+        verticalPosition = 88;
+        orientation = "horizontal";
+        showCapsLock = true;
+        showNumLock = true;
+        # Desktop hardware: do not show the laptop-oriented airplane-mode OSD.
+        showAirplane = false;
+        attachToBar = false;
+      };
+
+      widgets.hideBarInRedactor = true;
+      inputs.passwordReveal = true;
 
       notifications = {
         dnd = false;
@@ -1419,6 +1467,13 @@ done
         echo "{\"text\": \"🌡️ N/A\", \"class\": \"error\"}"
       fi
     '';
+  };
+
+  # Pause the optional video wallpaper before opening Serpantinum's static
+  # wallpaper picker, otherwise two wallpaper surfaces may cover each other.
+  home.file.".local/bin/serpantinum-wallpaper-picker" = {
+    source = ../scripts/serpantinum-wallpaper-picker;
+    executable = true;
   };
 
   # mpvpaper watchdog unit; `BindsTo` was removed.
