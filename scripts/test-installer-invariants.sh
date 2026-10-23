@@ -417,6 +417,30 @@ if grep -Rqi waypaper "$CONFIG" "$HOME_CONFIG" "$ROOT/install.sh" "$ROOT/.github
   exit 1
 fi
 
+if ! grep -Fq 'serpantinum.url = "github:ilyamiro/serpantinum";' "$FLAKE" \
+  || ! grep -Fq 'serpantinum.nixosModules.default' "$FLAKE" \
+  || ! grep -Fq 'home-manager.extraSpecialArgs = { inherit serpantinum; };' "$FLAKE" \
+  || ! grep -Fq 'serpantinum.homeManagerModules.default' "$HOME_CONFIG" \
+  || ! grep -Fq 'programs.serpantinum.enable = true;' "$CONFIG"; then
+  echo "FAIL: Serpantinum must be integrated through the upstream NixOS/Home Manager modules." >&2
+  exit 1
+fi
+if ! grep -Fq 'serpantinum msg toggle launcher' "$HOME_CONFIG" \
+  || ! grep -Fq 'serpantinum msg toggle notifications' "$HOME_CONFIG" \
+  || ! grep -Fq 'wl-paste --type text --watch cliphist store' "$HOME_CONFIG" \
+  || ! grep -Fq 'wl-paste --type image --watch cliphist store' "$HOME_CONFIG"; then
+  echo "FAIL: Serpantinum launcher/notifications and typed clipboard watchers must be configured." >&2
+  exit 1
+fi
+if grep -Eq 'hl\.exec_cmd\("(waybar|dunst|nm-applet)([[:space:]]|\")' "$HOME_CONFIG"; then
+  echo "FAIL: duplicate Waybar/Dunst/NetworkManager applet autostart must not run with Serpantinum." >&2
+  exit 1
+fi
+if ! grep -Fq 'idle.enabled = false;' "$HOME_CONFIG" || ! grep -Fq 'matugen = false;' "$HOME_CONFIG"; then
+  echo "FAIL: Serpantinum must not duplicate Hypridle scheduling or theme from the live video wallpaper." >&2
+  exit 1
+fi
+
 if grep -Fq '`lspci -nn`' "$INSTALLER"; then
   echo "FAIL: installer error text must not execute lspci using command substitution." >&2
   exit 1
