@@ -81,7 +81,7 @@ sudo nixos-install --flake /mnt/etc/nixos/nixos#nixos
 
 - Replace `nixos/hardware-configuration.nix` with the file generated for the target machine. The repository's original UUIDs and device paths are machine-specific; never use them blindly.
 - Confirm `/mnt/etc/nixos/hashedPassword` exists and has permissions `0600`. Do not commit this file.
-- Review the CachyOS binary-cache trust prompt before accepting it. The flake follows the upstream `master` branch and uses `overlays.pinned`; no kernel version is hard-coded in `flake.nix`. `nixos/flake.lock` records the resolved input revision. RT-Bore-LTO's LTO variant is not in the upstream binary cache, so expect a local kernel build.
+- Review the Nix Community binary-cache trust prompt before accepting it. The current flake configures `https://nix-community.cachix.org`; it does not configure the upstream CachyOS Attic cache. The flake follows the upstream `master` branch for CachyOS and uses `overlays.pinned`; no kernel version is hard-coded in `flake.nix`, and `nixos/flake.lock` records the resolved input revision. RT-Bore-LTO ThinLTO is not published in the upstream CachyOS binary cache, so expect a local kernel build.
 
   To update the running system after its first boot, first save the deployed lock, then update only this input and inspect the diff before rebuilding:
 
@@ -514,6 +514,10 @@ bash scripts/test-installer-rollback.sh
 > **Scope: this result applies to the previous standard BORE-LTO kernel, not the newly selected RT-Bore-LTO kernel.**
 >
 > The project owner reported that GitHub Actions CI was green, the NixOS rebuild and standard BORE-LTO kernel build completed successfully, the Windows VM started, and after a normal VM shutdown the host display and Hyprland session returned. This owner-reported result documents the earlier kernel and hardware state; it was not independently reproduced during this audit. The current RT-Bore-LTO variant has not yet been built or tested on the target system. Re-test kernel boot, VM start, normal shutdown, display recovery, and a second VM start after the RT-Bore-LTO build succeeds.
+
+### Target-system validation update — 2026-10-23
+
+> The project owner now reports that NixOS rebuilt successfully, the RT-Bore-LTO ThinLTO kernel compiled successfully, the Windows VM started and shut down normally, and control returned to Hyprland. This is owner-reported validation on the target machine, not independent reproduction and not a guarantee for other hardware.
 
 ## License
 
