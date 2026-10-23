@@ -1,4 +1,4 @@
-{ config, pkgs, lib, serpantinum, ... }:
+{ config, pkgs, lib, ... }:
 
 let
   gitName            = "changeme";
@@ -55,15 +55,12 @@ pywal16Fixed = pkgs.pywal16.overridePythonAttrs (_: {
   # this avoids hand-written Lua/shell quoting bugs during the hyprlang -> Lua migration.
   hyprlockCommand = "${pkgs.hyprlock}/bin/hyprlock";
   hyprpickerCommand = "${pkgs.hyprpicker}/bin/hyprpicker -a && notify-send 'Color' \"$(wl-paste)\" -t 2000";
-  # Use the freedesktop notification D-Bus API instead of dunstctl, because
-  # Serpantinum now owns org.freedesktop.Notifications for this session.
-  closeNotificationCommand = "${pkgs.glib}/bin/gdbus call --session --dest org.freedesktop.Notifications --object-path /org/freedesktop/Notifications --method org.freedesktop.Notifications.CloseNotification";
   pcmanfmDesktopCommand = "${pkgs.pcmanfm}/bin/pcmanfm --desktop";
   hyprpolkitagentCommand = "${pkgs.hyprpolkitagent}/bin/hyprpolkitagent";
   clipboardTranslateCommand = "sh -c 'T=$(grim -g \"$(slurp)\" - | tesseract - stdout -l eng 2>/dev/null | trans -b :tr); [ -n \"$T\" ] && notify-send -t 10000 \"Translation\" \"$T\"'";
   screenshotCommand = "grim -g \"$(slurp)\" - | wl-copy";
   sattyScreenshotCommand = "grim -g \"$(slurp)\" - | satty -f - | wl-copy";
-  systemdEnvironmentCommand = "${pkgs.bash}/bin/bash -c 'systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE HYPRLAND_INSTANCE_SIGNATURE HYPRLAND_DISPLAY; dbus-update-activation-environment --systemd --all; systemctl --user restart serpantinum.service; systemctl --user start gamemode-notify; if [ -n \"$1\" ]; then systemctl --user start mpvpaper-watchdog; fi' sh ${lib.escapeShellArg monitorOutput}";
+  systemdEnvironmentCommand = "${pkgs.bash}/bin/bash -c 'systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE HYPRLAND_INSTANCE_SIGNATURE HYPRLAND_DISPLAY; dbus-update-activation-environment --systemd --all; systemctl --user start gamemode-notify; if [ -n \"$1\" ]; then systemctl --user start mpvpaper-watchdog; fi' sh ${lib.escapeShellArg monitorOutput}";
   wallpaperMissingCommand = "${pkgs.bash}/bin/bash -c 'if [ -n \"$2\" ] && [ ! -e \"$1\" ]; then notify-send -t 15000 -u critical \"mpvpaper\" \"Live wallpaper file not found: $1. Change wallpaperVideo in home.nix, then restart mpvpaper-watchdog.\"; fi' sh ${lib.escapeShellArg wallpaperVideo} ${lib.escapeShellArg monitorOutput}";
   monitorValidationCommand = "${pkgs.bash}/bin/bash -c 'if [ -n \"$1\" ] && ! hyprctl monitors 2>/dev/null | grep -Fq -- \"Monitor $1 (\"; then notify-send -t 15000 -u critical \"mpvpaper\" \"Monitor output not found: $1. Set monitorOutput in home.nix to the exact hyprctl monitors name.\"; fi' sh ${lib.escapeShellArg monitorOutput}";
 
@@ -310,24 +307,6 @@ pywal16Fixed = pkgs.pywal16.overridePythonAttrs (_: {
     hl.animation({ leaf = "specialWorkspace", enabled = true, speed = 6, bezier = "overshot", style = "slidevert" })
 
     -- Applications and utility bindings.
-    -- Keep Rofi on Super+A for backwards compatibility; Serpantinum owns the
-    -- dedicated launcher/system/network/media/volume/calendar/wallpaper,
-    -- clipboard/notification overlays. These use documented Serpantinum CLI targets.
-    hl.bind(mainMod .. " + SPACE", hl.dsp.exec_cmd("serpantinum msg toggle launcher"))
-    hl.bind(mainMod .. " + I", hl.dsp.exec_cmd("serpantinum msg toggle system"))
-    hl.bind(mainMod .. " + N", hl.dsp.exec_cmd("serpantinum msg toggle network"))
-    hl.bind(mainMod .. " + M", hl.dsp.exec_cmd("serpantinum msg toggle music"))
-    hl.bind(mainMod .. " + SHIFT + M", hl.dsp.exec_cmd("serpantinum msg toggle volume"))
-    hl.bind(mainMod .. " + O", hl.dsp.exec_cmd("serpantinum msg toggle calendar"))
-    hl.bind(mainMod .. " + W", hl.dsp.exec_cmd(${builtins.toJSON "${config.home.homeDirectory}/.local/bin/serpantinum-wallpaper-picker"}))
-    hl.bind(mainMod .. " + SHIFT + V", hl.dsp.exec_cmd("serpantinum msg toggle clipboard"))
-    hl.bind(mainMod .. " + SHIFT + N", hl.dsp.exec_cmd("serpantinum msg toggle notifications"))
-    hl.bind(mainMod .. " + SHIFT + I", hl.dsp.exec_cmd("serpantinum msg toggle settings keybinds"))
-    hl.bind(mainMod .. " + SHIFT + B", hl.dsp.exec_cmd("serpantinum msg toggle autohide"))
-    hl.bind(mainMod .. " + SHIFT + D", hl.dsp.exec_cmd("serpantinum set dnd toggle"))
-    hl.bind(mainMod .. " + R", hl.dsp.exec_cmd("serpantinum screenshot"))
-    hl.bind(mainMod .. " + SHIFT + R", hl.dsp.exec_cmd("serpantinum screenshot --record"))
-    hl.bind(mainMod .. " + ALT + R", hl.dsp.exec_cmd("serpantinum screenshot --scan-qr"))
     hl.bind(mainMod .. " + A", hl.dsp.exec_cmd("rofi -show drun"))
     hl.bind(mainMod .. " + C", hl.dsp.exec_cmd("kitty"))
     hl.bind(mainMod .. " + Q", hl.dsp.window.close())
@@ -368,9 +347,6 @@ pywal16Fixed = pkgs.pywal16.overridePythonAttrs (_: {
     hl.bind(mainMod .. " + CTRL + J", hl.dsp.window.resize({ x = 0, y = 50, relative = true }))
     hl.bind(mainMod .. " + CTRL + K", hl.dsp.window.resize({ x = 0, y = -50, relative = true }))
 
-    -- Keep critical workspace navigation on Hyprland's native IPC so it
-    -- remains functional even if the optional desktop shell is restarting.
-    -- Serpantinum listens to the compositor and updates its workspace pills.
     -- Workspaces 1-10 (Super+0 is workspace 10).
     for i = 1, 10 do
         local key = i % 10
@@ -384,9 +360,6 @@ pywal16Fixed = pkgs.pywal16.overridePythonAttrs (_: {
     hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+"), { locked = true, repeating = true })
     hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"), { locked = true, repeating = true })
     hl.bind("XF86AudioMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"), { locked = true })
-    hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd("serpantinum volume mic-toggle"), { locked = true })
-    hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd("serpantinum brightness raise"), { locked = true, repeating = true })
-    hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("serpantinum brightness lower"), { locked = true, repeating = true })
     hl.bind(mainMod .. " + SHIFT + C", hl.dsp.exec_cmd(${builtins.toJSON hyprpickerCommand}))
     hl.bind(mainMod .. " + SHIFT + E", hl.dsp.exit())
     hl.bind(mainMod .. " + Y", hl.dsp.exec_cmd(${builtins.toJSON "${config.home.homeDirectory}/.config/hypr/scripts/toggle-wuwa.sh"}))
@@ -425,16 +398,15 @@ pywal16Fixed = pkgs.pywal16.overridePythonAttrs (_: {
         size = { "monitor_w * 0.6", "monitor_h * 0.6" },
     })
 
-    -- Start the remaining desktop tools once, after Hyprland has initialized.
-    -- Serpantinum is supervised by its Home Manager user service; the session
-    -- environment helper restarts that service after importing Wayland variables.
-    -- Its own tray/network/notification interfaces replace Waybar, nm-applet and Dunst
-    -- startup here, while the old Waybar files remain available as a manual fallback.
+    -- Start the existing desktop tools once, after Hyprland has initialized.
+    -- Environment import precedes the optional mpvpaper watchdog start.
     hl.on("hyprland.start", function()
         hl.exec_cmd(${builtins.toJSON pcmanfmDesktopCommand})
         hl.exec_cmd("hyprctl setcursor Plus-Cursor 20")
-        hl.exec_cmd("wl-paste --type text --watch cliphist store")
-        hl.exec_cmd("wl-paste --type image --watch cliphist store")
+        hl.exec_cmd("waybar")
+        hl.exec_cmd("dunst")
+        hl.exec_cmd("wl-paste --watch cliphist store")
+        hl.exec_cmd("nm-applet --indicator")
         hl.exec_cmd(${builtins.toJSON hyprpolkitagentCommand})
         hl.exec_cmd("pypr")
         hl.exec_cmd(${builtins.toJSON systemdEnvironmentCommand})
@@ -716,142 +688,6 @@ pywal16Fixed = pkgs.pywal16.overridePythonAttrs (_: {
   };
 in
 {
-  imports = [ serpantinum.homeManagerModules.default ];
-
-  # Serpantinum's wallpaper picker expects its configured directory to exist.
-  # Create the directory declaratively without downloading or overwriting user wallpapers.
-  home.activation.serpantinumWallpaperDirectory = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    run mkdir -p ${lib.escapeShellArg (config.home.homeDirectory + "/Pictures/Wallpapers")}
-  '';
-
-  programs.serpantinum = {
-    enable = true;
-    systemd.enable = true;
-    settings = {
-      wallpaperDir = "${config.home.homeDirectory}/Pictures/Wallpapers";
-
-      general = {
-        language = "tr";
-        weatherUnit = "metric";
-        weatherInterval = 30;
-        muteSfx = true;
-        quickactions = true;
-        # Prefer release-to-capture for the shell's screenshot overlay.
-        screenshotCaptureOnRelease = true;
-        # Keep settings as an overlay rather than a tiled standalone window.
-        settingsSeparateWindow = false;
-      };
-
-      bar = {
-        position = "top";
-        width = 100;
-        opacity = 96;
-        style = "modular";
-        workspaceCount = 10;
-        hideEmptyWorkspaces = false;
-        mediaWidth = 160;
-        mediaShowControls = true;
-        # Do not expose SSIDs or paired-device aliases in screen recordings.
-        wifiShowName = false;
-        btShowName = false;
-        workspacesStyle = "pills";
-        timeStyle = "classic";
-        time = { format = "HH:mm"; };
-        timeShowDate = true;
-        sysmonStyle = "wave";
-        sysmonStats = [ "cpu" "ram" "temp" "disk" ];
-        # This is a desktop, so no laptop battery module. Weather is omitted to
-        # avoid background location lookups; time, system stats and connectivity remain.
-        modules = {
-          left = [ "workspaces" "media" ];
-          center = [ [ "timedate" "info" ] ];
-          right = [ "tray" [ "kb" "wifi" "bt" "vol" ] "sysmon" ];
-        };
-      };
-
-      theme = {
-        fontFamily = "JetBrainsMono Nerd Font";
-        borderRadius = 12;
-        activePreset = "Catppuccin Mocha";
-        # Preserve the existing rose / teal / gold palette and avoid Matugen
-        # repeatedly extracting colors from the configured live video wallpaper.
-        matugen = false;
-        colors = {
-          base = "#1B1E25";
-          surface0 = "#1B1E25";
-          surface1 = "#232936";
-          surface2 = "#2F364A";
-          text = "#CCD9FF";
-          mauve = "#EAB2C2";
-          blue = "#76C4D7";
-          sapphire = "#76C4D7";
-          green = "#97D5E2";
-          peach = "#D9C95E";
-          red = "#EAB2C2";
-          crust = "#1B1E25";
-          mantle = "#1B1E25";
-        };
-      };
-
-      launcher = {
-        position = "center";
-        terminalCommand = "kitty -e";
-        itemCount = 8;
-        smartRanking = true;
-      };
-
-      dock = {
-        enabled = true;
-        position = "bottom";
-        floating = true;
-        exclusive = false;
-        opacity = 96;
-        elementSize = 42;
-        hoverScale = 115;
-        autohide = true;
-        smartAutohide = true;
-        autohideTimeout = 800;
-        enableScrolling = true;
-        visibleElements = 7;
-        cascadeScale = true;
-        focusRunning = true;
-        showRunningIndicators = true;
-        showRunningApps = true;
-        runningScope = "workspace";
-        apps = [
-          { name = "Kitty"; comment = "Terminal"; desktop_id = "kitty.desktop"; icon = "kitty"; }
-          { name = "Dolphin"; comment = "File manager"; desktop_id = "org.kde.dolphin.desktop"; icon = "system-file-manager"; }
-          { name = "Brave"; comment = "Web browser"; desktop_id = "brave-browser.desktop"; icon = "brave-browser"; }
-          { name = "Steam"; comment = "Games"; desktop_id = "steam.desktop"; icon = "steam"; }
-        ];
-      };
-
-      osd = {
-        horizontalPosition = 50;
-        verticalPosition = 88;
-        orientation = "horizontal";
-        showCapsLock = true;
-        showNumLock = true;
-        # Desktop hardware: do not show the laptop-oriented airplane-mode OSD.
-        showAirplane = false;
-        attachToBar = false;
-      };
-
-      widgets.hideBarInRedactor = true;
-      inputs.passwordReveal = true;
-
-      notifications = {
-        dnd = false;
-        position = "top right";
-        sound = false;
-      };
-
-      # Hypridle already owns the machine's lock/DPMS/suspend timeouts. Disable
-      # Serpantinum's parallel idle scheduler to avoid double-locking/suspending.
-      idle.enabled = false;
-    };
-  };
-
   home.username = "localhost";
   home.homeDirectory = "/home/localhost";
   home.stateVersion = "26.05";
@@ -1348,7 +1184,7 @@ while true; do
             [ -n "$TRANSLATION_MAIN" ] && notify-send -r 9999 "💬 Wuwa AI (Captions)" "$TRANSLATION_MAIN"
         fi
     else
-        [ -n "$LAST_MAIN" ] && { LAST_MAIN=""; ${closeNotificationCommand} 9999 >/dev/null 2>&1 || true; }
+        [ -n "$LAST_MAIN" ] && { LAST_MAIN=""; dunstctl close 9999 2>/dev/null || true; }
     fi
     rm -f "$IMAGE_MAIN" 2>/dev/null
 
@@ -1375,7 +1211,7 @@ while true; do
             [ -n "$TRANSLATION_CHOICE" ] && notify-send -r 9998 "💡 Wuwa AI (Choices)" "$TRANSLATION_CHOICE"
         fi
     else
-        [ -n "$LAST_CHOICE" ] && { LAST_CHOICE=""; ${closeNotificationCommand} 9998 >/dev/null 2>&1 || true; }
+        [ -n "$LAST_CHOICE" ] && { LAST_CHOICE=""; dunstctl close 9998 2>/dev/null || true; }
     fi
     rm -f "$IMAGE_CHOICE" 2>/dev/null
 
@@ -1416,7 +1252,7 @@ while true; do
         # only the translated output.
         TRANSLATION=$(trans -b :tr "$CURRENT_SELECTION" 2>/dev/null)
 
-        # Display successful translations through the desktop notification service.
+        # Display successful translations using Dunst.
         if [ -n "$TRANSLATION" ]; then
             # Reuse notification ID 9997 so the notification is updated instead of stacked.
             notify-send -r 9997 "Translation:" "$TRANSLATION"
@@ -1467,13 +1303,6 @@ done
         echo "{\"text\": \"🌡️ N/A\", \"class\": \"error\"}"
       fi
     '';
-  };
-
-  # Pause the optional video wallpaper before opening Serpantinum's static
-  # wallpaper picker, otherwise two wallpaper surfaces may cover each other.
-  home.file.".local/bin/serpantinum-wallpaper-picker" = {
-    source = ../scripts/serpantinum-wallpaper-picker;
-    executable = true;
   };
 
   # mpvpaper watchdog unit; `BindsTo` was removed.
@@ -1811,7 +1640,7 @@ done
 
     gamemode-notify = {
       Unit = {
-        Description = "Notify about GameMode state changes through the desktop notification service.";
+        Description = "Notify about GameMode state changes through Dunst.";
         After = [ "graphical-session-pre.target" ];
         PartOf = [ "graphical-session.target" ];
       };
