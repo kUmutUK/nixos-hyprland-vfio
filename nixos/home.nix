@@ -444,36 +444,36 @@ pywal16Fixed = pkgs.pywal16.overridePythonAttrs (_: {
     label {
         position = 0, 150; halign = center; valign = center;
         text =  $TIME; font_family = JetBrainsMono Nerd Font; font_size = 80;
-        font_color = rgba(204, 217, 255, 1.0); shadow_passes = 0;
+        color = rgba(204, 217, 255, 1.0); shadow_passes = 0;
     }
     label {
         position = 0, 60; halign = center; valign = center;
         text = cmd[update:60000, LC_TIME=en_US.UTF-8 ${pkgs.coreutils}/bin/date +"%d %B %Y"];
         font_family = JetBrainsMono Nerd Font; font_size = 20;
-        font_color = rgba(204, 217, 255, 0.75); shadow_passes = 0;
+        color = rgba(204, 217, 255, 0.75); shadow_passes = 0;
     }
     label {
         position = 0, 10; halign = center; valign = center;
         text =  $USER; font_family = JetBrainsMono Nerd Font; font_size = 15;
-        font_color = rgba(204, 217, 255, 0.65); shadow_passes = 0;
+        color = rgba(204, 217, 255, 0.65); shadow_passes = 0;
     }
     label {
         position = 20, 20; halign = left; valign = top;
         text = cmd[update:2000, ${pkgs.wireplumber}/bin/wpctl get-volume @DEFAULT_AUDIO_SINK@ | ${pkgs.gawk}/bin/awk '{printf "%.0f%%", $2*100}'];
         font_family = JetBrainsMono Nerd Font; font_size = 15;
-        font_color = rgba(217, 201, 94, 1.0); shadow_passes = 0;
+        color = rgba(217, 201, 94, 1.0); shadow_passes = 0;
     }
     label {
         position = 20, 20; halign = right; valign = top;
-        text = cmd[update:5000, ${pkgs.networkmanager}/bin/nmcli -t -f NAME,TYPE,STATE con show --active 2>/dev/null | ${pkgs.gnugrep}/bin/grep -v loopback | ${pkgs.coreutils}/bin/head -1 | ${pkgs.coreutils}/bin/cut -d: -f1 | ${pkgs.findutils}/bin/xargs -I{} echo " {}" || echo " Disconnected"];
+        text = cmd[update:5000, ${pkgs.networkmanager}/bin/nmcli -t -f NAME,TYPE,STATE con show --active 2>/dev/null | ${pkgs.gnugrep}/bin/grep -v loopback | ${pkgs.coreutils}/bin/head -1 | ${pkgs.coreutils}/bin/cut -d: -f1 | ${pkgs.gawk}/bin/awk 'NF { print " " $0; found=1 } END { if (!found) print " Disconnected" }'];
         font_family = JetBrainsMono Nerd Font; font_size = 15;
-        font_color = rgba(118, 196, 215, 1.0); shadow_passes = 0;
+        color = rgba(118, 196, 215, 1.0); shadow_passes = 0;
     }
     label {
         position = 0, -260; halign = center; valign = center;
         text = Unlock the screen to access session shortcuts
         font_family = JetBrainsMono Nerd Font; font_size = 14;
-        font_color = rgba(204, 217, 255, 0.45); shadow_passes = 0;
+        color = rgba(204, 217, 255, 0.45); shadow_passes = 0;
     }
     # Hyprlock 0.9.6 removed the `button` widget, so the old wlogout/suspend buttons
     # were never rendered. The configured `SUPER+SHIFT+E` shortcut still exits Hyprland.
