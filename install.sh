@@ -344,7 +344,7 @@ trim_whitespace() {
   printf '%s' "$value"
 }
 
-read -rp "Monitor output name (for mpvpaper) [${monitor_output:-not detected}]: " input_mon
+read -rp "Monitor output name (for Hyprland monitor rule and mpvpaper wallpaper) [${monitor_output:-not detected}]: " input_mon
 input_mon="$(trim_whitespace "$input_mon")"
 if [[ -n "$input_mon" ]]; then
   monitor_output="$input_mon"
