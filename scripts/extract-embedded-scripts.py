@@ -39,9 +39,21 @@ def extract(lines, index, direct=False):
     if direct:
         start = index  # The body starts immediately after the assignment line.
     else:
-        start = next(
-            (k for k in range(index, len(lines)) if "text = ''" in lines[k]), None
-        )
+        # Search only inside this Nix attribute block. Without this boundary
+        # check a `home.file` entry that uses `source = ...` (rather than
+        # `text = ''`) could accidentally capture the following script block,
+        # making the same embedded script get emitted twice and breaking CI's
+        # exact-count guard.
+        marker_indent = len(lines[index]) - len(lines[index].lstrip())
+        start = None
+        for k in range(index + 1, len(lines)):
+            if "text = ''" in lines[k]:
+                start = k
+                break
+            stripped = lines[k].lstrip()
+            indent = len(lines[k]) - len(stripped)
+            if stripped.startswith("};") and indent <= marker_indent:
+                return None
         if start is None:
             return None
 

@@ -417,7 +417,7 @@ if grep -Rqi waypaper "$CONFIG" "$HOME_CONFIG" "$ROOT/install.sh" "$ROOT/.github
   exit 1
 fi
 
-if ! grep -Fq 'serpantinum.url = "github:ilyamiro/serpantinum";' "$FLAKE" \
+if ! grep -Fq 'serpantinum.url = "github:ilyamiro/serpantinum/e0c1d79375bc7adfd01fecb8a4e319d521df1ea9";' "$FLAKE" \
   || ! grep -Fq 'serpantinum.nixosModules.default' "$FLAKE" \
   || ! grep -Fq 'home-manager.extraSpecialArgs = { inherit serpantinum; };' "$FLAKE" \
   || ! grep -Fq 'serpantinum.homeManagerModules.default' "$HOME_CONFIG" \
@@ -427,9 +427,30 @@ if ! grep -Fq 'serpantinum.url = "github:ilyamiro/serpantinum";' "$FLAKE" \
 fi
 if ! grep -Fq 'serpantinum msg toggle launcher' "$HOME_CONFIG" \
   || ! grep -Fq 'serpantinum msg toggle notifications' "$HOME_CONFIG" \
+  || ! grep -Fq 'serpantinum msg toggle calendar' "$HOME_CONFIG" \
+  || ! grep -Fq 'serpantinum-wallpaper-picker' "$HOME_CONFIG" \
+  || ! grep -Fq 'serpantinum screenshot --record' "$HOME_CONFIG" \
+  || ! grep -Fq 'serpantinum screenshot --scan-qr' "$HOME_CONFIG" \
+  || ! grep -Fq 'serpantinum set dnd toggle' "$HOME_CONFIG" \
+  || ! grep -Fq 'serpantinum volume mic-toggle' "$HOME_CONFIG" \
+  || ! grep -Fq 'serpantinum brightness raise' "$HOME_CONFIG" \
+  || ! grep -Fq 'serpantinum brightness lower' "$HOME_CONFIG" \
   || ! grep -Fq 'wl-paste --type text --watch cliphist store' "$HOME_CONFIG" \
   || ! grep -Fq 'wl-paste --type image --watch cliphist store' "$HOME_CONFIG"; then
-  echo "FAIL: Serpantinum launcher/notifications and typed clipboard watchers must be configured." >&2
+  echo "FAIL: Serpantinum's documented shell actions and typed clipboard watchers must be configured." >&2
+  exit 1
+fi
+if ! grep -Fq 'sysmonStats = [ "cpu" "ram" "temp" "disk" ];' "$HOME_CONFIG" \
+  || ! grep -Fq 'showRunningApps = true;' "$HOME_CONFIG" \
+  || ! grep -Fq 'settingsSeparateWindow = false;' "$HOME_CONFIG" \
+  || ! grep -Fq 'home.activation.serpantinumWallpaperDirectory' "$HOME_CONFIG" \
+  || ! grep -Fq 'source = ../scripts/serpantinum-wallpaper-picker;' "$HOME_CONFIG"; then
+  echo "FAIL: Serpantinum monitoring, dock, settings overlay, or wallpaper-picker integration regressed." >&2
+  exit 1
+fi
+if ! grep -Fq 'systemctl --user stop mpvpaper-watchdog.service mpvpaper.service' "$ROOT/scripts/serpantinum-wallpaper-picker" \
+  || ! grep -Fq 'exec serpantinum msg toggle wallpaper' "$ROOT/scripts/serpantinum-wallpaper-picker"; then
+  echo "FAIL: wallpaper picker must pause competing mpvpaper services before opening the static picker." >&2
   exit 1
 fi
 if grep -Eq 'hl\.exec_cmd\("(waybar|dunst|nm-applet)([[:space:]]|\")' "$HOME_CONFIG"; then
