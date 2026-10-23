@@ -35,7 +35,7 @@ The repository is MIT-licensed and is provided “as is,” without warranty. Us
 | Storage | The reference partitions total 809 GiB: 1 GiB EFI, 8 GiB swap, and an 800 GiB LUKS2/Btrfs volume. Use a disk of at least 810 GiB (about 870 GB decimal); a 1 TB-class disk is recommended. |
 | Filesystems | LUKS2 + Btrfs subvolumes + EFI. Disk swap sits outside the LUKS volume; the reference config encrypts it with a per-activation random key using `randomEncryption.enable = true`. Preserve that option in the generated hardware file for fresh installs. |
 | Kernel | CachyOS RT-Bore-LTO (real-time patch set + BORE scheduler + ThinLTO), selected through the upstream `master` flake input. The kernel version is not hard-coded; the lock file records the selected input revision until you intentionally update it. Upstream does not publish this LTO variant to its binary cache, so it must be built locally. |
-| Desktop shell | [Serpantinum](https://github.com/ilyamiro/serpantinum), integrated through its upstream flake and NixOS/Home Manager modules. The shell adds a bar, dock, launcher, system/network/audio panels, clipboard history, and notification center; Hyprland remains the compositor. |
+| Desktop shell | [Serpantinum](https://github.com/ilyamiro/serpantinum), integrated through its upstream flake and NixOS/Home Manager modules. The shell adds a bar, dock, launcher, system/network/audio panels, calendar and wallpaper picker, clipboard history, notification center, screenshot/recording/QR tools, and volume/brightness shortcuts; Hyprland remains the compositor. |
 
 The active `boot.kernelParams` list does not set `amd_iommu=on` or `iommu=pt`. Enable IOMMU / AMD-Vi in firmware, then verify runtime support instead of assuming that the VFIO configuration alone enables it. The installer requires resolvable IOMMU groups for both the GPU and its audio function and aborts before deploying configuration files if either group is missing. If unrelated devices share a group, the installer requires explicit typed confirmation after showing group members; this confirmation does not make unsafe isolation safe. ACS override is not enabled by default.
 
@@ -75,8 +75,8 @@ sudo chmod 600 /mnt/etc/nixos/hashedPassword
 sudo test -s /mnt/etc/nixos/hashedPassword || { echo "hashedPassword is missing or empty" >&2; exit 1; }
 [ "$(sudo stat -c '%U:%G:%a' /mnt/etc/nixos/hashedPassword)" = "root:root:600" ] || { echo "hashedPassword must be root:root mode 600" >&2; exit 1; }
 cd /mnt/etc/nixos/nixos
-# First-time lock: add Serpantinum and its transitive inputs to flake.lock.
-sudo nix flake lock
+# Verify the committed, pinned flake inputs without changing flake.lock.
+sudo nix flake metadata --no-update-lock-file .
 sudo nixos-install --flake /mnt/etc/nixos/nixos#nixos
 ```
 
@@ -367,8 +367,15 @@ VNC listens only on `127.0.0.1`. Use an SSH tunnel for remote viewing; do not ex
 | `SUPER` + `I` | Serpantinum system panel (resources and power controls) |
 | `SUPER` + `N` | Serpantinum network panel |
 | `SUPER` + `M` | Serpantinum media controls |
+| `SUPER` + `SHIFT+M` | Serpantinum audio mixer and device picker |
+| `SUPER` + `O` | Serpantinum calendar |
+| `SUPER` + `W` | Open Serpantinum wallpaper picker (pauses live mpvpaper for the current session) |
+| `SUPER` + `R` | Serpantinum screenshot / screen-recording overlay |
+| `SUPER` + `SHIFT+R` | Toggle screen recording |
+| `SUPER` + `ALT+R` | Scan a selected region for a QR code |
 | `SUPER` + `SHIFT+V` | Serpantinum clipboard history |
 | `SUPER` + `SHIFT+N` | Serpantinum notification center |
+| `SUPER` + `SHIFT+D` | Toggle Do Not Disturb |
 | `SUPER` + `SHIFT+I` | Serpantinum keybinding/settings guide |
 | `SUPER` + `SHIFT+B` | Toggle Serpantinum bar autohide |
 | `SUPER` + `S` / `SHIFT+S` / `CTRL+S` | Pypr scratchpads: terminal / music / file manager |
@@ -377,6 +384,8 @@ VNC listens only on `127.0.0.1`. Use an SSH tunnel for remote viewing; do not ex
 | `SUPER` + `V` | Toggle floating window |
 | `SUPER` + `Escape` | Lock screen with Hyprlock |
 | `SUPER` + `SHIFT+E` | Exit session |
+| `XF86MonBrightnessUp` / `XF86MonBrightnessDown` | Raise / lower supported monitor backlight |
+| `XF86AudioMicMute` | Toggle microphone mute |
 | `SUPER` + `SHIFT+C` | Hyprpicker color picker |
 | `SUPER` + `G` | Toggle window group |
 | `SUPER` + `Tab` | Previous workspace |
@@ -471,6 +480,8 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 ├── scripts/
 │   ├── extract-embedded-scripts.py
 │   ├── prepare-vm-diagnostic.py
+│   ├── serpantinum-wallpaper-picker
+│   ├── test-flake-lock.py
 │   ├── test-installer-invariants.sh
 │   ├── test-installer-rollback.sh
 │   ├── test-vfio-hook-driver-state.sh
@@ -488,19 +499,22 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
     └── hooks/qemu
 ```
 
-Hyprland's native Lua configuration, Hyprlock, Serpantinum settings, the legacy Waybar fallback, Pyprland, MangoHud, lsfg-vk, and helper scripts are declared inline in `nixos/home.nix`; there is no parallel Hyprland config file to keep in sync. Serpantinum owns the active bar, dock, overlays, and notification service. Waybar/Dunst are not started by default, but their existing files/packages are retained for manual fallback. The existing `hypridle` configuration remains the sole idle/lock/DPMS/suspend scheduler, Serpantinum's idle scheduler is disabled to prevent duplicate timers, and Matugen is disabled so theme extraction does not conflict with the configured live video wallpaper.
+Hyprland's native Lua configuration, Hyprlock, Serpantinum settings, the legacy Waybar fallback, Pyprland, MangoHud, lsfg-vk, and helper scripts are declared inline in `nixos/home.nix`; there is no parallel Hyprland config file to keep in sync. Serpantinum owns the active bar, dock, overlays, and notification service. Its wallpaper directory is created automatically, but wallpaper files remain user-managed. Audio EQ is not forced on by default because it may add processing latency for gaming. Waybar/Dunst are not started by default, but their existing files/packages are retained for manual fallback. The existing `hypridle` configuration remains the sole idle/lock/DPMS/suspend scheduler, Serpantinum's idle scheduler is disabled to prevent duplicate timers, and Matugen is disabled so theme extraction does not conflict with the configured live video wallpaper.
 
 ## Validation
 
 Run from the repository root:
 
 ```bash
+python3 scripts/test-flake-lock.py
 nix develop ./nixos
 find ./nixos -type f -name '*.nix' -print0 | xargs -0 -r -n1 nixfmt
-shellcheck -S warning install.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh
+shellcheck -S warning install.sh nixos/hooks/qemu scripts/serpantinum-wallpaper-picker scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh
 python3 scripts/test-vm-xml.py
 python3 scripts/test-vm-xml-sync.py
+python3 scripts/test-flake-lock.py
 python3 scripts/test-vm-diagnostic.py
+bash -n scripts/serpantinum-wallpaper-picker
 bash scripts/test-vfio-hook-driver-state.sh
 bash scripts/test-installer-invariants.sh
 bash scripts/test-installer-rollback.sh
@@ -516,9 +530,13 @@ bash scripts/test-installer-rollback.sh
   fi
   shellcheck -S warning "${embedded_scripts[@]}"
 )
+# Resolve source-derived hash metadata for the immutable Serpantinum commit.
+(cd nixos && nix flake lock)
+# Read-only evaluation and targeted build now use the resolved lock.
 (cd nixos && nix flake check --no-build --show-trace --no-update-lock-file --option warn-dirty false)
+(cd nixos && nix build --no-link --no-update-lock-file .#nixosConfigurations.nixos.config.virtualisation.libvirtd.hooks.qemu.vfio)
 ```
-`nix flake check --no-build` evaluates the flake but does not build the complete system or kernel. The flags above match the CI evaluation step and prevent lock-file updates during the check. This check does not replace a full build, libvirt domain validation, or a physical GPU lifecycle test.
+`nix flake check --no-build` evaluates the flake but does not build the complete system or kernel. The targeted `nix build` checks only the generated VFIO hook derivation. These checks do not replace a full system build, libvirt domain validation, or a physical GPU lifecycle test.
 
 ### Prior target-system hardware validation — 2026-10-16
 
