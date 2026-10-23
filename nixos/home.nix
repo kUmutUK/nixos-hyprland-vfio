@@ -34,6 +34,17 @@ Inherits=Bibata-Modern-Ice
 EOF
   '';
 
+pywal16Fixed = pkgs.pywal16.overridePythonAttrs (_: {
+  __structuredAttrs = true;
+
+  makeWrapperArgs = [
+    "--prefix"
+    "PATH"
+    ":"
+    (lib.makeBinPath [ pkgs.imagemagick ])
+  ];
+});
+
   # Quote every argument passed to systemd `ExecStart` using systemd's escaping rules.
   # JSON quoting preserves spaces/special characters and escapes `%` and `$` to prevent
   # specifier and environment-variable expansion.
@@ -1652,7 +1663,7 @@ done
     # to the scratchpad. `mpv` is now included in the Home Manager package list.
     mpv
     # Optional tools for the adapted dotfile theme; Pywal is user-invoked (wal -i).
-    eza ranger pywal16
+    eza ranger pywal16Fixed
     fd ripgrep jq wget curl file tree
     # `playerctl`, `wev`, `libnotify`, and `hyprpicker` are installed system-wide
     # in `configuration.nix`; keep them out of this Home Manager list to avoid duplicates.
