@@ -14,6 +14,7 @@ regressions included a Nix escape turning `\\f` into `tr -d 'f'`, and a MANPAGER
 setting that Git did not read.
 """
 
+import argparse
 import os
 import re
 import sys
@@ -95,11 +96,22 @@ def extract(lines, index, direct=False):
 
 
 def main():
-    if len(sys.argv) != 2:
-        sys.stderr.write(__doc__)
-        return 2
-
-    outdir = sys.argv[1]
+    parser = argparse.ArgumentParser(
+        description=(
+            "Extract Bash scripts embedded in nixos/home.nix into standalone "
+            "executable files."
+        ),
+        epilog=(
+            "The paths of extracted scripts are written to stdout, separated "
+            "by NUL bytes, for safe use with xargs -0."
+        ),
+    )
+    parser.add_argument(
+        "output_directory",
+        help="directory in which to write extracted scripts",
+    )
+    args = parser.parse_args()
+    outdir = args.output_directory
     home_nix = os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
         "nixos",
