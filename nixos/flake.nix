@@ -2,9 +2,11 @@
 {
   description = "NixOS CachyOS RT-Bore-LTO Kernel — Gaming + Hyprland + VFIO";
 
-  # Configure the CachyOS binary cache at flake-evaluation time. Nix may ask
-  # whether to trust these settings. Review the cache URL and public key before
-  # accepting; do not pass --accept-flake-config merely to suppress that prompt.
+  # Configure the Nix Community binary cache at flake-evaluation time for
+  # supported packages. This is not the CachyOS kernel cache: the selected
+  # RT-Bore-LTO ThinLTO variant is not published upstream and builds locally.
+  # Review the URL and public key before accepting; do not bypass the prompt
+  # with --accept-flake-config merely to suppress it.
   nixConfig = {
     extra-substituters = [
       "https://nix-community.cachix.org"
