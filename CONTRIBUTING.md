@@ -19,11 +19,10 @@ Run these commands from the repository root:
 
 ```bash
 set -euo pipefail
-for f in install.sh nixos/hooks/qemu scripts/serpantinum-wallpaper-picker scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh; do
+for f in install.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh; do
   bash -n "$f"
 done
-shellcheck -S warning install.sh nixos/hooks/qemu scripts/serpantinum-wallpaper-picker scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh
-python3 scripts/test-flake-lock.py
+shellcheck -S warning install.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh
 python3 -c "import xml.etree.ElementTree as ET; ET.parse('vm-xml/win10.xml')"
 python3 scripts/test-vm-xml.py
 python3 scripts/test-vm-xml-sync.py
@@ -43,10 +42,7 @@ bash scripts/test-vfio-hook-driver-state.sh
   fi
   shellcheck -S warning "${embedded_scripts[@]}"
 )
-# Resolve source-derived hash metadata for the immutable Serpantinum pin first.
-(cd nixos && nix flake lock)
 (cd nixos && nix flake check --no-build --show-trace --no-update-lock-file --option warn-dirty false)
-(cd nixos && nix build --no-link --no-update-lock-file .#nixosConfigurations.nixos.config.virtualisation.libvirtd.hooks.qemu.vfio)
 ```
 
 For changes to NixOS options or kernel inputs, also evaluate the relevant output and, where feasible, run a real `nixos-rebuild dry-activate`. Do not claim that the full kernel or system builds unless the build was actually completed. The `--no-build` CI step only evaluates the flake; the flags above match CI and prevent lock-file updates during evaluation.
