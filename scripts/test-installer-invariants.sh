@@ -386,11 +386,11 @@ if grep -Eq '^[[:space:]]*loginctl[[:space:]]+terminate-user' "$HOOK" || ! grep 
   echo "FAIL: VFIO handoff must preserve remote SSH sessions and terminate only seat0." >&2
   exit 1
 fi
-if ! grep -Fq 'not yet been built or tested on the target system' "$README"; then
-  echo "FAIL: README must clearly mark RT-Bore-LTO as unvalidated until target testing." >&2
+if ! grep -Fq 'Target-system validation update — 2026-10-23' "$README" || ! grep -Fq 'RT-Bore-LTO ThinLTO kernel compiled successfully' "$README"; then
+  echo "FAIL: README must record the latest owner-reported RT-Bore-LTO target-system validation." >&2
   exit 1
 fi
-if ! grep -Fq 'not in the upstream binary cache' "$README"; then
+if ! grep -Fq 'not published in the upstream CachyOS binary cache' "$README"; then
   echo "FAIL: README must disclose that RT-Bore-LTO requires a local build." >&2
   exit 1
 fi
