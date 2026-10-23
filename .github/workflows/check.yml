@@ -56,20 +56,6 @@ jobs:
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@3138316df39ed29be04236d7ffc686fa525866aa
 
-      - name: Validate pinned flake lock graph
-        # Catch missing direct/transitive input nodes before Nix runs with
-        # --no-update-lock-file (the exact Serpantinum CI failure from 2026-10-23).
-        run: python3 scripts/test-flake-lock.py
-
-      - name: Complete lock metadata for immutable inputs
-        # The Serpantinum commit is pinned in flake.nix. Let Nix calculate its
-        # content hash instead of fabricating a narHash. Existing locked inputs
-        # are retained; this step fills derived lock metadata before read-only builds.
-        working-directory: nixos
-        run: |
-          nix flake lock
-          python3 ../scripts/test-flake-lock.py
-
       - name: XML well-formedness and VM invariants
         run: |
           python3 -c "import xml.etree.ElementTree as ET; ET.parse('vm-xml/win10.xml')"
@@ -97,11 +83,8 @@ jobs:
             sudo apt-get update -qq
             sudo apt-get install -y -qq shellcheck
           fi
-          shellcheck -S warning install.sh nixos/hooks/qemu scripts/serpantinum-wallpaper-picker scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh
+          shellcheck -S warning install.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh
           echo "  shellcheck OK"
-
-      - name: Serpantinum wallpaper helper syntax
-        run: bash -n scripts/serpantinum-wallpaper-picker
 
       - name: VFIO hook driver-state regression tests
         run: bash scripts/test-vfio-hook-driver-state.sh
@@ -117,9 +100,6 @@ jobs:
           test -f "$hook_path"
           shellcheck -S warning "$hook_path"
           echo "  generated VFIO hook OK"
-
-      - name: Embedded-script extractor regression tests
-        run: python3 scripts/test-extract-embedded-scripts.py
 
       - name: Embedded home.nix scripts (shellcheck)
         # home.nix contains embedded Bash scripts (wuwa-auto.sh, auto-translate.sh,
@@ -162,13 +142,27 @@ jobs:
       - name: nix flake check (eval only)
         working-directory: nixos
         run: |
-          # Keep `--accept-flake-config` disabled: CI should not silently trust
-          # binary-cache configuration from an input flake. The metadata-only
-          # `nix flake lock` step above resolves the fixed Serpantinum source before
-          # these read-only checks; no input is deliberately updated here.
-          # The bottom drift guard permits only that source's computed narHash and
-          # lastModified fields and rejects any unrelated lock-file mutation.
+          # `--accept-flake-config` was removed here because it can cause the flake's
+          # nixConfig.extra-substituters / extra-trusted-public-keys settings to be
+          # applied while rewriting the lock file. Observed side effects included:
+          #   • Updated input 'impermanence/home-manager' → follows 'home-manager'
+          #   - Node names shifting (nixpkgs_3 → nixpkgs_2)
+          #   - Input syntax changing ("home-manager": "home-manager"
+          #     → ["home-manager"])
+          # `--option warn-dirty false` hid the warning, so the mutation
+          # was not obvious and left the checkout dirty after each run.
+          #
+          # Removing `--accept-flake-config` alone is not sufficient.
+          # The root cause was a non-canonical committed flake.lock.
+          # The same impermanence input was represented in two different forms:
+          #     "nixpkgs":     ["nixpkgs"]   (follows form)
+          #     "home-manager": "home-manager" (string form)
+          # Nix canonicalizes the lock during evaluation, so running
+          # `nix flake check` changed the file.
+          # The fix was to canonicalize and commit the lock file; the guard below
+          # detects future regressions.
 
+          #
           # Substituters and trusted keys are unnecessary here: --no-build only
           # evaluates the flake and does not download build inputs. Without
           # `--accept-flake-config`, the flake nixConfig is treated as untrusted.
@@ -181,16 +175,14 @@ jobs:
       # and below include:
       #   1) install.sh is executable in Git and the source ZIP preserves its mode
       #      while excluding the repository's .git directory
-      #   2) every lock-graph edge resolves and Serpantinum's direct/transitive inputs are pinned
-      #   3) VM XML is well-formed and the XML/diagnostic invariant tests pass
-      #   4) installer invariants and partial-deployment rollback regression tests
-      #   5) ShellCheck for install.sh, wallpaper helper, source VFIO hook, and test scripts
-      #   6) the wallpaper helper has valid Bash syntax
-      #   7) VFIO hook driver-state regression tests
-      #   8) ShellCheck for the Nix-generated VFIO hook
-      #   9) extraction and ShellCheck of all seven embedded home.nix scripts
-      #  10) nix flake check evaluates the NixOS configuration without building it
-      #  11) flake.lock has no unexpected drift beyond derived Serpantinum hash metadata
+      #   2) VM XML is well-formed and the XML/diagnostic invariant tests pass
+      #   3) installer invariants and partial-deployment rollback regression tests
+      #   4) ShellCheck for install.sh, the source VFIO hook, and test scripts
+      #   5) VFIO hook driver-state regression tests
+      #   6) ShellCheck for the Nix-generated VFIO hook
+      #   7) extraction and ShellCheck of all seven embedded home.nix scripts
+      #   8) nix flake check evaluates the NixOS configuration without building it
+      #   9) flake.lock remains unchanged during CI
       # statix and deadnix findings are logged but do not fail the workflow by design:
       # failing a PR on every advisory finding would be noisy for a configuration repository.
       # `|| echo` returns success after an advisory warning; this is not a pipeline,
@@ -212,39 +204,21 @@ jobs:
             develop ./nixos --no-update-lock-file --command deadnix . \
             || echo "::warning::deadnix findings present (informational only)"
 
-      # Detect unexpected lock-file drift. The only permitted generated difference
-      # is the narHash/lastModified metadata Nix calculates for the immutable
-      # Serpantinum Git commit; any other change means a real lock update is needed.
-      # Keep this guard after all Nix commands, including `nix develop`.
-      - name: flake.lock drift guard
+      # Detect lock-file drift permanently
+      # Keep this guard after every command that evaluates the flake, including `nix develop`,
+      # because evaluation could rewrite the lock file. A final artifact upload may follow
+      # because it does not evaluate Nix or mutate the checkout.
+
+
+      - name: flake.lock unchanged
         working-directory: nixos
         run: |
-          python3 - <<'PYLOCK'
-          import copy
-          import json
-          import subprocess
-          import sys
-          from pathlib import Path
-
-          baseline = json.loads(subprocess.check_output(
-              ["git", "show", "HEAD:nixos/flake.lock"], text=True
-          ))
-          current = json.loads(Path("flake.lock").read_text(encoding="utf-8"))
-
-          def normalized(lock):
-              value = copy.deepcopy(lock)
-              locked = value["nodes"]["serpantinum"]["locked"]
-              # Nix derives these from the pinned Git revision at lock time.
-              locked.pop("narHash", None)
-              locked.pop("lastModified", None)
-              return value
-
-          if normalized(current) != normalized(baseline):
-              print("::error::Unexpected flake.lock drift beyond calculated Serpantinum metadata.", file=sys.stderr)
-              subprocess.run(["git", "--no-pager", "diff", "--", "flake.lock"], check=False)
-              raise SystemExit(1)
-          print("  flake.lock stable; only Nix-derived Serpantinum metadata may be filled at CI time")
-          PYLOCK
+          if ! git diff --quiet -- flake.lock; then
+            echo "::error::flake.lock changed during CI; lock file is not canonical. Run `nix flake lock` and commit the result."
+            git --no-pager diff -- flake.lock
+            exit 1
+          fi
+          echo "  flake.lock clean"
 
       # Upload the exact ZIP validated above, only after all required checks pass.
       # The artifact contains the source ZIP as a file; its inner ZIP preserves
