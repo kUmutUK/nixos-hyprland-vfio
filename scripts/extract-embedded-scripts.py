@@ -33,54 +33,15 @@ DIRECT_MARKER = re.compile(r'^\s*gamemodeNotifyScript\s*=')
 
 CLOSER = "''"
 
-# In Nix indented strings, `${name}` is Nix interpolation unless escaped as
-# `''${name}`. This project uses UPPER_CASE for shell variables and camelCase
-# for Nix attributes, so mark only unescaped camelCase interpolations for
-# ShellCheck. The annotation is added before Nix escapes are resolved, ensuring
-# escaped shell parameter expansions remain visible to ShellCheck as shell code.
-NIX_CAMEL_INTERPOLATION = re.compile(
-    r"(?<!'')\$\{([a-z][a-zA-Z0-9]*[A-Z][a-zA-Z0-9]*)\}"
-)
-
-
-def annotate_nix_interpolations_for_shellcheck(text):
-    """Annotate raw camelCase Nix interpolations that look like shell vars.
-
-    Extracted embedded scripts cannot evaluate Nix expressions. A bare
-    `${closeNotificationCommand}` therefore looks like an unassigned shell
-    variable to ShellCheck even though Nix substitutes it at evaluation time.
-    Keep SC2154 enabled everywhere else, especially for actual shell variables.
-    """
-    output = []
-    for line in text.splitlines(keepends=True):
-        if NIX_CAMEL_INTERPOLATION.search(line) and "shellcheck disable=SC2154" not in line:
-            output.append(
-                "# shellcheck disable=SC2154  # Nix interpolation, not a shell variable\n"
-            )
-        output.append(line)
-    return "".join(output)
-
 
 def extract(lines, index, direct=False):
     """Return the indented-string body associated with the marker at index."""
     if direct:
         start = index  # The body starts immediately after the assignment line.
     else:
-        # Search only inside this Nix attribute block. Without this boundary
-        # check a `home.file` entry that uses `source = ...` (rather than
-        # `text = ''`) could accidentally capture the following script block,
-        # making the same embedded script get emitted twice and breaking CI's
-        # exact-count guard.
-        marker_indent = len(lines[index]) - len(lines[index].lstrip())
-        start = None
-        for k in range(index + 1, len(lines)):
-            if "text = ''" in lines[k]:
-                start = k
-                break
-            stripped = lines[k].lstrip()
-            indent = len(lines[k]) - len(stripped)
-            if stripped.startswith("};") and indent <= marker_indent:
-                return None
+        start = next(
+            (k for k in range(index, len(lines)) if "text = ''" in lines[k]), None
+        )
         if start is None:
             return None
 
@@ -119,11 +80,6 @@ def extract(lines, index, direct=False):
         lambda m: m.group(1),
         text,
     )
-    # Mark bare camelCase `${...}` values as Nix interpolations before
-    # unescaping `''${...}` shell parameter expansions. This avoids an SC2154
-    # false positive without globally disabling checks for unassigned variables.
-    text = annotate_nix_interpolations_for_shellcheck(text)
-
     # Nix escapes: `''${` becomes `${`; a standalone `''` becomes an empty string.
     text = text.replace("''${", "${").replace(CLOSER, "")
 
