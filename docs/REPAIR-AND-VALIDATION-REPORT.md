@@ -4,8 +4,8 @@
 
 ## Follow-up corrections — 2026-10-23
 
-- Restored the executable bit for `install.sh` in the correction bundle (`100755`); the script contents are unchanged. The supplied full-source archive's `.git/` packaging issue is avoided here because this is a patch-only ZIP containing only the corrected paths.
-- Corrected the cache description in `nixos/flake.nix` and `README.md`: the active configuration lists the Nix Community cache, not the upstream CachyOS Attic cache. No new third-party substituter was added; the selected RT-Bore-LTO ThinLTO variant is not published in the upstream cache and still needs a local build.
+- Preserved the executable bit for `install.sh` in the correction bundle (`100755`) and clarified that its monitor-output prompt controls both the Hyprland monitor rule and mpvpaper wallpaper. The supplied full-source archive's `.git/` packaging issue is avoided here because this is a patch-only ZIP containing only the corrected paths.
+- Corrected the cache description in `nixos/flake.nix` and `README.md`: the active configuration lists the Nix Community cache, not the upstream CachyOS Attic cache. No new third-party substituter was added. The upstream cache does not publish the RT-Bore-LTO ThinLTO variant; the project owner reports that the currently locked revision has built successfully on the target machine, while each newly selected upstream revision still requires a local build.
 - Updated the current changelog and configuration index to match the actual CachyOS revision in `nixos/flake.lock` (`02ba4db52e62e1fbece80402d369127ae77cbbeb`). Updated current validation wording to record the project owner's report of a successful rebuild, RT-Bore-LTO compile, VM start/shutdown, and return to Hyprland. Older date-stamped entries below remain historical records of what was known at those dates.
 
 ## Historical correction record — 2026-10-21
