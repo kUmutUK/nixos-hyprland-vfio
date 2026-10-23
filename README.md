@@ -430,7 +430,7 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 
 ## Known limitations
 
-- **RT-Bore-LTO validation:** the upstream release source provides this package but does not publish its LTO variant to the upstream binary cache. It must be built locally. Real-time preemption does not guarantee higher FPS or better game frametimes; benchmark the target games and retain a known-good boot generation until the new kernel is validated.
+- **RT-Bore-LTO validation:** the upstream source does not publish the ThinLTO variant in its binary cache, so each newly selected upstream revision needs a local build. The project owner reports that the currently locked revision built and passed the VM start/shutdown and Hyprland-recovery check on the target machine (see the 2026-10-23 update below); this result is owner-reported, not independently reproduced, and does not guarantee compatibility on other hardware. Real-time preemption does not guarantee higher FPS or better frametimes. Retain a known-good boot generation when testing future kernel revisions.
 - **Global Vulkan latency layer compatibility:** upstream `low_latency_layer` v0.2.0 documents an incompatibility with the `obs_vkcapture` Vulkan capture layer. If game capture or recording breaks while the layer is enabled, launch the affected game with `DISABLE_LOW_LATENCY_LAYER=1 %command%` and verify whether capture works again.
 - **Navi 2x reset behavior:** reliable reset and host rebind cannot be guaranteed from static analysis. The optional `remove`/`rtcwake`/`rescan` recovery path is disabled by default. Enabling `VFIO_ALLOW_SUSPEND_RECOVERY=1` can suspend the host briefly and should only be attempted after checking firmware support and arranging recovery access.
 - **Single-GPU host:** while the VM owns the GPU, the host does not have a normal graphical session. Keep a physical recovery TTY available. The hook ends only local `seat0` sessions and is designed to preserve SSH sessions. The device-node usage check still fails closed if a process retains the GPU, so test the full VM lifecycle on the target hardware.
@@ -511,9 +511,9 @@ bash scripts/test-installer-rollback.sh
 
 ### Prior target-system hardware validation — 2026-10-16
 
-> **Scope: this result applies to the previous standard BORE-LTO kernel, not the newly selected RT-Bore-LTO kernel.**
+> **Historical scope as of 2026-10-16:** this result applies to the previous standard BORE-LTO kernel, not the then-untested RT-Bore-LTO kernel.
 >
-> The project owner reported that GitHub Actions CI was green, the NixOS rebuild and standard BORE-LTO kernel build completed successfully, the Windows VM started, and after a normal VM shutdown the host display and Hyprland session returned. This owner-reported result documents the earlier kernel and hardware state; it was not independently reproduced during this audit. The current RT-Bore-LTO variant has not yet been built or tested on the target system. Re-test kernel boot, VM start, normal shutdown, display recovery, and a second VM start after the RT-Bore-LTO build succeeds.
+> On 2026-10-16, the project owner reported that GitHub Actions CI was green, the NixOS rebuild and standard BORE-LTO kernel build completed successfully, the Windows VM started, and a normal VM shutdown returned the host display and Hyprland session. At that time, the selected RT-Bore-LTO variant had not yet been built or tested. This is a historical, owner-reported result for the previous kernel and was not independently reproduced during this audit. The later RT-Bore-LTO test is recorded in the 2026-10-23 update below.
 
 ### Target-system validation update — 2026-10-23
 

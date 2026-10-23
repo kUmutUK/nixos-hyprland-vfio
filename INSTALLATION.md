@@ -702,17 +702,23 @@ only for startup troubleshooting; it is not a permanent gaming configuration.
 > test it, and rebuild NixOS. The separate `VFIO_ALLOW_SUSPEND_RECOVERY` setting only enables an
 > optional VFIO recovery path; it does not change user/seat selection.
 
-### Hardware validation with the previous kernel — 16 October 2026
+### Historical hardware validation with the previous kernel — 16 October 2026
 
-> **Scope: the successful result below applies to the previous standard BORE-LTO kernel; the
-> current RT-Bore-LTO kernel has not yet been validated.**
+> **Historical scope:** the successful result recorded here applies to the previous standard BORE-LTO
+> kernel. At the time of this 16 October entry, RT-Bore-LTO had not yet been validated.
 >
-> On 2026-10-16, the repository owner reported a real-system test with the previous standard
-> BORE-LTO kernel: the rebuild and kernel build completed, the Windows VM started and shut down,
-> and the host display/Hyprland session returned. This does not validate the newly selected
-> RT-Bore-LTO kernel, which has not yet passed build, boot, and VM-lifecycle testing on the target
-> hardware. After the new kernel builds, test boot, VM startup, normal shutdown, display recovery,
-> and a second VM start.
+> On 2026-10-16, the repository owner reported that the rebuild and standard BORE-LTO kernel build
+> completed, the Windows VM started and shut down, and the host display/Hyprland session returned.
+> The later RT-Bore-LTO result is recorded separately below; neither owner-reported result is an
+> independent reproduction or a guarantee for other hardware.
+
+### Target-system validation update — 23 October 2026
+
+> The project owner reports that NixOS rebuilt successfully, the RT-Bore-LTO ThinLTO kernel compiled,
+> the Windows VM started and shut down normally, and control returned to Hyprland on the target
+> machine. This is owner-reported validation, not independent reproduction. Since this kernel variant
+> is not available in the upstream binary cache, a newly selected upstream revision still needs a
+> local build and a repeat of the boot, VM start/shutdown, display recovery, and second-start checks.
 
 ---
 
