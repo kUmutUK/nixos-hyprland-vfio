@@ -1,6 +1,12 @@
-# Repair and validation report — updated 2026-10-21
+# Repair and validation report — updated 2026-10-23
 
 > **Delivery-scope note:** This report is included in the full project tree. References below to “patch-only ZIP” describe correction bundles produced on the dates stated in each section; they do not describe the full-source ZIP that currently contains this report. To create a canonical full-source ZIP, use the `git archive` command documented in `README.md`; that excludes `.git/` and preserves the tracked executable mode of `install.sh`.
+
+## Follow-up corrections — 2026-10-23
+
+- Restored the executable bit for `install.sh` in the correction bundle (`100755`); the script contents are unchanged. The supplied full-source archive's `.git/` packaging issue is avoided here because this is a patch-only ZIP containing only the corrected paths.
+- Corrected the cache description in `nixos/flake.nix` and `README.md`: the active configuration lists the Nix Community cache, not the upstream CachyOS Attic cache. No new third-party substituter was added; the selected RT-Bore-LTO ThinLTO variant is not published in the upstream cache and still needs a local build.
+- Updated the current changelog and configuration index to match the actual CachyOS revision in `nixos/flake.lock` (`02ba4db52e62e1fbece80402d369127ae77cbbeb`). Updated current validation wording to record the project owner's report of a successful rebuild, RT-Bore-LTO compile, VM start/shutdown, and return to Hyprland. Older date-stamped entries below remain historical records of what was known at those dates.
 
 ## Historical correction record — 2026-10-21
 
@@ -114,9 +120,9 @@ The previously reported successful target-machine build and VM display recovery 
 | GitHub Actions CI | The project owner reports that CI is green for the updated repository; this status was not independently re-run from the audit container. |
 | Nix evaluation / `nixos-rebuild dry-activate` | Not run by this reviewer: `nix` is unavailable in the audit environment. The project owner separately reports a successful target-system rebuild; whether the exact `dry-activate` command was run was not specified. |
 | `shellcheck`, `xmllint`, `virt-xml-validate` | Not run: tools are unavailable in this environment |
-| Real VM/GPU lifecycle | Not independently run by this reviewer. The project owner reported a successful VM lifecycle on the prior standard (non-RT) BORE-LTO kernel. That result does not validate the current RT-Bore-LTO selection; boot and VM lifecycle testing remain required after its build. |
+| Real VM/GPU lifecycle | Not independently run by this reviewer. The project owner now reports that the RT-Bore-LTO kernel built successfully and that the Windows VM started, shut down normally, and returned the host to Hyprland. This is target-machine owner-reported validation, not an independent test or a guarantee for other hardware. |
 
-The checked-in `flake.lock` records a particular CachyOS `master` revision for reproducibility; `nixos/flake.nix` does not hard-code a kernel version. To move the system to a newer upstream revision, update only the CachyOS input, inspect the lock diff, then evaluate and build the candidate. Nix is unavailable in the review environment, so this reviewer did not run flake evaluation or a kernel build. The project owner reported that the rebuild and standard (non-RT) BORE-LTO kernel build succeeded on the target system and that the VM-start/normal-shutdown path restored the host display and Hyprland. That historical result applies only to the prior kernel; the selected RT-Bore-LTO variant remains unbuilt and unvalidated in this audit. This is owner-reported evidence rather than a result independently reproduced in this container; it does not, by itself, establish whether the kernel came from the binary cache or was compiled locally.
+The checked-in `nixos/flake.lock` records the CachyOS `master` revision `02ba4db52e62e1fbece80402d369127ae77cbbeb` for reproducibility; `nixos/flake.nix` does not hard-code a kernel version. To move the system to a newer upstream revision, update only the CachyOS input, inspect the lock diff, then evaluate and build the candidate. Nix is unavailable in the review environment, so this reviewer did not independently run flake evaluation or a kernel build. The project owner reports that the target system rebuilt successfully, compiled RT-Bore-LTO locally, started and shut down the Windows VM normally, and restored the Hyprland host session. This is owner-reported evidence rather than a result independently reproduced in this container, and it does not guarantee compatibility on other hardware.
 
 ## Required checks on the target NixOS host
 
@@ -129,7 +135,7 @@ sudo nixos-rebuild dry-activate --flake .#nixos -L
 
 Watch whether the kernel is substituted from cache or built locally. If the same `tools/bpf/resolve_btfids` `ld.lld: undefined symbol` error recurs, capture the full derivation log with `nix log /nix/store/<kernel-derivation>.drv`; a lock/cache change does not itself fix a linker bug in source. Keep the currently working system generation until the candidate generation succeeds.
 
-The project owner has confirmed a successful VM start, normal shutdown, and host compositor recovery on the target machine; this closes the previously reported VM recovery issue for that setup. After future kernel, firmware, PCI-layout, VM XML, or hook changes, repeat the lifecycle check and inspect GPU/audio driver restoration. XML parsing is not a substitute for libvirt/QEMU validation or a real boot.
+The project owner has confirmed a successful RT-Bore-LTO build and rebuild, VM start, normal shutdown, and host Hyprland recovery on the target machine; this closes the previously reported VM recovery issue for that setup. After future kernel, firmware, PCI-layout, VM XML, or hook changes, repeat the lifecycle check and inspect GPU/audio driver restoration. XML parsing is not a substitute for libvirt/QEMU validation or a real boot.
 
 
 ## Follow-up fixes in the reviewed archive
