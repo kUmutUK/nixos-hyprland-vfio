@@ -1,4 +1,11 @@
-# Repair and validation report — updated 2026-10-25
+# Repair and validation report — updated 2026-10-26
+
+## Current follow-up — 2026-10-26: LSFG deployment and latency-interface corrections
+
+- Closed a deployment gap: `install.sh` now copies `lsfg-vk-v2.nix`, backs it up, and includes it in rollback so local imports in `flake.nix` and `configuration.nix` remain available after migration. The installer fails closed if a required source file is missing or empty. The manual migration's diff/copy loops and rollback regression test include this expression too.
+- Kept the latency layer enabled globally through `LOW_LATENCY_LAYER=1`, but stopped globally forcing `LOW_LATENCY_LAYER_REFLEX=1`. The layer's default AMD Anti-Lag interface remains available for native Linux applications such as CS2; compatible Proton games can opt into Reflex per game. The guides and CI regression assertion now enforce this policy.
+- Repeated checks after the fix: Bash syntax, installer invariants, rollback, VFIO driver-state and VM XML/sync/diagnostic tests, Python compilation, and LSFG-VK v2 source/configuration tests. `nix`, ShellCheck, and libvirt/QEMU are not installed in this preparation environment; CI still needs to verify Nix evaluation/package build and ShellCheck. No independent hardware lifecycle test is claimed for this commit.
+
 
 > **Delivery-scope note:** This report is included in the full project tree. References below to “patch-only ZIP” describe correction bundles produced on the dates stated in each section; they do not describe the full-source ZIP that currently contains this report. To create a canonical full-source ZIP, use the `git archive` command documented in `README.md`; that excludes `.git/` and preserves the tracked executable mode of `install.sh`.
 

@@ -36,6 +36,7 @@ DANGLING_TARGET="$NIXOS_FLAKE_DIR/dangling-config.nix"
 DANGLING_REFERENT="$TEST_ROOT/missing-original.conf"
 mkdir -p "$NIXOS_FLAKE_DIR/hooks" "$(dirname "$PATCHED_XML")" "$BACKUP_DIR"
 printf 'original configuration\n' > "$NIXOS_FLAKE_DIR/configuration.nix"
+printf 'original lsfg package expression\n' > "$NIXOS_FLAKE_DIR/lsfg-vk-v2.nix"
 printf 'original hook\n' > "$NIXOS_FLAKE_DIR/hooks/qemu"
 printf 'original vm xml\n' > "$PATCHED_XML"
 printf 'original symlink referent\n' > "$SYMLINK_REFERENT"
@@ -72,7 +73,7 @@ ln -s "$NIXOS_FLAKE_DIR" "$SYMLINK_DIRECTORY"
 run_preflight_check 1 "$SYMLINK_DIRECTORY" "$NIXOS_FLAKE_DIR/normal-config.nix"
 
 # Use the same flattened backup naming convention as install.sh and preserve links.
-for target in "$NIXOS_FLAKE_DIR/configuration.nix" "$NIXOS_FLAKE_DIR/hooks" "$PATCHED_XML" "$SYMLINK_TARGET" "$DANGLING_TARGET"; do
+for target in "$NIXOS_FLAKE_DIR/configuration.nix" "$NIXOS_FLAKE_DIR/lsfg-vk-v2.nix" "$NIXOS_FLAKE_DIR/hooks" "$PATCHED_XML" "$SYMLINK_TARGET" "$DANGLING_TARGET"; do
   backup_name="$(printf '%s' "$target" | tr '/' '_')"
   cp -a -- "$target" "$BACKUP_DIR/$backup_name"
 done
@@ -80,6 +81,7 @@ done
 # Simulate a partially completed deployment: some existing files have been
 # overwritten and targets that were previously absent have been created.
 printf 'partially deployed configuration\n' > "$NIXOS_FLAKE_DIR/configuration.nix"
+printf 'partially deployed lsfg package expression\n' > "$NIXOS_FLAKE_DIR/lsfg-vk-v2.nix"
 printf 'partially deployed hook\n' > "$NIXOS_FLAKE_DIR/hooks/qemu"
 printf 'new home config\n' > "$NIXOS_FLAKE_DIR/home.nix"
 printf 'partially deployed xml\n' > "$PATCHED_XML"
@@ -98,6 +100,7 @@ set +e
     "$NIXOS_FLAKE_DIR/home.nix"
     "$NIXOS_FLAKE_DIR/flake.nix"
     "$NIXOS_FLAKE_DIR/flake.lock"
+    "$NIXOS_FLAKE_DIR/lsfg-vk-v2.nix"
     "$NIXOS_FLAKE_DIR/hooks"
     "$NIXOS_FLAKE_DIR/hardware-configuration.nix"
     "$PATCHED_XML"
@@ -107,7 +110,7 @@ set +e
   declare -A TRANSACTION_EXISTED=()
   for target in "${TRANSACTION_PATHS[@]}"; do
     case "$target" in
-      "$NIXOS_FLAKE_DIR/configuration.nix"|"$NIXOS_FLAKE_DIR/hooks"|"$PATCHED_XML"|"$SYMLINK_TARGET"|"$DANGLING_TARGET") TRANSACTION_EXISTED["$target"]=1 ;;
+      "$NIXOS_FLAKE_DIR/configuration.nix"|"$NIXOS_FLAKE_DIR/lsfg-vk-v2.nix"|"$NIXOS_FLAKE_DIR/hooks"|"$PATCHED_XML"|"$SYMLINK_TARGET"|"$DANGLING_TARGET") TRANSACTION_EXISTED["$target"]=1 ;;
       *)
         # shellcheck disable=SC2034 # consumed by sourced installer helpers
         TRANSACTION_EXISTED["$target"]=0
@@ -131,6 +134,8 @@ set -e
 
 [[ "$(cat "$NIXOS_FLAKE_DIR/configuration.nix")" == 'original configuration' ]] \
   || fail 'existing configuration.nix was not restored from backup'
+[[ "$(cat "$NIXOS_FLAKE_DIR/lsfg-vk-v2.nix")" == 'original lsfg package expression' ]] \
+  || fail 'existing lsfg-vk-v2.nix was not restored from backup'
 [[ "$(cat "$NIXOS_FLAKE_DIR/hooks/qemu")" == 'original hook' ]] \
   || fail 'existing hooks directory was not restored from backup'
 [[ "$(cat "$PATCHED_XML")" == 'original vm xml' ]] \
@@ -165,6 +170,7 @@ TRANSACTION_PATHS=(
   "$NIXOS_FLAKE_DIR/home.nix"
   "$NIXOS_FLAKE_DIR/flake.nix"
   "$NIXOS_FLAKE_DIR/flake.lock"
+  "$NIXOS_FLAKE_DIR/lsfg-vk-v2.nix"
   "$NIXOS_FLAKE_DIR/hooks"
   "$NIXOS_FLAKE_DIR/hardware-configuration.nix"
   "$PATCHED_XML"
@@ -177,6 +183,7 @@ NIXOS_FLAKE_DIR_EXISTED=0
 TRANSACTION_ACTIVE=1
 mkdir -p "$NIXOS_FLAKE_DIR/hooks"
 printf 'created by failed installer\n' > "$NIXOS_FLAKE_DIR/configuration.nix"
+printf 'new LSFG expression\n' > "$NIXOS_FLAKE_DIR/lsfg-vk-v2.nix"
 if [[ "$KEEP_EXTRA" == "yes" ]]; then
   printf 'preserve unrelated content\n' > "$NIXOS_FLAKE_DIR/user-notes.txt"
 fi
@@ -196,6 +203,7 @@ bash "$NEW_DIR_HARNESS" "$NEW_FLAKE_DIR" "$BACKUP_DIR" "$HELPERS" "$NEW_XML" no 
 new_dir_status=$?
 set -e
 [[ "$new_dir_status" -eq 1 ]] || fail "new-directory rollback should preserve original exit status 1 (got $new_dir_status)"
+[[ ! -e "$NEW_FLAKE_DIR/lsfg-vk-v2.nix" ]] || fail 'rollback left the LSFG expression created by the failed run'
 [[ ! -e "$NEW_FLAKE_DIR" ]] || fail 'rollback left the empty deployment directory created by this run'
 printf 'OK: rollback removes an empty deployment directory created by the failed run.\n'
 
