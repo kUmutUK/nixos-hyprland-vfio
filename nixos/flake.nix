@@ -33,8 +33,17 @@
   let
     system = "x86_64-linux";
     pkgs = nixpkgs.legacyPackages.${system};
+    # Expose LSFG-VK v2 as a standalone flake package so CI can build and verify
+    # the pinned source/hash without building the entire gaming system/kernel.
+    pkgsUnfree = import nixpkgs {
+      inherit system;
+      config.allowUnfree = true;
+    };
+    lsfgVkV2Package = pkgsUnfree.callPackage ./lsfg-vk-v2.nix { };
   in
   {
+    packages.${system}.lsfg-vk-v2 = lsfgVkV2Package;
+
     nixosConfigurations.nixos = nixpkgs.lib.nixosSystem {
       inherit system;
       modules = [
