@@ -2,9 +2,14 @@
 
 This file summarizes notable changes in English. The original detailed Turkish history is preserved unchanged in [`docs/archive/DEGISIKLIK_GECMISI.md`](docs/archive/DEGISIKLIK_GECMISI.md).
 
-## Unreleased — 2026-10-23
+## Unreleased — 2026-10-25
 
 ### Follow-up audit fixes
+- Fixed a real LSFG-VK version mismatch: the old `pabloaul/lsfg-vk-flake` module still packaged v1.0.0 while Home Manager emitted a v2 TOML file. Replaced it with an immutable, hash-verified upstream v2 source derivation that installs the v2 Vulkan layer, UI, and CLI; registered the v2 implicit-layer manifest explicitly and removed the obsolete v1-only flake input.
+- Updated the Genshin Impact and Wuthering Waves profile aliases to include their actual executable names, and added a regression test that parses the generated TOML and checks package pin, build flags, license, and manifest registration.
+- Documented the upstream LSFG-VK v2 CC BY-NC-ND 4.0 license, the separately required Steam Lossless Scaling installation, and the fact that Home Manager-managed profiles should be edited in `nixos/home.nix` rather than saved through the GUI.
+
+### Previous follow-up audit fixes
 - Preserved an existing deployed VM XML as the source of truth during migration and synchronized only the two GPU/audio PCI addresses. The helper retains the existing VM identity, custom CPU/firmware/NVRAM/device settings, disk path, USB passthrough entries, and extra source-address attributes; unsupported layouts fail closed. Added regression tests for new VM identity, existing XML preservation, backups, and unsafe XML refusal.
 - Documented the upstream `low_latency_layer` v0.2.0 incompatibility with the `obs_vkcapture` Vulkan capture layer and the per-game opt-out.
 - Added regression coverage for the README's manual migration guard (copy when the generated source exists, preserve an existing target, and fail closed when the source is missing). The supplied README already checked the correct source path; the earlier audit's quoted faulty snippet did not match the actual archive.

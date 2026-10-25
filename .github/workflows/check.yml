@@ -63,6 +63,9 @@ jobs:
           python3 scripts/test-vm-xml-sync.py
           python3 scripts/test-vm-diagnostic.py
 
+      - name: LSFG-VK v2 package/configuration consistency
+        run: python3 scripts/test-lsfg-vk-v2.py
+
       - name: Installer, English locale, global Reflex and SSH regression checks
         run: bash scripts/test-installer-invariants.sh
 
@@ -170,6 +173,10 @@ jobs:
             --no-update-lock-file \
             --option warn-dirty false
           echo "  flake evaluates OK"
+
+      - name: Build the pinned LSFG-VK v2 package
+        working-directory: nixos
+        run: nix build --no-link --no-update-lock-file .#lsfg-vk-v2
 
       # This is an informational step, not a required gate. The required gates above
       # and below include:

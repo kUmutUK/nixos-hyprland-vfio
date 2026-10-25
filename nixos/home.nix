@@ -923,7 +923,7 @@ in
 
       [[profile]]
       name = "Genshin Impact"
-      active_in = "GenshinImpact"
+      active_in = [ "GenshinImpact.exe", "GenshinImpact" ]
       multiplier = 3
       flow_scale = 1.0
       performance_mode = false
@@ -959,7 +959,7 @@ in
 
       [[profile]]
       name = "Wuthering Waves"
-      active_in = "wuwa"
+      active_in = [ "Client-Win64-Shipping.exe", "Client-Win64-Shipping" ]
       multiplier = 2
       flow_scale = 0.9
       performance_mode = false
