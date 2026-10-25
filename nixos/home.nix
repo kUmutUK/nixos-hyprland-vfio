@@ -914,51 +914,57 @@ in
     '';
 
     "lsfg-vk/conf.toml".text = ''
-      version = 1
+      # LSFG-VK v2 configuration. Keep this generated file in sync with the v2 schema.
+      version = 2
 
       [global]
+      # FP16 acceleration improves frame-generation performance on supported AMD GPUs.
+      allow_fp16 = true
 
-      # The frame-generation multiplier is selected per executable; the `exe` field must
-      # match the actual process name (for example, `GenshinImpact`, not `Genshin`).
-      [[game]]
-      exe = "GenshinImpact"
+      [[profile]]
+      name = "Genshin Impact"
+      active_in = "GenshinImpact"
       multiplier = 3
       flow_scale = 1.0
       performance_mode = false
-      hdr_mode = false
-      experimental_present_mode = "fifo"
+      pacing_mode = "vsync"
+      override_present_mode = true
 
-      [[game]]
-      exe = "benchmark"
+      [[profile]]
+      name = "Benchmark"
+      active_in = "benchmark"
       multiplier = 4
       flow_scale = 1.0
       performance_mode = false
-      hdr_mode = false
-      experimental_present_mode = "fifo"
+      pacing_mode = "vsync"
+      override_present_mode = true
 
-      [[game]]
-      exe = "cs2"
+      [[profile]]
+      name = "Counter-Strike 2"
+      active_in = ["cs2", "cs2.exe"]
       multiplier = 2
       flow_scale = 0.75
       performance_mode = false
-      hdr_mode = true
-      experimental_present_mode = "fifo"
+      pacing_mode = "vsync"
+      override_present_mode = true
 
-      [[game]]
-      exe = "vkcube"
+      [[profile]]
+      name = "vkcube"
+      active_in = "vkcube"
       multiplier = 4
       flow_scale = 1.0
       performance_mode = true
-      hdr_mode = false
-      experimental_present_mode = "fifo"
+      pacing_mode = "vsync"
+      override_present_mode = true
 
-      [[game]]
-      exe = "wuwa"
+      [[profile]]
+      name = "Wuthering Waves"
+      active_in = "wuwa"
       multiplier = 2
       flow_scale = 0.9
       performance_mode = false
-      hdr_mode = true
-      experimental_present_mode = "fifo"
+      pacing_mode = "vsync"
+      override_present_mode = true
     '';
 
     # Pyprland was installed but lacked a valid configuration for the scratchpad keybinds.
