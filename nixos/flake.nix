@@ -79,6 +79,7 @@
             shellcheck
             nix-output-monitor
             git
+            python3
             coreutils
             pciutils
             curl
