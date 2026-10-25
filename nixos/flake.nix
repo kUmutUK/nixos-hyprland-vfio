@@ -24,14 +24,12 @@
     # Keep Hyprland and its companion packages on the same nixpkgs input.
     # A separate version-pinning overlay can create ABI mismatches between
     # Hyprland and clients built against the system package set.
-    lsfg-vk-flake.url = "github:pabloaul/lsfg-vk-flake/main";
-    lsfg-vk-flake.inputs.nixpkgs.follows = "nixpkgs";
     # Impermanence is intentionally not imported: this configuration does
     # not define a persistent-storage layout. Reintroduce the input only
     # together with matching environment.persistence and Home Manager settings.
   };
 
-  outputs = { self, nixpkgs, cachyos-kernel, home-manager, lsfg-vk-flake, ... }:
+  outputs = { self, nixpkgs, cachyos-kernel, home-manager, ... }:
   let
     system = "x86_64-linux";
     pkgs = nixpkgs.legacyPackages.${system};
@@ -41,7 +39,6 @@
       inherit system;
       modules = [
         home-manager.nixosModules.home-manager
-        lsfg-vk-flake.nixosModules.default
 
         ({ pkgs, ... }: {
           nixpkgs.config.allowUnfree = true;

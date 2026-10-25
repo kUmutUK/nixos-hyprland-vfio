@@ -399,7 +399,7 @@ The OCR script now checks that the model is available before beginning; it repor
 | Component | Role |
 |---|---|
 | RADV | AMD Vulkan driver; `AMD_VULKAN_ICD=RADV`, `RADV_PERFTEST=gpl` |
-| `lsfg-vk` | Vulkan frame-generation layer; per-game settings in `~/.config/lsfg-vk/conf.toml` |
+| `lsfg-vk` | LSFG-VK v2 frame-generation layer, Qt UI and CLI; per-game settings in `~/.config/lsfg-vk/conf.toml` |
 | `low_latency_layer` | Vulkan latency layer, enabled system-wide through PAM session variables with `LOW_LATENCY_LAYER=1` and `LOW_LATENCY_LAYER_REFLEX=1`. This selects the Reflex (`VK_NV_low_latency2`) interface for all Vulkan applications instead of the default AMD Anti-Lag 2 interface. If a particular app has problems, use `DISABLE_LOW_LATENCY_LAYER=1 %command%` in that app's Steam launch options to opt it out. |
 | GameMode | Applies the configured game-time priority and performance settings |
 | Gamescope | Fullscreen and window rules for games |
@@ -477,7 +477,7 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
     └── hooks/qemu
 ```
 
-Hyprland's native Lua configuration, Hyprlock, Waybar, Pyprland, MangoHud, lsfg-vk, and helper scripts are declared inline in `nixos/home.nix`; there is no parallel Hyprland config file to keep in sync.
+Hyprland's native Lua configuration, Hyprlock, Waybar, Pyprland, MangoHud, the LSFG-VK v2 profile file, and helper scripts are declared in `nixos/home.nix`; there is no parallel Hyprland config file to keep in sync. The LSFG-VK UI/CLI and Vulkan layer are built from a pinned upstream v2 source by `nixos/lsfg-vk-v2.nix`. The generated `conf.toml` is Home Manager-managed: edit profiles in `nixos/home.nix` and rebuild rather than trying to save GUI edits over the read-only Nix store link. Upstream LSFG-VK v2 is licensed CC BY-NC-ND 4.0 (non-commercial/no-derivatives) and is therefore treated as unfree by Nix; this configuration explicitly allows unfree packages. Lossless Scaling itself is not redistributed and must be separately owned/installed through Steam.
 
 ## Validation
 
@@ -487,6 +487,7 @@ Run from the repository root:
 nix develop ./nixos
 find ./nixos -type f -name '*.nix' -print0 | xargs -0 -r -n1 nixfmt
 shellcheck -S warning install.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh
+python3 scripts/test-lsfg-vk-v2.py
 python3 scripts/test-vm-xml.py
 python3 scripts/test-vm-xml-sync.py
 python3 scripts/test-vm-diagnostic.py

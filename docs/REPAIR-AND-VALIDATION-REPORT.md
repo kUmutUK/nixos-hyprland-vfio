@@ -1,6 +1,16 @@
-# Repair and validation report — updated 2026-10-23
+# Repair and validation report — updated 2026-10-25
 
 > **Delivery-scope note:** This report is included in the full project tree. References below to “patch-only ZIP” describe correction bundles produced on the dates stated in each section; they do not describe the full-source ZIP that currently contains this report. To create a canonical full-source ZIP, use the `git archive` command documented in `README.md`; that excludes `.git/` and preserves the tracked executable mode of `install.sh`.
+
+## Current follow-up — 2026-10-25: LSFG-VK v1/v2 mismatch
+
+- The prior `pabloaul/lsfg-vk-flake` input provides the v1.0.0 package and old UI; it did not match the v2 TOML written by `nixos/home.nix`. This was a real package/configuration mismatch, not just a stale comment.
+- Removed that obsolete module input. `nixos/lsfg-vk-v2.nix` now builds LSFG-VK v2 from the current upstream Git service with a pinned commit and SRI source hash. The derivation builds the layer/UI/CLI, does not patch upstream source, and records the upstream CC BY-NC-ND 4.0 license. The existing flake enables unfree packages.
+- `nixos/configuration.nix` installs that package and registers `VkLayer_LSFGVK_frame_generation.json` declaratively. The CachyOS kernel selection and its lock revision were not changed. `vm-xml/win10.xml` and Arthur wallpaper/theme settings were not changed.
+- Wuthering Waves and Genshin profiles include executable/process aliases. `scripts/test-lsfg-vk-v2.py` parses the generated TOML and checks the package pin/build flags/license/manifest, and CI runs this test.
+- The LSFG-VK v2 upstream source is distributed under CC BY-NC-ND 4.0. The expression changes only the toolchain/build configuration and does not patch source. Users need their own Steam Lossless Scaling installation. GUI edits are not the source of truth because Home Manager deploys `conf.toml` declaratively; edit the Nix profile instead.
+- The previous audit's ZIP-mode observation does not require a GitHub source-file mode change: `main` already stores `install.sh` as Git mode `100755`, and CI produces the deliverable with `git archive`. ZIP extractors that discard Unix file attributes may materialize it as `0644`; use the CI-validated source ZIP or restore the executable bit when repackaging locally.
+- Local validation for this follow-up: `scripts/test-lsfg-vk-v2.py`, the installer invariant/rollback tests, the VFIO driver-state test, VM XML/sync/diagnostic tests, Python compilation, lock JSON parsing, and syntax checks for all seven embedded scripts passed. Nix and ShellCheck are not installed in the preparation environment, so Nix evaluation/build and ShellCheck could not be run locally. CI must confirm the Nix evaluation on the pushed commit; no physical VM lifecycle test is claimed for this change.
 
 ## Follow-up corrections — 2026-10-23
 
