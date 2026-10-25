@@ -343,6 +343,10 @@ if ! grep -Fq 'LOW_LATENCY_LAYER_REFLEX=1 %command%' "$README"; then
   echo "FAIL: README must document per-game Reflex selection." >&2
   exit 1
 fi
+if grep -Fq 'The system-wide Reflex configuration is now enabled again' "$ROOT/CHANGELOG.md"; then
+  echo "FAIL: CHANGELOG must not claim that Reflex is enabled system-wide; the current policy is per-game opt-in." >&2
+  exit 1
+fi
 
 # Both declarations importing the LSFG-VK v2 expression require it to be deployed
 # alongside the flake, backed up, and restored/removed as part of the same transaction.
