@@ -9,6 +9,10 @@ let
     exec ${pkgs.hyprland}/bin/Hyprland "$@"
   '';
 
+  # Build the v2 Vulkan layer/UI/CLI instead of importing the archived v1-only
+  # pabloaul module, which installs lsfg-vk 1.0.0 and cannot read a v2 config.
+  lsfgVkV2 = pkgs.callPackage ./lsfg-vk-v2.nix { };
+
   # Low-latency layer package derivation, pinned to upstream's latest published release.
   low-latency-layer = pkgs.stdenv.mkDerivation rec {
     pname = "low_latency_layer";
@@ -77,11 +81,6 @@ let
 in
 {
   imports = [ ./hardware-configuration.nix ];
-
-  services.lsfg-vk = {
-    enable = true;
-    ui.enable = true;
-  };
 
   hardware.enableRedistributableFirmware = true;
 
@@ -403,7 +402,7 @@ in
     whois # mkpasswd --method yescrypt (password hash setup)
     mpvpaper flatpak-builder psmisc
     apparmor-utils stdenv.cc.cc.lib kdePackages.konsole kdePackages.dolphin
-    low-latency-layer vulkan-tools
+    low-latency-layer lsfgVkV2 vulkan-tools
     # The installer synchronizes the PCI addresses in `win10.xml` with the QEMU hook.
     # If Python 3 is unavailable, synchronization cannot run; ensure the installer warns
     # about this rather than silently deploying mismatched hostdev addresses.
@@ -419,6 +418,11 @@ in
 
   environment.etc."vulkan/implicit_layer.d/low_latency_layer.json".source =
     "${low-latency-layer}/share/vulkan/implicit_layer.d/low_latency_layer.json";
+
+  # Register the v2 package's implicit Vulkan layer using its store-pinned manifest.
+  # The layer library path in that manifest points to this exact package output.
+  environment.etc."vulkan/implicit_layer.d/VkLayer_LSFGVK_frame_generation.json".source =
+    "${lsfgVkV2}/share/vulkan/implicit_layer.d/VkLayer_LSFGVK_frame_generation.json";
 
   programs.gamemode = {
     enable = true;
