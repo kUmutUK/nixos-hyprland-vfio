@@ -2,9 +2,11 @@
 
 This file summarizes notable changes in English. The original detailed Turkish history is preserved unchanged in [`docs/archive/DEGISIKLIK_GECMISI.md`](docs/archive/DEGISIKLIK_GECMISI.md).
 
-## Unreleased — 2026-10-25
+## Unreleased — 2026-10-26
 
 ### Follow-up audit fixes
+- Fixed a deployment gap introduced by the LSFG-VK v2 package migration: the installer now copies `nixos/lsfg-vk-v2.nix`, includes it in transaction backup/rollback, and stops before mutation if any required source file is missing or empty. The manual README migration includes the same file, and regression tests verify restoration/removal during rollback.
+- Corrected low-latency interface selection: `LOW_LATENCY_LAYER=1` remains enabled globally, while `LOW_LATENCY_LAYER_REFLEX=1` is no longer forced on every process. Reflex is now opt-in per compatible Proton game; native Linux CS2 keeps the default AMD Anti-Lag interface. The README, installation guide, and CI regression checks match this behavior.
 - Fixed a real LSFG-VK version mismatch: the old `pabloaul/lsfg-vk-flake` module still packaged v1.0.0 while Home Manager emitted a v2 TOML file. Replaced it with an immutable, hash-verified upstream v2 source derivation that installs the v2 Vulkan layer, UI, and CLI; registered the v2 implicit-layer manifest explicitly and removed the obsolete v1-only flake input.
 - Updated the Genshin Impact and Wuthering Waves profile aliases to include their actual executable names, and added a regression test that parses the generated TOML and checks package pin, build flags, license, and manifest registration.
 - Documented the upstream LSFG-VK v2 CC BY-NC-ND 4.0 license, the separately required Steam Lossless Scaling installation, and the fact that Home Manager-managed profiles should be edited in `nixos/home.nix` rather than saved through the GUI.
@@ -20,7 +22,7 @@ This file summarizes notable changes in English. The original detailed Turkish h
 
 ### Changed
 - Switched the selected kernel from standard CachyOS BORE-LTO to `linuxPackages-cachyos-rt-bore-lto`. The version is not hard-coded: the flake follows the upstream `master` branch and the lock can be updated for newer upstream revisions with `nix flake update cachyos-kernel`. Upstream does not publish the RT-Bore-LTO ThinLTO build in its binary cache, so it is expected to compile locally. The project owner has since reported a successful local RT-Bore-LTO build and VM/Hyprland recovery cycle on the target machine.
-- Enabled the Vulkan low-latency layer and Reflex system-wide through PAM session variables `LOW_LATENCY_LAYER=1` and `LOW_LATENCY_LAYER_REFLEX=1`. Applications with compatibility issues can opt out with `DISABLE_LOW_LATENCY_LAYER=1` in their Steam launch options.
+- Enabled the Vulkan low-latency layer system-wide through PAM session variable `LOW_LATENCY_LAYER=1`. The follow-up correction above keeps the default AMD Anti-Lag interface globally and selects Reflex per compatible Proton game, rather than forcing `LOW_LATENCY_LAYER_REFLEX=1` system-wide.
 - Enabled password SSH for the `localhost` user on TCP 22 while keeping root SSH login disabled, restricting allowed users, and applying Fail2ban to private LAN sources too. Updated the VFIO hook to terminate only the local `seat0` sessions so remote SSH sessions are not killed by `loginctl terminate-user`; a busy GPU still triggers the existing fail-closed handoff check.
 - The checked-in CachyOS lock in this tree resolves the upstream `master` input to `02ba4db52e62e1fbece80402d369127ae77cbbeb`. The lock keeps this checkout reproducible; advance it intentionally when a newer upstream revision is desired. The revision is recorded without inferring a kernel version from the commit hash.
 - Replaced the broad `nup` alias (`nix flake update`, which could update unrelated inputs and depended on the current directory) with a privileged CachyOS-only update targeting `/etc/nixos/nixos`.

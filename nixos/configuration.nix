@@ -38,9 +38,10 @@ let
     # Let nixpkgs' standard CMake hooks handle configure, build, and install
     # using the install() rules shipped by upstream. No custom installPhase is
     # needed. The manifest is installed under $out/share/vulkan/implicit_layer.d.
-    # The upstream manifest registers an implicit Vulkan layer. It is enabled globally
-    # using LOW_LATENCY_LAYER=1 and selects Reflex via LOW_LATENCY_LAYER_REFLEX=1 in
-    # environment.sessionVariables below; per-game opt-out uses DISABLE_LOW_LATENCY_LAYER=1.
+    # The upstream manifest registers an implicit Vulkan layer. Keep the layer enabled
+    # globally with LOW_LATENCY_LAYER=1, but retain its default AMD Anti-Lag interface.
+    # Proton games that need Reflex can opt in with LOW_LATENCY_LAYER_REFLEX=1 per game;
+    # do not force that alternate interface on native applications such as CS2.
 
     meta = with lib; {
       description = "Vulkan layer for hardware agnostic input latency reduction (Reflex/Anti-Lag)";
@@ -235,18 +236,18 @@ in
     NIXOS_OZONE_WL = "1";
     MOZ_ENABLE_WAYLAND = "1";
     QT_QPA_PLATFORM = "wayland;xcb";
+    # System fallback; Home Manager overrides this for the localhost user's session
+    # with the custom Plus-Cursor theme, which is derived from Bibata-Modern-Ice.
     XCURSOR_THEME = "Bibata-Modern-Ice";
     XCURSOR_SIZE = "20";
   };
 
-  # PAM initializes these variables for login sessions, including the greetd/Hyprland
-  # desktop. NixOS merges sessionVariables into the global environment as well.
-  # The layer is intentionally enabled for all Vulkan applications, with Reflex selected
-  # globally. Override it per game with DISABLE_LOW_LATENCY_LAYER=1 when compatibility
-  # problems occur. NVIDIA spoofing is not enabled because upstream warns it can break FSR4.
+  # PAM initializes these variables for login sessions, including greetd/Hyprland.
+  # Enable the layer globally but keep upstream's default VK_AMD_anti_lag interface;
+  # Proton titles can opt into Reflex per game with LOW_LATENCY_LAYER_REFLEX=1.
+  # Incompatible games can opt out with DISABLE_LOW_LATENCY_LAYER=1.
   environment.sessionVariables = {
     LOW_LATENCY_LAYER = "1";
-    LOW_LATENCY_LAYER_REFLEX = "1";
   };
 
   programs.fish.enable = true;

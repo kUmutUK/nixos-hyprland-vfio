@@ -66,7 +66,7 @@ jobs:
       - name: LSFG-VK v2 package/configuration consistency
         run: python3 scripts/test-lsfg-vk-v2.py
 
-      - name: Installer, English locale, global Reflex and SSH regression checks
+      - name: Installer, low-latency layer and SSH regression checks
         run: bash scripts/test-installer-invariants.sh
 
       - name: Installer partial-deployment rollback regression test

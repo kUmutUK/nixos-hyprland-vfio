@@ -126,7 +126,7 @@ printf 'Backup saved to %s\n' "$BACKUP"
 
 ```bash
 REPO="$HOME/nixos-hyprland-vfio"   # same checkout path as above
-for file in configuration.nix home.nix flake.nix flake.lock; do
+for file in configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix; do
   target="/etc/nixos/nixos/$file"
   if [ -f "$target" ]; then
     diff -u "$target" "$REPO/nixos/$file" || test "$?" -eq 1
@@ -141,12 +141,12 @@ grep -nE 'system\.stateVersion|home\.stateVersion' \
   /home/localhost/.config/home-manager/home.nix 2>/dev/null || true
 ```
 
-5. After reviewing that diff and the values above, copy only the four flake files. This overwrites their corresponding target files, so do not run it before making and checking the backup:
+5. After reviewing that diff and the values above, copy the five required Nix source files, including the LSFG-VK v2 package expression imported by both `flake.nix` and `configuration.nix`. This overwrites their corresponding target files, so do not run it before making and checking the backup:
 
 ```bash
 REPO="$HOME/nixos-hyprland-vfio"   # same checkout path as above
 sudo install -d -m 0755 /etc/nixos/nixos
-for file in configuration.nix home.nix flake.nix flake.lock; do
+for file in configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix; do
   sudo install -m 0644 "$REPO/nixos/$file" /etc/nixos/nixos/
 done
 sudo install -d -m 0755 /etc/nixos/nixos/hooks
@@ -400,7 +400,7 @@ The OCR script now checks that the model is available before beginning; it repor
 |---|---|
 | RADV | AMD Vulkan driver; `AMD_VULKAN_ICD=RADV`, `RADV_PERFTEST=gpl` |
 | `lsfg-vk` | LSFG-VK v2 frame-generation layer, Qt UI and CLI; per-game settings in `~/.config/lsfg-vk/conf.toml` |
-| `low_latency_layer` | Vulkan latency layer, enabled system-wide through PAM session variables with `LOW_LATENCY_LAYER=1` and `LOW_LATENCY_LAYER_REFLEX=1`. This selects the Reflex (`VK_NV_low_latency2`) interface for all Vulkan applications instead of the default AMD Anti-Lag 2 interface. If a particular app has problems, use `DISABLE_LOW_LATENCY_LAYER=1 %command%` in that app's Steam launch options to opt it out. |
+| `low_latency_layer` | Vulkan latency layer enabled system-wide through the PAM session variable `LOW_LATENCY_LAYER=1`. It keeps the default AMD Anti-Lag (`VK_AMD_anti_lag`) interface, appropriate for native Linux applications such as CS2. Proton games that need Reflex can opt in per game with `LOW_LATENCY_LAYER_REFLEX=1 %command%`. Use `DISABLE_LOW_LATENCY_LAYER=1 %command%` to opt an incompatible game out. |
 | GameMode | Applies the configured game-time priority and performance settings |
 | Gamescope | Fullscreen and window rules for games |
 | MangoHud | FPS, frametime, GPU/CPU, and temperature overlay |
@@ -408,7 +408,7 @@ The OCR script now checks that the model is available before beginning; it repor
 | power-profiles-daemon | Power profile / CPU governor management |
 | Steam / Proton / Wine | Windows game compatibility tools |
 
-The upstream Vulkan manifest defines `enable_environment` for `LOW_LATENCY_LAYER=1` and `disable_environment` for `DISABLE_LOW_LATENCY_LAYER=1`. The system session also sets `LOW_LATENCY_LAYER=1` and `LOW_LATENCY_LAYER_REFLEX=1` globally, selecting the Reflex interface by default. To disable the layer for one incompatible game, launch it with `DISABLE_LOW_LATENCY_LAYER=1 %command%`. Inspect active layers with:
+The upstream Vulkan manifest defines `enable_environment` for `LOW_LATENCY_LAYER=1` and `disable_environment` for `DISABLE_LOW_LATENCY_LAYER=1`. The system session sets only `LOW_LATENCY_LAYER=1`, so the layer uses its default AMD Anti-Lag interface globally. For a compatible Proton game that needs Reflex, try `LOW_LATENCY_LAYER_REFLEX=1 %command%` in that game's Steam launch options. If Reflex does not appear in the game's settings, upstream suggests trying `DXVK_CONFIG="dxgi.hideAmdGpu = True"` as an additional per-game option; add it only when needed. To disable the layer for one incompatible game, launch it with `DISABLE_LOW_LATENCY_LAYER=1 %command%`. Inspect active layers with:
 
 **CS2 / Source 2 note:** the upstream [`low_latency_layer` v0.2.0 release notes](https://github.com/Korthos-Software/low_latency_layer/releases/tag/v0.2.0) document frame-pacing issues when an in-engine FPS cap is enabled. While the layer is active, use `fps_max 0` in CS2 until upstream resolves the issue; an external cap such as MangoHud's has been reported not to trigger it. If you still see stutter or frame-pacing problems, opt CS2 out with `DISABLE_LOW_LATENCY_LAYER=1 %command%` and compare frametimes.
 

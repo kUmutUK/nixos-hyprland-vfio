@@ -18,6 +18,7 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 BACKUP_DIR="$HOME/.nixos-config-backup-$(date +%Y%m%d-%H%M%S)"
 NIXOS_DIR="/etc/nixos"
 NIXOS_FLAKE_DIR="$NIXOS_DIR/nixos"
+REQUIRED_NIXOS_SOURCE_FILES=(configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix)
 PATCHED_XML="/var/lib/libvirt/win10.xml"
 SNAPSHOT_SUBVOL="/home/.snapshots"
 SNAPSHOT_SUBVOL_CREATED=0
@@ -80,6 +81,14 @@ is_nixos_live_installer() {
 if is_nixos_live_installer; then
   error "A NixOS live installer environment was detected. Do not run this migration script from the live ISO; follow INSTALLATION.md for a fresh install or boot the installed NixOS system first."
 fi
+# Fail before the backup/deployment transaction if any imported flake source is
+# missing or empty. In particular, both flake.nix and configuration.nix import
+# lsfg-vk-v2.nix, so silently skipping it would leave an unevaluable flake.
+for source_file in "${REQUIRED_NIXOS_SOURCE_FILES[@]}"; do
+  if [[ ! -s "$REPO_DIR/nixos/$source_file" ]]; then
+    error "Required NixOS source file is missing or empty: $REPO_DIR/nixos/$source_file. No system files have been changed."
+  fi
+done
 # The deployment target is /etc/nixos/nixos. A checkout anywhere inside
 # /etc/nixos can overlap its source and deployment paths, not only when the
 # repository root is exactly /etc/nixos. Resolve physical paths before checking
@@ -405,6 +414,7 @@ TRANSACTION_PATHS=(
   "$NIXOS_FLAKE_DIR/home.nix"
   "$NIXOS_FLAKE_DIR/flake.nix"
   "$NIXOS_FLAKE_DIR/flake.lock"
+  "$NIXOS_FLAKE_DIR/lsfg-vk-v2.nix"
   "$NIXOS_FLAKE_DIR/hooks"
   "$NIXOS_FLAKE_DIR/hardware-configuration.nix"
   "$PATCHED_XML"
@@ -444,7 +454,7 @@ mkdir -m 700 -- "$BACKUP_DIR"
 for src in "$HOME/.config/hypr" "$HOME/.config/waybar" "$HOME/.config/gtk-3.0" "$HOME/.config/gtk-4.0" \
            "$NIXOS_FLAKE_DIR/configuration.nix" "$NIXOS_FLAKE_DIR/home.nix" \
            "$NIXOS_FLAKE_DIR/flake.nix" "$NIXOS_FLAKE_DIR/flake.lock" \
-           "$NIXOS_FLAKE_DIR/hooks" \
+           "$NIXOS_FLAKE_DIR/lsfg-vk-v2.nix" "$NIXOS_FLAKE_DIR/hooks" \
            "$NIXOS_DIR/hardware-configuration.nix" \
            "$NIXOS_FLAKE_DIR/hardware-configuration.nix" \
            "$PATCHED_XML"; do
@@ -641,13 +651,13 @@ log "home.stateVersion source: $STATE_VERSION_SOURCE${HOME_STATE_VERSION:+ (valu
 # mkdir failure is covered by the EXIT rollback handler too.
 TRANSACTION_ACTIVE=1
 sudo mkdir -p "$NIXOS_FLAKE_DIR"
-for f in configuration.nix home.nix flake.nix flake.lock; do
-    if [ -f "$REPO_DIR/nixos/$f" ]; then
-        sudo cp "$REPO_DIR/nixos/$f" "$NIXOS_FLAKE_DIR/$f"
-        log "Copied $f"
-    else
-        warn "Skipping missing file: $f"
+for f in "${REQUIRED_NIXOS_SOURCE_FILES[@]}"; do
+    # Recheck each input at use time in case the checkout changed after preflight.
+    if [ ! -s "$REPO_DIR/nixos/$f" ]; then
+        error "Required NixOS source file disappeared or became empty: $REPO_DIR/nixos/$f. Aborting deployment."
     fi
+    sudo install -m 0644 "$REPO_DIR/nixos/$f" "$NIXOS_FLAKE_DIR/$f"
+    log "Copied $f"
 done
 
 # Apply the previously discovered compatibility baselines to the freshly
