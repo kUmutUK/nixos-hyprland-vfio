@@ -254,9 +254,26 @@ fi
 
 python3 - "$README" <<'PY'
 from pathlib import Path
+import re
 import sys
 
 text = Path(sys.argv[1]).read_text(encoding="utf-8")
+repo_map_start = text.index("## Repository map\n")
+tree_start = text.index("```text\n", repo_map_start) + len("```text\n")
+tree_end = text.index("\n```", tree_start)
+tree_text = text[tree_start:tree_end]
+for entry in (".gitignore", "DISCLAIMER.md", "test-lsfg-vk-v2.py", "lsfg-vk-v2.nix"):
+    if entry not in tree_text:
+        raise SystemExit(f"FAIL: README repository map is missing tracked entry {entry!r}.")
+
+if "First enter the project's development shell" not in text or "Then, inside that shell, run the validation commands:" not in text:
+    raise SystemExit("FAIL: README must explain that validation commands run inside the development shell.")
+
+flake_text = (Path(sys.argv[1]).parent / "nixos" / "flake.nix").read_text(encoding="utf-8")
+shell_block = re.search(r"devShells\.\$\{system\}\.default\s*=\s*pkgs\.mkShell\s*\{(.*?)\n    \};", flake_text, re.S)
+if shell_block is None or re.search(r"(?m)^\s*python3\s*$", shell_block.group(1)) is None:
+    raise SystemExit("FAIL: flake development shell must provide python3 for the documented validation suite.")
+
 helper_call = 'sudo python3 "$REPO/scripts/sync-vm-xml.py"'
 unsafe_copy = 'sudo cp ./vm-xml/win10.xml /var/lib/libvirt/win10.xml'
 if helper_call not in text or 'generates a fresh UUID and MAC' not in text or unsafe_copy in text:

@@ -445,12 +445,14 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 
 ```text
 .
+├── .gitignore
 ├── README.md
 ├── KURULUM.md                      # English compatibility pointer to INSTALLATION.md
 ├── INSTALLATION.md                 # English fresh-install guide
 ├── DEGISIKLIK_GECMISI.md           # English current-state summary + archive pointer
 ├── CONTRIBUTING.md
 ├── CHANGELOG.md
+├── DISCLAIMER.md
 ├── LICENSE
 ├── install.sh                      # migration/update helper for an existing NixOS host
 ├── .github/workflows/check.yml
@@ -462,6 +464,7 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 │   ├── prepare-vm-diagnostic.py
 │   ├── test-installer-invariants.sh
 │   ├── test-installer-rollback.sh
+│   ├── test-lsfg-vk-v2.py
 │   ├── test-vfio-hook-driver-state.sh
 │   ├── sync-vm-xml.py
 │   ├── test-vm-diagnostic.py
@@ -474,6 +477,7 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
     ├── configuration.nix
     ├── home.nix
     ├── hardware-configuration.nix   # machine-specific: replace for another host
+    ├── lsfg-vk-v2.nix
     └── hooks/qemu
 ```
 
@@ -481,10 +485,16 @@ Hyprland's native Lua configuration, Hyprlock, Waybar, Pyprland, MangoHud, the L
 
 ## Validation
 
-Run from the repository root:
+Run from the repository root. First enter the project's development shell:
 
 ```bash
 nix develop ./nixos
+```
+
+Then, inside that shell, run the validation commands:
+
+```bash
+set -euo pipefail
 find ./nixos -type f -name '*.nix' -print0 | xargs -0 -r -n1 nixfmt
 shellcheck -S warning install.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh
 python3 scripts/test-lsfg-vk-v2.py

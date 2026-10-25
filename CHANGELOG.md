@@ -5,6 +5,7 @@ This file summarizes notable changes in English. The original detailed Turkish h
 ## Unreleased — 2026-10-26
 
 ### Follow-up audit fixes
+- Corrected the validation workflow: `python3` is now an explicit development-shell dependency, README instructions run checks after entering that shell, and the repository map includes the LSFG-VK v2 package/test and root metadata. CI regression checks guard these contracts.
 - Fixed a deployment gap introduced by the LSFG-VK v2 package migration: the installer now copies `nixos/lsfg-vk-v2.nix`, includes it in transaction backup/rollback, and stops before mutation if any required source file is missing or empty. The manual README migration includes the same file, and regression tests verify restoration/removal during rollback.
 - Corrected low-latency interface selection: `LOW_LATENCY_LAYER=1` remains enabled globally, while `LOW_LATENCY_LAYER_REFLEX=1` is no longer forced on every process. Reflex is now opt-in per compatible Proton game; native Linux CS2 keeps the default AMD Anti-Lag interface. The README, installation guide, and CI regression checks match this behavior.
 - Fixed a real LSFG-VK version mismatch: the old `pabloaul/lsfg-vk-flake` module still packaged v1.0.0 while Home Manager emitted a v2 TOML file. Replaced it with an immutable, hash-verified upstream v2 source derivation that installs the v2 Vulkan layer, UI, and CLI; registered the v2 implicit-layer manifest explicitly and removed the obsolete v1-only flake input.
