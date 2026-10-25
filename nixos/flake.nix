@@ -29,7 +29,7 @@
     # together with matching environment.persistence and Home Manager settings.
   };
 
-  outputs = { self, nixpkgs, cachyos-kernel, home-manager, ... }:
+  outputs = { nixpkgs, cachyos-kernel, home-manager, ... }:
   let
     system = "x86_64-linux";
     pkgs = nixpkgs.legacyPackages.${system};
