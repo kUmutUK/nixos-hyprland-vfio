@@ -19,7 +19,7 @@ import sys
 from pathlib import Path
 
 configuration = Path(sys.argv[1]).read_text(encoding="utf-8")
-match = re.search(r"ignoreIP\\s*=\\s*\\[(.*?)\\]\\s*;", configuration, re.DOTALL)
+match = re.search(r"ignoreIP\s*=\s*\[(.*?)\]\s*;", configuration, re.DOTALL)
 addresses = re.findall(r'"([^"]+)"', match.group(1)) if match else []
 if len(addresses) != 2 or set(addresses) != {"127.0.0.0/8", "::1"}:
     raise SystemExit(1)
