@@ -57,7 +57,14 @@ let
     # list. The hook uses `ls` (coreutils), `sed` (gnused), and `awk` (gawk); without
     # these runtime inputs, commands may be missing and service/DRM recovery can fail.
     # Include the required store paths explicitly instead of relying on the host PATH.
-    export PATH="${lib.makeBinPath [ pkgs.coreutils pkgs.systemd pkgs.gnused pkgs.gawk ]}:$PATH"
+    export PATH="${
+      lib.makeBinPath [
+        pkgs.coreutils
+        pkgs.systemd
+        pkgs.gnused
+        pkgs.gawk
+      ]
+    }:$PATH"
     export HOOK_SETPCI="${lib.getExe' pkgs.pciutils "setpci"}"
     export HOOK_FUSER="${lib.getExe' pkgs.psmisc "fuser"}"
     export HOOK_RTCWAKE="${lib.getExe' pkgs.util-linux "rtcwake"}"
@@ -100,7 +107,9 @@ in
     # Diagnostic trade-off: `nowatchdog` and `nmi_watchdog=0` disable kernel/NMI
     # watchdog-based lockup detection. This favors lower jitter but reduces diagnostic
     # information if the host unexpectedly locks up.
-    "amd_pstate=active" "nowatchdog" "nmi_watchdog=0"
+    "amd_pstate=active"
+    "nowatchdog"
+    "nmi_watchdog=0"
     # IOMMU activation depends on the CPU, kernel, and platform firmware/BIOS.
     # Neither `amd_iommu=on` nor `iommu=pt` is set by this configuration. If you choose
     # to add an optional kernel parameter, understand its platform-specific effect; it
@@ -121,7 +130,11 @@ in
   # Waydroid on Linux 5.18 and newer uses memfd rather than the removed
   # `ashmem_linux` module. Do not attempt to load `ashmem_linux`; after `waydroid init`,
   # verify `sys.use_memfd=true` in `/var/lib/waydroid/waydroid_base.prop`.
-  boot.kernelModules = [ "kvm-amd" "binder_linux" "vfio-pci" ];
+  boot.kernelModules = [
+    "kvm-amd"
+    "binder_linux"
+    "vfio-pci"
+  ];
 
   boot.kernel.sysctl = {
     "vm.max_map_count" = 1048576;
@@ -146,8 +159,18 @@ in
   # These limits intentionally apply only to the primary user; root, greeter, and
   # service limits retain their defaults. Use `domain = "*"` to apply them to all users.
   security.pam.loginLimits = [
-    { domain = "localhost"; item = "nofile"; type = "hard"; value = "65536"; }
-    { domain = "localhost"; item = "nofile"; type = "soft"; value = "65536"; }
+    {
+      domain = "localhost";
+      item = "nofile";
+      type = "hard";
+      value = "65536";
+    }
+    {
+      domain = "localhost";
+      item = "nofile";
+      type = "soft";
+      value = "65536";
+    }
   ];
 
   security.apparmor.enable = true;
@@ -159,7 +182,10 @@ in
     maxretry = 5;
     # Only loopback addresses are exempt. RFC1918/private LAN ranges are deliberately
     # not excluded, so failed SSH attempts from untrusted LAN devices can still be banned.
-    ignoreIP = [ "127.0.0.0/8" "::1" ];
+    ignoreIP = [
+      "127.0.0.0/8"
+      "::1"
+    ];
     bantime = "24h";
     bantime-increment = {
       enable = true;
@@ -255,8 +281,14 @@ in
   programs.hyprland.xwayland.enable = true;
   xdg.portal = {
     enable = true;
-    extraPortals = with pkgs; [ xdg-desktop-portal-hyprland xdg-desktop-portal-gtk ];
-    config.common.default = [ "hyprland" "gtk" ];
+    extraPortals = with pkgs; [
+      xdg-desktop-portal-hyprland
+      xdg-desktop-portal-gtk
+    ];
+    config.common.default = [
+      "hyprland"
+      "gtk"
+    ];
   };
 
   services.xserver.enable = false;
@@ -352,8 +384,15 @@ in
     hashedPasswordFile = "/etc/nixos/hashedPassword";
     shell = pkgs.fish;
     extraGroups = [
-      "wheel" "networkmanager" "video" "audio"
-      "gamemode" "libvirtd" "kvm" "input" "render"
+      "wheel"
+      "networkmanager"
+      "video"
+      "audio"
+      "gamemode"
+      "libvirtd"
+      "kvm"
+      "input"
+      "render"
     ];
     openssh.authorizedKeys.keys = [
       # Optional: add your own public key here for key-based login. Password login is
@@ -377,33 +416,91 @@ in
   security.pam.services.hyprlock = { };
 
   environment.systemPackages = with pkgs; [
-    kitty waybar rofi dunst grim slurp wl-clipboard
+    kitty
+    waybar
+    rofi
+    dunst
+    grim
+    slurp
+    wl-clipboard
     # The `argos-translate` binary is not available as a nixpkgs package (only the
     # `argos-translate-files` Python package is present). Do not add a nonexistent binary
     # package: `wuwa-auto.sh` checks for the command and falls back to Ollama if absent.
     # An external flake can be added if Argos support is required.
-    hyprlock hypridle wlogout hyprpicker
-    hyprpolkitagent pyprland
-    networkmanagerapplet brightnessctl playerctl
-    pavucontrol cliphist libmtp android-file-transfer
-    ntfs3g exfat gparted crow-translate tesseract translate-shell libnotify
-    steam gamemode gamescope mangohud winetricks procps
-    heroic protonup-qt wine nodejs
-    virt-manager bibata-cursors
-    btop nvtopPackages.amd fastfetch
-    git zip unzip usbutils pciutils p7zip android-tools
+    hyprlock
+    hypridle
+    wlogout
+    hyprpicker
+    hyprpolkitagent
+    pyprland
+    networkmanagerapplet
+    brightnessctl
+    playerctl
+    pavucontrol
+    cliphist
+    libmtp
+    android-file-transfer
+    ntfs3g
+    exfat
+    gparted
+    crow-translate
+    tesseract
+    translate-shell
+    libnotify
+    steam
+    gamemode
+    gamescope
+    mangohud
+    winetricks
+    procps
+    heroic
+    protonup-qt
+    wine
+    nodejs
+    virt-manager
+    bibata-cursors
+    btop
+    nvtopPackages.amd
+    fastfetch
+    git
+    zip
+    unzip
+    usbutils
+    pciutils
+    p7zip
+    android-tools
     (vscode-with-extensions.override {
       vscode = vscode.fhs;
       vscodeExtensions = with vscode-extensions; [ continue.continue ];
     })
-    brave telegram-desktop discord proton-vpn fzf input-remapper yt-dlp ffmpeg cloudflare-warp
-    qbittorrent flatpak gnome-software wev pcmanfm
+    brave
+    telegram-desktop
+    discord
+    proton-vpn
+    fzf
+    input-remapper
+    yt-dlp
+    ffmpeg
+    cloudflare-warp
+    qbittorrent
+    flatpak
+    gnome-software
+    wev
+    pcmanfm
     imagemagick
-    btrfs-progs compsize snapper
+    btrfs-progs
+    compsize
+    snapper
     whois # mkpasswd --method yescrypt (password hash setup)
-    mpvpaper flatpak-builder psmisc
-    apparmor-utils stdenv.cc.cc.lib kdePackages.konsole kdePackages.dolphin
-    low-latency-layer vulkan-tools
+    mpvpaper
+    flatpak-builder
+    psmisc
+    apparmor-utils
+    stdenv.cc.cc.lib
+    kdePackages.konsole
+    kdePackages.dolphin
+    low-latency-layer
+    vulkan-tools
     # The installer synchronizes the PCI addresses in `win10.xml` with the QEMU hook.
     # If Python 3 is unavailable, synchronization cannot run; ensure the installer warns
     # about this rather than silently deploying mismatched hostdev addresses.
@@ -449,7 +546,10 @@ in
     requires = [ "libvirtd-config.service" ];
     after = [ "libvirtd-config.service" ];
     before = [ "libvirtd.service" ];
-    serviceConfig = { Type = "oneshot"; RemainAfterExit = true; };
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+    };
     script = ''
       owner="qemu-libvirtd:qemu-libvirtd"
 
@@ -510,7 +610,10 @@ in
   };
 
   nix.settings = {
-    experimental-features = [ "nix-command" "flakes" ];
+    experimental-features = [
+      "nix-command"
+      "flakes"
+    ];
     # `auto-optimise-store = true` was removed because modern Nix already compresses
     # store contents and `nix.optimise` uses zstd by default. The option added no useful
     # compression here, could rewrite store paths, and is not available in every Nix version.
@@ -552,7 +655,7 @@ in
     description = "Create the wuwa-gemma Ollama alias (Aya Expanse 8B; manual invocation).";
     after = [ "ollama.service" ];
     wants = [ "ollama.service" ];
-    wantedBy = [ ];               # Do not start automatically.
+    wantedBy = [ ]; # Do not start automatically.
     serviceConfig = {
       Type = "oneshot";
       Environment = "HOME=/root";
