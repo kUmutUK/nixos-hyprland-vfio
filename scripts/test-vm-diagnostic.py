@@ -121,6 +121,22 @@ def main() -> int:
             "input XML is not well-formed",
         )
 
+        # A dangling output symlink must be rejected before resolving the target.
+        # Otherwise a privileged run could create an unexpected file at its target.
+        symlink_target = directory / "unexpected-target.xml"
+        symlink_output = directory / "diagnostic-symlink.xml"
+        symlink_output.symlink_to(symlink_target)
+        result = run_helper(source, symlink_output)
+        combined = result.stdout + result.stderr
+        if result.returncode == 0:
+            raise AssertionError("dangling output symlink was accepted")
+        if "output path is a symbolic link" not in combined:
+            raise AssertionError(f"output symlink was rejected for the wrong reason: {combined!r}")
+        if symlink_target.exists():
+            raise AssertionError("helper wrote through a dangling output symlink")
+        if not symlink_output.is_symlink():
+            raise AssertionError("helper unexpectedly replaced the output symlink")
+
     print("OK: VM diagnostic helper accepts one valid video block, preserves production XML, and rejects duplicate/mixed video devices, existing graphics, and malformed XML.")
     return 0
 
