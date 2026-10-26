@@ -495,7 +495,8 @@ Then, inside that shell, run the validation commands:
 
 ```bash
 set -euo pipefail
-find ./nixos -type f -name '*.nix' -print0 | xargs -0 -r -n1 nixfmt
+# Check formatting without modifying any files.
+find ./nixos -type f -name '*.nix' -print0 | xargs -0 -r -n1 nixfmt --check
 shellcheck -S warning install.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh
 python3 scripts/test-lsfg-vk-v2.py
 python3 scripts/test-vm-xml.py
@@ -518,7 +519,7 @@ bash scripts/test-installer-rollback.sh
 )
 (cd nixos && nix flake check --no-build --show-trace --no-update-lock-file --option warn-dirty false)
 ```
-`nix flake check --no-build` evaluates the flake but does not build the complete system or kernel. The flags above match the CI evaluation step and prevent lock-file updates during the check. This check does not replace a full build, libvirt domain validation, or a physical GPU lifecycle test.
+`nixfmt --check` is read-only and fails when a Nix file needs formatting; it does not rewrite source files. To format intentionally, run `nixfmt` without `--check` on the selected files and review `git diff` before committing. `nix flake check --no-build` evaluates the flake but does not build the complete system or kernel. The flags above match the CI evaluation step and prevent lock-file updates during the check. This check does not replace a full build or a physical GPU lifecycle test.
 
 ### Prior target-system hardware validation — 2026-10-16
 
