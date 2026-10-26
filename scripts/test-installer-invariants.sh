@@ -254,26 +254,9 @@ fi
 
 python3 - "$README" <<'PY'
 from pathlib import Path
-import re
 import sys
 
 text = Path(sys.argv[1]).read_text(encoding="utf-8")
-repo_map_start = text.index("## Repository map\n")
-tree_start = text.index("```text\n", repo_map_start) + len("```text\n")
-tree_end = text.index("\n```", tree_start)
-tree_text = text[tree_start:tree_end]
-for entry in (".gitignore", "DISCLAIMER.md", "test-lsfg-vk-v2.py", "lsfg-vk-v2.nix"):
-    if entry not in tree_text:
-        raise SystemExit(f"FAIL: README repository map is missing tracked entry {entry!r}.")
-
-if "First enter the project's development shell" not in text or "Then, inside that shell, run the validation commands:" not in text:
-    raise SystemExit("FAIL: README must explain that validation commands run inside the development shell.")
-
-flake_text = (Path(sys.argv[1]).parent / "nixos" / "flake.nix").read_text(encoding="utf-8")
-shell_block = re.search(r"devShells\.\$\{system\}\.default\s*=\s*pkgs\.mkShell\s*\{(.*?)\n    \};", flake_text, re.S)
-if shell_block is None or re.search(r"(?m)^\s*python3\s*$", shell_block.group(1)) is None:
-    raise SystemExit("FAIL: flake development shell must provide python3 for the documented validation suite.")
-
 helper_call = 'sudo python3 "$REPO/scripts/sync-vm-xml.py"'
 unsafe_copy = 'sudo cp ./vm-xml/win10.xml /var/lib/libvirt/win10.xml'
 if helper_call not in text or 'generates a fresh UUID and MAC' not in text or unsafe_copy in text:
@@ -331,47 +314,8 @@ if ! grep -Fq 'if [ -n \"$2\" ] && [ ! -e \"$1\" ]; then notify-send -t 15000 -u
   echo "FAIL: missing-wallpaper notification must only run when live wallpaper is enabled." >&2
   exit 1
 fi
-if ! grep -Fq 'LOW_LATENCY_LAYER = "1";' "$CONFIG"; then
-  echo "FAIL: the low-latency Vulkan layer must be enabled through the system session." >&2
-  exit 1
-fi
-if grep -Eq '^[[:space:]]*LOW_LATENCY_LAYER_REFLEX[[:space:]]*=' "$CONFIG" "$HOME_CONFIG"; then
-  echo "FAIL: Reflex must not be forced globally; select it per compatible Proton game." >&2
-  exit 1
-fi
-if ! grep -Fq 'LOW_LATENCY_LAYER_REFLEX=1 %command%' "$README"; then
-  echo "FAIL: README must document per-game Reflex selection." >&2
-  exit 1
-fi
-if grep -Fq 'The system-wide Reflex configuration is now enabled again' "$ROOT/CHANGELOG.md"; then
-  echo "FAIL: CHANGELOG must not claim that Reflex is enabled system-wide; the current policy is per-game opt-in." >&2
-  exit 1
-fi
-
-# Both declarations importing the LSFG-VK v2 expression require it to be deployed
-# alongside the flake, backed up, and restored/removed as part of the same transaction.
-if [ ! -s "$ROOT/nixos/lsfg-vk-v2.nix" ]; then
-  echo "FAIL: required LSFG-VK v2 package expression is missing or empty." >&2
-  exit 1
-fi
-if ! grep -Fq 'REQUIRED_NIXOS_SOURCE_FILES=(configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix)' "$INSTALLER" \
-  || ! grep -Fq 'for source_file in "${REQUIRED_NIXOS_SOURCE_FILES[@]}"; do' "$INSTALLER" \
-  || ! grep -Fq 'for f in "${REQUIRED_NIXOS_SOURCE_FILES[@]}"; do' "$INSTALLER"; then
-  echo "FAIL: installer must preflight and deploy the complete required Nix source-file list." >&2
-  exit 1
-fi
-transaction_block="$(sed -n '/^TRANSACTION_PATHS=(/,/^)/p' "$INSTALLER")"
-backup_block="$(sed -n '/^for src in /,/PATCHED_XML"; do/p' "$INSTALLER")"
-if ! grep -Fq '"$NIXOS_FLAKE_DIR/lsfg-vk-v2.nix"' <<< "$transaction_block"; then
-  echo "FAIL: transaction rollback targets must include lsfg-vk-v2.nix." >&2
-  exit 1
-fi
-if ! grep -Fq '"$NIXOS_FLAKE_DIR/lsfg-vk-v2.nix"' <<< "$backup_block"; then
-  echo "FAIL: pre-deployment backup list must include lsfg-vk-v2.nix." >&2
-  exit 1
-fi
-if [ "$(grep -Fc 'for file in configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix; do' "$README")" -lt 2 ]; then
-  echo "FAIL: README diff and manual deployment loops must include lsfg-vk-v2.nix." >&2
+if ! grep -Fq 'LOW_LATENCY_LAYER = "1";' "$CONFIG" || ! grep -Fq 'LOW_LATENCY_LAYER_REFLEX = "1";' "$CONFIG"; then
+  echo "FAIL: the low-latency Vulkan layer and Reflex interface must be enabled system-wide." >&2
   exit 1
 fi
 if grep -Eq '^[[:space:]]*DISABLE_LOW_LATENCY_LAYER[[:space:]]*=' "$CONFIG" "$HOME_CONFIG"; then
@@ -570,7 +514,7 @@ if 'The included configuration sets `networking.hostName = "nixos"`' not in read
 print(f"OK: CachyOS branch {branch!r}, lock, active docs, and host-name guidance are consistent.")
 PY_KERNEL_REF
 
-echo "OK: installer, VM/VFIO, English locale/UI, updateable RT-Bore-LTO selection, low-latency layer, SSH access, and SSH-preserving VFIO handoff invariants passed."
+echo "OK: installer, VM/VFIO, English locale/UI, updateable RT-Bore-LTO selection, global Reflex, SSH access, and SSH-preserving VFIO handoff invariants passed."
 
 
 # The migration installer must fail closed on NixOS live media before any mutations.

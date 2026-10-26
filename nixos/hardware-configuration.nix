@@ -1,4 +1,4 @@
-{ config, lib, modulesPath, ... }:
+{ config, lib, pkgs, modulesPath, ... }:
 
 let
   rootDev    = "/dev/disk/by-uuid/14d6b717-2c6d-42fb-9794-f3bb4ad729a9";

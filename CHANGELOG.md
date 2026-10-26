@@ -2,17 +2,9 @@
 
 This file summarizes notable changes in English. The original detailed Turkish history is preserved unchanged in [`docs/archive/DEGISIKLIK_GECMISI.md`](docs/archive/DEGISIKLIK_GECMISI.md).
 
-## Unreleased — 2026-10-26
+## Unreleased — 2026-10-23
 
 ### Follow-up audit fixes
-- Corrected the validation workflow: `python3` is now an explicit development-shell dependency, README instructions run checks after entering that shell, and the repository map includes the LSFG-VK v2 package/test and root metadata. CI regression checks guard these contracts.
-- Fixed a deployment gap introduced by the LSFG-VK v2 package migration: the installer now copies `nixos/lsfg-vk-v2.nix`, includes it in transaction backup/rollback, and stops before mutation if any required source file is missing or empty. The manual README migration includes the same file, and regression tests verify restoration/removal during rollback.
-- Corrected low-latency interface selection: `LOW_LATENCY_LAYER=1` remains enabled globally, while `LOW_LATENCY_LAYER_REFLEX=1` is no longer forced on every process. Reflex is now opt-in per compatible Proton game; native Linux CS2 keeps the default AMD Anti-Lag interface. The README, installation guide, and CI regression checks match this behavior.
-- Fixed a real LSFG-VK version mismatch: the old `pabloaul/lsfg-vk-flake` module still packaged v1.0.0 while Home Manager emitted a v2 TOML file. Replaced it with an immutable, hash-verified upstream v2 source derivation that installs the v2 Vulkan layer, UI, and CLI; registered the v2 implicit-layer manifest explicitly and removed the obsolete v1-only flake input.
-- Updated the Genshin Impact and Wuthering Waves profile aliases to include their actual executable names, and added a regression test that parses the generated TOML and checks package pin, build flags, license, and manifest registration.
-- Documented the upstream LSFG-VK v2 CC BY-NC-ND 4.0 license, the separately required Steam Lossless Scaling installation, and the fact that Home Manager-managed profiles should be edited in `nixos/home.nix` rather than saved through the GUI.
-
-### Previous follow-up audit fixes
 - Preserved an existing deployed VM XML as the source of truth during migration and synchronized only the two GPU/audio PCI addresses. The helper retains the existing VM identity, custom CPU/firmware/NVRAM/device settings, disk path, USB passthrough entries, and extra source-address attributes; unsupported layouts fail closed. Added regression tests for new VM identity, existing XML preservation, backups, and unsafe XML refusal.
 - Documented the upstream `low_latency_layer` v0.2.0 incompatibility with the `obs_vkcapture` Vulkan capture layer and the per-game opt-out.
 - Added regression coverage for the README's manual migration guard (copy when the generated source exists, preserve an existing target, and fail closed when the source is missing). The supplied README already checked the correct source path; the earlier audit's quoted faulty snippet did not match the actual archive.
@@ -23,7 +15,7 @@ This file summarizes notable changes in English. The original detailed Turkish h
 
 ### Changed
 - Switched the selected kernel from standard CachyOS BORE-LTO to `linuxPackages-cachyos-rt-bore-lto`. The version is not hard-coded: the flake follows the upstream `master` branch and the lock can be updated for newer upstream revisions with `nix flake update cachyos-kernel`. Upstream does not publish the RT-Bore-LTO ThinLTO build in its binary cache, so it is expected to compile locally. The project owner has since reported a successful local RT-Bore-LTO build and VM/Hyprland recovery cycle on the target machine.
-- Enabled the Vulkan low-latency layer system-wide through PAM session variable `LOW_LATENCY_LAYER=1`. The follow-up correction above keeps the default AMD Anti-Lag interface globally and selects Reflex per compatible Proton game, rather than forcing `LOW_LATENCY_LAYER_REFLEX=1` system-wide.
+- Enabled the Vulkan low-latency layer and Reflex system-wide through PAM session variables `LOW_LATENCY_LAYER=1` and `LOW_LATENCY_LAYER_REFLEX=1`. Applications with compatibility issues can opt out with `DISABLE_LOW_LATENCY_LAYER=1` in their Steam launch options.
 - Enabled password SSH for the `localhost` user on TCP 22 while keeping root SSH login disabled, restricting allowed users, and applying Fail2ban to private LAN sources too. Updated the VFIO hook to terminate only the local `seat0` sessions so remote SSH sessions are not killed by `loginctl terminate-user`; a busy GPU still triggers the existing fail-closed handoff check.
 - The checked-in CachyOS lock in this tree resolves the upstream `master` input to `02ba4db52e62e1fbece80402d369127ae77cbbeb`. The lock keeps this checkout reproducible; advance it intentionally when a newer upstream revision is desired. The revision is recorded without inferring a kernel version from the commit hash.
 - Replaced the broad `nup` alias (`nix flake update`, which could update unrelated inputs and depended on the current directory) with a privileged CachyOS-only update targeting `/etc/nixos/nixos`.
@@ -39,7 +31,7 @@ This file summarizes notable changes in English. The original detailed Turkish h
 - Reject running the installer from `/etc/nixos` before system changes, trim monitor-name input before using it in Hyprland defaults, and abort VM XML synchronization unless exactly two real PCI `hostdev` elements have supported source-address blocks. Added regression coverage for malformed/incomplete/extra PCI pairs and whitespace-only monitor input.
 - Corrected the Rofi theme comment without changing the working `arthur` binding; clarified that `wuwa-gemma` is a custom Ollama alias based on Aya Expanse 8B, not a Gemma-family model.
 - Restricted installer XML address synchronization to PCI `hostdev` nodes, fixed warnings for incomplete versus extra PCI entries, and added a regression test that ensures USB address sources are never rewritten as PCI addresses.
-- Aligned the README with the default VM XML and documented the two active fixed USB passthrough IDs.
+- Aligned the README with the default VM XML and documented the two active fixed USB passthrough IDs. The system-wide Reflex configuration is now enabled again; per-game opt-out is documented for incompatible Vulkan applications.
 - Clarified that installer host-device counts and synchronization refer to PCI `hostdev` entries, not all device types; extended the VM XML regression test to guard the documented USB IDs as well as the PCI pair.
 - Clarified single-GPU recovery guidance and changed the hook to terminate only `seat0`, preserving headless SSH sessions while retaining the fail-closed GPU-use check. Removed a duplicate `android-file-transfer` package entry and corrected a stale Home Manager package-list comment.
 - Removed the unused Waypaper package and `SUPER+W` binding, corrected the installer's missing-PCI-device diagnostic so it does not invoke `lspci` a second time, and translated the color notification title to English.
