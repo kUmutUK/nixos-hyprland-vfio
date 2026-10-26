@@ -121,7 +121,22 @@ def main() -> int:
             "input XML is not well-formed",
         )
 
-    print("OK: VM diagnostic helper accepts one valid video block, preserves production XML, and rejects duplicate/mixed video devices, existing graphics, and malformed XML.")
+        # A dangling symlink must be rejected before resolve() can redirect
+        # the output to its target path.
+        symlink_target = directory / "symlink-target.xml"
+        symlink_output = directory / "symlink-output.xml"
+        symlink_output.symlink_to(symlink_target)
+        symlink_result = run_helper(source, symlink_output)
+        if symlink_result.returncode == 0:
+            raise AssertionError("dangling output symlink was accepted")
+        if "output path must not be a symlink" not in (symlink_result.stdout + symlink_result.stderr):
+            raise AssertionError("dangling output symlink did not produce the expected rejection")
+        if symlink_target.exists():
+            raise AssertionError("dangling output symlink unexpectedly created its target")
+        if not symlink_output.is_symlink():
+            raise AssertionError("helper unexpectedly changed the supplied symlink")
+
+    print("OK: VM diagnostic helper accepts one valid video block, preserves production XML, and rejects duplicate/mixed video devices, existing graphics, malformed XML, and symlink output paths.")
     return 0
 
 
