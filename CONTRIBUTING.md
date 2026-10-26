@@ -44,32 +44,6 @@ nix develop ./nixos --command bash -euo pipefail -c '
   (cd nixos && nix flake check --no-build --show-trace --no-update-lock-file --option warn-dirty false)
   (cd nixos && nix build --no-link --no-update-lock-file .#lsfg-vk)
 '
-```bash
-set -euo pipefail
-for f in install.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh; do
-  bash -n "$f"
-done
-shellcheck -S warning install.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh
-python3 -c "import xml.etree.ElementTree as ET; ET.parse('vm-xml/win10.xml')"
-python3 scripts/test-vm-xml.py
-python3 scripts/test-vm-xml-sync.py
-python3 scripts/test-vm-diagnostic.py
-bash scripts/test-installer-invariants.sh
-bash scripts/test-installer-rollback.sh
-bash scripts/test-vfio-hook-driver-state.sh
-(
-  set -euo pipefail
-  tmpdir=$(mktemp -d)
-  trap 'rm -rf "$tmpdir"' EXIT
-  python3 scripts/extract-embedded-scripts.py "$tmpdir" > "$tmpdir/paths.nul"
-  mapfile -d '' -t embedded_scripts < "$tmpdir/paths.nul"
-  if [ "${#embedded_scripts[@]}" -ne 7 ]; then
-    printf 'Expected 7 embedded Bash scripts, found %s\n' "${#embedded_scripts[@]}" >&2
-    exit 1
-  fi
-  shellcheck -S warning "${embedded_scripts[@]}"
-)
-(cd nixos && nix flake check --no-build --show-trace --no-update-lock-file --option warn-dirty false)
 ```
 
 For changes to NixOS options or kernel inputs, also evaluate the relevant output and, where feasible, run a real `nixos-rebuild dry-activate`. Do not claim that the full kernel or system builds unless the build was actually completed. The `--no-build` CI step only evaluates the flake; a separate targeted build verifies the selected LSFG-VK package. The Nix formatting check uses `nixfmt --check` and does not rewrite source files.

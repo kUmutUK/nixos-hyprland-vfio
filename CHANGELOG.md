@@ -11,6 +11,7 @@ This file summarizes notable changes in English. The original detailed Turkish h
 - Added common Proton/Wine Wuthering Waves LSFG-VK v1 process aliases and a TOML regression test. The actual process matched at runtime must still be confirmed from target-machine logs.
 - Updated `actions/checkout` to the pinned Node 24-compatible v7.0.1 revision, added a targeted LSFG-VK package build gate, added read-only Nix formatting checks, and included Python in the development shell.
 - Restored Lossless Scaling installation prerequisites, corrected the README repository map, and changed validation instructions to fail fast without rewriting Nix files.
+- Removed the duplicated installer-invariant test block, consolidated contributor validation into one correctly fenced command block, refreshed the root current-state index to 2026-10-27, and clarified that SSH's `AllowUsers` rule restricts the account name rather than the remote source address.
 
 ## Unreleased — 2026-10-23
 
