@@ -1,3 +1,18 @@
+## Unreleased — 2026-10-27
+
+### Fixed
+- Stop and restore `waydroid-container.service` as part of the VFIO GPU handoff, preserving its pre-VM active state alongside the desktop and GPU-related services.
+- Reject VM diagnostic output paths that are symbolic links before resolving the path, including dangling links, and add a regression test that ensures the symlink target is not created.
+
+### Changed
+- Update the pinned GitHub Actions checkout dependency to `actions/checkout` v7.0.1, which uses Node.js 24, avoiding the Node 20 runtime retirement risk in the previous v4.4.0 pin.
+
+### Validation notes
+- LSFG Wuthering Waves process-name matching remains a runtime verification item; do not change the profile name solely from static assumptions.
+- The CI workflow must pass on this branch before these changes are considered validated. A successful static test run does not substitute for a real Waydroid/VFIO/VM cycle on the target hardware.
+
+---
+
 # Changelog
 
 This file summarizes notable changes in English. The original detailed Turkish history is preserved unchanged in [`docs/archive/DEGISIKLIK_GECMISI.md`](docs/archive/DEGISIKLIK_GECMISI.md).
