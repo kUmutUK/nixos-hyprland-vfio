@@ -952,8 +952,18 @@ in
       hdr_mode = false
       experimental_present_mode = "fifo"
 
+      # Common Proton/Wine process aliases. Confirm the actually matched name in
+      # the LSFG-VK log on the target machine.
       [[game]]
-      exe = "wuwa"
+      exe = "Client-Win64-Shipping.exe"
+      multiplier = 2
+      flow_scale = 0.9
+      performance_mode = false
+      hdr_mode = true
+      experimental_present_mode = "fifo"
+
+      [[game]]
+      exe = "Client-Win64-Shipping"
       multiplier = 2
       flow_scale = 0.9
       performance_mode = false

@@ -13,7 +13,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: installer executable mode
         # Keep README's ./install.sh invocation working in fresh checkouts.
@@ -56,12 +56,17 @@ jobs:
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@3138316df39ed29be04236d7ffc686fa525866aa
 
+      - name: Nix formatting (read-only)
+        run: |
+          nix develop ./nixos --no-update-lock-file --command bash -euo pipefail -c 'find ./nixos -type f -name "*.nix" -print0 | xargs -0 -r nixfmt --check'
+
       - name: XML well-formedness and VM invariants
         run: |
           python3 -c "import xml.etree.ElementTree as ET; ET.parse('vm-xml/win10.xml')"
           python3 scripts/test-vm-xml.py
           python3 scripts/test-vm-xml-sync.py
           python3 scripts/test-vm-diagnostic.py
+          python3 scripts/test-lsfg-v1-config.py
 
       - name: Installer, English locale, global Reflex and SSH regression checks
         run: bash scripts/test-installer-invariants.sh
@@ -171,6 +176,10 @@ jobs:
             --option warn-dirty false
           echo "  flake evaluates OK"
 
+      - name: Build the selected LSFG-VK v1 package
+        working-directory: nixos
+        run: nix build --no-link --no-update-lock-file .#lsfg-vk
+
       # This is an informational step, not a required gate. The required gates above
       # and below include:
       #   1) install.sh is executable in Git and the source ZIP preserves its mode
@@ -181,15 +190,17 @@ jobs:
       #   5) VFIO hook driver-state regression tests
       #   6) ShellCheck for the Nix-generated VFIO hook
       #   7) extraction and ShellCheck of all seven embedded home.nix scripts
-      #   8) nix flake check evaluates the NixOS configuration without building it
-      #   9) flake.lock remains unchanged during CI
+      #   8) nix flake check evaluates the NixOS configuration without building the whole system
+      #   9) the selected LSFG-VK v1 package builds explicitly
+      #  10) flake.lock remains unchanged during CI
       # statix and deadnix findings are logged but do not fail the workflow by design:
       # failing a PR on every advisory finding would be noisy for a configuration repository.
       # `|| echo` returns success after an advisory warning; this is not a pipeline,
       # so `pipefail` is irrelevant and the fallback masks the command exit code.
       # `nix develop` here intentionally is not `--no-build`.
-      # The devShell tools (nixfmt, statix, deadnix, ShellCheck, jq, etc.) are
-      # cached; this step does not build custom kernel or low-latency-layer sources.
+      # The devShell tools (nixfmt, Python, statix, deadnix, ShellCheck, jq, etc.) are
+      # available; the targeted LSFG build does not build the full custom kernel
+      # or the complete NixOS system.
       # `--no-build` is used in the previous step because `nix flake check` only
       # needs to evaluate the module system there.
       - name: statix / deadnix (repository .nix files) - informational

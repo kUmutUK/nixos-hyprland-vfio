@@ -1,4 +1,4 @@
-{ config, pkgs, lib, ... }:
+{ pkgs, lib, ... }:
 
 let
   # Pass the native Lua config path directly to Hyprland through this wrapper.

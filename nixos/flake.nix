@@ -61,6 +61,9 @@
       ];
     };
 
+    # Expose the selected LSFG-VK v1 package so CI and contributors can build it directly.
+    packages.${system}.lsfg-vk = lsfg-vk-flake.packages.${system}.lsfg-vk;
+
     # The README uses `nix develop`; expose one flake dev shell rather than a
     # separate legacy channel-based shell.
     devShells.${system}.default = pkgs.mkShell {
@@ -68,6 +71,7 @@
       packages = with pkgs; [
             # Use nixfmt; nixfmt-rfc-style is deprecated and aliases this package.
             nixfmt
+            python3
             statix
             deadnix
             shellcheck
@@ -80,7 +84,7 @@
             libxml2
           ];
       shellHook = ''
-        echo "nixos-hyprland-vfio development shell — nixfmt, statix, and deadnix are available"
+        echo "nixos-hyprland-vfio development shell — nixfmt, Python, statix, and deadnix are available"
       '';
     };
   };
