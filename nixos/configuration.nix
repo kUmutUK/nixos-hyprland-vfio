@@ -1,4 +1,4 @@
-{ pkgs, lib, ... }:
+{ config, pkgs, lib, ... }:
 
 let
   # Pass the native Lua config path directly to Hyprland through this wrapper.
@@ -8,10 +8,6 @@ let
     export HYPRLAND_CONFIG="/home/localhost/.config/hypr/hyprland.lua"
     exec ${pkgs.hyprland}/bin/Hyprland "$@"
   '';
-
-  # Build the v2 Vulkan layer/UI/CLI instead of importing the archived v1-only
-  # pabloaul module, which installs lsfg-vk 1.0.0 and cannot read a v2 config.
-  lsfgVkV2 = pkgs.callPackage ./lsfg-vk-v2.nix { };
 
   # Low-latency layer package derivation, pinned to upstream's latest published release.
   low-latency-layer = pkgs.stdenv.mkDerivation rec {
@@ -38,10 +34,9 @@ let
     # Let nixpkgs' standard CMake hooks handle configure, build, and install
     # using the install() rules shipped by upstream. No custom installPhase is
     # needed. The manifest is installed under $out/share/vulkan/implicit_layer.d.
-    # The upstream manifest registers an implicit Vulkan layer. Keep the layer enabled
-    # globally with LOW_LATENCY_LAYER=1, but retain its default AMD Anti-Lag interface.
-    # Proton games that need Reflex can opt in with LOW_LATENCY_LAYER_REFLEX=1 per game;
-    # do not force that alternate interface on native applications such as CS2.
+    # The upstream manifest registers an implicit Vulkan layer. It is enabled globally
+    # using LOW_LATENCY_LAYER=1 and selects Reflex via LOW_LATENCY_LAYER_REFLEX=1 in
+    # environment.sessionVariables below; per-game opt-out uses DISABLE_LOW_LATENCY_LAYER=1.
 
     meta = with lib; {
       description = "Vulkan layer for hardware agnostic input latency reduction (Reflex/Anti-Lag)";
@@ -82,6 +77,11 @@ let
 in
 {
   imports = [ ./hardware-configuration.nix ];
+
+  services.lsfg-vk = {
+    enable = true;
+    ui.enable = true;
+  };
 
   hardware.enableRedistributableFirmware = true;
 
@@ -236,18 +236,18 @@ in
     NIXOS_OZONE_WL = "1";
     MOZ_ENABLE_WAYLAND = "1";
     QT_QPA_PLATFORM = "wayland;xcb";
-    # System fallback; Home Manager overrides this for the localhost user's session
-    # with the custom Plus-Cursor theme, which is derived from Bibata-Modern-Ice.
     XCURSOR_THEME = "Bibata-Modern-Ice";
     XCURSOR_SIZE = "20";
   };
 
-  # PAM initializes these variables for login sessions, including greetd/Hyprland.
-  # Enable the layer globally but keep upstream's default VK_AMD_anti_lag interface;
-  # Proton titles can opt into Reflex per game with LOW_LATENCY_LAYER_REFLEX=1.
-  # Incompatible games can opt out with DISABLE_LOW_LATENCY_LAYER=1.
+  # PAM initializes these variables for login sessions, including the greetd/Hyprland
+  # desktop. NixOS merges sessionVariables into the global environment as well.
+  # The layer is intentionally enabled for all Vulkan applications, with Reflex selected
+  # globally. Override it per game with DISABLE_LOW_LATENCY_LAYER=1 when compatibility
+  # problems occur. NVIDIA spoofing is not enabled because upstream warns it can break FSR4.
   environment.sessionVariables = {
     LOW_LATENCY_LAYER = "1";
+    LOW_LATENCY_LAYER_REFLEX = "1";
   };
 
   programs.fish.enable = true;
@@ -403,7 +403,7 @@ in
     whois # mkpasswd --method yescrypt (password hash setup)
     mpvpaper flatpak-builder psmisc
     apparmor-utils stdenv.cc.cc.lib kdePackages.konsole kdePackages.dolphin
-    low-latency-layer lsfgVkV2 vulkan-tools
+    low-latency-layer vulkan-tools
     # The installer synchronizes the PCI addresses in `win10.xml` with the QEMU hook.
     # If Python 3 is unavailable, synchronization cannot run; ensure the installer warns
     # about this rather than silently deploying mismatched hostdev addresses.
@@ -419,11 +419,6 @@ in
 
   environment.etc."vulkan/implicit_layer.d/low_latency_layer.json".source =
     "${low-latency-layer}/share/vulkan/implicit_layer.d/low_latency_layer.json";
-
-  # Register the v2 package's implicit Vulkan layer using its store-pinned manifest.
-  # The layer library path in that manifest points to this exact package output.
-  environment.etc."vulkan/implicit_layer.d/VkLayer_LSFGVK_frame_generation.json".source =
-    "${lsfgVkV2}/share/vulkan/implicit_layer.d/VkLayer_LSFGVK_frame_generation.json";
 
   programs.gamemode = {
     enable = true;

@@ -13,7 +13,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: installer executable mode
         # Keep README's ./install.sh invocation working in fresh checkouts.
@@ -63,10 +63,7 @@ jobs:
           python3 scripts/test-vm-xml-sync.py
           python3 scripts/test-vm-diagnostic.py
 
-      - name: LSFG-VK v2 package/configuration consistency
-        run: python3 scripts/test-lsfg-vk-v2.py
-
-      - name: Installer, low-latency layer and SSH regression checks
+      - name: Installer, English locale, global Reflex and SSH regression checks
         run: bash scripts/test-installer-invariants.sh
 
       - name: Installer partial-deployment rollback regression test
@@ -173,10 +170,6 @@ jobs:
             --no-update-lock-file \
             --option warn-dirty false
           echo "  flake evaluates OK"
-
-      - name: Build the pinned LSFG-VK v2 package
-        working-directory: nixos
-        run: nix build --no-link --no-update-lock-file .#lsfg-vk-v2
 
       # This is an informational step, not a required gate. The required gates above
       # and below include:

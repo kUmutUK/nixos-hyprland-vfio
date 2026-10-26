@@ -35,20 +35,7 @@ def main() -> int:
     args = parser.parse_args()
 
     source = args.input.expanduser().resolve()
-    output_arg = args.output.expanduser()
-
-    # Check the user-supplied final path component before resolving it. Path.resolve()
-    # follows dangling symlinks too, which could redirect a privileged diagnostic
-    # write to an unexpected new file outside the requested output location.
-    if output_arg.is_symlink():
-        parser.error(f"output path is a symbolic link; refusing to follow it: {output_arg}")
-
-    try:
-        output_parent = output_arg.parent.resolve(strict=True)
-    except (OSError, RuntimeError) as exc:
-        parser.error(f"output directory does not exist or cannot be resolved: {output_arg.parent}: {exc}")
-    output = output_parent / output_arg.name
-
+    output = args.output.expanduser().resolve()
     if source == output:
         parser.error("input and output must be different paths; production XML is never overwritten")
     if not source.is_file():

@@ -126,7 +126,7 @@ printf 'Backup saved to %s\n' "$BACKUP"
 
 ```bash
 REPO="$HOME/nixos-hyprland-vfio"   # same checkout path as above
-for file in configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix; do
+for file in configuration.nix home.nix flake.nix flake.lock; do
   target="/etc/nixos/nixos/$file"
   if [ -f "$target" ]; then
     diff -u "$target" "$REPO/nixos/$file" || test "$?" -eq 1
@@ -141,12 +141,12 @@ grep -nE 'system\.stateVersion|home\.stateVersion' \
   /home/localhost/.config/home-manager/home.nix 2>/dev/null || true
 ```
 
-5. After reviewing that diff and the values above, copy the five required Nix source files, including the LSFG-VK v2 package expression imported by both `flake.nix` and `configuration.nix`. This overwrites their corresponding target files, so do not run it before making and checking the backup:
+5. After reviewing that diff and the values above, copy only the four flake files. This overwrites their corresponding target files, so do not run it before making and checking the backup:
 
 ```bash
 REPO="$HOME/nixos-hyprland-vfio"   # same checkout path as above
 sudo install -d -m 0755 /etc/nixos/nixos
-for file in configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix; do
+for file in configuration.nix home.nix flake.nix flake.lock; do
   sudo install -m 0644 "$REPO/nixos/$file" /etc/nixos/nixos/
 done
 sudo install -d -m 0755 /etc/nixos/nixos/hooks
@@ -399,8 +399,8 @@ The OCR script now checks that the model is available before beginning; it repor
 | Component | Role |
 |---|---|
 | RADV | AMD Vulkan driver; `AMD_VULKAN_ICD=RADV`, `RADV_PERFTEST=gpl` |
-| `lsfg-vk` | LSFG-VK v2 frame-generation layer, Qt UI and CLI; per-game settings in `~/.config/lsfg-vk/conf.toml` |
-| `low_latency_layer` | Vulkan latency layer enabled system-wide through the PAM session variable `LOW_LATENCY_LAYER=1`. It keeps the default AMD Anti-Lag (`VK_AMD_anti_lag`) interface, appropriate for native Linux applications such as CS2. Proton games that need Reflex can opt in per game with `LOW_LATENCY_LAYER_REFLEX=1 %command%`. Use `DISABLE_LOW_LATENCY_LAYER=1 %command%` to opt an incompatible game out. |
+| `lsfg-vk` | Vulkan frame-generation layer; per-game settings in `~/.config/lsfg-vk/conf.toml` |
+| `low_latency_layer` | Vulkan latency layer, enabled system-wide through PAM session variables with `LOW_LATENCY_LAYER=1` and `LOW_LATENCY_LAYER_REFLEX=1`. This selects the Reflex (`VK_NV_low_latency2`) interface for all Vulkan applications instead of the default AMD Anti-Lag 2 interface. If a particular app has problems, use `DISABLE_LOW_LATENCY_LAYER=1 %command%` in that app's Steam launch options to opt it out. |
 | GameMode | Applies the configured game-time priority and performance settings |
 | Gamescope | Fullscreen and window rules for games |
 | MangoHud | FPS, frametime, GPU/CPU, and temperature overlay |
@@ -408,7 +408,7 @@ The OCR script now checks that the model is available before beginning; it repor
 | power-profiles-daemon | Power profile / CPU governor management |
 | Steam / Proton / Wine | Windows game compatibility tools |
 
-The upstream Vulkan manifest defines `enable_environment` for `LOW_LATENCY_LAYER=1` and `disable_environment` for `DISABLE_LOW_LATENCY_LAYER=1`. The system session sets only `LOW_LATENCY_LAYER=1`, so the layer uses its default AMD Anti-Lag interface globally. For a compatible Proton game that needs Reflex, try `LOW_LATENCY_LAYER_REFLEX=1 %command%` in that game's Steam launch options. If Reflex does not appear in the game's settings, upstream suggests trying `DXVK_CONFIG="dxgi.hideAmdGpu = True"` as an additional per-game option; add it only when needed. To disable the layer for one incompatible game, launch it with `DISABLE_LOW_LATENCY_LAYER=1 %command%`. Inspect active layers with:
+The upstream Vulkan manifest defines `enable_environment` for `LOW_LATENCY_LAYER=1` and `disable_environment` for `DISABLE_LOW_LATENCY_LAYER=1`. The system session also sets `LOW_LATENCY_LAYER=1` and `LOW_LATENCY_LAYER_REFLEX=1` globally, selecting the Reflex interface by default. To disable the layer for one incompatible game, launch it with `DISABLE_LOW_LATENCY_LAYER=1 %command%`. Inspect active layers with:
 
 **CS2 / Source 2 note:** the upstream [`low_latency_layer` v0.2.0 release notes](https://github.com/Korthos-Software/low_latency_layer/releases/tag/v0.2.0) document frame-pacing issues when an in-engine FPS cap is enabled. While the layer is active, use `fps_max 0` in CS2 until upstream resolves the issue; an external cap such as MangoHud's has been reported not to trigger it. If you still see stutter or frame-pacing problems, opt CS2 out with `DISABLE_LOW_LATENCY_LAYER=1 %command%` and compare frametimes.
 
@@ -445,14 +445,12 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 
 ```text
 .
-├── .gitignore
 ├── README.md
 ├── KURULUM.md                      # English compatibility pointer to INSTALLATION.md
 ├── INSTALLATION.md                 # English fresh-install guide
 ├── DEGISIKLIK_GECMISI.md           # English current-state summary + archive pointer
 ├── CONTRIBUTING.md
 ├── CHANGELOG.md
-├── DISCLAIMER.md
 ├── LICENSE
 ├── install.sh                      # migration/update helper for an existing NixOS host
 ├── .github/workflows/check.yml
@@ -464,7 +462,6 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 │   ├── prepare-vm-diagnostic.py
 │   ├── test-installer-invariants.sh
 │   ├── test-installer-rollback.sh
-│   ├── test-lsfg-vk-v2.py
 │   ├── test-vfio-hook-driver-state.sh
 │   ├── sync-vm-xml.py
 │   ├── test-vm-diagnostic.py
@@ -477,28 +474,19 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
     ├── configuration.nix
     ├── home.nix
     ├── hardware-configuration.nix   # machine-specific: replace for another host
-    ├── lsfg-vk-v2.nix
     └── hooks/qemu
 ```
 
-Hyprland's native Lua configuration, Hyprlock, Waybar, Pyprland, MangoHud, the LSFG-VK v2 profile file, and helper scripts are declared in `nixos/home.nix`; there is no parallel Hyprland config file to keep in sync. The LSFG-VK UI/CLI and Vulkan layer are built from a pinned upstream v2 source by `nixos/lsfg-vk-v2.nix`. The generated `conf.toml` is Home Manager-managed: edit profiles in `nixos/home.nix` and rebuild rather than trying to save GUI edits over the read-only Nix store link. Upstream LSFG-VK v2 is licensed CC BY-NC-ND 4.0 (non-commercial/no-derivatives) and is therefore treated as unfree by Nix; this configuration explicitly allows unfree packages. Lossless Scaling itself is not redistributed and must be separately owned/installed through Steam.
+Hyprland's native Lua configuration, Hyprlock, Waybar, Pyprland, MangoHud, lsfg-vk, and helper scripts are declared inline in `nixos/home.nix`; there is no parallel Hyprland config file to keep in sync.
 
 ## Validation
 
-Run from the repository root. First enter the project's development shell:
+Run from the repository root:
 
 ```bash
 nix develop ./nixos
-```
-
-Then, inside that shell, run the validation commands:
-
-```bash
-set -euo pipefail
-# Check formatting without modifying any files.
-find ./nixos -type f -name '*.nix' -print0 | xargs -0 -r -n1 nixfmt --check
+find ./nixos -type f -name '*.nix' -print0 | xargs -0 -r -n1 nixfmt
 shellcheck -S warning install.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh
-python3 scripts/test-lsfg-vk-v2.py
 python3 scripts/test-vm-xml.py
 python3 scripts/test-vm-xml-sync.py
 python3 scripts/test-vm-diagnostic.py
@@ -519,7 +507,7 @@ bash scripts/test-installer-rollback.sh
 )
 (cd nixos && nix flake check --no-build --show-trace --no-update-lock-file --option warn-dirty false)
 ```
-`nixfmt --check` is read-only and fails when a Nix file needs formatting; it does not rewrite source files. To format intentionally, run `nixfmt` without `--check` on the selected files and review `git diff` before committing. `nix flake check --no-build` evaluates the flake but does not build the complete system or kernel. The flags above match the CI evaluation step and prevent lock-file updates during the check. This check does not replace a full build or a physical GPU lifecycle test.
+`nix flake check --no-build` evaluates the flake but does not build the complete system or kernel. The flags above match the CI evaluation step and prevent lock-file updates during the check. This check does not replace a full build, libvirt domain validation, or a physical GPU lifecycle test.
 
 ### Prior target-system hardware validation — 2026-10-16
 

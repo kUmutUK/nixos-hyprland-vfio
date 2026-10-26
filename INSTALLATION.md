@@ -514,8 +514,6 @@ sudo nixos-enter --root /mnt -c 'passwd root'
 > issues. `overlays.pinned` aligns the kernel and target nixpkgs revision but cannot create
 > a missing cache artifact.
 
-**Reflex selection:** the system enables `low_latency_layer` globally but does not force the Reflex interface on every application. Native Linux CS2 uses the default AMD Anti-Lag interface. For a compatible Proton title that supports Reflex, try `LOW_LATENCY_LAYER_REFLEX=1 %command%` in that game's Steam launch options; only add `DXVK_CONFIG="dxgi.hideAmdGpu = True"` if Reflex is not exposed in the game settings.
-
 **CS2 / Source 2 low-latency note:** the [low_latency_layer v0.2.0 upstream release notes](https://github.com/Korthos-Software/low_latency_layer/releases/tag/v0.2.0) describe in-game FPS caps causing frame-pacing problems while the layer is enabled. Until the upstream issue is fixed, use `fps_max 0` in the CS2 console. External limiters such as MangoHud have not been reported to cause the same issue. If stuttering persists, compare frame times after disabling the layer only for CS2 with `DISABLE_LOW_LATENCY_LAYER=1 %command%` in Steam launch options.
 
 **OBS Vulkan capture compatibility:** upstream `low_latency_layer` v0.2.0 also documents an incompatibility with the `obs_vkcapture` Vulkan layer. If capture or recording fails, test the game with `DISABLE_LOW_LATENCY_LAYER=1 %command%` and compare behavior.
