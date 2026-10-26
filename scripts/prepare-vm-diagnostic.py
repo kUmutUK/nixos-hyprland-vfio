@@ -35,12 +35,17 @@ def main() -> int:
     args = parser.parse_args()
 
     source = args.input.expanduser().resolve()
-    output = args.output.expanduser().resolve()
+    requested_output = args.output.expanduser()
+    # Check the caller-supplied path before resolving it: Path.resolve() follows
+    # symlinks, including dangling symlinks, and could redirect output elsewhere.
+    if requested_output.is_symlink():
+        parser.error(f"output path must not be a symlink: {requested_output}")
+    output = requested_output.resolve()
     if source == output:
         parser.error("input and output must be different paths; production XML is never overwritten")
     if not source.is_file():
         parser.error(f"input XML does not exist or is not a file: {source}")
-    if output.exists():
+    if os.path.lexists(output):
         parser.error(f"output already exists; inspect/remove it explicitly first: {output}")
     if not output.parent.is_dir():
         parser.error(f"output directory does not exist: {output.parent}")
