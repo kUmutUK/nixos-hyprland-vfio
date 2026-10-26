@@ -12,6 +12,20 @@ FLAKE="$ROOT/nixos/flake.nix"
 HOME_CONFIG="$ROOT/nixos/home.nix"
 HOOK="$ROOT/nixos/hooks/qemu"
 
+check_fail2ban_loopback_only() {
+  python3 - "$1" <<'PY'
+import re
+import sys
+from pathlib import Path
+
+configuration = Path(sys.argv[1]).read_text(encoding="utf-8")
+match = re.search(r"ignoreIP\\s*=\\s*\\[(.*?)\\]\\s*;", configuration, re.DOTALL)
+addresses = re.findall(r'"([^"]+)"', match.group(1)) if match else []
+if len(addresses) != 2 or set(addresses) != {"127.0.0.0/8", "::1"}:
+    raise SystemExit(1)
+PY
+}
+
 bash -n "$INSTALLER"
 
 # Exercise the real apply_state_version() helper without running the installer.
@@ -438,8 +452,8 @@ if grep -Fq 'RFC1918 home/LAN ranges are exempt' "$CONFIG"; then
   echo "FAIL: stale Fail2ban comments still claim private LAN ranges are exempt." >&2
   exit 1
 fi
-if ! grep -Fq 'ignoreIP = [ "127.0.0.0/8" "::1" ];' "$CONFIG"; then
-  echo "FAIL: Fail2ban must exempt loopback only, not private LAN addresses." >&2
+if ! check_fail2ban_loopback_only "$CONFIG"; then
+  echo "FAIL: Fail2ban must exempt only loopback addresses, not private LAN addresses." >&2
   exit 1
 fi
 if ! grep -Fq 'check_ssh_password_file "$NIXOS_DIR/hashedPassword"' "$INSTALLER" || ! grep -Fq 'root:root:600' "$INSTALLER"; then
@@ -1052,8 +1066,8 @@ if grep -Fq 'RFC1918 home/LAN ranges are exempt' "$CONFIG"; then
   echo "FAIL: stale Fail2ban comments still claim private LAN ranges are exempt." >&2
   exit 1
 fi
-if ! grep -Fq 'ignoreIP = [ "127.0.0.0/8" "::1" ];' "$CONFIG"; then
-  echo "FAIL: Fail2ban must exempt loopback only, not private LAN addresses." >&2
+if ! check_fail2ban_loopback_only "$CONFIG"; then
+  echo "FAIL: Fail2ban must exempt only loopback addresses, not private LAN addresses." >&2
   exit 1
 fi
 if ! grep -Fq 'check_ssh_password_file "$NIXOS_DIR/hashedPassword"' "$INSTALLER" || ! grep -Fq 'root:root:600' "$INSTALLER"; then
