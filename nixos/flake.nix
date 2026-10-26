@@ -69,20 +69,20 @@
     devShells.${system}.default = pkgs.mkShell {
       name = "nixos-hyprland-vfio";
       packages = with pkgs; [
-            # Use nixfmt; nixfmt-rfc-style is deprecated and aliases this package.
-            nixfmt
-            python3
-            statix
-            deadnix
-            shellcheck
-            nix-output-monitor
-            git
-            coreutils
-            pciutils
-            curl
-            jq
-            libxml2
-          ];
+        # Use nixfmt; nixfmt-rfc-style is deprecated and aliases this package.
+        nixfmt
+        python3
+        statix
+        deadnix
+        shellcheck
+        nix-output-monitor
+        git
+        coreutils
+        pciutils
+        curl
+        jq
+        libxml2
+      ];
       shellHook = ''
         echo "nixos-hyprland-vfio development shell — nixfmt, Python, statix, and deadnix are available"
       '';

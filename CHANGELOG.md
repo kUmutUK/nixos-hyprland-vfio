@@ -2,6 +2,16 @@
 
 This file summarizes notable changes in English. The original detailed Turkish history is preserved unchanged in [`docs/archive/DEGISIKLIK_GECMISI.md`](docs/archive/DEGISIKLIK_GECMISI.md).
 
+## Unreleased — 2026-10-27
+
+### Audit regression fixes
+- Added an early preflight for all four required Nix source files in `install.sh`; missing or empty sources now abort before the user prompt, and the deployment phase rechecks them so a disappearing source triggers rollback instead of mixing configuration trees.
+- Hardened the VM diagnostic helper against dangling output symlinks and destination races. It rejects output symlinks and publishes the temporary file atomically without overwriting an existing destination; a regression test covers dangling links.
+- Included `waydroid-container.service` in VFIO handoff state capture, stop, and restore because Waydroid is enabled in the reference configuration and may retain GPU resources. A real target-machine VM lifecycle test is still required.
+- Added common Proton/Wine Wuthering Waves LSFG-VK v1 process aliases and a TOML regression test. The actual process matched at runtime must still be confirmed from target-machine logs.
+- Updated `actions/checkout` to the pinned Node 24-compatible v7.0.1 revision, added a targeted LSFG-VK package build gate, added read-only Nix formatting checks, and included Python in the development shell.
+- Restored Lossless Scaling installation prerequisites, corrected the README repository map, and changed validation instructions to fail fast without rewriting Nix files.
+
 ## Unreleased — 2026-10-23
 
 ### Follow-up audit fixes

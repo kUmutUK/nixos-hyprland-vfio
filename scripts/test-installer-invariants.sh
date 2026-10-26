@@ -82,6 +82,26 @@ if grep -Fq 'Skipping missing file:' "$INSTALLER"; then
   exit 1
 fi
 
+
+# Keep the development shell self-contained and documentation aligned with the shipped files.
+if ! grep -Fq 'python3' "$FLAKE"; then
+  echo "FAIL: the Nix development shell must include Python for repository tests." >&2
+  exit 1
+fi
+if ! grep -Fq 'packages.${system}.lsfg-vk' "$FLAKE"; then
+  echo "FAIL: the selected LSFG-VK package must be exposed for an explicit build check." >&2
+  exit 1
+fi
+if ! grep -Fq 'nixfmt --check' "$README" \
+  || ! grep -Fq '├── .gitignore' "$README" \
+  || ! grep -Fq '├── DISCLAIMER.md' "$README" \
+  || ! grep -Fq 'Lossless Scaling' "$README" \
+  || ! grep -Fq 'Lossless Scaling' "$ENGLISH_GUIDE" \
+  || ! grep -Fq 'nixfmt --check' "$CONTRIBUTING"; then
+  echo "FAIL: README/installation/contributor docs or read-only formatting instructions are incomplete." >&2
+  exit 1
+fi
+
 awk '/^apply_state_version\(\) \{/ { capture=1 } capture { print } capture && /^}/ { exit }' "$INSTALLER" \
   > "$state_test_dir/apply-state-version.sh"
 if ! grep -q '^apply_state_version() {' "$state_test_dir/apply-state-version.sh"; then
