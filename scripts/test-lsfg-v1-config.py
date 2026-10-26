@@ -13,7 +13,7 @@ HOME_CONFIG = ROOT / "nixos" / "home.nix"
 def main() -> int:
     source = HOME_CONFIG.read_text(encoding="utf-8")
     match = re.search(
-        r'    "lsfg-vk/conf\.toml"\.text = \'\'\n(.*?)\n    \';',
+        r"    \"lsfg-vk/conf\.toml\"\.text = ''\n(.*?)\n    '';",
         source,
         re.DOTALL,
     )
