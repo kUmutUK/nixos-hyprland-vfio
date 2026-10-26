@@ -1,55 +1,59 @@
-{ config, pkgs, lib, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}:
 
 let
-  gitName            = "changeme";
-  gitEmail           = "you@example.com";
-  monitorOutput      = "";
+  gitName = "changeme";
+  gitEmail = "you@example.com";
+  monitorOutput = "";
   # Hyprland 0.55+ uses Lua configuration. The monitor output is set by the installer;
   # an empty value remains a catch-all for manual setups.
   hyprlandMonitorMode = "preferred";
-  wallpaperVideo     = "${config.home.homeDirectory}/Downloads/arthur-leywin-the-beginning-after-the-end.3840x2160.mp4";
+  wallpaperVideo = "${config.home.homeDirectory}/Downloads/arthur-leywin-the-beginning-after-the-end.3840x2160.mp4";
 
   # Reuse Bibata's designed plus cursor as the default pointer while preserving
   # its hand, text, resize, busy, and other context-specific cursors.
-  plusCursorTheme = pkgs.runCommand "plus-cursor-theme" {} ''
-    src="${pkgs.bibata-cursors}/share/icons/Bibata-Modern-Ice"
-    theme="$out/share/icons/Plus-Cursor"
-    mkdir -p "$theme/cursors"
-    test -f "$src/cursors/plus"
+  plusCursorTheme = pkgs.runCommand "plus-cursor-theme" { } ''
+        src="${pkgs.bibata-cursors}/share/icons/Bibata-Modern-Ice"
+        theme="$out/share/icons/Plus-Cursor"
+        mkdir -p "$theme/cursors"
+        test -f "$src/cursors/plus"
 
-    for cursor in "$src"/cursors/*; do
-      ln -s "$cursor" "$theme/cursors/$(basename "$cursor")"
-    done
+        for cursor in "$src"/cursors/*; do
+          ln -s "$cursor" "$theme/cursors/$(basename "$cursor")"
+        done
 
-    # These aliases are the usual default arrow names used by XCursor clients.
-    for alias in left_ptr default arrow top_left_arrow; do
-      ln -sfn "$src/cursors/plus" "$theme/cursors/$alias"
-    done
+        # These aliases are the usual default arrow names used by XCursor clients.
+        for alias in left_ptr default arrow top_left_arrow; do
+          ln -sfn "$src/cursors/plus" "$theme/cursors/$alias"
+        done
 
-    cat > "$theme/index.theme" <<'EOF'
-[Icon Theme]
-Name=Plus-Cursor
-Comment=Plus-shaped default pointer based on Bibata-Modern-Ice
-Inherits=Bibata-Modern-Ice
-EOF
+        cat > "$theme/index.theme" <<'EOF'
+    [Icon Theme]
+    Name=Plus-Cursor
+    Comment=Plus-shaped default pointer based on Bibata-Modern-Ice
+    Inherits=Bibata-Modern-Ice
+    EOF
   '';
 
-pywal16Fixed = pkgs.pywal16.overridePythonAttrs (_: {
-  __structuredAttrs = true;
+  pywal16Fixed = pkgs.pywal16.overridePythonAttrs (_: {
+    __structuredAttrs = true;
 
-  makeWrapperArgs = [
-    "--prefix"
-    "PATH"
-    ":"
-    (lib.makeBinPath [ pkgs.imagemagick ])
-  ];
-});
+    makeWrapperArgs = [
+      "--prefix"
+      "PATH"
+      ":"
+      (lib.makeBinPath [ pkgs.imagemagick ])
+    ];
+  });
 
   # Quote every argument passed to systemd `ExecStart` using systemd's escaping rules.
   # JSON quoting preserves spaces/special characters and escapes `%` and `$` to prevent
   # specifier and environment-variable expansion.
-  escapeSystemdExecArg = arg:
-    lib.replaceStrings [ "%" "$" ] [ "%%" "$$" ] (builtins.toJSON arg);
+  escapeSystemdExecArg = arg: lib.replaceStrings [ "%" "$" ] [ "%%" "$$" ] (builtins.toJSON arg);
 
   # Keep command strings in Nix and serialize them as Lua string literals with toJSON;
   # this avoids hand-written Lua/shell quoting bugs during the hyprlang -> Lua migration.
@@ -538,24 +542,46 @@ pywal16Fixed = pkgs.pywal16.overridePythonAttrs (_: {
     margin-bottom = 0;
     margin-left = 8;
     margin-right = 8;
-    modules-left = [ "hyprland/workspaces" "hyprland/window" ];
+    modules-left = [
+      "hyprland/workspaces"
+      "hyprland/window"
+    ];
     modules-center = [ "clock" ];
     modules-right = [
-      "mpris" "gamemode" "cpu" "memory"
-      "custom/temperature" "pulseaudio" "network" "tray" "custom/power"
+      "mpris"
+      "gamemode"
+      "cpu"
+      "memory"
+      "custom/temperature"
+      "pulseaudio"
+      "network"
+      "tray"
+      "custom/power"
     ];
 
     "hyprland/workspaces" = {
       format = "{name}";
       format-icons = {
-        "1" = "一"; "2" = "二"; "3" = "三"; "4" = "四"; "5" = "五";
-        "6" = "六"; "7" = "七"; "8" = "八";
-        urgent = "！"; active = "●"; default = "○";
+        "1" = "一";
+        "2" = "二";
+        "3" = "三";
+        "4" = "四";
+        "5" = "五";
+        "6" = "六";
+        "7" = "七";
+        "8" = "八";
+        urgent = "！";
+        active = "●";
+        default = "○";
       };
       on-click = "activate";
       all-outputs = false;
       show-special = false;
-      persistent-workspaces = { "1" = []; "2" = []; "3" = []; };
+      persistent-workspaces = {
+        "1" = [ ];
+        "2" = [ ];
+        "3" = [ ];
+      };
     };
 
     "hyprland/window" = {
@@ -584,12 +610,24 @@ pywal16Fixed = pkgs.pywal16.overridePythonAttrs (_: {
     cpu = {
       interval = 5;
       format = " {usage}% {icon}";
-      format-icons = ["▁" "▂" "▃" "▄" "▅" "▆" "▇" "█"];
+      format-icons = [
+        "▁"
+        "▂"
+        "▃"
+        "▄"
+        "▅"
+        "▆"
+        "▇"
+        "█"
+      ];
       format-alt = "⚡ {usage}%";
       tooltip = true;
       tooltip-format = "CPU usage: {usage}%\nFrequency: {frequency} GHz";
       on-click = "kitty -e btop";
-      states = { warning = 70; critical = 90; };
+      states = {
+        warning = 70;
+        critical = 90;
+      };
     };
 
     memory = {
@@ -599,7 +637,10 @@ pywal16Fixed = pkgs.pywal16.overridePythonAttrs (_: {
       tooltip = true;
       tooltip-format = "Used: {used:0.1f} GiB\nTotal: {total:0.1f} GiB\nAvailable: {avail:0.1f} GiB";
       on-click = "kitty -e btop";
-      states = { warning = 70; critical = 90; };
+      states = {
+        warning = 70;
+        critical = 90;
+      };
     };
 
     "custom/temperature" = {
@@ -616,9 +657,17 @@ pywal16Fixed = pkgs.pywal16.overridePythonAttrs (_: {
       format-bluetooth = "󰂯 {volume}%";
       format-bluetooth-muted = "󰂯";
       format-icons = {
-        headphone = "󰊋"; hands-free = "󰂰"; headset = "󰂰";
-        phone = "󰉠"; portable = "󰉠"; car = "󰉠";
-        default = ["🔈" "🔉" "🔊"];
+        headphone = "󰊋";
+        hands-free = "󰂰";
+        headset = "󰂰";
+        phone = "󰉠";
+        portable = "󰉠";
+        car = "󰉠";
+        default = [
+          "🔈"
+          "🔉"
+          "🔊"
+        ];
       };
       on-click = "pavucontrol";
       on-click-right = "pactl set-sink-mute @DEFAULT_SINK@ toggle";
@@ -626,7 +675,9 @@ pywal16Fixed = pkgs.pywal16.overridePythonAttrs (_: {
       on-scroll-down = "pactl set-sink-volume @DEFAULT_SINK@ -5%";
       tooltip = true;
       tooltip-format = "Volume: {volume}%\nOutput: {desc}";
-      states = { muted = 0; };
+      states = {
+        muted = 0;
+      };
     };
 
     network = {
@@ -663,15 +714,34 @@ pywal16Fixed = pkgs.pywal16.overridePythonAttrs (_: {
       timezone = "Europe/Istanbul";
     };
 
-    tray = { icon-size = 16; spacing = 8; show-passive-icons = true; };
+    tray = {
+      icon-size = 16;
+      spacing = 8;
+      show-passive-icons = true;
+    };
 
     mpris = {
-      player = ["spotify" "com.spotify.Client" "firefox" "chromium" "brave-browser"];
+      player = [
+        "spotify"
+        "com.spotify.Client"
+        "firefox"
+        "chromium"
+        "brave-browser"
+      ];
       format = "{player_icon} {artist} - {title}";
       format-paused = "⏸ {artist} - {title}";
       format-stopped = "";
-      player-icons = { default = "🎵"; spotify = "󰀒"; firefox = "🦊"; chromium = "🌐"; };
-      status-icons = { paused = "⏸"; playing = "▶"; stopped = "■"; };
+      player-icons = {
+        default = "🎵";
+        spotify = "󰀒";
+        firefox = "🦊";
+        chromium = "🌐";
+      };
+      status-icons = {
+        paused = "⏸";
+        playing = "▶";
+        stopped = "■";
+      };
       max-length = 40;
       on-click = "playerctl play-pause";
       on-click-right = "playerctl stop";
@@ -952,8 +1022,18 @@ in
       hdr_mode = false
       experimental_present_mode = "fifo"
 
+      # Common Proton/Wine process aliases. Confirm the actually matched name in
+      # the LSFG-VK log on the target machine.
       [[game]]
-      exe = "wuwa"
+      exe = "Client-Win64-Shipping.exe"
+      multiplier = 2
+      flow_scale = 0.9
+      performance_mode = false
+      hdr_mode = true
+      experimental_present_mode = "fifo"
+
+      [[game]]
+      exe = "Client-Win64-Shipping"
       multiplier = 2
       flow_scale = 0.9
       performance_mode = false
@@ -1004,264 +1084,264 @@ in
     "hypr/scripts/wuwa-auto.sh" = {
       executable = true;
       text = ''
-#!${pkgs.bash}/bin/bash
-# shellcheck disable=SC2155
-# SC2155 is intentional here: the four local assignments do not use their return
-# status, and the script does not enable `set -e`. Embedded-script scanning was added
-# to CI on 2026-10-05.
+        #!${pkgs.bash}/bin/bash
+        # shellcheck disable=SC2155
+        # SC2155 is intentional here: the four local assignments do not use their return
+        # status, and the script does not enable `set -e`. Embedded-script scanning was added
+        # to CI on 2026-10-05.
 
-# The custom Ollama alias `wuwa-gemma` is based on Aya Expanse 8B and requires a
-# first-run model download via `wuwa-gemma-init`. If it is missing, `/api/generate`
-# may return `null`; stop before entering the OCR loop instead of emitting invalid output.
-if ! curl -fsS --connect-timeout 2 --max-time 4 http://localhost:11434/api/tags \
-    | jq -e '.models[]? | select(.name | startswith("wuwa-gemma"))' >/dev/null 2>&1; then
-    notify-send -u critical "WuWa AI" \
-        "The wuwa-gemma model is not ready. Start it first: sudo systemctl start wuwa-gemma-init" || true
-    exit 1
-fi
-
-## OCR region definitions
-# The former coordinates were hard-coded for 2560x1440 and could lie outside other
-# resolutions. `WUWA_GEOMETRY_MAIN` and `WUWA_GEOMETRY_CHOICE` can override them; the
-# script now warns and exits if a region does not fit the detected display.
-DEFAULT_GEOMETRY_MAIN="0,971 2560x438"
-DEFAULT_GEOMETRY_CHOICE="1561,513 916x585"
-
-GEOMETRY_MAIN="''${WUWA_GEOMETRY_MAIN:-$DEFAULT_GEOMETRY_MAIN}"
-GEOMETRY_CHOICE="''${WUWA_GEOMETRY_CHOICE:-$DEFAULT_GEOMETRY_CHOICE}"
-
-# Read the display size from `hyprctl`. If it is missing or unreadable, geometry
-# validation is skipped. `hyprctl monitors` includes a refresh rate such as
-# `2560x1440@170.00`; strip the `@...` suffix before parsing the height.
-MON_SIZE=$(hyprctl monitors 2>/dev/null | grep -oPm1 '[0-9]+x[0-9]+@[0-9.]+' | head -n1 | cut -d@ -f1)
-MON_W=$(echo "$MON_SIZE" | cut -dx -f1)
-MON_H=$(echo "$MON_SIZE" | cut -dx -f2)
-
-# Check whether an `X,Y WxH` rectangle fits within the display dimensions.
-geometry_fits() {
-    [ -n "$MON_W" ] && [ -n "$MON_H" ] || return 0
-    local pos size x y w h
-    pos=$(echo "$1" | cut -d' ' -f1)
-    size=$(echo "$1" | cut -d' ' -f2)
-    x=$(echo "$pos" | cut -d, -f1)
-    y=$(echo "$pos" | cut -d, -f2)
-    w=$(echo "$size" | cut -dx -f1)
-    h=$(echo "$size" | cut -dx -f2)
-    # For non-numeric geometry (for example, a typo), preserve the earlier permissive
-    # behavior and skip the fit check.
-    case "$x$y$w$h" in *[!0-9]*) return 0 ;; esac
-    [ $(( x + w )) -le "$MON_W" ] && [ $(( y + h )) -le "$MON_H" ]
-}
-
-# Hyprland reports monitor position as well as dimensions, but this check compares
-# only width/height. This is exact for a single monitor and may be conservative for
-# multi-monitor layouts.
-for _region in "captions|$GEOMETRY_MAIN" "choices|$GEOMETRY_CHOICE"; do
-    _label=$(echo "$_region" | cut -d'|' -f1)
-    _geom=$(echo "$_region" | cut -d'|' -f2)
-    if ! geometry_fits "$_geom"; then
-        notify-send -t 25000 -u critical "WuWa AI" \
-            "The $_label region ($_geom) does not fit on the screen ($MON_W x $MON_H). Translation cannot scan this region. Adjust the wuwa-auto.sh values in home.nix or the WUWA_GEOMETRY_MAIN / WUWA_GEOMETRY_CHOICE environment variable." || true
-        exit 1
-    fi
-done
-
-# Create screenshots in a unique per-run temporary directory with user-only permissions.
-umask 077
-TMPD=$(mktemp -d -t wuwa-XXXXXX) || exit 1
-trap 'rm -rf "$TMPD"' EXIT
-trap 'exit 130' INT
-trap 'exit 143' TERM
-IMAGE_MAIN="$TMPD/main.png"
-IMAGE_CHOICE="$TMPD/choice.png"
-
-LAST_MAIN=""
-LAST_CHOICE=""
-
-# ─── Preferred Tesseract model directory ───
-TESSDATA_DIR="$HOME/.local/share/tessdata"
-
-# If the local Tesseract data directory is absent, fall back to the system tessdata path.
-[ ! -d "$TESSDATA_DIR" ] && TESSDATA_DIR="/run/current-system/sw/share/tessdata"
-
-# Translation cache.
-CACHE_HOME="''${XDG_CACHE_HOME:-$HOME/.cache}"
-CACHE_FILE="$CACHE_HOME/wuwa_translate_cache"
-mkdir -p "$CACHE_HOME" || exit 1
-touch "$CACHE_FILE" && chmod 600 "$CACHE_FILE" || exit 1
-
-# Fast translation (Argos Translate).
-translate_fast() {
-    # The `argos-translate` binary is not available in nixpkgs (only the Python
-    # `argos-translate-files` package exists). Previously the failure was hidden and every
-    # request fell through to Ollama. Check command availability and fall back explicitly.
-    command -v argos-translate >/dev/null 2>&1 || return 1
-    echo "$1" | argos-translate --from-lang en --to-lang tr 2>/dev/null
-}
-
-# Fallback translation via Ollama using a JSON request.
-translate_llm() {
-    local text="$1"
-    # `jq --arg` does not interpret C-style escapes; a literal `\n` was sent to the model.
-    # The shell code is embedded in a Nix indented string, so use Bash ANSI-C quoting
-    # (`$'\n'`) to guarantee a real line break in the prompt after Nix interpolation.
-    local json_payload
-    json_payload=$(jq -n --arg mod "wuwa-gemma" \
-                         --arg pr "EN: ''${text}"$'\n'"TR:" \
-                         '{model: $mod, prompt: $pr, stream: false, options: {temperature: 0.0, num_predict: 80}}')
-
-    local response translated
-    response="$(curl --fail --silent --show-error \
-        --connect-timeout 2 --max-time 10 \
-        -H 'Content-Type: application/json' \
-        http://localhost:11434/api/generate -d "$json_payload")" || return 1
-
-    translated="$(jq -er '.response | select(type == "string" and length > 0)' \
-        <<< "$response")" || return 1
-    # Trim surrounding whitespace without interpreting quotes or backslashes.
-    translated="''${translated#"''${translated%%[![:space:]]*}"}"
-    translated="''${translated%"''${translated##*[![:space:]]}"}"
-    [ -n "$translated" ] || return 1
-    printf '%s\n' "$translated"
-}
-
-# General translation flow: cache, then Argos, then Ollama.
-translate() {
-    local raw="$1"
-    local letter_count=$(echo "$raw" | tr -cd 'a-zA-Z' | wc -c)
-    [ "$letter_count" -lt 5 ] && { echo ""; return; }
-
-    # Match the cache key against the complete first TAB-delimited field, not a substring.
-    local cached=$(awk -F '\t' -v k="$raw" '$1 == k { print $2; exit }' "$CACHE_FILE" 2>/dev/null)
-    [ -n "$cached" ] && { echo "$cached"; return; }
-
-    # Try the fast translation backend first.
-    local fast=$(translate_fast "$raw")
-    if [ -n "$fast" ] && [ "''${#fast}" -gt 2 ]; then
-        printf '%s\t%s\n' "$raw" "$fast" >> "$CACHE_FILE"
-        echo "$fast"
-        return
-    fi
-
-    # Ask the Aya Expanse 8B-based `wuwa-gemma` fallback if the fast backend fails.
-    local llm=$(translate_llm "$raw")
-    if [ -n "$llm" ]; then
-        printf '%s\t%s\n' "$raw" "$llm" >> "$CACHE_FILE"
-        echo "$llm"
-        return
-    fi
-}
-
-# Main loop. The old fixed 3-second loop ran two `grim`, two `mogrify`, and two
-# Tesseract processes even when the screen did not change. Back off gradually from
-# 3 to 30 seconds when both regions remain unchanged, and return to 3 seconds on change.
-IDLE_TICKS=0
-MAX_IDLE_SLEEP=30
-
-while true; do
-    CHANGED=0
-    # 1. Main subtitle region.
-    grim -g "$GEOMETRY_MAIN" "$IMAGE_MAIN" 2>/dev/null
-    mogrify -resize 200% \
-            -modulate 100,0 \
-            -colorspace Gray \
-            -lat 20x20+5% \
-            -negate \
-            -sharpen 0x2 \
-            "$IMAGE_MAIN" 2>/dev/null
-
-    RAW_MAIN=$(tesseract "$IMAGE_MAIN" stdout -l eng --psm 6 --tessdata-dir "$TESSDATA_DIR" 2>/dev/null)
-    # Do not use `tr -d \f`: Nix unescaping turned it into `tr -d f`, removing every
-    # letter `f` from OCR results; `\014` similarly became the characters `014`. The
-    # following `sed` filter already removes form-feed characters, so `tr` is unnecessary.
-    TEXT_MAIN=$(echo "$RAW_MAIN" | sed 's/[^a-zA-Z0-9.,!? ]//g' | xargs)
-
-    if [ ''${#TEXT_MAIN} -gt 5 ]; then
-        if [ "$TEXT_MAIN" != "$LAST_MAIN" ]; then
-            LAST_MAIN="$TEXT_MAIN"
-            CHANGED=1
-            TRANSLATION_MAIN=$(translate "$TEXT_MAIN")
-            [ -n "$TRANSLATION_MAIN" ] && notify-send -r 9999 "💬 Wuwa AI (Captions)" "$TRANSLATION_MAIN"
+        # The custom Ollama alias `wuwa-gemma` is based on Aya Expanse 8B and requires a
+        # first-run model download via `wuwa-gemma-init`. If it is missing, `/api/generate`
+        # may return `null`; stop before entering the OCR loop instead of emitting invalid output.
+        if ! curl -fsS --connect-timeout 2 --max-time 4 http://localhost:11434/api/tags \
+            | jq -e '.models[]? | select(.name | startswith("wuwa-gemma"))' >/dev/null 2>&1; then
+            notify-send -u critical "WuWa AI" \
+                "The wuwa-gemma model is not ready. Start it first: sudo systemctl start wuwa-gemma-init" || true
+            exit 1
         fi
-    else
-        [ -n "$LAST_MAIN" ] && { LAST_MAIN=""; dunstctl close 9999 2>/dev/null || true; }
-    fi
-    rm -f "$IMAGE_MAIN" 2>/dev/null
 
-    # 2. Choice/answer region.
-    grim -g "$GEOMETRY_CHOICE" "$IMAGE_CHOICE" 2>/dev/null
-    mogrify -resize 200% \
-            -modulate 100,0 \
-            -colorspace Gray \
-            -lat 20x20+5% \
-            -negate \
-            -sharpen 0x2 \
-            "$IMAGE_CHOICE" 2>/dev/null
+        ## OCR region definitions
+        # The former coordinates were hard-coded for 2560x1440 and could lie outside other
+        # resolutions. `WUWA_GEOMETRY_MAIN` and `WUWA_GEOMETRY_CHOICE` can override them; the
+        # script now warns and exits if a region does not fit the detected display.
+        DEFAULT_GEOMETRY_MAIN="0,971 2560x438"
+        DEFAULT_GEOMETRY_CHOICE="1561,513 916x585"
 
-    RAW_CHOICE=$(tesseract "$IMAGE_CHOICE" stdout -l eng --psm 6 --tessdata-dir "$TESSDATA_DIR" 2>/dev/null)
-    # The `tr -d \f` filter was removed for the same Nix escaping reason; `sed` already
-    # filters form-feed characters.
-    TEXT_CHOICE=$(echo "$RAW_CHOICE" | sed 's/[^a-zA-Z0-9.,!? ]//g' | xargs)
+        GEOMETRY_MAIN="''${WUWA_GEOMETRY_MAIN:-$DEFAULT_GEOMETRY_MAIN}"
+        GEOMETRY_CHOICE="''${WUWA_GEOMETRY_CHOICE:-$DEFAULT_GEOMETRY_CHOICE}"
 
-    if [ ''${#TEXT_CHOICE} -gt 5 ]; then
-        if [ "$TEXT_CHOICE" != "$LAST_CHOICE" ]; then
-            LAST_CHOICE="$TEXT_CHOICE"
-            CHANGED=1
-            TRANSLATION_CHOICE=$(translate "$TEXT_CHOICE")
-            [ -n "$TRANSLATION_CHOICE" ] && notify-send -r 9998 "💡 Wuwa AI (Choices)" "$TRANSLATION_CHOICE"
-        fi
-    else
-        [ -n "$LAST_CHOICE" ] && { LAST_CHOICE=""; dunstctl close 9998 2>/dev/null || true; }
-    fi
-    rm -f "$IMAGE_CHOICE" 2>/dev/null
+        # Read the display size from `hyprctl`. If it is missing or unreadable, geometry
+        # validation is skipped. `hyprctl monitors` includes a refresh rate such as
+        # `2560x1440@170.00`; strip the `@...` suffix before parsing the height.
+        MON_SIZE=$(hyprctl monitors 2>/dev/null | grep -oPm1 '[0-9]+x[0-9]+@[0-9.]+' | head -n1 | cut -d@ -f1)
+        MON_W=$(echo "$MON_SIZE" | cut -dx -f1)
+        MON_H=$(echo "$MON_SIZE" | cut -dx -f2)
 
-    # Increase the retry delay gradually (3, 6, 9 seconds, up to 30 seconds).
-    if [ "$CHANGED" -eq 1 ]; then
+        # Check whether an `X,Y WxH` rectangle fits within the display dimensions.
+        geometry_fits() {
+            [ -n "$MON_W" ] && [ -n "$MON_H" ] || return 0
+            local pos size x y w h
+            pos=$(echo "$1" | cut -d' ' -f1)
+            size=$(echo "$1" | cut -d' ' -f2)
+            x=$(echo "$pos" | cut -d, -f1)
+            y=$(echo "$pos" | cut -d, -f2)
+            w=$(echo "$size" | cut -dx -f1)
+            h=$(echo "$size" | cut -dx -f2)
+            # For non-numeric geometry (for example, a typo), preserve the earlier permissive
+            # behavior and skip the fit check.
+            case "$x$y$w$h" in *[!0-9]*) return 0 ;; esac
+            [ $(( x + w )) -le "$MON_W" ] && [ $(( y + h )) -le "$MON_H" ]
+        }
+
+        # Hyprland reports monitor position as well as dimensions, but this check compares
+        # only width/height. This is exact for a single monitor and may be conservative for
+        # multi-monitor layouts.
+        for _region in "captions|$GEOMETRY_MAIN" "choices|$GEOMETRY_CHOICE"; do
+            _label=$(echo "$_region" | cut -d'|' -f1)
+            _geom=$(echo "$_region" | cut -d'|' -f2)
+            if ! geometry_fits "$_geom"; then
+                notify-send -t 25000 -u critical "WuWa AI" \
+                    "The $_label region ($_geom) does not fit on the screen ($MON_W x $MON_H). Translation cannot scan this region. Adjust the wuwa-auto.sh values in home.nix or the WUWA_GEOMETRY_MAIN / WUWA_GEOMETRY_CHOICE environment variable." || true
+                exit 1
+            fi
+        done
+
+        # Create screenshots in a unique per-run temporary directory with user-only permissions.
+        umask 077
+        TMPD=$(mktemp -d -t wuwa-XXXXXX) || exit 1
+        trap 'rm -rf "$TMPD"' EXIT
+        trap 'exit 130' INT
+        trap 'exit 143' TERM
+        IMAGE_MAIN="$TMPD/main.png"
+        IMAGE_CHOICE="$TMPD/choice.png"
+
+        LAST_MAIN=""
+        LAST_CHOICE=""
+
+        # ─── Preferred Tesseract model directory ───
+        TESSDATA_DIR="$HOME/.local/share/tessdata"
+
+        # If the local Tesseract data directory is absent, fall back to the system tessdata path.
+        [ ! -d "$TESSDATA_DIR" ] && TESSDATA_DIR="/run/current-system/sw/share/tessdata"
+
+        # Translation cache.
+        CACHE_HOME="''${XDG_CACHE_HOME:-$HOME/.cache}"
+        CACHE_FILE="$CACHE_HOME/wuwa_translate_cache"
+        mkdir -p "$CACHE_HOME" || exit 1
+        touch "$CACHE_FILE" && chmod 600 "$CACHE_FILE" || exit 1
+
+        # Fast translation (Argos Translate).
+        translate_fast() {
+            # The `argos-translate` binary is not available in nixpkgs (only the Python
+            # `argos-translate-files` package exists). Previously the failure was hidden and every
+            # request fell through to Ollama. Check command availability and fall back explicitly.
+            command -v argos-translate >/dev/null 2>&1 || return 1
+            echo "$1" | argos-translate --from-lang en --to-lang tr 2>/dev/null
+        }
+
+        # Fallback translation via Ollama using a JSON request.
+        translate_llm() {
+            local text="$1"
+            # `jq --arg` does not interpret C-style escapes; a literal `\n` was sent to the model.
+            # The shell code is embedded in a Nix indented string, so use Bash ANSI-C quoting
+            # (`$'\n'`) to guarantee a real line break in the prompt after Nix interpolation.
+            local json_payload
+            json_payload=$(jq -n --arg mod "wuwa-gemma" \
+                                 --arg pr "EN: ''${text}"$'\n'"TR:" \
+                                 '{model: $mod, prompt: $pr, stream: false, options: {temperature: 0.0, num_predict: 80}}')
+
+            local response translated
+            response="$(curl --fail --silent --show-error \
+                --connect-timeout 2 --max-time 10 \
+                -H 'Content-Type: application/json' \
+                http://localhost:11434/api/generate -d "$json_payload")" || return 1
+
+            translated="$(jq -er '.response | select(type == "string" and length > 0)' \
+                <<< "$response")" || return 1
+            # Trim surrounding whitespace without interpreting quotes or backslashes.
+            translated="''${translated#"''${translated%%[![:space:]]*}"}"
+            translated="''${translated%"''${translated##*[![:space:]]}"}"
+            [ -n "$translated" ] || return 1
+            printf '%s\n' "$translated"
+        }
+
+        # General translation flow: cache, then Argos, then Ollama.
+        translate() {
+            local raw="$1"
+            local letter_count=$(echo "$raw" | tr -cd 'a-zA-Z' | wc -c)
+            [ "$letter_count" -lt 5 ] && { echo ""; return; }
+
+            # Match the cache key against the complete first TAB-delimited field, not a substring.
+            local cached=$(awk -F '\t' -v k="$raw" '$1 == k { print $2; exit }' "$CACHE_FILE" 2>/dev/null)
+            [ -n "$cached" ] && { echo "$cached"; return; }
+
+            # Try the fast translation backend first.
+            local fast=$(translate_fast "$raw")
+            if [ -n "$fast" ] && [ "''${#fast}" -gt 2 ]; then
+                printf '%s\t%s\n' "$raw" "$fast" >> "$CACHE_FILE"
+                echo "$fast"
+                return
+            fi
+
+            # Ask the Aya Expanse 8B-based `wuwa-gemma` fallback if the fast backend fails.
+            local llm=$(translate_llm "$raw")
+            if [ -n "$llm" ]; then
+                printf '%s\t%s\n' "$raw" "$llm" >> "$CACHE_FILE"
+                echo "$llm"
+                return
+            fi
+        }
+
+        # Main loop. The old fixed 3-second loop ran two `grim`, two `mogrify`, and two
+        # Tesseract processes even when the screen did not change. Back off gradually from
+        # 3 to 30 seconds when both regions remain unchanged, and return to 3 seconds on change.
         IDLE_TICKS=0
-        sleep 3
-    else
-        IDLE_TICKS=$((IDLE_TICKS + 1))
-        S=$((3 + IDLE_TICKS * 3))
-        [ "$S" -gt "$MAX_IDLE_SLEEP" ] && S=$MAX_IDLE_SLEEP
-        sleep "$S"
-    fi
-done
-'';
+        MAX_IDLE_SLEEP=30
+
+        while true; do
+            CHANGED=0
+            # 1. Main subtitle region.
+            grim -g "$GEOMETRY_MAIN" "$IMAGE_MAIN" 2>/dev/null
+            mogrify -resize 200% \
+                    -modulate 100,0 \
+                    -colorspace Gray \
+                    -lat 20x20+5% \
+                    -negate \
+                    -sharpen 0x2 \
+                    "$IMAGE_MAIN" 2>/dev/null
+
+            RAW_MAIN=$(tesseract "$IMAGE_MAIN" stdout -l eng --psm 6 --tessdata-dir "$TESSDATA_DIR" 2>/dev/null)
+            # Do not use `tr -d \f`: Nix unescaping turned it into `tr -d f`, removing every
+            # letter `f` from OCR results; `\014` similarly became the characters `014`. The
+            # following `sed` filter already removes form-feed characters, so `tr` is unnecessary.
+            TEXT_MAIN=$(echo "$RAW_MAIN" | sed 's/[^a-zA-Z0-9.,!? ]//g' | xargs)
+
+            if [ ''${#TEXT_MAIN} -gt 5 ]; then
+                if [ "$TEXT_MAIN" != "$LAST_MAIN" ]; then
+                    LAST_MAIN="$TEXT_MAIN"
+                    CHANGED=1
+                    TRANSLATION_MAIN=$(translate "$TEXT_MAIN")
+                    [ -n "$TRANSLATION_MAIN" ] && notify-send -r 9999 "💬 Wuwa AI (Captions)" "$TRANSLATION_MAIN"
+                fi
+            else
+                [ -n "$LAST_MAIN" ] && { LAST_MAIN=""; dunstctl close 9999 2>/dev/null || true; }
+            fi
+            rm -f "$IMAGE_MAIN" 2>/dev/null
+
+            # 2. Choice/answer region.
+            grim -g "$GEOMETRY_CHOICE" "$IMAGE_CHOICE" 2>/dev/null
+            mogrify -resize 200% \
+                    -modulate 100,0 \
+                    -colorspace Gray \
+                    -lat 20x20+5% \
+                    -negate \
+                    -sharpen 0x2 \
+                    "$IMAGE_CHOICE" 2>/dev/null
+
+            RAW_CHOICE=$(tesseract "$IMAGE_CHOICE" stdout -l eng --psm 6 --tessdata-dir "$TESSDATA_DIR" 2>/dev/null)
+            # The `tr -d \f` filter was removed for the same Nix escaping reason; `sed` already
+            # filters form-feed characters.
+            TEXT_CHOICE=$(echo "$RAW_CHOICE" | sed 's/[^a-zA-Z0-9.,!? ]//g' | xargs)
+
+            if [ ''${#TEXT_CHOICE} -gt 5 ]; then
+                if [ "$TEXT_CHOICE" != "$LAST_CHOICE" ]; then
+                    LAST_CHOICE="$TEXT_CHOICE"
+                    CHANGED=1
+                    TRANSLATION_CHOICE=$(translate "$TEXT_CHOICE")
+                    [ -n "$TRANSLATION_CHOICE" ] && notify-send -r 9998 "💡 Wuwa AI (Choices)" "$TRANSLATION_CHOICE"
+                fi
+            else
+                [ -n "$LAST_CHOICE" ] && { LAST_CHOICE=""; dunstctl close 9998 2>/dev/null || true; }
+            fi
+            rm -f "$IMAGE_CHOICE" 2>/dev/null
+
+            # Increase the retry delay gradually (3, 6, 9 seconds, up to 30 seconds).
+            if [ "$CHANGED" -eq 1 ]; then
+                IDLE_TICKS=0
+                sleep 3
+            else
+                IDLE_TICKS=$((IDLE_TICKS + 1))
+                S=$((3 + IDLE_TICKS * 3))
+                [ "$S" -gt "$MAX_IDLE_SLEEP" ] && S=$MAX_IDLE_SLEEP
+                sleep "$S"
+            fi
+        done
+      '';
     };
     "hypr/scripts/auto-translate.sh" = {
       executable = true;
       text = ''
-#!${pkgs.bash}/bin/bash
+        #!${pkgs.bash}/bin/bash
 
-# Remember the previous selection to avoid translating the same text repeatedly.
-LAST_SELECTION=""
+        # Remember the previous selection to avoid translating the same text repeatedly.
+        LAST_SELECTION=""
 
-echo "Live translation mode is active. Selected text will be translated automatically."
+        echo "Live translation mode is active. Selected text will be translated automatically."
 
-# Poll the primary selection (the text highlighted with the mouse) in a lightweight
-# loop instead of relying on `wl-paste --watch`.
-while true; do
-    # Read the current mouse-selected text.
-    CURRENT_SELECTION=$(wl-paste -p 2>/dev/null)
+        # Poll the primary selection (the text highlighted with the mouse) in a lightweight
+        # loop instead of relying on `wl-paste --watch`.
+        while true; do
+            # Read the current mouse-selected text.
+            CURRENT_SELECTION=$(wl-paste -p 2>/dev/null)
 
-    # Proceed only when the selection is non-empty and differs from the previous value.
-    if [ -n "$CURRENT_SELECTION" ] && [ "$CURRENT_SELECTION" != "$LAST_SELECTION" ]; then
-        LAST_SELECTION="$CURRENT_SELECTION"
-        
-        # Use `translate-shell` to translate the selected text to Turkish (`:tr`); `-b` keeps
-        # only the translated output.
-        TRANSLATION=$(trans -b :tr "$CURRENT_SELECTION" 2>/dev/null)
+            # Proceed only when the selection is non-empty and differs from the previous value.
+            if [ -n "$CURRENT_SELECTION" ] && [ "$CURRENT_SELECTION" != "$LAST_SELECTION" ]; then
+                LAST_SELECTION="$CURRENT_SELECTION"
+                
+                # Use `translate-shell` to translate the selected text to Turkish (`:tr`); `-b` keeps
+                # only the translated output.
+                TRANSLATION=$(trans -b :tr "$CURRENT_SELECTION" 2>/dev/null)
 
-        # Display successful translations using Dunst.
-        if [ -n "$TRANSLATION" ]; then
-            # Reuse notification ID 9997 so the notification is updated instead of stacked.
-            notify-send -r 9997 "Translation:" "$TRANSLATION"
-        fi
-    fi
-    # Poll every half second to keep CPU usage low.
-    sleep 0.5
-done
-'';
+                # Display successful translations using Dunst.
+                if [ -n "$TRANSLATION" ]; then
+                    # Reuse notification ID 9997 so the notification is updated instead of stacked.
+                    notify-send -r 9997 "Translation:" "$TRANSLATION"
+                fi
+            fi
+            # Poll every half second to keep CPU usage low.
+            sleep 0.5
+        done
+      '';
     };
   };
 
@@ -1391,13 +1471,13 @@ done
         gm-status = "gamemoded -s";
       };
       interactiveShellInit = ''
-  # PAGER: use plain `less` for ordinary files.
-  set -gx PAGER 'less -R'
+        # PAGER: use plain `less` for ordinary files.
+        set -gx PAGER 'less -R'
 
-    # MANPAGER: `bat` produced broken ANSI sequences with the NixOS man-db/groff setup.
-    # Use `less -R`, which supports the ANSI colors generated by man-db.
-  set -gx MANPAGER 'less -R'
-'';
+          # MANPAGER: `bat` produced broken ANSI sequences with the NixOS man-db/groff setup.
+          # Use `less -R`, which supports the ANSI colors generated by man-db.
+        set -gx MANPAGER 'less -R'
+      '';
       shellInit = ''
         set -gx fish_greeting ""
       '';
@@ -1411,7 +1491,7 @@ done
         add_newline = false;
         character = {
           success_symbol = "[❯](bold green)";
-          error_symbol   = "[❯](bold red)";
+          error_symbol = "[❯](bold red)";
         };
         directory = {
           style = "bold cyan";
@@ -1420,18 +1500,18 @@ done
         };
         git_branch = {
           symbol = " ";
-          style  = "bold purple";
+          style = "bold purple";
         };
         git_status.style = "bold yellow";
         cmd_duration = {
           min_time = 2000;
-          style    = "bold yellow";
-          format   = "[$duration]($style) ";
+          style = "bold yellow";
+          format = "[$duration]($style) ";
         };
         time = {
           disabled = false;
-          format   = "[$time]($style) ";
-          style    = "bold dimmed white";
+          format = "[$time]($style) ";
+          style = "bold dimmed white";
           time_format = "%H:%M";
         };
       };
@@ -1525,16 +1605,16 @@ done
         cursor = "#EAB2C2";
         cursor_text_color = "#1B1E25";
         url_color = "#76C4D7";
-        color0  = "#1B1E25";
-        color1  = "#EAB2C2";
-        color2  = "#76C4D7";
-        color3  = "#D9C95E";
-        color4  = "#76C4D7";
-        color5  = "#EAB2C2";
-        color6  = "#76C4D7";
-        color7  = "#CCD9FF";
-        color8  = "#8290A8";
-        color9  = "#F2C6D2";
+        color0 = "#1B1E25";
+        color1 = "#EAB2C2";
+        color2 = "#76C4D7";
+        color3 = "#D9C95E";
+        color4 = "#76C4D7";
+        color5 = "#EAB2C2";
+        color6 = "#76C4D7";
+        color7 = "#CCD9FF";
+        color8 = "#8290A8";
+        color9 = "#F2C6D2";
         color10 = "#97D5E2";
         color11 = "#E8D982";
         color12 = "#91D2E0";
@@ -1607,15 +1687,22 @@ done
       };
       Service = {
         Type = "simple";
-        Environment = "PATH=${lib.makeBinPath [ pkgs.mpvpaper pkgs.mpv ]}";
-        ExecStart = lib.concatStringsSep " " (map escapeSystemdExecArg [
-          "${pkgs.mpvpaper}/bin/mpvpaper"
-          "-p"
-          "--mpv-options"
-          "loop=inf"
-          monitorOutput
-          wallpaperVideo
-        ]);
+        Environment = "PATH=${
+          lib.makeBinPath [
+            pkgs.mpvpaper
+            pkgs.mpv
+          ]
+        }";
+        ExecStart = lib.concatStringsSep " " (
+          map escapeSystemdExecArg [
+            "${pkgs.mpvpaper}/bin/mpvpaper"
+            "-p"
+            "--mpv-options"
+            "loop=inf"
+            monitorOutput
+            wallpaperVideo
+          ]
+        );
         Restart = "on-failure";
         RestartSec = 3;
       };
@@ -1630,7 +1717,15 @@ done
       };
       Service = {
         Type = "simple";
-        Environment = "PATH=${lib.makeBinPath [ pkgs.hyprland pkgs.jq pkgs.socat pkgs.systemd pkgs.gawk ]}";
+        Environment = "PATH=${
+          lib.makeBinPath [
+            pkgs.hyprland
+            pkgs.jq
+            pkgs.socat
+            pkgs.systemd
+            pkgs.gawk
+          ]
+        }";
         ExecStart = "${pkgs.bash}/bin/bash ${config.home.homeDirectory}/.local/bin/mpvpaper-watchdog";
         Restart = "on-failure";
         RestartSec = 3;
@@ -1652,7 +1747,15 @@ done
         ExecStart = "${gamemodeNotifyScript}/bin/gamemode-notify";
         Restart = "on-failure";
         RestartSec = 5;
-        Environment = "PATH=${lib.makeBinPath [ pkgs.libnotify pkgs.dbus pkgs.gnugrep pkgs.systemd pkgs.coreutils ]}";
+        Environment = "PATH=${
+          lib.makeBinPath [
+            pkgs.libnotify
+            pkgs.dbus
+            pkgs.gnugrep
+            pkgs.systemd
+            pkgs.coreutils
+          ]
+        }";
       };
     };
   };
@@ -1663,12 +1766,22 @@ done
     # to the scratchpad. `mpv` is now included in the Home Manager package list.
     mpv
     # Optional tools for the adapted dotfile theme; Pywal is user-invoked (wal -i).
-    eza ranger pywal16Fixed
-    fd ripgrep jq wget curl file tree
+    eza
+    ranger
+    pywal16Fixed
+    fd
+    ripgrep
+    jq
+    wget
+    curl
+    file
+    tree
     # `playerctl`, `wev`, `libnotify`, and `hyprpicker` are installed system-wide
     # in `configuration.nix`; keep them out of this Home Manager list to avoid duplicates.
     # `mpv` remains here because the music scratchpad invokes it directly.
     pamixer
-    nano satty socat
+    nano
+    satty
+    socat
   ];
 }

@@ -35,13 +35,25 @@ def main() -> int:
     args = parser.parse_args()
 
     source = args.input.expanduser().resolve()
-    output = args.output.expanduser().resolve()
+    requested_output = args.output.expanduser()
+
+    # Do not resolve the final path component before checking it: Path.resolve()
+    # follows a dangling symlink and could make this helper create its target.
+    if requested_output.is_symlink():
+        parser.error(f"output path is a symbolic link; remove it explicitly first: {requested_output}")
+    if requested_output.exists():
+        parser.error(f"output already exists; inspect/remove it explicitly first: {requested_output}")
+
+    output_parent = requested_output.parent.resolve()
+    output = output_parent / requested_output.name
+    # Re-check the canonical destination before writing. The final publication below
+    # also uses an atomic no-clobber operation to handle a concurrent path creation.
+    if output.is_symlink() or output.exists():
+        parser.error(f"output already exists; inspect/remove it explicitly first: {output}")
     if source == output:
         parser.error("input and output must be different paths; production XML is never overwritten")
     if not source.is_file():
         parser.error(f"input XML does not exist or is not a file: {source}")
-    if output.exists():
-        parser.error(f"output already exists; inspect/remove it explicitly first: {output}")
     if not output.parent.is_dir():
         parser.error(f"output directory does not exist: {output.parent}")
 
@@ -89,7 +101,10 @@ def main() -> int:
         with os.fdopen(fd, "w", encoding="utf-8") as handle:
             handle.write(updated)
         os.chmod(temporary, 0o600)
-        os.replace(temporary, output)
+        # os.replace() would overwrite a path created after the existence check.
+        # A same-directory hard link is atomic and fails if any destination exists.
+        os.link(temporary, output)
+        os.unlink(temporary)
     except BaseException:
         try:
             os.unlink(temporary)

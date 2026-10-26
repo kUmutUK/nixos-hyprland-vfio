@@ -22,6 +22,27 @@ PATCHED_XML="/var/lib/libvirt/win10.xml"
 SNAPSHOT_SUBVOL="/home/.snapshots"
 SNAPSHOT_SUBVOL_CREATED=0
 
+REQUIRED_NIXOS_SOURCE_FILES=(configuration.nix home.nix flake.nix flake.lock)
+
+# Reject an incomplete checkout before prompting or touching system state. A skipped
+# source file can leave a mixed old/new deployment even when individual copies work.
+validate_nixos_source_files() {
+  local file source_file
+  if [[ ! -d "$REPO_DIR/nixos" ]]; then
+    error "Required source directory is missing: $REPO_DIR/nixos. No system files have been changed."
+    return 1
+  fi
+  for file in "${REQUIRED_NIXOS_SOURCE_FILES[@]}"; do
+    source_file="$REPO_DIR/nixos/$file"
+    if [[ ! -f "$source_file" || ! -s "$source_file" ]]; then
+      error "Required NixOS source file is missing or empty: $source_file. No system files have been changed."
+      return 1
+    fi
+  done
+}
+
+validate_nixos_source_files
+
 echo ""
 echo -e "${CYAN}==============================================================${NC}"
 echo -e "${CYAN}   NixOS Hyprland + VFIO — High-Risk Migration Helper${NC}"
@@ -640,14 +661,17 @@ log "home.stateVersion source: $STATE_VERSION_SOURCE${HOME_STATE_VERSION:+ (valu
 # Start the transaction before the first filesystem mutation so a partial
 # mkdir failure is covered by the EXIT rollback handler too.
 TRANSACTION_ACTIVE=1
+# Re-check the complete set after the interactive planning phase and while rollback is
+# active. A source that disappeared must not be silently skipped during deployment.
+validate_nixos_source_files
 sudo mkdir -p "$NIXOS_FLAKE_DIR"
-for f in configuration.nix home.nix flake.nix flake.lock; do
-    if [ -f "$REPO_DIR/nixos/$f" ]; then
-        sudo cp "$REPO_DIR/nixos/$f" "$NIXOS_FLAKE_DIR/$f"
-        log "Copied $f"
-    else
-        warn "Skipping missing file: $f"
+for f in "${REQUIRED_NIXOS_SOURCE_FILES[@]}"; do
+    source_file="$REPO_DIR/nixos/$f"
+    if [[ ! -f "$source_file" || ! -s "$source_file" ]]; then
+        error "Required NixOS source file disappeared or became empty during deployment: $source_file"
     fi
+    sudo cp "$source_file" "$NIXOS_FLAKE_DIR/$f"
+    log "Copied $f"
 done
 
 # Apply the previously discovered compatibility baselines to the freshly

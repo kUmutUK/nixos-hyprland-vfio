@@ -16,6 +16,8 @@ This guide walks through an AMD-oriented **NixOS + LUKS2 + Btrfs + Hyprland + VF
 - AMD Radeon RX 6700 XT (Navi 22) — the reference GPU for this configuration. Other RX 6000/7000 cards are not considered supported until PCI/IOMMU groups, GPU reset behavior, and ROCm settings have been verified separately.
 - At least 810 GiB of storage (about 870 GB decimal); a 1 TB-class drive is recommended in practice.
 
+**Gaming prerequisite:** If you plan to use LSFG-VK frame generation, install Lossless Scaling through Steam on the host. The Nix flake supplies the Vulkan layer, not the Lossless Scaling application. For a non-default Steam library, set the correct path in the LSFG-VK configuration.
+
 ---
 
 # 🚀 1. Live environment

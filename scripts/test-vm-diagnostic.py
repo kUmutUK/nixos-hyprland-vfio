@@ -85,6 +85,22 @@ def main() -> int:
         if os.stat(output).st_mode & 0o777 != 0o600:
             raise AssertionError("diagnostic XML must be created with mode 0600")
 
+        # A dangling output symlink must be rejected without creating its referent.
+        dangling_link = directory / "dangling-output.xml"
+        dangling_target = directory / "must-not-be-created.xml"
+        dangling_link.symlink_to(dangling_target.name)
+        dangling_result = run_helper(source, dangling_link)
+        if dangling_result.returncode == 0:
+            raise AssertionError("helper accepted a dangling output symlink")
+        if "symbolic link" not in dangling_result.stderr:
+            raise AssertionError(
+                f"dangling output symlink was rejected for the wrong reason: {dangling_result.stderr!r}"
+            )
+        if not dangling_link.is_symlink():
+            raise AssertionError("helper removed or replaced the user-provided output symlink")
+        if dangling_target.exists():
+            raise AssertionError("helper unexpectedly created the dangling symlink referent")
+
         root = ET.parse(output).getroot()
         graphics = root.findall("./devices/graphics")
         videos = root.findall("./devices/video")
@@ -121,7 +137,7 @@ def main() -> int:
             "input XML is not well-formed",
         )
 
-    print("OK: VM diagnostic helper accepts one valid video block, preserves production XML, and rejects duplicate/mixed video devices, existing graphics, and malformed XML.")
+    print("OK: VM diagnostic helper preserves production XML, rejects invalid XML/video layouts and output symlinks, and creates loopback-only VNC output.")
     return 0
 
 

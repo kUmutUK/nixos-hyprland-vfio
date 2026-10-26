@@ -18,6 +18,33 @@ Thank you for helping improve this project. Because this is a hardware-specific 
 Run these commands from the repository root:
 
 ```bash
+nix develop ./nixos --command bash -euo pipefail -c '
+  for f in install.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh; do
+    bash -n "$f"
+  done
+  find ./nixos -type f -name "*.nix" -print0 | xargs -0 -r nixfmt --check
+  shellcheck -S warning install.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh
+  python3 -c "import xml.etree.ElementTree as ET; ET.parse(\"vm-xml/win10.xml\")"
+  python3 scripts/test-lsfg-v1-config.py
+  python3 scripts/test-vm-xml.py
+  python3 scripts/test-vm-xml-sync.py
+  python3 scripts/test-vm-diagnostic.py
+  bash scripts/test-installer-invariants.sh
+  bash scripts/test-installer-rollback.sh
+  bash scripts/test-vfio-hook-driver-state.sh
+  tmpdir="$(mktemp -d)"
+  trap "rm -rf -- \"$tmpdir\"" EXIT
+  python3 scripts/extract-embedded-scripts.py "$tmpdir" > "$tmpdir/paths.nul"
+  mapfile -d "" -t embedded_scripts < "$tmpdir/paths.nul"
+  if [ "${#embedded_scripts[@]}" -ne 7 ]; then
+    printf "Expected 7 embedded Bash scripts, found %s\\n" "${#embedded_scripts[@]}" >&2
+    exit 1
+  fi
+  shellcheck -S warning "${embedded_scripts[@]}"
+  (cd nixos && nix flake check --no-build --show-trace --no-update-lock-file --option warn-dirty false)
+  (cd nixos && nix build --no-link --no-update-lock-file .#lsfg-vk)
+'
+```bash
 set -euo pipefail
 for f in install.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh; do
   bash -n "$f"
@@ -45,7 +72,7 @@ bash scripts/test-vfio-hook-driver-state.sh
 (cd nixos && nix flake check --no-build --show-trace --no-update-lock-file --option warn-dirty false)
 ```
 
-For changes to NixOS options or kernel inputs, also evaluate the relevant output and, where feasible, run a real `nixos-rebuild dry-activate`. Do not claim that the full kernel or system builds unless the build was actually completed. The `--no-build` CI step only evaluates the flake; the flags above match CI and prevent lock-file updates during evaluation.
+For changes to NixOS options or kernel inputs, also evaluate the relevant output and, where feasible, run a real `nixos-rebuild dry-activate`. Do not claim that the full kernel or system builds unless the build was actually completed. The `--no-build` CI step only evaluates the flake; a separate targeted build verifies the selected LSFG-VK package. The Nix formatting check uses `nixfmt --check` and does not rewrite source files.
 
 The 2026-10-16 hardware result documented in README.md was obtained with standard (non-RT) BORE-LTO and is historical. In a later update dated 2026-10-23, the project owner reported that the target machine rebuilt successfully with RT-Bore-LTO ThinLTO, compiled the kernel, started and shut down the Windows VM, and returned to the Hyprland host session. This is owner-reported target-system validation, not independent reproduction or a compatibility guarantee for other hardware. The RT-Bore-LTO variant is not published in the upstream binary cache, so each newly selected upstream revision must be built locally and its boot and VM lifecycle revalidated before relying on it.
 
@@ -56,6 +83,7 @@ For VFIO hook changes, run the mock driver-state regression test and document wh
 ## Style
 
 - Use two-space indentation in Nix files and format them with `nixfmt`.
+- Use `nixfmt --check` for validation; formatting edits should be reviewed separately.
 - Keep shell scripts compatible with the Bash runtime they declare and check them with ShellCheck.
 - Prefer declarative NixOS configuration over manual runtime changes.
 - Keep comments and documentation accurate; remove stale explanations rather than appending contradictory notes.

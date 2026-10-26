@@ -31,57 +31,69 @@
     # together with matching environment.persistence and Home Manager settings.
   };
 
-  outputs = { self, nixpkgs, cachyos-kernel, home-manager, lsfg-vk-flake, ... }:
-  let
-    system = "x86_64-linux";
-    pkgs = nixpkgs.legacyPackages.${system};
-  in
-  {
-    nixosConfigurations.nixos = nixpkgs.lib.nixosSystem {
-      inherit system;
-      modules = [
-        home-manager.nixosModules.home-manager
-        lsfg-vk-flake.nixosModules.default
+  outputs =
+    {
+      self,
+      nixpkgs,
+      cachyos-kernel,
+      home-manager,
+      lsfg-vk-flake,
+      ...
+    }:
+    let
+      system = "x86_64-linux";
+      pkgs = nixpkgs.legacyPackages.${system};
+    in
+    {
+      nixosConfigurations.nixos = nixpkgs.lib.nixosSystem {
+        inherit system;
+        modules = [
+          home-manager.nixosModules.home-manager
+          lsfg-vk-flake.nixosModules.default
 
-        ({ pkgs, ... }: {
-          nixpkgs.config.allowUnfree = true;
-          # Keep the CachyOS kernel and patch set on the upstream pinned nixpkgs revision.
-          # The package follows the `master` input; its kernel version is not hard-coded here.
-          # Update the flake lock intentionally with `nix flake update cachyos-kernel` when
-          # upstream publishes a newer kernel. RT-Bore-LTO LTO is not in the binary cache,
-          # so this variant is expected to build locally even with `pinned`.
-          nixpkgs.overlays = [ cachyos-kernel.overlays.pinned ];
-          boot.kernelPackages = pkgs.cachyosKernels.linuxPackages-cachyos-rt-bore-lto;
-          # Hyprland, its companion tools, and xdg-desktop-portal-hyprland
-          # come from the same nixpkgs revision to keep their ABI consistent.
-          # Keep shared system packages declared in configuration.nix only;
-          # duplicate declarations here make ownership harder to maintain.
-        })
-        ./configuration.nix
-      ];
-    };
+          ({ pkgs, ... }: {
+            nixpkgs.config.allowUnfree = true;
+            # Keep the CachyOS kernel and patch set on the upstream pinned nixpkgs revision.
+            # The package follows the `master` input; its kernel version is not hard-coded here.
+            # Update the flake lock intentionally with `nix flake update cachyos-kernel` when
+            # upstream publishes a newer kernel. RT-Bore-LTO LTO is not in the binary cache,
+            # so this variant is expected to build locally even with `pinned`.
+            nixpkgs.overlays = [ cachyos-kernel.overlays.pinned ];
+            boot.kernelPackages = pkgs.cachyosKernels.linuxPackages-cachyos-rt-bore-lto;
+            # Hyprland, its companion tools, and xdg-desktop-portal-hyprland
+            # come from the same nixpkgs revision to keep their ABI consistent.
+            # Keep shared system packages declared in configuration.nix only;
+            # duplicate declarations here make ownership harder to maintain.
+          })
+          ./configuration.nix
+        ];
+      };
 
-    # The README uses `nix develop`; expose one flake dev shell rather than a
-    # separate legacy channel-based shell.
-    devShells.${system}.default = pkgs.mkShell {
-      name = "nixos-hyprland-vfio";
-      packages = with pkgs; [
-            # Use nixfmt; nixfmt-rfc-style is deprecated and aliases this package.
-            nixfmt
-            statix
-            deadnix
-            shellcheck
-            nix-output-monitor
-            git
-            coreutils
-            pciutils
-            curl
-            jq
-            libxml2
-          ];
-      shellHook = ''
-        echo "nixos-hyprland-vfio development shell — nixfmt, statix, and deadnix are available"
-      '';
+      # Expose the selected LSFG-VK v1 package so CI and contributors can build it directly.
+      packages.${system}.lsfg-vk = lsfg-vk-flake.packages.${system}.lsfg-vk;
+
+      # The README uses `nix develop`; expose one flake dev shell rather than a
+      # separate legacy channel-based shell.
+      devShells.${system}.default = pkgs.mkShell {
+        name = "nixos-hyprland-vfio";
+        packages = with pkgs; [
+          # Use nixfmt; nixfmt-rfc-style is deprecated and aliases this package.
+          nixfmt
+          python3
+          statix
+          deadnix
+          shellcheck
+          nix-output-monitor
+          git
+          coreutils
+          pciutils
+          curl
+          jq
+          libxml2
+        ];
+        shellHook = ''
+          echo "nixos-hyprland-vfio development shell — nixfmt, Python, statix, and deadnix are available"
+        '';
+      };
     };
-  };
 }

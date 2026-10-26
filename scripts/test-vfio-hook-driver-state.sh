@@ -13,11 +13,23 @@ fail() {
 }
 
 # The hook runs with libvirtd's controlled PATH, not the interactive user's PATH.
-# restore_saved_services uses awk, so the generated PATH must explicitly include gawk.
-hook_path_line="$(grep -F 'export PATH="${lib.makeBinPath [' "$CONFIG" || true)"
-if [[ "$hook_path_line" != *"pkgs.gawk"* ]]; then
-  fail 'libvirt hook PATH must explicitly include pkgs.gawk for service-state restoration'
-fi
+# nixfmt may format the Nix interpolation across several lines; validate the block semantically.
+python3 - "$CONFIG" <<'PY'
+import re
+import sys
+from pathlib import Path
+
+configuration = Path(sys.argv[1]).read_text(encoding="utf-8")
+match = re.search(
+    r'export PATH="\$\{\s*lib\.makeBinPath\s*\[(.*?)\]\s*\}:\$PATH"',
+    configuration,
+    re.DOTALL,
+)
+if match is None or "pkgs.gawk" not in match.group(1):
+    raise SystemExit(
+        "FAIL: libvirt hook PATH must explicitly include pkgs.gawk for service-state restoration"
+    )
+PY
 
 extract_function() {
   local function_name="$1"
@@ -43,7 +55,7 @@ source "$FUNCTIONS_FILE"
 # services or /run/libvirt state are touched by this regression test.
 VFIO_STATE_DIR="$TMP_DIR/vfio-state"
 SERVICE_STATE_FILE="$VFIO_STATE_DIR/win10-services.state"
-declare -A MOCK_ACTIVE=([greetd]=1 [ollama]=0 [polkit.service]=1)
+declare -A MOCK_ACTIVE=([greetd]=1 [ollama]=0 [polkit.service]=1 [waydroid-container.service]=1)
 declare -a MOCK_STARTED=()
 systemctl() {
   local action="$1" service
@@ -134,21 +146,27 @@ fi
 # Previously inactive Ollama must remain stopped after the VM closes. Active greetd
 # and polkit must return to active state. This models the prepare/release process split.
 save_service_state || fail 'could not capture original mocked service activity'
-[[ "$(cat "$SERVICE_STATE_FILE")" == $'greetd=1\nollama=0\npolkit.service=1' ]] \
+[[ "$(cat "$SERVICE_STATE_FILE")" == $'greetd=1\nollama=0\npolkit.service=1\nwaydroid-container.service=1' ]] \
   || fail 'saved service-state file does not preserve prior active/inactive state'
 MOCK_ACTIVE[greetd]=0
 MOCK_ACTIVE[ollama]=0
 MOCK_ACTIVE[polkit.service]=0
+MOCK_ACTIVE[waydroid-container.service]=0
 restore_saved_services || fail 'service-state restoration reported failure'
 [[ "${MOCK_ACTIVE[greetd]}" == "1" ]] || fail 'greetd was not restored to active state'
 [[ "${MOCK_ACTIVE[polkit.service]}" == "1" ]] || fail 'polkit was not restored to active state'
+[[ "${MOCK_ACTIVE[waydroid-container.service]}" == "1" ]] || fail 'Waydroid was not restored to active state'
 [[ "${MOCK_ACTIVE[ollama]}" == "0" ]] || fail 'Ollama was started despite being inactive before VM start'
 [[ ! -e "$SERVICE_STATE_FILE" ]] || fail 'service-state file was not removed after successful restoration'
 
 # If every service was initially inactive, release must not start any of them.
+if ! grep -Fq 'for svc in ollama polkit.service waydroid-container.service; do' "$HOOK"; then
+  fail 'the VFIO hook must stop Waydroid before handing its single GPU to the VM'
+fi
 MOCK_ACTIVE[greetd]=0
 MOCK_ACTIVE[ollama]=0
 MOCK_ACTIVE[polkit.service]=0
+MOCK_ACTIVE[waydroid-container.service]=0
 started_count="${#MOCK_STARTED[@]}"
 save_service_state || fail 'could not capture all-inactive service state'
 restore_saved_services || fail 'all-inactive restoration reported failure'
