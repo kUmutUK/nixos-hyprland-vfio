@@ -33,7 +33,7 @@ save_service_state() {
     log "ERROR: Could not secure the temporary service-state file."
     return 1
   fi
-  for service in greetd ollama polkit.service; do
+  for service in greetd ollama polkit.service waydroid-container.service; do
     if ! active_state="$(systemctl show --property=ActiveState --value "$service" 2>/dev/null)"; then
       rm -f -- "$temporary"
       log "ERROR: Could not query ActiveState for $service; aborting before the desktop is stopped."
@@ -70,7 +70,7 @@ save_service_state() {
 restore_saved_services() {
   local service previous failed=0
   if [ ! -r "$SERVICE_STATE_FILE" ]; then
-    log "ERROR: Service-state file is missing; refusing to start Ollama/polkit without knowing their pre-VM state. Check display recovery manually."
+    log "ERROR: Service-state file is missing; refusing to start Ollama/polkit/Waydroid without knowing their pre-VM state. Check display recovery manually."
     return 1
   fi
 
@@ -262,8 +262,8 @@ stop_hyprland() {
   # The hook previously stopped only greetd. Ollama/ROCm could keep `/dev/dri/card*` in use,
   # so the wait timed out and the following `amdgpu` unbind could hang. Stop all user
   # services that may retain the GPU before attempting unbind.
-  log "Stopping services that may use the GPU (ollama/polkit/...)..."
-  for svc in ollama polkit.service; do
+  log "Stopping services that may use the GPU (ollama/polkit/Waydroid/...)..."
+  for svc in ollama polkit.service waydroid-container.service; do
     if systemctl is-active --quiet "$svc" 2>/dev/null; then
       log "  stopping: $svc"
       # Do not hide a failed service stop; otherwise it appears later as an opaque `fuser`
