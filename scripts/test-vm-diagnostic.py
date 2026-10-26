@@ -85,6 +85,20 @@ def main() -> int:
         if os.stat(output).st_mode & 0o777 != 0o600:
             raise AssertionError("diagnostic XML must be created with mode 0600")
 
+        # A dangling output symlink must be rejected before its target is written.
+        redirected_target = directory / "redirected-diagnostic.xml"
+        dangling_output = directory / "dangling-output.xml"
+        dangling_output.symlink_to(redirected_target.name)
+        symlink_result = run_helper(source, dangling_output)
+        if symlink_result.returncode == 0:
+            raise AssertionError("helper accepted a dangling output symlink")
+        if "output already exists" not in (symlink_result.stdout + symlink_result.stderr):
+            raise AssertionError("dangling output symlink was rejected for an unexpected reason")
+        if not dangling_output.is_symlink():
+            raise AssertionError("helper unexpectedly removed or replaced the caller's dangling symlink")
+        if redirected_target.exists():
+            raise AssertionError("helper wrote through a dangling output symlink into its target")
+
         root = ET.parse(output).getroot()
         graphics = root.findall("./devices/graphics")
         videos = root.findall("./devices/video")
