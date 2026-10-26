@@ -2,7 +2,17 @@
 
 This file summarizes notable changes in English. The original detailed Turkish history is preserved unchanged in [`docs/archive/DEGISIKLIK_GECMISI.md`](docs/archive/DEGISIKLIK_GECMISI.md).
 
-## Unreleased — 2026-10-23
+## Unreleased — 2026-10-27
+
+### Audit follow-ups
+- The VFIO QEMU hook now records, stops, and conditionally restores `waydroid-container.service` along with the services it already tracked. Regression tests cover an initially active Waydroid container and the all-inactive case; real hardware/VM lifecycle validation is still required.
+- The VM diagnostic XML helper now checks the caller-supplied output path with `os.path.lexists` before writing, rejecting dangling symlinks instead of resolving them into a write target. A regression test verifies that the symlink and its target remain untouched.
+- Updated the pinned `actions/checkout` action to v7.0.1, which uses Node 24, replacing the old v4.4.0 Node 20 runtime that is no longer available on GitHub Actions runners.
+- Documented that the Wuthering Waves `wuwa` LSFG profile requires runtime process-name confirmation; no unverified executable alias was substituted.
+
+---
+
+## Configuration snapshot — 2026-10-23
 
 ### Follow-up audit fixes
 - Preserved an existing deployed VM XML as the source of truth during migration and synchronized only the two GPU/audio PCI addresses. The helper retains the existing VM identity, custom CPU/firmware/NVRAM/device settings, disk path, USB passthrough entries, and extra source-address attributes; unsupported layouts fail closed. Added regression tests for new VM identity, existing XML preservation, backups, and unsafe XML refusal.
