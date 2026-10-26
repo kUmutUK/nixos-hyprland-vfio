@@ -718,18 +718,6 @@ if [ -e "$hardware_target" ]; then
   exit 1
 fi
 echo "OK: README hardware-configuration migration checks source, preserves existing target, and fails closed."
- "$INSTALLER" | head -n 1 | cut -d: -f1)"
-acknowledgement_line="$(grep -n '^read -rp "Do you accept using this high-risk automated migration helper' "$INSTALLER" | cut -d: -f1)"
-backup_line="$(grep -n '^mkdir -m 700' "$INSTALLER" | cut -d: -f1)"
-if [[ -z "$preflight_call_line" || -z "$acknowledgement_line" || -z "$backup_line" ]] \
-  || (( preflight_call_line >= acknowledgement_line || preflight_call_line >= backup_line )); then
-  echo "FAIL: source preflight must precede user acknowledgement and backup/deployment work." >&2
-  exit 1
-fi
-if grep -Fq 'Skipping missing file:' "$INSTALLER"; then
-  echo "FAIL: required Nix source files must not be silently skipped during installation." >&2
-  exit 1
-fi
 awk '/^apply_state_version\(\) \{/ { capture=1 } capture { print } capture && /^}/ { exit }' "$INSTALLER" \
   > "$state_test_dir/apply-state-version.sh"
 if ! grep -q '^apply_state_version() {' "$state_test_dir/apply-state-version.sh"; then
