@@ -13,11 +13,23 @@ fail() {
 }
 
 # The hook runs with libvirtd's controlled PATH, not the interactive user's PATH.
-# restore_saved_services uses awk, so the generated PATH must explicitly include gawk.
-hook_path_line="$(grep -F 'export PATH="${lib.makeBinPath [' "$CONFIG" || true)"
-if [[ "$hook_path_line" != *"pkgs.gawk"* ]]; then
-  fail 'libvirt hook PATH must explicitly include pkgs.gawk for service-state restoration'
-fi
+# nixfmt may format the Nix interpolation across several lines; validate the block semantically.
+python3 - "$CONFIG" <<'PY'
+import re
+import sys
+from pathlib import Path
+
+configuration = Path(sys.argv[1]).read_text(encoding="utf-8")
+match = re.search(
+    r'export PATH="\\$\\{\\s*lib\\.makeBinPath\\s*\\[(.*?)\\]\\s*\\}?:?\\$PATH"',
+    configuration,
+    re.DOTALL,
+)
+if match is None or "pkgs.gawk" not in match.group(1):
+    raise SystemExit(
+        "FAIL: libvirt hook PATH must explicitly include pkgs.gawk for service-state restoration"
+    )
+PY
 
 extract_function() {
   local function_name="$1"
