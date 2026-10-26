@@ -59,7 +59,7 @@ jobs:
       - name: Install libvirt XML validator
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq libvirt-clients
+          sudo apt-get install -y -qq libvirt-clients libxml2-utils
 
       - name: XML well-formedness and VM invariants
         run: |
