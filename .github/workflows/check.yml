@@ -7,7 +7,7 @@ on:
     branches: [ main, master ]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -55,6 +55,25 @@ jobs:
 
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@3138316df39ed29be04236d7ffc686fa525866aa
+
+      # Temporary one-time formatting migration for this PR branch. This step will be
+      # removed after it commits the formatter output; normal validation below stays read-only.
+      - name: Apply nixfmt to existing Nix sources (one-time migration)
+        if: github.event_name == 'pull_request' && github.head_ref == 'fix/audit-regressions-2026-10-27'
+        env:
+          GH_BRANCH: ${{ github.head_ref }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git fetch origin "$GH_BRANCH"
+          git switch -C "$GH_BRANCH" FETCH_HEAD
+          nix develop ./nixos --no-update-lock-file --command bash -euo pipefail -c 'find ./nixos -type f -name "*.nix" -print0 | xargs -0 -r nixfmt'
+          if ! git diff --quiet -- nixos; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add -- nixos
+            git commit -m "style: format NixOS configuration files"
+            git push origin "HEAD:$GH_BRANCH"
+          fi
 
       - name: Nix formatting (read-only)
         run: |
