@@ -33,7 +33,7 @@ save_service_state() {
     log "ERROR: Could not secure the temporary service-state file."
     return 1
   fi
-  for service in greetd ollama polkit.service; do
+  for service in greetd ollama polkit.service waydroid-container.service; do
     if ! active_state="$(systemctl show --property=ActiveState --value "$service" 2>/dev/null)"; then
       rm -f -- "$temporary"
       log "ERROR: Could not query ActiveState for $service; aborting before the desktop is stopped."
@@ -70,11 +70,11 @@ save_service_state() {
 restore_saved_services() {
   local service previous failed=0
   if [ ! -r "$SERVICE_STATE_FILE" ]; then
-    log "ERROR: Service-state file is missing; refusing to start Ollama/polkit without knowing their pre-VM state. Check display recovery manually."
+    log "ERROR: Service-state file is missing; refusing to restore services without knowing their pre-VM state. Check display recovery manually."
     return 1
   fi
 
-  for service in greetd ollama polkit.service; do
+  for service in greetd ollama polkit.service waydroid-container.service; do
     previous="$(awk -F= -v name="$service" '$1 == name { print $2; found=1 } END { if (!found) exit 1 }' "$SERVICE_STATE_FILE" 2>/dev/null)" || previous="invalid"
     case "$previous" in
       1)
@@ -263,7 +263,7 @@ stop_hyprland() {
   # so the wait timed out and the following `amdgpu` unbind could hang. Stop all user
   # services that may retain the GPU before attempting unbind.
   log "Stopping services that may use the GPU (ollama/polkit/...)..."
-  for svc in ollama polkit.service; do
+  for svc in waydroid-container.service ollama polkit.service; do
     if systemctl is-active --quiet "$svc" 2>/dev/null; then
       log "  stopping: $svc"
       # Do not hide a failed service stop; otherwise it appears later as an opaque `fuser`
