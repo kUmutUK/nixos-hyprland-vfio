@@ -74,7 +74,7 @@ restore_saved_services() {
     return 1
   fi
 
-  for service in greetd ollama polkit.service; do
+  for service in greetd ollama polkit.service waydroid-container.service; do
     previous="$(awk -F= -v name="$service" '$1 == name { print $2; found=1 } END { if (!found) exit 1 }' "$SERVICE_STATE_FILE" 2>/dev/null)" || previous="invalid"
     case "$previous" in
       1)

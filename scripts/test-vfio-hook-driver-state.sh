@@ -143,7 +143,8 @@ MOCK_ACTIVE[waydroid-container.service]=0
 restore_saved_services || fail 'service-state restoration reported failure'
 [[ "${MOCK_ACTIVE[greetd]}" == "1" ]] || fail 'greetd was not restored to active state'
 [[ "${MOCK_ACTIVE[polkit.service]}" == "1" ]]
-if [[ "${MOCK_ACTIVE[waydroid-container.service]}" != "1" ]]; then fail "Waydroid was not restored"; fi || fail 'polkit was not restored to active state'
+[[ "${MOCK_ACTIVE[polkit.service]}" == "1" ]] || fail 'polkit was not restored to active state'
+[[ "${MOCK_ACTIVE[waydroid-container.service]}" == "1" ]] || fail 'Waydroid was not restored to active state'
 [[ "${MOCK_ACTIVE[ollama]}" == "0" ]] || fail 'Ollama was started despite being inactive before VM start'
 [[ ! -e "$SERVICE_STATE_FILE" ]] || fail 'service-state file was not removed after successful restoration'
 
