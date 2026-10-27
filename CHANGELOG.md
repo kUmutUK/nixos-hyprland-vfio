@@ -18,6 +18,8 @@ This file summarizes notable changes in English. The original detailed Turkish h
 - Updated the manual installation guide to pass `--domain win10` and document the persistent `virsh dumpxml --inactive` source of truth, aligning it with the README and installer.
 
 - Documented the deliberate LSFG-VK v1 (`[[game]]`/`exe`) schema decision; v2 is not partially wired into the active tree, and any later migration must coordinate the package, profiles, deployment/rollback paths, tests, and CI.
+- Added the embedded-script extractor regression test to the README's manual validation commands, keeping the documented test sequence aligned with CONTRIBUTING and CI.
+- Updated the current repair report to record the successful CI run for the already-merged `main` commit and to distinguish that result from physical GPU/VM lifecycle validation.
 
 ## Unreleased — 2026-10-23
 

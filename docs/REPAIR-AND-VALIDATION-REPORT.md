@@ -15,8 +15,14 @@
 - Closed the old LSFG-v2 scope question as a version decision, not an active v1/v2 mismatch: the current repo explicitly targets upstream v1 `[[game]]`/`exe` profiles, tests that schema, and builds `.#lsfg-vk`. A future v2 change must migrate packaging, profile format, deployment/rollback handling, and CI together.
 - Cross-checked the manual `INSTALLATION.md` VM synchronization example against the README and `install.sh`. It previously omitted `--domain win10`; it now uses the same persistent `virsh dumpxml --inactive win10` source-of-truth path and documents fail-closed behavior.
 - The report's historical audit is still not a reproducible 927-commit-per-finding manifest: imported conversation summaries and prior reports do not provide exact source/destination SHA coverage for every review turn. Findings are therefore mapped by report and current code state below rather than pretending every historical commit has been individually re-audited in this single pass.
-- These source/test changes require current-head CI before merging. They do not substitute for physical GPU passthrough or a full RT-Bore-LTO build.
-- This is source/test-level protection; no live libvirt guest, GPU passthrough, RT-Bore-LTO build, or target-host lifecycle run is claimed here. The new regression suite must pass in GitHub Actions before this change is merged.
+- The follow-up source/test changes are present on `main` at commit `a631d195891ff6da74ae727ac3c531ffc77c50ed`. GitHub Actions run [#928](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/40478786307) completed successfully for that exact commit on 2026-10-27. This confirms the repository's configured CI checks, not physical hardware behavior.
+- No live libvirt guest, physical GPU passthrough/release cycle, full RT-Bore-LTO kernel build, or target-host lifecycle run was performed as part of this follow-up audit. The CI result does not replace those target-machine checks.
+
+## Post-audit documentation and delivery corrections — 2026-10-27
+
+- Added `scripts/test-extract-embedded-scripts.py` to the README's manual validation sequence so it matches CONTRIBUTING and CI.
+- Refreshed the current CI status above: commit `a631d195891ff6da74ae727ac3c531ffc77c50ed` is already on `main`, and workflow run #928 passed for that exact SHA.
+- The previously supplied ad-hoc full-source ZIP was not a valid distribution archive because it included `.git/` and did not preserve `install.sh`'s executable mode. Recreate the distributable bundle using the canonical `git archive` command in README, or use the CI-uploaded `nixos-hyprland-vfio-source` artifact. A corrected distributable ZIP is supplied alongside this report; the tracked Git mode for `install.sh` remains `100755`.
 
 ## Follow-up corrections — 2026-10-23
 
