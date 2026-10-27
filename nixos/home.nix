@@ -1327,7 +1327,7 @@ in
             # Proceed only when the selection is non-empty and differs from the previous value.
             if [ -n "$CURRENT_SELECTION" ] && [ "$CURRENT_SELECTION" != "$LAST_SELECTION" ]; then
                 LAST_SELECTION="$CURRENT_SELECTION"
-                
+
                 # Use `translate-shell` to translate the selected text to Turkish (`:tr`); `-b` keeps
                 # only the translated output.
                 TRANSLATION=$(trans -b :tr "$CURRENT_SELECTION" 2>/dev/null)
