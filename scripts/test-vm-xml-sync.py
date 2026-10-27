@@ -380,6 +380,54 @@ def main() -> int:
         if len(list(temp_path.glob("win10.xml.libvirt-win10-*.xml"))) != 1:
             return fail("a registered live XML backup was not created when the destination was absent")
 
+    # A successful libvirt query that does not list win10 means the template
+    # can be used as a new domain, but it still needs a fresh identity.
+    with tempfile.TemporaryDirectory(prefix="vm-xml-sync-domain-absent-") as temp:
+        temp_path = Path(temp)
+        template = temp_path / "template.xml"
+        deployed = temp_path / "win10.xml"
+        template.write_text(template_data, encoding="utf-8")
+        original = ET.fromstring(template_data)
+        env = fake_virsh_env(temp_path, "another-domain\n", template_data)
+        result = run_sync(template, deployed, domain="win10", env=env)
+        if result.returncode != 0 or not deployed.is_file():
+            return fail(f"unregistered new VM sync failed: {result.stdout}{result.stderr}")
+        created = ET.parse(deployed).getroot()
+        if created.findtext("uuid") == original.findtext("uuid"):
+            return fail("unregistered domain reused the template UUID")
+        original_mac = original.find("./devices/interface/mac")
+        created_mac = created.find("./devices/interface/mac")
+        if original_mac is None or created_mac is None or created_mac.get("address") == original_mac.get("address"):
+            return fail("unregistered domain reused the template MAC")
+        if list(temp_path.glob("win10.xml.libvirt-*.xml")):
+            return fail("a live-domain backup was incorrectly created for an unregistered VM")
+
+    # A successful dump for the wrong name is not safe input for a win10 deployment.
+    with tempfile.TemporaryDirectory(prefix="vm-xml-sync-live-wrong-name-") as temp:
+        temp_path = Path(temp)
+        template = temp_path / "template.xml"
+        deployed = temp_path / "win10.xml"
+        template.write_text(template_data, encoding="utf-8")
+        existing = customize_xml(
+            template_data,
+            "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+            "52:54:00:aa:bb:cc",
+            "/var/lib/libvirt/images/existing.qcow2",
+            4,
+        )
+        deployed.write_text(existing, encoding="utf-8")
+        wrong_root = ET.fromstring(template_data)
+        wrong_root.find("name").text = "not-win10"
+        wrong_data = ET.tostring(wrong_root, encoding="unicode")
+        env = fake_virsh_env(temp_path, "win10\n", wrong_data)
+        result = run_sync(template, deployed, domain="win10", env=env)
+        if result.returncode == 0:
+            return fail("unexpected domain returned by virsh dumpxml was accepted")
+        if deployed.read_text(encoding="utf-8") != existing:
+            return fail("unexpected libvirt domain name modified the deployed XML")
+        if list(temp_path.glob("win10.xml.bak-*")) or list(temp_path.glob("win10.xml.libvirt-*.xml")):
+            return fail("unexpected libvirt domain name created backups before refusing the update")
+
     # Libvirt query/export errors must never be treated as an absent domain.
     for failure_name, failure_options in (
         ("list", {"fail_list": True}),
