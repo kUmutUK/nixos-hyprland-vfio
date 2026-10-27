@@ -200,8 +200,10 @@ restore_saved_services || fail 'service-state retry failed after a transient Way
   || fail 'Waydroid did not return to its recorded pre-VM active state'
 
 # If every service was initially inactive, release must not start any of them.
-if ! grep -Fq 'for svc in ollama polkit.service waydroid-container.service; do' "$HOOK"; then
-  fail 'the VFIO hook must stop Waydroid before handing its single GPU to the VM'
+if ! grep -Fq 'for svc in greetd ollama polkit.service waydroid-container.service; do' "$HOOK" \
+  || ! grep -Fq 'stop_saved_service "$svc"' "$HOOK" \
+  || ! grep -Fq 'aborting before GPU unbind' "$HOOK"; then
+  fail 'the VFIO hook must stop and verify each previously active service before GPU unbind'
 fi
 MOCK_ACTIVE[greetd]=0
 MOCK_ACTIVE[ollama]=0
