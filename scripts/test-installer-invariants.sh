@@ -171,8 +171,18 @@ if ! grep -Fq 'nixfmt --check' "$README" \
   || ! grep -Fq '├── DISCLAIMER.md' "$README" \
   || ! grep -Fq 'Lossless Scaling' "$README" \
   || ! grep -Fq 'Lossless Scaling' "$ENGLISH_GUIDE" \
-  || ! grep -Fq 'nixfmt --check' "$CONTRIBUTING"; then
-  echo "FAIL: README/installation/contributor docs or read-only formatting instructions are incomplete." >&2
+  || ! grep -Fq 'nixfmt --check' "$CONTRIBUTING" \
+  || ! grep -Fq 'shellcheck -S warning install.sh scripts/pci-address.sh nixos/hooks/qemu' "$README" \
+  || ! grep -Fq 'shellcheck -S warning install.sh scripts/pci-address.sh nixos/hooks/qemu' "$CONTRIBUTING" \
+  || ! grep -Fq 'pci-address.sh' "$README" \
+  || ! grep -Fq 'statix check .' "$README" \
+  || ! grep -Fq 'deadnix .' "$README" \
+  || ! grep -Fq 'statix check .' "$CONTRIBUTING" \
+  || ! grep -Fq 'deadnix .' "$CONTRIBUTING" \
+  || ! grep -Fq 'scripts/pci-address.sh' "$ROOT/.github/workflows/check.yml" \
+  || ! grep -Fq 'statix check .' "$ROOT/.github/workflows/check.yml" \
+  || ! grep -Fq 'deadnix .' "$ROOT/.github/workflows/check.yml"; then
+  echo "FAIL: manual validation docs must match CI for formatting, PCI helper ShellCheck, Statix, and Deadnix." >&2
   exit 1
 fi
 
