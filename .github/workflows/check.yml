@@ -28,31 +28,7 @@ jobs:
           echo "  install.sh executable mode OK"
 
       - name: create and validate canonical source ZIP
-        run: |
-          archive="$RUNNER_TEMP/nixos-hyprland-vfio-source.zip"
-          rm -f "$archive"
-          git archive --format=zip --prefix=nixos-hyprland-vfio/ \
-            --output="$archive" HEAD
-          python3 - "$archive" <<'PY'
-          import sys
-          import zipfile
-
-          archive = sys.argv[1]
-          with zipfile.ZipFile(archive) as bundle:
-              names = bundle.namelist()
-              if any(name.startswith("nixos-hyprland-vfio/.git/") for name in names):
-                  raise SystemExit(
-                      "::error::Source ZIP must not include the repository's .git directory."
-                  )
-              entry = bundle.getinfo("nixos-hyprland-vfio/install.sh")
-              mode = (entry.external_attr >> 16) & 0o777
-              if entry.create_system != 3 or not (mode & 0o111):
-                  raise SystemExit(
-                      "::error::Source ZIP must retain install.sh's Unix executable mode "
-                      f"(create_system={entry.create_system}, mode={mode:04o})."
-                  )
-          print("  source ZIP excludes .git and retains install.sh executable mode")
-          PY
+        run: scripts/package-source-zip.sh "$RUNNER_TEMP/nixos-hyprland-vfio-source.zip"
 
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@3138316df39ed29be04236d7ffc686fa525866aa
@@ -99,7 +75,7 @@ jobs:
             sudo apt-get update -qq
             sudo apt-get install -y -qq shellcheck
           fi
-          shellcheck -S warning install.sh scripts/installer-lock.sh scripts/pci-address.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh scripts/test-installer-lock.sh scripts/test-manual-vm-bootstrap.sh
+          shellcheck -S warning install.sh scripts/package-source-zip.sh scripts/installer-lock.sh scripts/pci-address.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh scripts/test-installer-lock.sh scripts/test-manual-vm-bootstrap.sh
           echo "  shellcheck OK"
 
       - name: VFIO hook driver-state regression tests

@@ -2,9 +2,10 @@
 
 This file summarizes notable changes in English. The original detailed Turkish history is preserved unchanged in [`docs/archive/DEGISIKLIK_GECMISI.md`](docs/archive/DEGISIKLIK_GECMISI.md).
 
-## Unreleased — 2026-10-27
+## Unreleased — 2026-10-28
 
 ### Audit regression fixes
+- Added `scripts/package-source-zip.sh` as the single canonical source-archive path; it verifies archive completeness, excludes `.git`, and preserves all tracked executable bits. CI now uses and ShellChecks the same helper, while README instructions no longer encourage ad-hoc ZIP creation.
 - Fixed fresh-VM bootstrap retry behavior in both manual guides: new XML and qcow2 files are staged until ISO preflight and disk creation/ownership/permissions succeed, with an end-to-end regression test for missing-ISO retry, failed/partial disk creation, orphan-disk refusal, and success. The clean install now records its source commit and verifies the post-reboot checkout rather than silently cloning a newer `main`; the README repository map now includes `full-system-build.yml`.
 - Confirmed that the supplied full-source ZIP is noncanonical: it includes `.git/` and does not encode Unix execute permissions for `install.sh`, while the Git index retains mode `100755`. The canonical `git archive` generation and CI checks were already correct; clarified the report's historical run #928 reference so it applies only to SHA `a631d195891ff6da74ae727ac3c531ffc77c50ed`, not later `main` revisions.
 - Added a manually dispatched full NixOS system-build workflow with a six-hour budget; it builds the complete `nixosConfigurations.nixos.config.system.build.toplevel` (including RT-Bore-LTO) without slowing every push/PR run. The workflow still does not replace physical GPU/VM lifecycle validation.

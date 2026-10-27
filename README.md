@@ -207,11 +207,10 @@ bash -n install.sh
 
 The installer displays a risk notice and requires the exact acknowledgement phrase shown by the script. It takes a non-blocking per-user process lock before prompting, backing up, or deploying; another `install.sh` process for the same user exits rather than overlapping the transaction. This lock does not coordinate separately configured lock paths or different user accounts, so run the migration from one account at a time. It also requires `/home` to be backed by Btrfs because the shipped configuration enables Home Snapper; it checks this before creating backups or changing managed system files and aborts on other filesystems. For a non-Btrfs `/home`, use the manual migration path and explicitly adapt the Home Snapper configuration and any `/home/.snapshots` mount before deploying. If you do not fully understand or accept the changes, cancel and use Path B.
 
-Maintainers creating a source ZIP should use the canonical Git archive command below; it excludes `.git` and preserves `install.sh`'s executable bit. CI validates this archive and uploads this exact ZIP as a file in the `nixos-hyprland-vfio-source` workflow artifact; distribute that verified archive instead of independently repackaging the checkout:
+Maintainers creating a source ZIP should use the repository packaging helper. It packages the committed `HEAD` (not uncommitted working-tree edits), verifies that every tracked file is present, rejects `.git` metadata, and checks the Unix executable bits of all tracked executable files before publishing the ZIP. Do not create a delivery ZIP by compressing the checkout folder in a file manager; that can include private/local Git metadata and lose the `install.sh` executable bit. CI runs the same helper and uploads its validated output as the `nixos-hyprland-vfio-source` workflow artifact.
 
 ```bash
-git archive --format=zip --prefix=nixos-hyprland-vfio/ \
-  --output=nixos-hyprland-vfio.zip HEAD
+scripts/package-source-zip.sh "$PWD/nixos-hyprland-vfio.zip"
 ```
 
 ### Activate and reboot
@@ -576,6 +575,7 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 ├── scripts/
 │   ├── check-vm-iso-paths.py
 │   ├── extract-embedded-scripts.py
+│   ├── package-source-zip.sh
 │   ├── pci-address.sh
 │   ├── prepare-vm-diagnostic.py
 │   ├── test-extract-embedded-scripts.py
