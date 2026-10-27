@@ -8,6 +8,7 @@ import subprocess
 import sys
 import tempfile
 import xml.etree.ElementTree as ET
+from unittest.mock import patch
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -15,6 +16,7 @@ HELPER = ROOT / "scripts" / "sync-vm-xml.py"
 TEMPLATE = ROOT / "vm-xml" / "win10.xml"
 GPU = "0000:0b:02.0"
 AUDIO = "0000:0b:02.1"
+SUBPROCESS_TIMEOUT_SECONDS = 30
 
 
 def fail(message: str) -> int:
@@ -33,13 +35,28 @@ def run_sync(
     command = [sys.executable, str(HELPER), gpu, audio, str(template), str(destination)]
     if domain is not None:
         command.extend(["--domain", domain])
-    return subprocess.run(
-        command,
-        text=True,
-        capture_output=True,
-        check=False,
-        env=env,
-    )
+    try:
+        return subprocess.run(
+            command,
+            text=True,
+            capture_output=True,
+            check=False,
+            env=env,
+            timeout=SUBPROCESS_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired as exc:
+        stdout = exc.stdout or ""
+        stderr = exc.stderr or ""
+        if isinstance(stdout, bytes):
+            stdout = stdout.decode("utf-8", errors="replace")
+        if isinstance(stderr, bytes):
+            stderr = stderr.decode("utf-8", errors="replace")
+        stderr = (
+            f"{stderr.rstrip()}\n"
+            "TIMEOUT: sync-vm-xml.py did not finish within "
+            f"{SUBPROCESS_TIMEOUT_SECONDS} seconds"
+        ).lstrip()
+        return subprocess.CompletedProcess(command, 124, stdout, stderr)
 
 
 def fake_virsh_env(
@@ -115,6 +132,19 @@ def source_bdf(hostdev: ET.Element) -> str | None:
 
 
 def main() -> int:
+    # Ensure a stuck helper is converted to a clear test failure, not an unbounded wait.
+    with patch(
+        "subprocess.run",
+        side_effect=subprocess.TimeoutExpired("sync-vm-xml.py", SUBPROCESS_TIMEOUT_SECONDS),
+    ):
+        timed_out = run_sync(TEMPLATE, TEMPLATE)
+    if (
+        timed_out.returncode != 124
+        or "TIMEOUT" not in timed_out.stderr
+        or f"{SUBPROCESS_TIMEOUT_SECONDS} seconds" not in timed_out.stderr
+    ):
+        return fail("run_sync did not report a subprocess timeout clearly")
+
     template_data = TEMPLATE.read_text(encoding="utf-8")
 
     # A new VM starts from the template but must receive a fresh UUID/MAC.
