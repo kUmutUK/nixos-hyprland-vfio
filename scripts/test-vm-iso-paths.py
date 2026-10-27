@@ -7,9 +7,11 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 CHECKER = Path(__file__).with_name("check-vm-iso-paths.py")
+SUBPROCESS_TIMEOUT_SECONDS = 30
 
 
 class CheckVmIsoPathsTests(unittest.TestCase):
@@ -20,12 +22,28 @@ class CheckVmIsoPathsTests(unittest.TestCase):
         self.xml = self.root / "win10.xml"
 
     def run_checker(self) -> subprocess.CompletedProcess[str]:
-        return subprocess.run(
-            [sys.executable, str(CHECKER), str(self.xml)],
-            check=False,
-            capture_output=True,
-            text=True,
-        )
+        command = [sys.executable, str(CHECKER), str(self.xml)]
+        try:
+            return subprocess.run(
+                command,
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=SUBPROCESS_TIMEOUT_SECONDS,
+            )
+        except subprocess.TimeoutExpired as exc:
+            stdout = exc.stdout or ""
+            stderr = exc.stderr or ""
+            if isinstance(stdout, bytes):
+                stdout = stdout.decode("utf-8", errors="replace")
+            if isinstance(stderr, bytes):
+                stderr = stderr.decode("utf-8", errors="replace")
+            stderr = (
+                f"{stderr.rstrip()}\n"
+                "TIMEOUT: check-vm-iso-paths.py did not finish within "
+                f"{SUBPROCESS_TIMEOUT_SECONDS} seconds"
+            ).lstrip()
+            return subprocess.CompletedProcess(command, 124, stdout, stderr)
 
     def write_xml(self, body: str) -> None:
         self.xml.write_text(f"<domain><devices>{body}</devices></domain>\n", encoding="utf-8")
@@ -33,6 +51,19 @@ class CheckVmIsoPathsTests(unittest.TestCase):
     @staticmethod
     def cdrom(source: str) -> str:
         return f'<disk device="cdrom"><source {source}/></disk>'
+
+    def test_checker_timeout_is_reported_clearly(self) -> None:
+        with patch(
+            "subprocess.run",
+            side_effect=subprocess.TimeoutExpired(
+                "check-vm-iso-paths.py", SUBPROCESS_TIMEOUT_SECONDS
+            ),
+        ):
+            result = self.run_checker()
+
+        self.assertEqual(result.returncode, 124)
+        self.assertIn("TIMEOUT", result.stderr)
+        self.assertIn(f"{SUBPROCESS_TIMEOUT_SECONDS} seconds", result.stderr)
 
     def test_existing_file_backed_sources_pass(self) -> None:
         windows_iso = self.root / "windows.iso"
