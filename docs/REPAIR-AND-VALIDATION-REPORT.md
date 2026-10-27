@@ -13,7 +13,7 @@ The uploaded `nixos-hyprland-vfio(1).zip` was measured directly from its bytes o
 - ZIP central-directory entry count: **101**.
 - Entries whose names are under `nixos-hyprland-vfio/.git/`: **45** (29 file entries and 16 directory entries).
 - Embedded `.git/shallow` commit: `8c6cf467038bacbc8cba46a0c9dcfe54e13c467d`. The checkout's `.git/HEAD` points to `refs/heads/main`.
-- GitHub `main` was independently observed at the same commit, `8c6cf467038bacbc8cba46a0c9dcfe54e13c467d`; this identifies the embedded baseline but does not make the ZIP a valid distribution artifact.
+- At the time of the original byte measurement, GitHub `main` was at the embedded baseline `8c6cf467038bacbc8cba46a0c9dcfe54e13c467d`. Before this follow-up, `main` advanced to `8e063bd3ddcf5774dba10553fe06be2cbcb15fdc`; the uploaded ZIP is therefore not the current branch head or a distribution artifact for later commits.
 - The `install.sh` ZIP entry has `create_system=0` and `external_attr=0x00000000`, so no Unix permission bits are encoded. A normal Unix extraction therefore does not retain the executable bit. The embedded Git index records the intended tracked mode as `100755`.
 
 **Confirmed distribution defect:** this uploaded ZIP includes the repository's `.git/` metadata and loses `install.sh`'s executable mode. Do not distribute this ad-hoc ZIP. The current `.github/workflows/check.yml` already generates a canonical source archive with `git archive` and fails validation if `.git/` is included or the executable mode is lost; `README.md` documents the same approach. Use that command or the CI artifact for the exact commit being distributed. No change to `install.sh` contents or its tracked Git mode is justified by this packaging defect.
@@ -36,7 +36,7 @@ The following repository regression tests completed successfully against the ext
 
 Follow-up checks also passed: `bash -n` for `install.sh`, the QEMU hook and shell regression scripts; `python3 -m compileall -q scripts`; JSON parsing of `nixos/flake.lock`; and XML parsing of `vm-xml/win10.xml`.
 
-The first combined test invocation exceeded its outer command time limit after the VM diagnostic test printed its success message. The diagnostic test was then rerun alone and exited successfully; the remaining tests and follow-up checks were run separately and also exited successfully. Therefore, individual regression checks passed, while the combined runner's timeout behavior remains unresolved.
+An earlier combined test invocation exceeded its outer command time limit after the VM diagnostic test printed its success message. The diagnostic test was rerun alone and exited successfully; the remaining tests and follow-up checks were then run separately. The original aggregate command, per-test timestamps and complete exit-status trace were not preserved. This is a historical run and must not be conflated with the separate `test-installer-invariants.sh` timeout note below; there is no evidence that both notes describe the same invocation.
  
 The local environment did not provide Nix, ShellCheck, Statix, Deadnix, `xmllint`, or `virt-xml-validate`; no Nix evaluation/build or libvirt/QEMU semantic validation is claimed. Physical GPU passthrough and VM shutdown/display-recovery testing remain unverified. The SSH password-authentication setting remains a documented, network-dependent security risk; it was not changed automatically because doing so without verifying a working alternate access path could lock out a deployed host.
 
@@ -59,8 +59,8 @@ An earlier review used baseline `e5d491b60f48a35a3cb0b4288c02a7e789a31e4d` and e
 
 - Updated the README and CONTRIBUTING validation commands to ShellCheck `scripts/pci-address.sh`, and to run `statix check .` plus `deadnix .`, matching the required CI gates. The README repository map now also lists the shared PCI helper.
 - Extended `scripts/test-installer-invariants.sh` so documentation drift for these commands and their CI counterparts fails the regression test.
-- The supplied audit notes report that `test-installer-invariants.sh` passed when run independently but timed out once during a combined audit. The available evidence does not include a timeout trace or establish whether the limit came from the test, the enclosing runner, or competing work. This remains an unconfirmed test-stability issue; no arbitrary delay, timeout relaxation, or product-failure claim is introduced. Capture elapsed time and the exact timeout/log context on the next reproduction before changing test behavior.
-- The source-archive evidence above remains unchanged: the attached ZIP measures 96 entries and embeds HEAD `a631d195891ff6da74ae727ac3c531ffc77c50ed`, while the canonical-source packaging protections already exist in CI. No change to the installer's tracked mode or content is required for this finding.
+- A separate supplied audit note reports that `test-installer-invariants.sh` passed independently but timed out once during a combined audit. Its exact command wrapper, elapsed time and exit/timeout trace were not preserved, so it cannot be equated with the earlier aggregate timeout described above. This remains a test-stability question rather than a confirmed test assertion failure; do not add arbitrary delays or relax timeouts without reproducing and recording the exact run.
+- Use only the exact measurements in the opening `ZIP audit confirmation` section for the `nixos-hyprland-vfio(1).zip` attachment. The 96-entry / `a631d195…` figures belong to a separate historical ZIP and are not current attachment facts. CI already enforces canonical archive packaging; the ZIP-only permission defect does not justify changing the installer's tracked executable mode.
 - This change records and guards the manual-validation parity correction. It does not claim that Nix evaluation, Statix, Deadnix, a complete system build, QEMU/libvirt startup, or physical GPU passthrough was executed in this workspace.
 
 ## Audit follow-up — 2026-10-27
@@ -278,3 +278,35 @@ The project owner has confirmed a successful RT-Bore-LTO build and rebuild, VM s
 - `scripts/test-installer-rollback.sh` now covers both new-directory outcomes: an empty directory created by the failed installation is removed, while unrelated content is preserved and the directory remains. Existing-file and symlink rollback tests remain in place.
 - The patch-only ZIP stores `install.sh` with Unix mode `100755`; the archive contains only files changed in this correction set and excludes `.git/`.
 - Validation for this correction set: `bash -n install.sh scripts/test-installer-rollback.sh` and `bash scripts/test-installer-rollback.sh`. Nix evaluation/build, ShellCheck, libvirt semantic validation, and real hardware/VM lifecycle checks were not performed here unless separately available in the target CI/host environment.
+
+## Follow-up verification and fixes — parent `8e063bd3ddcf5774dba10553fe06be2cbcb15fdc` — 2026-10-27
+
+### Findings rechecked against the uploaded archive and current source
+
+- **VM XML/new-disk integration — confirmed by static control-flow inspection.** `install.sh` previously invoked `sync-vm-xml.py` even when no `win10` domain was registered and no deployed XML existed. The helper then created a fresh on-disk XML; both manual VM setup blocks treated any existing XML as an existing VM and disabled the new-disk branch if its disk was missing. The migration helper now synchronizes only a registered domain or an already deployed XML. When neither exists, it defers fresh XML creation to the documented VM-preparation flow, which classifies the VM before calling the helper. Existing disks remain protected; no disk is recreated, overwritten, re-owned or re-permissioned by this change.
+- **Post-reboot repository path — confirmed from clean-install instructions.** The fresh-install flow cloned to `/tmp/repo` in the Live ISO, but the later VM-preparation block expected `~/nixos-hyprland-vfio` without creating it. The README and installation guide now clone to the persistent home-directory path if absent, reject a conflicting non-Git path, and use that same checkout for the rest of the block.
+- **Archive measurement history — corrected.** The exact size/hash/entry-count/embedded-HEAD tuple for the supplied `nixos-hyprland-vfio(1).zip` remains in the opening section. The 436,212-byte / 96-entry / `a631d195…` data and older v7 figures are historical measurements from different ZIPs, not facts about the current attachment.
+- **Machine-specific `hardware-configuration.nix` and deployment-specific SSH/IOMMU/libvirt ownership risks — not changed here.** The existing documentation already warns that hardware UUIDs must be regenerated for the target host and describes the SSH, IOMMU group and libvirt file-ownership risks. Replacing device UUIDs or changing access policy without the target machine could break boot or remote access; these were not treated as verified runtime defects.
+
+### Proposed-tree validation record
+
+The code changes were first tested in the extracted source snapshot. The core installer, guide and regression-test file contents matched the corresponding blobs on `main` at parent `8e063bd3ddcf5774dba10553fe06be2cbcb15fdc`; the current report and changelog were fetched from that parent before edits. Statuses below are from this proposed tree, not from a live target host.
+
+| Command | Exit status | Elapsed time | Result |
+| --- | ---: | ---: | --- |
+| `bash scripts/test-installer-invariants.sh` | 0 | 16.518 s | Passed |
+| `bash scripts/test-installer-rollback.sh` | 0 | 0.193 s | Passed |
+| `bash scripts/test-vfio-hook-driver-state.sh` | 0 | 0.968 s | Passed |
+| `python3 scripts/test-vm-xml.py` | 0 | 0.987 s | Passed |
+| `python3 scripts/test-vm-xml-sync.py` (isolated; `timeout 45s`) | 0 | 21.66 s | Passed in isolated run; see aggregate-run note below |
+| `python3 scripts/test-vm-diagnostic.py` | 0 | 7 s (shell `SECONDS` resolution) | Passed |
+| `python3 scripts/test-lsfg-v1-config.py` | 0 | 1 s (shell `SECONDS` resolution) | Passed |
+| `python3 scripts/test-extract-embedded-scripts.py` | 0 | 2 s (shell `SECONDS` resolution) | Passed |
+| `python3 scripts/test-vm-iso-paths.py` | 0 | 7 s wall clock; 5.744 s for six unit tests | Passed |
+| `bash -n install.sh`, `bash -n nixos/hooks/qemu`, and Bash regression-script syntax checks | 0 | Combined | Passed |
+| `python3 -m compileall -q scripts` | 0 | Combined validation block | Passed |
+| Parse `nixos/flake.lock` as JSON and `vm-xml/win10.xml` as XML | 0 | Combined validation block | Passed |
+
+One aggregate test command exceeded the container's 300-second outer limit while waiting in `scripts/test-vm-xml-sync.py`, after the installer-invariants, rollback, VFIO driver-state and VM XML tests had printed success. The XML-sync test then passed in an isolated retry, measured at 21.66 seconds, and also passed on another isolated attempt. This reproduces variable aggregate behavior but does **not** identify the cause; it is not presented as a failed assertion or a proven product defect. Preserve the full runner trace and use an external per-test timeout on the next reproduction.
+
+Nix evaluation/system build, ShellCheck, Statix, Deadnix, libvirt/QEMU semantic validation, and physical GPU/VM lifecycle testing were not run in this environment. No claim of a successful real-host VM or GPU handoff is made.

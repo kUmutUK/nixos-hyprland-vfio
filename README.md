@@ -249,11 +249,19 @@ The VM domain is named `win10`. The default `vm-xml/win10.xml` expects these fil
 
 > **Windows 10 lifecycle:** Standard support for Windows 10 Home and Pro ended on October 14, 2025 ([Microsoft lifecycle policy](https://learn.microsoft.com/en-us/lifecycle/products/windows-10-home-and-pro)). Before using this guest for network-connected or sensitive activity, verify that the installed edition is covered by applicable Extended Security Updates (ESU) or its own supported lifecycle (for example, an eligible LTSC edition), and that updates are installed. The ISO filename alone does not establish ESU eligibility.
 
-After the first system activation and reboot, prepare the VM disk and define the domain. Run the following block from the repository root, after reviewing the XML's disk/ISO paths and USB passthrough IDs. Enter the exact `GPU_PCI` and `GPU_AUDIO` values from the deployed hook at `/etc/nixos/nixos/hooks/qemu`:
+After the first system activation and reboot, prepare the VM disk and define the domain. The `/tmp/repo` checkout used in Path A exists only in the Live ISO and is not available after reboot. The block below creates a persistent checkout at `~/nixos-hyprland-vfio` if one does not already exist; change `REPO` if your checkout lives elsewhere. Run it after reviewing the XML disk/ISO paths and USB passthrough IDs. Enter the exact `GPU_PCI` and `GPU_AUDIO` values from the deployed hook at `/etc/nixos/nixos/hooks/qemu`:
 
 ```bash
 set -euo pipefail
-REPO="$(pwd)"
+REPO="$HOME/nixos-hyprland-vfio"  # change this if your persistent checkout is elsewhere
+if [ ! -d "$REPO/.git" ]; then
+  if [ -e "$REPO" ] || [ -L "$REPO" ]; then
+    echo "ERROR: $REPO exists but is not a Git checkout; inspect it before continuing." >&2
+    exit 1
+  fi
+  git clone https://github.com/kUmutUK/nixos-hyprland-vfio.git "$REPO"
+fi
+cd "$REPO"
 VM_XML=/var/lib/libvirt/win10.xml
 test -f "$REPO/scripts/sync-vm-xml.py"
 sudo mkdir -p /var/lib/libvirt/images /var/lib/libvirt/qemu

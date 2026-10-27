@@ -502,6 +502,20 @@ if ! grep -Fq 'scripts/sync-vm-xml.py' "$INSTALLER"; then
   echo "FAIL: installer must call the tested VM XML synchronization helper." >&2
   exit 1
 fi
+if ! grep -Fq 'REGISTERED_DOMAINS="$(sudo virsh list --all --name)"' "$INSTALLER" \
+  || ! grep -Fq 'VM_XML_SYNCED=1' "$INSTALLER" \
+  || ! grep -Fq 'No registered win10 domain or deployed VM XML exists.' "$INSTALLER" \
+  || ! grep -Fq 'if [ "$VM_XML_SYNCED" -eq 1 ]; then' "$INSTALLER"; then
+  echo "FAIL: migration must defer fresh VM XML creation when neither a registered domain nor deployed XML exists." >&2
+  exit 1
+fi
+if ! grep -Fq 'git clone https://github.com/kUmutUK/nixos-hyprland-vfio.git "$REPO"' "$README" \
+  || ! grep -Fq 'git clone https://github.com/kUmutUK/nixos-hyprland-vfio.git "$REPO"' "$ENGLISH_GUIDE" \
+  || ! grep -Fq 'REPO="$HOME/nixos-hyprland-vfio"' "$README" \
+  || ! grep -Fq 'REPO="$HOME/nixos-hyprland-vfio"' "$ENGLISH_GUIDE"; then
+  echo "FAIL: clean-install VM preparation must create/use a persistent checkout after the Live ISO reboot." >&2
+  exit 1
+fi
 if [ ! -s "$ROOT/scripts/test-extract-embedded-scripts.py" ] \
   || ! grep -Fq 'python3 scripts/test-extract-embedded-scripts.py' "$ROOT/.github/workflows/check.yml" \
   || ! grep -Fq 'python3 scripts/test-extract-embedded-scripts.py' "$ROOT/CONTRIBUTING.md"; then

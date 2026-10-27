@@ -558,9 +558,18 @@ sudo reboot
 >
 ```bash
 # Run these commands after the first reboot, not from the live ISO.
-# Keep the repository checkout outside /etc/nixos, as described in README.md.
+# The /tmp/repo checkout used during installation was temporary; keep this one
+# outside /etc/nixos so it survives reboots and remains separate from system config.
 set -euo pipefail
 REPO="$HOME/nixos-hyprland-vfio"  # change this if the checkout is elsewhere
+if [ ! -d "$REPO/.git" ]; then
+  if [ -e "$REPO" ] || [ -L "$REPO" ]; then
+    echo "ERROR: $REPO exists but is not a Git checkout; inspect it before continuing." >&2
+    exit 1
+  fi
+  git clone https://github.com/kUmutUK/nixos-hyprland-vfio.git "$REPO"
+fi
+cd "$REPO"
 VM_XML=/var/lib/libvirt/win10.xml
 test -f "$REPO/scripts/sync-vm-xml.py"
 sudo mkdir -p /var/lib/libvirt/images /var/lib/libvirt/qemu
