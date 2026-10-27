@@ -5,6 +5,8 @@ Legacy filename: [KURULUM.md](KURULUM.md) (English pointer to this guide)
 This guide walks through an AMD-oriented **NixOS + LUKS2 + Btrfs + Hyprland + VFIO** installation.
 
 > **Recommended approach: install manually.** This guide is for a clean installation. Follow the steps in order and understand each command before running it. `install.sh` is not a clean installer or disk-partitioning tool; it is an optional, higher-risk helper for advanced users migrating an existing NixOS system. Read [`README.md`](README.md) for its risk notice and the alternative manual migration steps.
+>
+> The migration helper uses a non-blocking per-user process lock before prompting or deployment. A second run by the same user exits rather than overlapping backups and rollback; separately configured lock paths or different user accounts are not coordinated, so run the migration from one account at a time.
 
 > **Windows 10 guest lifecycle:** the default VM template targets Windows 10 22H2, whose standard Home/Pro support ended on 14 October 2025. The repository does not enroll the guest in ESU or verify license eligibility/update status. Confirm that the installed edition and license receive current security updates under an applicable ESU or other supported lifecycle before using the VM online. See [Microsoft's guidance](https://support.microsoft.com/en-us/windows/windows-10-support-has-ended-on-october-14-2025) and [ESU FAQ](https://learn.microsoft.com/en-us/lifecycle/faq/extended-security-updates). The existing XML is not a Windows 11 migration path.
 
