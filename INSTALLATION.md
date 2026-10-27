@@ -376,6 +376,8 @@ tar --exclude='./.git' -C /tmp/repo -cf - . | sudo tar --no-same-owner -C /mnt/e
 
 # ⚠️ 7b. Five settings to review and customize as needed
 
+When `win10` is already registered, the documented XML helper uses the persistent `virsh dumpxml --inactive win10` definition and stops without writing if libvirt cannot be queried or exported. It saves recovery copies of the registered definition and any existing on-disk XML before synchronizing PCI addresses.
+
 The manual path copies the `nixos/` directory as-is and does not prompt for machine-specific
 values. Before installation, review these five settings in `home.nix` and customize the ones
 that do not match your setup. Some defaults (such as `hyprlandMonitorMode = "preferred"`) are
@@ -576,7 +578,7 @@ read -rp "GPU display PCI address from /etc/nixos/nixos/hooks/qemu: " GPU_PCI
 read -rp "GPU audio PCI address from /etc/nixos/nixos/hooks/qemu: " GPU_AUDIO
 sudo python3 "$REPO/scripts/sync-vm-xml.py" \
   "$GPU_PCI" "$GPU_AUDIO" \
-  "$REPO/vm-xml/win10.xml" "$VM_XML"
+  "$REPO/vm-xml/win10.xml" "$VM_XML" --domain win10
 
 # Read the primary disk path from the synchronized XML; do not assume a filename.
 DISK_PATH="$(sudo python3 - "$VM_XML" <<'PY'
