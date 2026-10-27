@@ -614,11 +614,12 @@ pattern = re.compile(
 assignment = re.compile(r"^\s*" + re.escape(setting) + r"\s*=", re.MULTILINE)
 if not assignment.search(content):
     raise SystemExit(1)
+assignments = assignment.findall(content)
 values = pattern.findall(content)
 # Exit 2 distinguishes a present but non-literal/duplicated setting from a
-# file that does not define this setting. Do not silently fall back to another
-# potentially stale config when the preferred candidate is ambiguous.
-if len(values) != 1:
+# file that does not define this setting. The count must match exactly; one
+# valid literal plus one non-literal assignment is still ambiguous.
+if len(assignments) != 1 or len(values) != 1:
     raise SystemExit(2)
 print(values[0])
 PY_STATE_VERSION
