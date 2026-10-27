@@ -605,7 +605,9 @@ path, setting = sys.argv[1], sys.argv[2]
 try:
     content = Path(path).read_text(encoding="utf-8")
 except (OSError, UnicodeError):
-    raise SystemExit(1)
+    # The file exists but cannot be read/decoded: treat this as an ambiguous
+    # source, not as a missing assignment that permits fallback to stale data.
+    raise SystemExit(2)
 pattern = re.compile(
     r"^\s*" + re.escape(setting) +
     r'\s*=\s*(?:lib\.mkDefault\s*)?"(\d{2}\.\d{2})"\s*;',
