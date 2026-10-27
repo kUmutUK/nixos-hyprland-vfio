@@ -300,7 +300,21 @@ def main() -> int:
         if list(temp_path.glob("win10.xml.bak-*")):
             return fail("unsupported existing XML should fail before creating a replacement backup")
 
-    # Invalid/equal PCI addresses must be rejected before any destination is created.
+    # Uppercase input is valid and must be emitted in canonical lowercase form.
+    with tempfile.TemporaryDirectory(prefix="vm-xml-sync-uppercase-") as temp:
+        temp_path = Path(temp)
+        template = temp_path / "template.xml"
+        deployed = temp_path / "win10.xml"
+        template.write_text(template_data, encoding="utf-8")
+        result = run_sync(template, deployed, "0000:0B:02.0", "0000:0B:02.1")
+        if result.returncode != 0 or not deployed.is_file():
+            return fail(f"uppercase but valid PCI addresses were rejected: {result.stdout}{result.stderr}")
+        generated = ET.parse(deployed).getroot()
+        got = [source_bdf(node) for node in generated.findall("./devices/hostdev[@type='pci']")]
+        if got != [GPU, AUDIO]:
+            return fail(f"uppercase PCI addresses were not normalized in XML: {got!r}")
+
+    # Invalid function numbers and duplicate addresses must be rejected before writing.
     with tempfile.TemporaryDirectory(prefix="vm-xml-sync-invalid-") as temp:
         temp_path = Path(temp)
         template = temp_path / "template.xml"
@@ -309,6 +323,10 @@ def main() -> int:
         result = run_sync(template, deployed, GPU, GPU)
         if result.returncode == 0 or deployed.exists():
             return fail("duplicate GPU/audio PCI addresses were not rejected before writing")
+        for invalid in ("0000:0b:02.8", "0000:0b:02.f"):
+            result = run_sync(template, deployed, invalid, AUDIO)
+            if result.returncode == 0 or deployed.exists():
+                return fail(f"invalid PCI function number was accepted: {invalid}")
 
 
     # The registered libvirt definition must win over an on-disk XML that is stale.
