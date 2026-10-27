@@ -15,6 +15,16 @@ error() { echo -e "${RED}[✗]${NC} $1"; exit 1; }
 step()  { echo -e "\n${BOLD}${CYAN}▶ $1${NC}"; }
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+
+LOCK_HELPER="$REPO_DIR/scripts/installer-lock.sh"
+if [[ ! -s "$LOCK_HELPER" ]]; then
+  error "Required installer lock helper is missing or empty: $LOCK_HELPER. No system files have been changed."
+fi
+# shellcheck source=scripts/installer-lock.sh
+source "$LOCK_HELPER"
+if ! acquire_nixos_installer_lock; then
+  error "Could not acquire the installer process lock. No system files have been changed."
+fi
 BACKUP_DIR="$HOME/.nixos-config-backup-$(date +%Y%m%d-%H%M%S)"
 NIXOS_DIR="/etc/nixos"
 NIXOS_FLAKE_DIR="$NIXOS_DIR/nixos"

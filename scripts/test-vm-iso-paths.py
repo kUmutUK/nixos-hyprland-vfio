@@ -78,6 +78,7 @@ class CheckVmIsoPathsTests(unittest.TestCase):
         result = self.run_checker()
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("CD-ROM source preflight passed", result.stdout)
         self.assertIn("2 file path(s) checked", result.stdout)
 
     def test_missing_file_backed_source_fails_with_path(self) -> None:
