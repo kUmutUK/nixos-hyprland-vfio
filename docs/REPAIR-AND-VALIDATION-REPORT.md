@@ -22,12 +22,22 @@ The uploaded `nixos-hyprland-vfio(1).zip` was measured directly from its bytes o
 
 ### Regression checks performed against the uploaded snapshot
 
-These checks were run after extracting the uploaded archive and restoring `install.sh` to its intended executable mode for source-level testing:
+The following repository regression tests completed successfully against the extracted uploaded snapshot, with `install.sh` restored to its tracked executable mode for source-level testing:
 
-- Passed with successful exit status: `scripts/test-installer-invariants.sh`, `scripts/test-installer-rollback.sh`, `scripts/test-vfio-hook-driver-state.sh`, `scripts/test-vm-xml.py`, and `scripts/test-vm-xml-sync.py`.
-- `scripts/test-vm-diagnostic.py` printed its success message, but the combined runner did not return control after that message before the outer command timed out. Its output alone is not treated as a verified clean process exit in this invocation.
-- `scripts/test-lsfg-v1-config.py`, `scripts/test-extract-embedded-scripts.py`, `scripts/test-vm-iso-paths.py`, and the follow-up syntax/parsing checks were not reached by that timed-out combined invocation; no pass is claimed for them here.
+- `scripts/test-installer-invariants.sh`
+- `scripts/test-installer-rollback.sh`
+- `scripts/test-vfio-hook-driver-state.sh`
+- `scripts/test-vm-xml.py`
+- `scripts/test-vm-xml-sync.py`
+- `scripts/test-vm-diagnostic.py`
+- `scripts/test-lsfg-v1-config.py`
+- `scripts/test-extract-embedded-scripts.py`
+- `scripts/test-vm-iso-paths.py`
 
+Follow-up checks also passed: `bash -n` for `install.sh`, the QEMU hook and shell regression scripts; `python3 -m compileall -q scripts`; JSON parsing of `nixos/flake.lock`; and XML parsing of `vm-xml/win10.xml`.
+
+The first combined test invocation exceeded its outer command time limit after the VM diagnostic test printed its success message. The diagnostic test was then rerun alone and exited successfully; the remaining tests and follow-up checks were run separately and also exited successfully. Therefore, individual regression checks passed, while the combined runner's timeout behavior remains unresolved.
+ 
 The local environment did not provide Nix, ShellCheck, Statix, Deadnix, `xmllint`, or `virt-xml-validate`; no Nix evaluation/build or libvirt/QEMU semantic validation is claimed. Physical GPU passthrough and VM shutdown/display-recovery testing remain unverified. The SSH password-authentication setting remains a documented, network-dependent security risk; it was not changed automatically because doing so without verifying a working alternate access path could lock out a deployed host.
 
 The tracked source already has the correct `install.sh` mode, and `.github/workflows/check.yml` already builds a canonical ZIP with `git archive` and rejects archives that include `.git/` or lose the executable mode. The source/workflow logic was not altered for a defect confined to this ad-hoc ZIP.
