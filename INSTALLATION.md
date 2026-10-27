@@ -562,7 +562,7 @@ sudo reboot
 > deployed XML; if you use different filenames or locations, edit those XML source paths first.
 > A missing Windows or VirtIO ISO prevents the VM from starting or completing Windows setup. The command block below runs `scripts/check-vm-iso-paths.py` against the staged XML before creating a VM disk and before `virsh define`; it checks each file-backed CD-ROM source path and stops with a clear error when a referenced file is missing.
 >
-> Regression test: run `bash scripts/test-manual-vm-bootstrap.sh` from the repository root. It exercises missing-ISO retry, failed disk creation, orphan-disk refusal, and successful bootstrap using isolated temporary paths and mocked libvirt/qemu-img commands.
+> Regression test: run `bash -n scripts/test-manual-vm-bootstrap.sh && bash scripts/test-manual-vm-bootstrap.sh` from the repository root. It exercises missing-ISO retry, failed/partial disk creation, orphan-disk refusal, safe rollback when another process creates the final XML path concurrently, and successful bootstrap using isolated temporary paths and mocked libvirt/qemu-img/mv commands.
 >
 ```bash
 # Run these commands after the first reboot, not from the live ISO.
@@ -622,7 +622,23 @@ fi
 STAGING_XML_DIR=
 STAGING_DISK_DIR=
 STAGED_DISK_PATH=
+PUBLISHED_DISK_PATH=
+PUBLISHED_DISK_ID=
+PUBLISHED_XML_ID=
+PUBLISHED_PAIR=0
 cleanup_vm_bootstrap() {
+  # Two final paths cannot be published as one atomic filesystem operation. If XML
+  # publication loses a race, remove only this run's disk inode and preserve the
+  # other process's XML/disk. Compare inode identities before rollback.
+  if [ "$PUBLISHED_PAIR" -eq 0 ] && [ -n "$PUBLISHED_DISK_PATH" ] && [ -n "$PUBLISHED_DISK_ID" ] && [ -n "$PUBLISHED_XML_ID" ]; then
+    CURRENT_XML_ID="$(sudo stat -c '%d:%i' -- "$VM_XML" 2>/dev/null || true)"
+    if [ "$CURRENT_XML_ID" != "$PUBLISHED_XML_ID" ]; then
+      CURRENT_DISK_ID="$(sudo stat -c '%d:%i' -- "$PUBLISHED_DISK_PATH" 2>/dev/null || true)"
+      if [ "$CURRENT_DISK_ID" = "$PUBLISHED_DISK_ID" ]; then
+        sudo rm -- "$PUBLISHED_DISK_PATH" || true
+      fi
+    fi
+  fi
   if [ -n "$STAGING_XML_DIR" ]; then sudo rm -rf -- "$STAGING_XML_DIR" || true; fi
   if [ -n "$STAGING_DISK_DIR" ]; then sudo rm -rf -- "$STAGING_DISK_DIR" || true; fi
 }
@@ -691,11 +707,14 @@ else
   sudo chown qemu-libvirtd:qemu-libvirtd "$STAGED_DISK_PATH"
   sudo chmod 0660 "$STAGED_DISK_PATH"
 
-  # Publish without replacing a path created concurrently by another process.
+  # Publish without replacing paths created concurrently by another process.
   if sudo test -e "$VM_XML" || sudo test -L "$VM_XML"; then
     echo "ERROR: $VM_XML appeared during new-VM preparation; refusing to overwrite it." >&2
     exit 1
   fi
+  PUBLISHED_XML_ID="$(sudo stat -c '%d:%i' -- "$BOOTSTRAP_XML")"
+  PUBLISHED_DISK_ID="$(sudo stat -c '%d:%i' -- "$STAGED_DISK_PATH")"
+  PUBLISHED_DISK_PATH="$DISK_PATH"
   sudo mv --no-clobber --no-target-directory -- "$STAGED_DISK_PATH" "$DISK_PATH"
   if sudo test -e "$STAGED_DISK_PATH"; then
     echo "ERROR: The VM disk destination changed during preparation; refusing to continue." >&2
@@ -706,6 +725,7 @@ else
     echo "ERROR: The VM XML destination changed during preparation; refusing to overwrite it." >&2
     exit 1
   fi
+  PUBLISHED_PAIR=1
 fi
 
 # Define only the validated XML at its final path.
