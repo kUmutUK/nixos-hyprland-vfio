@@ -136,6 +136,12 @@ def main() -> int:
             "malformed",
             "input XML is not well-formed",
         )
+        assert_rejected(
+            directory,
+            '<not-domain type="kvm"><name>win10</name><devices><video><model type="none"/></video></devices></not-domain>',
+            "wrong-root",
+            "input XML root must be <domain>",
+        )
 
     print("OK: VM diagnostic helper preserves production XML, rejects invalid XML/video layouts and output symlinks, and creates loopback-only VNC output.")
     return 0
