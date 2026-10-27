@@ -256,7 +256,7 @@ sudo mkdir -p /var/lib/libvirt/images /var/lib/libvirt/qemu
 # Query libvirt itself before treating this as a new VM. With set -e, a failed
 # query aborts instead of mistaking an unavailable daemon for an absent domain.
 REGISTERED_DOMAINS="$(sudo virsh list --all --name)"
-if printf '%s\\n' "$REGISTERED_DOMAINS" | grep -Fxq win10; then
+if printf '%s\n' "$REGISTERED_DOMAINS" | grep -Fxq win10; then
   EXISTING_VM_XML=1
 elif sudo test -e "$VM_XML" || sudo test -L "$VM_XML"; then
   EXISTING_VM_XML=1
