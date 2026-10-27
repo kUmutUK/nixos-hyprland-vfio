@@ -211,7 +211,6 @@ read -rp "Enter GPU Audio PCI address (e.g. 0000:0b:00.1): " gpu_audio
 # Reject malformed addresses and invalid PCI function numbers before writing
 # hook/configuration data. The shared helper accepts uppercase input, while the
 # addresses are normalized below before they are used as sysfs paths.
-
 iommu_group_number() {
   local link="$1" resolved group_num
   [[ -e "$link" ]] || return 0
