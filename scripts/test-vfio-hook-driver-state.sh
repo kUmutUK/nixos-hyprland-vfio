@@ -42,7 +42,7 @@ extract_function() {
 
 FUNCTIONS_FILE="$TMP_DIR/functions.sh"
 : > "$FUNCTIONS_FILE"
-for function_name in device_driver_name device_has_real_driver device_bound_to_vfio restore_prepare_device save_service_state restore_saved_services; do
+for function_name in device_driver_name device_has_real_driver device_bound_to_vfio restore_prepare_device save_service_state stop_saved_service restore_saved_services; do
   function_text="$(extract_function "$function_name")"
   [[ "$function_text" == *"${function_name}()"* ]] || fail "could not extract $function_name from hook"
   printf '%s\n\n' "$function_text" >> "$FUNCTIONS_FILE"
@@ -57,6 +57,8 @@ VFIO_STATE_DIR="$TMP_DIR/vfio-state"
 SERVICE_STATE_FILE="$VFIO_STATE_DIR/win10-services.state"
 declare -A MOCK_ACTIVE=([greetd]=1 [ollama]=0 [polkit.service]=1 [waydroid-container.service]=1)
 declare -a MOCK_STARTED=()
+MOCK_STOP_FAIL=""
+MOCK_START_FAIL=""
 systemctl() {
   local action="$1" service
   case "$action" in
@@ -70,11 +72,17 @@ systemctl() {
       ;;
     start)
       service="$2"
+      if [[ "$MOCK_START_FAIL" == "$service" ]]; then
+        return 1
+      fi
       MOCK_ACTIVE["$service"]=1
       MOCK_STARTED+=("$service")
       ;;
     stop)
       service="$2"
+      if [[ "$MOCK_STOP_FAIL" == "$service" ]]; then
+        return 1
+      fi
       MOCK_ACTIVE["$service"]=0
       ;;
     *) fail "unexpected mocked systemctl action: $*" ;;
@@ -158,6 +166,38 @@ restore_saved_services || fail 'service-state restoration reported failure'
 [[ "${MOCK_ACTIVE[waydroid-container.service]}" == "1" ]] || fail 'Waydroid was not restored to active state'
 [[ "${MOCK_ACTIVE[ollama]}" == "0" ]] || fail 'Ollama was started despite being inactive before VM start'
 [[ ! -e "$SERVICE_STATE_FILE" ]] || fail 'service-state file was not removed after successful restoration'
+
+# A service stop failure that leaves the unit active must block GPU handoff.
+# The caller checks this status and invokes prepare rollback before unbinding.
+save_service_state || fail 'could not capture service state before stop-failure test'
+MOCK_STOP_FAIL="waydroid-container.service"
+if stop_saved_service waydroid-container.service; then
+  fail 'stop_saved_service accepted a failed stop while Waydroid remained active'
+fi
+[[ "${MOCK_ACTIVE[waydroid-container.service]}" == "1" ]] \
+  || fail 'stop-failure mock unexpectedly changed the active Waydroid state'
+MOCK_STOP_FAIL=""
+restore_saved_services || fail 'failed-stop test could not restore the captured service state'
+[[ ! -e "$SERVICE_STATE_FILE" ]] || fail 'state file was not cleared after stop-failure recovery'
+
+# A restore failure must be reported and retain the state file for a retry.
+save_service_state || fail 'could not capture service state before restore-failure test'
+MOCK_ACTIVE[greetd]=0
+MOCK_ACTIVE[ollama]=0
+MOCK_ACTIVE[polkit.service]=0
+MOCK_ACTIVE[waydroid-container.service]=0
+MOCK_START_FAIL="waydroid-container.service"
+if restore_saved_services; then
+  fail 'restore_saved_services hid a Waydroid start failure'
+fi
+[[ -e "$SERVICE_STATE_FILE" ]] || fail 'service-state file was deleted after incomplete restoration'
+[[ "${MOCK_ACTIVE[waydroid-container.service]}" == "0" ]] \
+  || fail 'failed Waydroid start incorrectly changed the mocked unit state'
+MOCK_START_FAIL=""
+restore_saved_services || fail 'service-state retry failed after a transient Waydroid start failure'
+[[ ! -e "$SERVICE_STATE_FILE" ]] || fail 'successful service-state retry did not clear the state file'
+[[ "${MOCK_ACTIVE[waydroid-container.service]}" == "1" ]] \
+  || fail 'Waydroid did not return to its recorded pre-VM active state'
 
 # If every service was initially inactive, release must not start any of them.
 if ! grep -Fq 'for svc in ollama polkit.service waydroid-container.service; do' "$HOOK"; then
