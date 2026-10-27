@@ -781,7 +781,7 @@ cat ~/.local/share/hyprland/hyprland.log
 - Enter the correct GPU PCI ID.
 - `nixos/configuration.nix` sets the default hostname to `nixos`; change it before activation if the target machine should use a different name.
 - `hardware-configuration.nix` is machine-specific.
-- `/home/.snapshots` is required on Btrfs systems because `hardware-configuration.nix` mounts it with `neededForBoot = true`. For a manual install, run `sudo btrfs subvolume create /home/.snapshots` only if that subvolume does not already exist, then verify the mount definition and actual mount. When `install.sh` is used, it creates and verifies the missing subvolume if `/home` is Btrfs; do not run the command again unnecessarily. If the path exists but is not a Btrfs subvolume, do not delete or convert it automatically; inspect its contents and mount state first.
+- `/home/.snapshots` is required for the shipped Home Snapper configuration because `hardware-configuration.nix` mounts it with `neededForBoot = true`. For a manual install, run `sudo btrfs subvolume create /home/.snapshots` only if that subvolume does not already exist, then verify the mount definition and actual mount. When `install.sh` is used, it checks the filesystem covering `/home` before creating backups or changing system files, aborts if it is not Btrfs, and creates/verifies the missing subvolume only on Btrfs. If the path exists but is not a Btrfs subvolume, do not delete or convert it automatically; inspect its contents and mount state first. To support a non-Btrfs `/home`, use the manual path and explicitly adapt both Home Snapper and any `/home/.snapshots` mount before deploying.
 - UEFI is required.
 - SSH key authentication is recommended.
 - The LUKS passphrase is requested at boot.
