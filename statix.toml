@@ -1,0 +1,6 @@
+# Keep flat dotted NixOS option assignments readable and grep-friendly.
+# This disables only the style-only repeated_keys lint; all actionable Statix
+# findings remain enabled and are enforced by CI.
+disabled = [
+  "repeated_keys",
+]
