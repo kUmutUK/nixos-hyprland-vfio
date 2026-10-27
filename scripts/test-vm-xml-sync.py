@@ -2,6 +2,7 @@
 """Regression tests for preserving deployed VM XML during PCI synchronization."""
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 import sys
@@ -21,13 +22,85 @@ def fail(message: str) -> int:
     return 1
 
 
-def run_sync(template: Path, destination: Path, gpu: str = GPU, audio: str = AUDIO) -> subprocess.CompletedProcess[str]:
+def run_sync(
+    template: Path,
+    destination: Path,
+    gpu: str = GPU,
+    audio: str = AUDIO,
+    domain: str | None = None,
+    env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
+    command = [sys.executable, str(HELPER), gpu, audio, str(template), str(destination)]
+    if domain is not None:
+        command.extend(["--domain", domain])
     return subprocess.run(
-        [sys.executable, str(HELPER), gpu, audio, str(template), str(destination)],
+        command,
         text=True,
         capture_output=True,
         check=False,
+        env=env,
     )
+
+
+def fake_virsh_env(
+    root: Path,
+    domain_names: str,
+    live_xml: str,
+    *,
+    fail_list: bool = False,
+    fail_dump: bool = False,
+) -> dict[str, str]:
+    bin_dir = root / "bin"
+    bin_dir.mkdir(parents=True, exist_ok=True)
+    virsh = bin_dir / "virsh"
+    virsh.write_text(
+        "#!/usr/bin/env bash\\n"
+        "set -euo pipefail\\n"
+        'if [[ "${1:-}" == "list" ]]; then\\n'
+        '  if [[ "${FAKE_VIRSH_FAIL_LIST:-0}" == "1" ]]; then exit 3; fi\\n'
+        '  cat "$FAKE_VIRSH_NAMES"\\n'
+        "  exit 0\\n"
+        "fi\\n"
+        'if [[ "${1:-}" == "dumpxml" && "${2:-}" == "win10" ]]; then\\n'
+        '  if [[ "${FAKE_VIRSH_FAIL_DUMP:-0}" == "1" ]]; then exit 4; fi\\n'
+        '  cat "$FAKE_VIRSH_XML"\\n'
+        "  exit 0\\n"
+        "fi\\n"
+        "exit 90\\n",
+        encoding="utf-8",
+    )
+    virsh.chmod(0o755)
+    names_path = root / "domain-names.txt"
+    names_path.write_text(domain_names, encoding="utf-8")
+    xml_path = root / "live-domain.xml"
+    xml_path.write_text(live_xml, encoding="utf-8")
+    env = os.environ.copy()
+    env["PATH"] = f"{bin_dir}{os.pathsep}{env.get('PATH', '')}"
+    env["FAKE_VIRSH_NAMES"] = str(names_path)
+    env["FAKE_VIRSH_XML"] = str(xml_path)
+    env["FAKE_VIRSH_FAIL_LIST"] = "1" if fail_list else "0"
+    env["FAKE_VIRSH_FAIL_DUMP"] = "1" if fail_dump else "0"
+    return env
+
+
+def customize_xml(data: str, uuid: str, mac: str, disk: str, vcpu: int) -> str:
+    updated = data.replace(
+        "<uuid>3def90f6-01d9-4640-badb-1488b66bec29</uuid>",
+        f"<uuid>{uuid}</uuid>",
+        1,
+    )
+    updated = updated.replace('address="52:54:00:df:49:0b"', f'address="{mac}"', 1)
+    updated = updated.replace(
+        "/var/lib/libvirt/images/win10new.qcow2",
+        disk,
+        1,
+    )
+    updated = updated.replace(
+        '<vcpu placement="static" current="6">6</vcpu>',
+        f'<vcpu placement="static" current="{vcpu}">{vcpu}</vcpu>',
+        1,
+    )
+    return updated
 
 
 def source_bdf(hostdev: ET.Element) -> str | None:
@@ -237,7 +310,98 @@ def main() -> int:
         if result.returncode == 0 or deployed.exists():
             return fail("duplicate GPU/audio PCI addresses were not rejected before writing")
 
-    print("OK: VM XML sync preserves custom settings and identity, maps GPU/audio by reviewed guest PCI targets regardless of XML order, backs up first, and fails closed on unsupported layouts.")
+
+    # The registered libvirt definition must win over an on-disk XML that is stale.
+    with tempfile.TemporaryDirectory(prefix="vm-xml-sync-live-stale-") as temp:
+        temp_path = Path(temp)
+        template = temp_path / "template.xml"
+        deployed = temp_path / "win10.xml"
+        template.write_text(template_data, encoding="utf-8")
+        stale_data = customize_xml(
+            template_data,
+            "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+            "52:54:00:aa:bb:cc",
+            "/var/lib/libvirt/images/stale-disk.qcow2",
+            4,
+        )
+        live_data = customize_xml(
+            template_data,
+            "bbbbbbbb-cccc-4ddd-8eee-ffffffffffff",
+            "52:54:00:bb:cc:dd",
+            "/var/lib/libvirt/images/live-domain.qcow2",
+            5,
+        )
+        deployed.write_text(stale_data, encoding="utf-8")
+        env = fake_virsh_env(temp_path, "win10\\n", live_data)
+        result = run_sync(template, deployed, domain="win10", env=env)
+        if result.returncode != 0:
+            return fail(f"live-domain XML sync failed: {result.stdout}{result.stderr}")
+        updated_data = deployed.read_text(encoding="utf-8")
+        updated = ET.fromstring(updated_data)
+        if updated.findtext("uuid") != "bbbbbbbb-cccc-4ddd-8eee-ffffffffffff":
+            return fail("registered VM UUID was not preferred over a stale on-disk XML")
+        disk = updated.find("./devices/disk[@device='disk']/source")
+        if disk is None or disk.get("file") != "/var/lib/libvirt/images/live-domain.qcow2":
+            return fail("registered VM disk path was not preserved from virsh dumpxml")
+        vcpu = updated.find("vcpu")
+        if vcpu is None or vcpu.text != "5":
+            return fail("registered VM CPU settings were not preserved from virsh dumpxml")
+        if list(temp_path.glob("win10.xml.libvirt-win10-*.xml"))[0].read_text(encoding="utf-8") != live_data:
+            return fail("the registered live XML was not backed up byte-for-byte")
+        if list(temp_path.glob("win10.xml.bak-*"))[0].read_text(encoding="utf-8") != stale_data:
+            return fail("the stale on-disk XML was not backed up before replacement")
+        got = [source_bdf(node) for node in updated.findall("./devices/hostdev[@type='pci']")]
+        if got != [GPU, AUDIO]:
+            return fail(f"live-domain GPU/audio PCI addresses were not synchronized: {got!r}")
+
+    # A registered domain without an on-disk XML must retain its live identity and disk.
+    with tempfile.TemporaryDirectory(prefix="vm-xml-sync-live-missing-file-") as temp:
+        temp_path = Path(temp)
+        template = temp_path / "template.xml"
+        deployed = temp_path / "win10.xml"
+        template.write_text(template_data, encoding="utf-8")
+        live_data = customize_xml(
+            template_data,
+            "cccccccc-dddd-4eee-8fff-aaaaaaaaaaaa",
+            "52:54:00:cc:dd:ee",
+            "/var/lib/libvirt/images/missing-file-live-disk.qcow2",
+            3,
+        )
+        env = fake_virsh_env(temp_path, "win10\\n", live_data)
+        result = run_sync(template, deployed, domain="win10", env=env)
+        if result.returncode != 0:
+            return fail(f"live-domain sync with missing on-disk XML failed: {result.stdout}{result.stderr}")
+        updated = ET.parse(deployed).getroot()
+        if updated.findtext("uuid") != "cccccccc-dddd-4eee-8fff-aaaaaaaaaaaa":
+            return fail("missing on-disk XML caused a registered VM to receive a fresh template identity")
+        disk = updated.find("./devices/disk[@device='disk']/source")
+        if disk is None or disk.get("file") != "/var/lib/libvirt/images/missing-file-live-disk.qcow2":
+            return fail("live disk path was lost when the on-disk XML was absent")
+        if len(list(temp_path.glob("win10.xml.libvirt-win10-*.xml"))) != 1:
+            return fail("a registered live XML backup was not created when the destination was absent")
+
+    # Libvirt query/export errors must never be treated as an absent domain.
+    for failure_name, failure_options in (
+        ("list", {"fail_list": True}),
+        ("dump", {"fail_dump": True}),
+    ):
+        with tempfile.TemporaryDirectory(prefix=f"vm-xml-sync-live-{failure_name}-failure-") as temp:
+            temp_path = Path(temp)
+            template = temp_path / "template.xml"
+            deployed = temp_path / "win10.xml"
+            template.write_text(template_data, encoding="utf-8")
+            deployed.write_text(template_data, encoding="utf-8")
+            before = deployed.read_text(encoding="utf-8")
+            env = fake_virsh_env(temp_path, "win10\\n", template_data, **failure_options)
+            result = run_sync(template, deployed, domain="win10", env=env)
+            if result.returncode == 0:
+                return fail(f"libvirt {failure_name} failure did not fail closed")
+            if deployed.read_text(encoding="utf-8") != before:
+                return fail(f"libvirt {failure_name} failure modified the deployed XML")
+            if list(temp_path.glob("win10.xml.bak-*")) or list(temp_path.glob("win10.xml.libvirt-*.xml")):
+                return fail(f"libvirt {failure_name} failure created backups or changed XML before validation")
+
+    print("OK: VM XML sync preserves custom settings and identity, maps GPU/audio by reviewed guest PCI targets regardless of XML order, prefers registered libvirt XML, backs up before writing, and fails closed when queries fail.")
     return 0
 
 
