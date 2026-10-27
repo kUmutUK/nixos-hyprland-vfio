@@ -198,7 +198,9 @@ bash -n install.sh
 ./install.sh
 ```
 
-The installer displays a risk notice and requires the exact acknowledgement phrase shown by the script. If you do not fully understand or accept the changes, cancel and use Path B. Maintainers creating a source ZIP should use the canonical Git archive command below; it excludes `.git` and preserves `install.sh`'s executable bit. CI validates this archive and uploads this exact ZIP as a file in the `nixos-hyprland-vfio-source` workflow artifact; distribute that verified archive instead of independently repackaging the checkout:
+The installer displays a risk notice and requires the exact acknowledgement phrase shown by the script. It also requires `/home` to be backed by Btrfs because the shipped configuration enables Home Snapper; it checks this before creating backups or changing system files and aborts on other filesystems. For a non-Btrfs `/home`, use the manual migration path and explicitly adapt the Home Snapper configuration and any `/home/.snapshots` mount before deploying. If you do not fully understand or accept the changes, cancel and use Path B.
+
+Maintainers creating a source ZIP should use the canonical Git archive command below; it excludes `.git` and preserves `install.sh`'s executable bit. CI validates this archive and uploads this exact ZIP as a file in the `nixos-hyprland-vfio-source` workflow artifact; distribute that verified archive instead of independently repackaging the checkout:
 
 ```bash
 git archive --format=zip --prefix=nixos-hyprland-vfio/ \
