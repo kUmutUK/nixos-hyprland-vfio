@@ -39,17 +39,31 @@ def extract(lines, index, direct=False):
     if direct:
         start = index  # The body starts immediately after the assignment line.
     else:
-        start = next(
-            (k for k in range(index, len(lines)) if "text = ''" in lines[k]), None
-        )
+        # A marker can describe a source-backed attribute with no inline text.
+        # Never continue into a later attribute, or the next script's body can
+        # be incorrectly extracted for this marker.
+        marker_indent = len(lines[index]) - len(lines[index].lstrip())
+        start = None
+        for k in range(index + 1, len(lines)):
+            if "text = ''" in lines[k]:
+                start = k
+                break
+            stripped = lines[k].lstrip()
+            indent = len(lines[k]) - len(stripped)
+            if stripped.startswith("};") and indent <= marker_indent:
+                return None
         if start is None:
             return None
 
     body = []
+    closed = False
     for line in lines[start + 1:]:
         if line.strip().startswith(CLOSER):
+            closed = True
             break
         body.append(line)
+    if not closed:
+        raise ValueError(f"unterminated Nix indented string starting at line {start + 1}")
 
     if not body:
         return None
