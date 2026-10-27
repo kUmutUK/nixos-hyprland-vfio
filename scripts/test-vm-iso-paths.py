@@ -67,6 +67,17 @@ class CheckVmIsoPathsTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Cannot read valid VM XML", result.stdout)
 
+    def test_wrong_root_fails_closed(self) -> None:
+        self.xml.write_text(
+            '<not-domain><devices><disk device="cdrom"><source dev="/dev/sr0"/></disk></devices></not-domain>',
+            encoding="utf-8",
+        )
+
+        result = self.run_checker()
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("root must be <domain>", result.stdout)
+
     def test_missing_cdrom_fails_closed(self) -> None:
         self.write_xml('<disk device="disk"><source file="/tmp/disk.qcow2"/></disk>')
 

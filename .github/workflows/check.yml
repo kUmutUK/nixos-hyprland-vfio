@@ -70,7 +70,7 @@ jobs:
           python3 scripts/test-vm-iso-paths.py
 
       - name: Manual VM bootstrap retry regression test
-        run: bash scripts/test-manual-vm-bootstrap.sh
+        run: bash -n scripts/test-manual-vm-bootstrap.sh && bash scripts/test-manual-vm-bootstrap.sh
 
       - name: Installer, English locale, global Reflex and SSH regression checks
         run: bash scripts/test-installer-invariants.sh
@@ -81,7 +81,7 @@ jobs:
       # ---- GATE STEPS (must pass) ----
 
       - name: shellcheck
-        # Checks install.sh and the VFIO hook. Promoted to a required gate on 2026-10-04.
+        # Static-check installer, VFIO hook, and VM bootstrap test scripts.
         # It previously ran under "REPORT STEPS" with continue-on-error: true,
         # so regressions did not fail CI. Before making it a gate, the hook's
         # two ShellCheck warnings were fixed: unused VFIO_PATH (SC2034) and
@@ -92,7 +92,7 @@ jobs:
             sudo apt-get update -qq
             sudo apt-get install -y -qq shellcheck
           fi
-          shellcheck -S warning install.sh scripts/pci-address.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh
+          shellcheck -S warning install.sh scripts/pci-address.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh
           echo "  shellcheck OK"
 
       - name: VFIO hook driver-state regression tests

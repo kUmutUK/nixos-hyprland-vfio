@@ -34,6 +34,7 @@ This file summarizes notable changes in English. The original detailed Turkish h
 - Updated the validation report to record a reproduced combined-command timeout at the outer 120-second limit after all eight regression scripts and separate syntax/compile/JSON/XML checks printed success. The tests themselves did not report failures; per-test timing and the exact runner timeout trace are still missing, so combined-run stability remains unresolved.
 
 - Added a fail-closed preflight for file-backed CD-ROM ISO paths before VM disk creation and XML definition, with regression tests wired into CI and documented in the README and installation guide.
+- Validated the XML root element in both the ISO preflight and diagnostic-copy helpers, with wrong-root regression tests. Hardened the two-file new-VM publication rollback so a concurrent final-XML collision removes only the disk inode created by this run; added a mocked concurrency regression test. Added the VM bootstrap test to CI/contributor Bash syntax and ShellCheck coverage and completed the repository map entries for `scripts/test-manual-vm-bootstrap.sh` and `statix.toml`.
 
 ## Follow-up fixes — 2026-10-23
 

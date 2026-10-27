@@ -309,7 +309,23 @@ fi
 STAGING_XML_DIR=
 STAGING_DISK_DIR=
 STAGED_DISK_PATH=
+PUBLISHED_DISK_PATH=
+PUBLISHED_DISK_ID=
+PUBLISHED_XML_ID=
+PUBLISHED_PAIR=0
 cleanup_vm_bootstrap() {
+  # Two final paths cannot be published as one atomic filesystem operation. If XML
+  # publication loses a race, remove only this run's disk inode and preserve the
+  # other process's XML/disk. Compare inode identities before rollback.
+  if [ "$PUBLISHED_PAIR" -eq 0 ] && [ -n "$PUBLISHED_DISK_PATH" ] && [ -n "$PUBLISHED_DISK_ID" ] && [ -n "$PUBLISHED_XML_ID" ]; then
+    CURRENT_XML_ID="$(sudo stat -c '%d:%i' -- "$VM_XML" 2>/dev/null || true)"
+    if [ "$CURRENT_XML_ID" != "$PUBLISHED_XML_ID" ]; then
+      CURRENT_DISK_ID="$(sudo stat -c '%d:%i' -- "$PUBLISHED_DISK_PATH" 2>/dev/null || true)"
+      if [ "$CURRENT_DISK_ID" = "$PUBLISHED_DISK_ID" ]; then
+        sudo rm -- "$PUBLISHED_DISK_PATH" || true
+      fi
+    fi
+  fi
   if [ -n "$STAGING_XML_DIR" ]; then sudo rm -rf -- "$STAGING_XML_DIR" || true; fi
   if [ -n "$STAGING_DISK_DIR" ]; then sudo rm -rf -- "$STAGING_DISK_DIR" || true; fi
 }
@@ -378,11 +394,14 @@ else
   sudo chown qemu-libvirtd:qemu-libvirtd "$STAGED_DISK_PATH"
   sudo chmod 0660 "$STAGED_DISK_PATH"
 
-  # Publish without replacing a path created concurrently by another process.
+  # Publish without replacing paths created concurrently by another process.
   if sudo test -e "$VM_XML" || sudo test -L "$VM_XML"; then
     echo "ERROR: $VM_XML appeared during new-VM preparation; refusing to overwrite it." >&2
     exit 1
   fi
+  PUBLISHED_XML_ID="$(sudo stat -c '%d:%i' -- "$BOOTSTRAP_XML")"
+  PUBLISHED_DISK_ID="$(sudo stat -c '%d:%i' -- "$STAGED_DISK_PATH")"
+  PUBLISHED_DISK_PATH="$DISK_PATH"
   sudo mv --no-clobber --no-target-directory -- "$STAGED_DISK_PATH" "$DISK_PATH"
   if sudo test -e "$STAGED_DISK_PATH"; then
     echo "ERROR: The VM disk destination changed during preparation; refusing to continue." >&2
@@ -393,6 +412,7 @@ else
     echo "ERROR: The VM XML destination changed during preparation; refusing to overwrite it." >&2
     exit 1
   fi
+  PUBLISHED_PAIR=1
 fi
 
 # Define only the validated XML at its final path.
@@ -544,6 +564,7 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 ├── CONTRIBUTING.md
 ├── CHANGELOG.md
 ├── LICENSE
+├── statix.toml                     # Statix lint configuration
 ├── install.sh                      # migration/update helper for an existing NixOS host
 ├── .github/workflows/check.yml
 ├── .github/workflows/full-system-build.yml
@@ -559,6 +580,7 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 │   ├── test-lsfg-v1-config.py
 │   ├── test-installer-invariants.sh
 │   ├── test-installer-rollback.sh
+│   ├── test-manual-vm-bootstrap.sh
 │   ├── test-vfio-hook-driver-state.sh
 │   ├── sync-vm-xml.py
 │   ├── test-vm-diagnostic.py
@@ -584,11 +606,12 @@ Run from the repository root. The command uses fail-fast behavior, validates Nix
 ```bash
 nix develop ./nixos --command bash -euo pipefail -c '
   find ./nixos -type f -name "*.nix" -print0 | xargs -0 -r nixfmt --check
-  shellcheck -S warning install.sh scripts/pci-address.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh
+  shellcheck -S warning install.sh scripts/pci-address.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh
   python3 -c "import xml.etree.ElementTree as ET; ET.parse(\"vm-xml/win10.xml\")"
   python3 scripts/test-lsfg-v1-config.py
   python3 scripts/test-extract-embedded-scripts.py
   python3 scripts/test-vm-iso-paths.py
+  bash -n scripts/test-manual-vm-bootstrap.sh
   bash scripts/test-manual-vm-bootstrap.sh
   python3 scripts/test-vm-xml.py
   python3 scripts/test-vm-xml-sync.py

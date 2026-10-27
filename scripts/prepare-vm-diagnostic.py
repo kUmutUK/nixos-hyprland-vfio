@@ -67,6 +67,8 @@ def main() -> int:
         original_root = ET.fromstring(original)
     except ET.ParseError as exc:
         parser.error(f"input XML is not well-formed: {exc}")
+    if original_root.tag != "domain":
+        parser.error("input XML root must be <domain>")
     devices = original_root.find("./devices")
     if devices is None:
         parser.error("input XML has no <devices> section")

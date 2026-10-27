@@ -21,6 +21,10 @@ def validate_vm_iso_paths(xml_path: str | Path, report: Reporter = print) -> int
         report(f"ERROR: Cannot read valid VM XML '{xml_path}': {exc}")
         return 2
 
+    if root.tag != "domain":
+        report(f"ERROR: VM XML root must be <domain>: {xml_path}")
+        return 2
+
     devices = root.find("./devices")
     cdroms = devices.findall("./disk[@device='cdrom']") if devices is not None else []
     if not cdroms:
