@@ -81,7 +81,7 @@ jobs:
       # ---- GATE STEPS (must pass) ----
 
       - name: shellcheck
-        # Checks install.sh and the VFIO hook. Promoted to a required gate on 2026-10-04.
+        # Static-check installer, VFIO hook, and VM bootstrap test scripts.
         # It previously ran under "REPORT STEPS" with continue-on-error: true,
         # so regressions did not fail CI. Before making it a gate, the hook's
         # two ShellCheck warnings were fixed: unused VFIO_PATH (SC2034) and
