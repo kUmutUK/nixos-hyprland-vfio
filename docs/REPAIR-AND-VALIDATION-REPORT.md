@@ -1,6 +1,13 @@
 # Repair and validation report — updated 2026-10-27
 
-> **Delivery-scope note:** This report is included in the full project tree. References below to “patch-only ZIP” describe correction bundles produced on the dates stated in each section; they do not describe the full-source ZIP that currently contains this report. To create a canonical full-source ZIP, use the `git archive` command documented in `README.md`; that excludes `.git/` and preserves the tracked executable mode of `install.sh`.
+> **Delivery-scope note:** This report is part of the tracked source tree. The dated “patch-only ZIP” notes below are historical. For a canonical full-source ZIP, use the `git archive` command documented in `README.md` or the CI-uploaded `nixos-hyprland-vfio-source` artifact; CI validates `.git/` exclusion and `install.sh`’s tracked executable mode.
+
+## Audit follow-up — 2026-10-27
+
+- The reviewed ad-hoc full-source ZIP included `.git/` metadata and did not preserve `install.sh`’s Unix executable bit. These are packaging defects: the existing GitHub Actions workflow already creates the canonical archive with `git archive`, checks that `.git/` is absent and `install.sh` retains mode `100755`, then uploads that exact validated ZIP. Distribution should use the CI artifact rather than manually compressing a checkout.
+- Fixed `INSTALLATION.md` to query `sudo virsh list --all --name` before classifying the VM. A registered `win10` is now treated as existing even when `/var/lib/libvirt/win10.xml` is missing; a failed libvirt query aborts rather than entering the new-VM path. An existing on-disk XML also remains classified as existing.
+- Extended `scripts/test-installer-invariants.sh` to require the registered-domain check in both `README.md` and `INSTALLATION.md`, alongside the existing `--domain win10` synchronizer checks.
+- Static regression tests were run against the correction bundle and passed, including installer invariants/rollback, VM XML/sync/diagnostic, VFIO handoff, LSFG-VK, embedded-script extraction, Bash syntax, and Python compilation. Nix evaluation, ShellCheck, libvirt/QEMU semantic checks, and physical GPU/VM lifecycle testing remain separate and are not claimed here.
 
 ## Current follow-up correction — 2026-10-27
 
