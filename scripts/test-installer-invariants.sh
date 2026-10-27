@@ -186,7 +186,7 @@ set -euo pipefail
 warn() { printf 'WARN: %s\n' "$*" >&2; }
 error() { printf 'ERROR: %s\n' "$*" >&2; exit 90; }
 source "$1"
-read_state_version "$2" "\${@:3}"
+read_state_version "$2" "${@:3}"
 printf '%s|%s\n' "$STATE_VERSION_VALUE" "$STATE_VERSION_SOURCE"
 BASH
 state_candidate_a="$state_test_dir/state-candidate-a.nix"
