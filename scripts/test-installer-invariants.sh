@@ -345,6 +345,13 @@ if ! grep -Fq 'scripts/sync-vm-xml.py' "$INSTALLER"; then
   echo "FAIL: installer must call the tested VM XML synchronization helper." >&2
   exit 1
 fi
+if ! grep -Fq 'registered_domain_xml(domain)' "$ROOT/scripts/sync-vm-xml.py" \
+  || ! grep -Fq 'virsh dumpxml' "$ROOT/scripts/sync-vm-xml.py" \
+  || ! grep -Fq '"$PATCHED_XML" --domain win10' "$INSTALLER" \
+  || ! grep -Fq '"$REPO/vm-xml/win10.xml" "$VM_XML" --domain win10' "$README"; then
+  echo "FAIL: installer/manual VM preparation must prefer a validated registered libvirt XML and fail closed on query errors." >&2
+  exit 1
+fi
 if ! grep -Fq 'only its two PCI hostdev source addresses were synchronized' "$ROOT/scripts/sync-vm-xml.py"; then
   echo "FAIL: VM XML helper must explicitly report its preservation behavior." >&2
   exit 1
