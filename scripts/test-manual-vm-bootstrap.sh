@@ -9,6 +9,7 @@ LIBVIRT_ROOT="$TMP_ROOT/libvirt"
 HOME_DIR="$TMP_ROOT/home"
 REPO="$HOME_DIR/nixos-hyprland-vfio"
 MOCK_BIN="$TMP_ROOT/mock-bin"
+REAL_MV="$(command -v mv)"
 PREPARE_SCRIPT="$TMP_ROOT/prepare-vm.sh"
 VIRSH_LOG="$TMP_ROOT/virsh.log"
 mkdir -p "$REPO/.git" "$REPO/scripts" "$REPO/vm-xml" "$MOCK_BIN" \
@@ -49,6 +50,22 @@ cat > "$MOCK_BIN/chown" <<'SH'
 #!/usr/bin/env bash
 exit 0
 SH
+cat > "$MOCK_BIN/mv" <<'SH'
+#!/usr/bin/env bash
+set -e
+if [ "${RACE_XML_ON_PUBLISH:-0}" = 1 ]; then
+  source_path="${4:-}"
+  destination="${5:-}"
+  case "$source_path" in
+    */.win10-bootstrap.*/win10.xml)
+      if [ "$destination" = "${VM_XML_PATH:-}" ]; then
+        printf 'concurrent-writer-xml\n' > "$destination"
+      fi
+      ;;
+  esac
+fi
+exec "${REAL_MV:?}" "$@"
+SH
 chmod +x "$MOCK_BIN/"*
 
 python3 - "$ROOT/README.md" "$PREPARE_SCRIPT" "$LIBVIRT_ROOT" "$TMP_ROOT/etc-nixos" <<'PY'
@@ -74,7 +91,8 @@ VIRTIO_ISO="$LIBVIRT_ROOT/images/virtio-win-0.1.285.iso"
 
 run_prepare() {
   printf '%s\n' '0000:0b:02.0' '0000:0b:02.1' |
-    env HOME="$HOME_DIR" PATH="$MOCK_BIN:$PATH" VIRSH_LOG="$VIRSH_LOG" "$@" bash "$PREPARE_SCRIPT"
+    env HOME="$HOME_DIR" PATH="$MOCK_BIN:$PATH" VIRSH_LOG="$VIRSH_LOG" \
+      REAL_MV="$REAL_MV" VM_XML_PATH="$VM_XML" "$@" bash "$PREPARE_SCRIPT"
 }
 assert_no_staging_dirs() {
   if find "$LIBVIRT_ROOT" "$LIBVIRT_ROOT/images" -maxdepth 1 -type d -name '.win10-bootstrap.*' -print -quit | grep -q .; then
@@ -118,6 +136,23 @@ if [ -e "$VM_XML" ] || ! grep -Fxq 'pre-existing-partial-disk' "$DISK_PATH"; the
 fi
 assert_no_staging_dirs
 rm -f -- "$DISK_PATH"
+
+# If another process claims the final XML path after disk publication, preserve its XML
+# and roll back only the disk inode created by this run.
+if run_prepare RACE_XML_ON_PUBLISH=1 >/dev/null 2>&1; then
+  echo "FAIL: VM setup unexpectedly passed after a concurrent XML destination was created." >&2
+  exit 1
+fi
+if [ -e "$DISK_PATH" ]; then
+  echo "FAIL: concurrent XML publication failure left this run's disk orphaned." >&2
+  exit 1
+fi
+if [ ! -f "$VM_XML" ] || ! grep -Fxq 'concurrent-writer-xml' "$VM_XML"; then
+  echo "FAIL: rollback removed or overwrote the concurrent writer's XML." >&2
+  exit 1
+fi
+assert_no_staging_dirs
+rm -f -- "$VM_XML"
 
 # With all prerequisites present, the second attempt publishes both assets and defines the VM.
 if ! run_prepare >/dev/null 2>&1; then
