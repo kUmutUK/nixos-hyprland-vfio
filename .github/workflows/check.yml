@@ -89,7 +89,7 @@ jobs:
             sudo apt-get update -qq
             sudo apt-get install -y -qq shellcheck
           fi
-          shellcheck -S warning install.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh
+          shellcheck -S warning install.sh scripts/pci-address.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh
           echo "  shellcheck OK"
 
       - name: VFIO hook driver-state regression tests
@@ -149,25 +149,14 @@ jobs:
       - name: nix flake check (eval only)
         working-directory: nixos
         run: |
-          # `--accept-flake-config` was removed here because it can cause the flake's
-          # nixConfig.extra-substituters / extra-trusted-public-keys settings to be
-          # applied while rewriting the lock file. Observed side effects included:
-          #   • Updated input 'impermanence/home-manager' → follows 'home-manager'
-          #   - Node names shifting (nixpkgs_3 → nixpkgs_2)
-          #   - Input syntax changing ("home-manager": "home-manager"
-          #     → ["home-manager"])
-          # `--option warn-dirty false` hid the warning, so the mutation
-          # was not obvious and left the checkout dirty after each run.
-          #
-          # Removing `--accept-flake-config` alone is not sufficient.
-          # The root cause was a non-canonical committed flake.lock.
-          # The same impermanence input was represented in two different forms:
-          #     "nixpkgs":     ["nixpkgs"]   (follows form)
-          #     "home-manager": "home-manager" (string form)
-          # Nix canonicalizes the lock during evaluation, so running
-          # `nix flake check` changed the file.
-          # The fix was to canonicalize and commit the lock file; the guard below
-          # detects future regressions.
+          # Historical context only: an older snapshot contained an
+          # `impermanence/home-manager` lock node and a lock-file representation
+          # that was rewritten during evaluation when flake config was accepted.
+          # That description does not apply to the current inputs: impermanence was
+          # intentionally removed from flake.nix and has no node in flake.lock.
+          # Keep lock updates disabled during CI; the final flake.lock guard below
+          # now checks the relevant invariant directly, regardless of the cause
+          # of any unexpected lock-file drift.
 
           #
           # Substituters and trusted keys are unnecessary here: --no-build only
