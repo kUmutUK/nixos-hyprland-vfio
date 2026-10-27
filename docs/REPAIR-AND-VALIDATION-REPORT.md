@@ -2,24 +2,30 @@
 
 > **Delivery-scope note:** This report is part of the tracked source tree. The dated “patch-only ZIP” notes below are historical. For a canonical full-source ZIP, use the `git archive` command documented in `README.md` or the CI-uploaded `nixos-hyprland-vfio-source` artifact; CI validates `.git/` exclusion and `install.sh`’s tracked executable mode.
 
-## ZIP audit confirmation — 2026-10-27
+## Current repository validation — 2026-10-27
 
-### Current delivery audit: `nixos-hyprland-vfio(10).zip`
+**Snapshot checked before this report-only update:** GitHub `main` pointed to [`2fac8309345355f2fac5c54591c5c8fe2972787f`](https://github.com/kUmutUK/nixos-hyprland-vfio/commit/2fac8309345355f2fac5c54591c5c8fe2972787f). The tracked `install.sh` mode is `100755`.
 
-The submitted ZIP(10) audit reports these measurements:
+**Standard CI:** [GitHub Actions run #40566306710](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/40566306710) completed successfully for that exact SHA. The run passed canonical source ZIP creation/validation, XML and VM invariant tests, ShellCheck, the Nix flake evaluation step, the selected LSFG-VK package build, Statix, Deadnix, and upload of the validated archive.
+
+**Verified canonical artifact for that snapshot:** the workflow uploaded `nixos-hyprland-vfio-source` (223,842 bytes; artifact digest `sha256:e4a367a1f00152ccb3569d672d9839921632c4b271f78b97f3800ef447e3ed78`). GitHub listed its expiration as **2026-11-10 19:09:51 UTC**. It was generated from the exact SHA above; it is not the same file as any manually compressed ZIP discussed below. The artifact is temporary, so use a new successful CI artifact for the exact commit being distributed.
+
+**Verification boundaries:** the standard workflow runs `nix flake check --no-build`; that evaluates the flake but does not build the complete NixOS system. The separate full-system build workflow is manually dispatched. A successful full-system build for the snapshot above was not established by the standard CI result. Physical GPU passthrough and VM/Hyprland lifecycle behavior must likewise not be inferred from CI.
+
+### Historical submitted archive audit: `nixos-hyprland-vfio(10).zip`
+
+The previously submitted ZIP(10) audit reported:
 
 - File size: **475,881 bytes**.
 - SHA-256: `9b107f6a3579224944211349d46377e96ff48e26eb4bfa548c30276a86efbe6c`.
 - Embedded commit: `19c87b8f22b92e47d9489be6994808be74eeefdc`.
 - Entries under `nixos-hyprland-vfio/.git/`: **45**.
-- Extracted `install.sh` mode: `0644`, despite the tracked Git file being expected to remain executable (`100755`).
+- Extracted `install.sh` mode: `0644`, although the tracked Git mode is `100755`.
 - The submitted audit says all **48 tracked files** match the embedded commit.
 
-**Verification boundary:** the ZIP(10) file itself was not attached to this workspace, so its byte count, SHA-256, extracted mode, entry list and 48-file content comparison could not be independently recomputed here. Those archive-specific measurements above are recorded from the supplied audit. The embedded commit was independently checked against GitHub `main` and is the repository head observed for this update.
+**Verification boundary:** the ZIP(10) bytes were not attached to this workspace, so its byte count, hash, entry list, extracted mode, and 48-file content comparison were not independently recomputed here. The measurements above are retained as a record of the submitted audit, not as fresh measurements of the current repository.
 
-**Delivery finding:** accepting the supplied ZIP audit as accurate, this is a packaging defect in that ad-hoc archive, not evidence of an error in the tracked installer contents. The existing `.github/workflows/check.yml` builds the canonical source ZIP with `git archive`, rejects `.git/` entries, checks the ZIP's Unix executable bit for `install.sh`, and uploads the validated archive. Use that CI artifact for the exact commit or recreate the ZIP using the README's command; do not distribute the ad-hoc ZIP(10).
-
-**CI boundary:** the existing workflow definitions were inspected, but no successful CI result for a newly updated commit is claimed in this report. The workflow must run against the resulting commit to validate its artifact.
+**Delivery finding:** accepting the submitted measurements as accurate, ZIP(10) is a noncanonical delivery archive. Do not distribute that archive. The repository workflow already creates a canonical ZIP with `git archive`, rejects `.git/` entries, checks that the archive preserves `install.sh`'s Unix executable bit, and uploads the validated ZIP. This packaging defect does not justify changing the tracked installer content or its Git mode.
 
 ### Historical delivery audit: `nixos-hyprland-vfio(9).zip`
 
