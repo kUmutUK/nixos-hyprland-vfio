@@ -516,6 +516,52 @@ if ! grep -Fq 'git clone https://github.com/kUmutUK/nixos-hyprland-vfio.git "$RE
   echo "FAIL: clean-install VM preparation must create/use a persistent checkout after the Live ISO reboot." >&2
   exit 1
 fi
+for guide in "$README" "$ROOT/INSTALLATION.md"; do
+  if ! grep -Fq 'SOURCE_REVISION="$(git -C /tmp/repo rev-parse --verify HEAD)"' "$guide" \
+    || ! grep -Fq 'SOURCE_REVISION_FILE=/etc/nixos/.source-revision' "$guide" \
+    || ! grep -Fq 'git -C "$REPO" checkout --detach "$SOURCE_REVISION"' "$guide" \
+    || ! grep -Fq 'git -C "$REPO" status --porcelain --untracked-files=all' "$guide"; then
+    echo "FAIL: clean-install VM setup must pin and verify the post-reboot checkout to the original commit." >&2
+    exit 1
+  fi
+done
+
+python3 - "$README" "$ROOT/INSTALLATION.md" <<'PY'
+from pathlib import Path
+import sys
+
+for name in sys.argv[1:]:
+    text = Path(name).read_text(encoding="utf-8")
+    if name.endswith("README.md"):
+        anchor = "After the first system activation and reboot, prepare the VM disk and define the domain."
+    else:
+        anchor = "# Run these commands after the first reboot, not from the live ISO."
+    begin = text.index(anchor)
+    fence = chr(96) * 3 + "bash\n"
+    # In README the anchor is prose before the code block. In INSTALLATION.md
+    # the anchor is a comment inside the block, so its opening fence is before it.
+    if name.endswith("README.md"):
+        start = text.index(fence, begin) + len(fence)
+    else:
+        start = text.rindex(fence, 0, begin) + len(fence)
+    end = text.index("\n" + chr(96) * 3, start)
+    block = text[start:end]
+    required = (
+        'BOOTSTRAP_XML="$STAGING_XML_DIR/win10.xml"',
+        '"$REPO/vm-xml/win10.xml" "$BOOTSTRAP_XML" --domain win10',
+        'scripts/check-vm-iso-paths.py" "$BOOTSTRAP_XML"',
+        'qemu-img create -f qcow2 "$STAGED_DISK_PATH" 120G',
+        'mv --no-clobber --no-target-directory -- "$STAGED_DISK_PATH" "$DISK_PATH"',
+        'mv --no-clobber --no-target-directory -- "$BOOTSTRAP_XML" "$VM_XML"',
+    )
+    positions = [block.find(item) for item in required]
+    if any(position < 0 for position in positions):
+        raise SystemExit(f"FAIL: {name} is missing a staged new-VM bootstrap invariant.")
+    if not positions[1] < positions[2] < positions[3] < positions[4] < positions[5]:
+        raise SystemExit(f"FAIL: {name} must validate XML/ISOs and prepare the disk before publishing new-VM files.")
+print("OK: both manual VM-preparation guides pin source revisions and stage XML/disk before publication.")
+PY
+
 if [ ! -s "$ROOT/scripts/test-extract-embedded-scripts.py" ] \
   || ! grep -Fq 'python3 scripts/test-extract-embedded-scripts.py' "$ROOT/.github/workflows/check.yml" \
   || ! grep -Fq 'python3 scripts/test-extract-embedded-scripts.py' "$ROOT/CONTRIBUTING.md"; then
@@ -525,8 +571,8 @@ fi
 if ! grep -Fq 'registered_domain_xml(domain)' "$ROOT/scripts/sync-vm-xml.py" \
   || ! grep -Fq '"dumpxml", "--inactive", domain' "$ROOT/scripts/sync-vm-xml.py" \
   || ! grep -Fq '"$PATCHED_XML" --domain win10' "$INSTALLER" \
-  || ! grep -Fq '"$REPO/vm-xml/win10.xml" "$VM_XML" --domain win10' "$README" \
-  || ! grep -Fq '"$REPO/vm-xml/win10.xml" "$VM_XML" --domain win10' "$ROOT/INSTALLATION.md" \
+  || ! grep -Fq '"$REPO/vm-xml/win10.xml" "$BOOTSTRAP_XML" --domain win10' "$README" \
+  || ! grep -Fq '"$REPO/vm-xml/win10.xml" "$BOOTSTRAP_XML" --domain win10' "$ROOT/INSTALLATION.md" \
   || ! grep -Fq 'REGISTERED_DOMAINS="$(sudo virsh list --all --name)"' "$README" \
   || ! grep -Fq 'REGISTERED_DOMAINS="$(sudo virsh list --all --name)"' "$ROOT/INSTALLATION.md" \
   || ! grep -Fq 'grep -Fxq win10' "$README" \

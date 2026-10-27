@@ -341,6 +341,7 @@ set -Eeuo pipefail
 sudo nixos-generate-config --root /mnt
 
 git clone https://github.com/kUmutUK/nixos-hyprland-vfio.git /tmp/repo
+SOURCE_REVISION="$(git -C /tmp/repo rev-parse --verify HEAD)"
 cp /mnt/etc/nixos/hardware-configuration.nix /tmp/repo/nixos/hardware-configuration.nix
 
 # Keep the generated files as a unique backup before replacing the install tree.
@@ -353,7 +354,12 @@ sudo mv /mnt/etc/nixos "$TARGET_BACKUP"
 sudo mkdir -p /mnt/etc/nixos
 # Copy repository contents but do not copy Git history into the target system configuration.
 tar --exclude='./.git' -C /tmp/repo -cf - . | sudo tar --no-same-owner -C /mnt/etc/nixos -xf -
+# Pin post-reboot VM tooling to the checkout used for this installation.
+printf '%s\n' "$SOURCE_REVISION" | sudo tee /mnt/etc/nixos/.source-revision >/dev/null
+sudo chmod 0644 /mnt/etc/nixos/.source-revision
 ```
+> ℹ️ The clean-install commands also record the original Git commit in `/mnt/etc/nixos/.source-revision`. The post-reboot VM-preparation block checks out and verifies that exact revision and refuses a dirty or mismatched checkout, so the VM XML/helper cannot silently come from a newer `main` commit.
+>
 > ℹ️ The `hardware-configuration.nix` file was replaced by the version generated for
 > **your own machine** by `nixos-generate-config`, using the `cp` command above, so its
 > UUIDs should already be correct. You normally do not need to edit them manually; check
@@ -554,20 +560,46 @@ sudo reboot
 > `Win10_22H2_English_x64v1.iso` and `virtio-win-0.1.285.iso` under
 > `/var/lib/libvirt/images/`. Confirm that both files exist at the exact paths shown by the
 > deployed XML; if you use different filenames or locations, edit those XML source paths first.
-> A missing Windows or VirtIO ISO prevents the VM from starting or completing Windows setup. The command block below runs `scripts/check-vm-iso-paths.py` against the synchronized deployed XML before creating a VM disk and before `virsh define`; it checks each file-backed CD-ROM source path and stops with a clear error when a referenced file is missing.
+> A missing Windows or VirtIO ISO prevents the VM from starting or completing Windows setup. The command block below runs `scripts/check-vm-iso-paths.py` against the staged XML before creating a VM disk and before `virsh define`; it checks each file-backed CD-ROM source path and stops with a clear error when a referenced file is missing.
+>
+> Regression test: run `bash scripts/test-manual-vm-bootstrap.sh` from the repository root. It exercises missing-ISO retry, failed disk creation, orphan-disk refusal, and successful bootstrap using isolated temporary paths and mocked libvirt/qemu-img commands.
 >
 ```bash
 # Run these commands after the first reboot, not from the live ISO.
 # The /tmp/repo checkout used during installation was temporary; keep this one
 # outside /etc/nixos so it survives reboots and remains separate from system config.
 set -euo pipefail
-REPO="$HOME/nixos-hyprland-vfio"  # change this if the checkout is elsewhere
+REPO="$HOME/nixos-hyprland-vfio"  # change this if your persistent checkout is elsewhere
+SOURCE_REVISION_FILE=/etc/nixos/.source-revision
+SOURCE_REVISION=
+if [ -f "$SOURCE_REVISION_FILE" ]; then
+  SOURCE_REVISION="$(tr -d '[:space:]' < "$SOURCE_REVISION_FILE")"
+  if [[ ! "$SOURCE_REVISION" =~ ^[0-9a-f]{40}$ ]]; then
+    echo "ERROR: Invalid source revision in $SOURCE_REVISION_FILE; inspect it before continuing." >&2
+    exit 1
+  fi
+fi
 if [ ! -d "$REPO/.git" ]; then
   if [ -e "$REPO" ] || [ -L "$REPO" ]; then
     echo "ERROR: $REPO exists but is not a Git checkout; inspect it before continuing." >&2
     exit 1
   fi
   git clone https://github.com/kUmutUK/nixos-hyprland-vfio.git "$REPO"
+  if [ -n "$SOURCE_REVISION" ]; then
+    git -C "$REPO" checkout --detach "$SOURCE_REVISION"
+  fi
+fi
+if [ -n "$SOURCE_REVISION" ]; then
+  CURRENT_SOURCE_REVISION="$(git -C "$REPO" rev-parse --verify HEAD)"
+  if [ "$CURRENT_SOURCE_REVISION" != "$SOURCE_REVISION" ]; then
+    echo "ERROR: Installed configuration came from $SOURCE_REVISION, but $REPO is at $CURRENT_SOURCE_REVISION." >&2
+    echo "Use a separate clean checkout at the recorded revision; do not mix VM tooling from different commits." >&2
+    exit 1
+  fi
+  if [ -n "$(git -C "$REPO" status --porcelain --untracked-files=all)" ]; then
+    echo "ERROR: $REPO has local or untracked changes; use a clean checkout of $SOURCE_REVISION for VM preparation." >&2
+    exit 1
+  fi
 fi
 cd "$REPO"
 VM_XML=/var/lib/libvirt/win10.xml
@@ -587,17 +619,36 @@ fi
 
 # Copy the exact GPU_PCI and GPU_AUDIO values from the deployed /etc/nixos/nixos/hooks/qemu.
 # The helper generates a fresh UUID/MAC for a new XML and preserves an existing VM XML.
+STAGING_XML_DIR=
+STAGING_DISK_DIR=
+STAGED_DISK_PATH=
+cleanup_vm_bootstrap() {
+  if [ -n "$STAGING_XML_DIR" ]; then sudo rm -rf -- "$STAGING_XML_DIR" || true; fi
+  if [ -n "$STAGING_DISK_DIR" ]; then sudo rm -rf -- "$STAGING_DISK_DIR" || true; fi
+}
+trap cleanup_vm_bootstrap EXIT
+
+# Existing VMs use their deployed XML directly. New VMs use disposable staging
+# locations so a failed ISO/disk preflight cannot leave a false "existing VM".
+BOOTSTRAP_XML="$VM_XML"
+if [ "$EXISTING_VM_XML" -eq 0 ]; then
+  STAGING_XML_DIR="$(sudo mktemp -d /var/lib/libvirt/.win10-bootstrap.XXXXXX)"
+  STAGING_DISK_DIR="$(sudo mktemp -d /var/lib/libvirt/images/.win10-bootstrap.XXXXXX)"
+  BOOTSTRAP_XML="$STAGING_XML_DIR/win10.xml"
+  STAGED_DISK_PATH="$STAGING_DISK_DIR/win10new.qcow2"
+fi
+
 read -rp "GPU display PCI address from /etc/nixos/nixos/hooks/qemu: " GPU_PCI
 read -rp "GPU audio PCI address from /etc/nixos/nixos/hooks/qemu: " GPU_AUDIO
 sudo python3 "$REPO/scripts/sync-vm-xml.py" \
   "$GPU_PCI" "$GPU_AUDIO" \
-  "$REPO/vm-xml/win10.xml" "$VM_XML" --domain win10
+  "$REPO/vm-xml/win10.xml" "$BOOTSTRAP_XML" --domain win10
 
 # Validate file-backed CD-ROM sources before creating a disk or defining the VM.
-sudo python3 "$REPO/scripts/check-vm-iso-paths.py" "$VM_XML"
+sudo python3 "$REPO/scripts/check-vm-iso-paths.py" "$BOOTSTRAP_XML"
 
 # Read the primary disk path from the synchronized XML; do not assume a filename.
-DISK_PATH="$(sudo python3 - "$VM_XML" <<'PY'
+DISK_PATH="$(sudo python3 - "$BOOTSTRAP_XML" <<'PY'
 import sys
 import xml.etree.ElementTree as ET
 
@@ -612,7 +663,7 @@ if not path or not path.startswith("/"):
 print(path)
 PY
 )"
-echo "Primary disk path in $VM_XML: $DISK_PATH"
+echo "Primary disk path in $BOOTSTRAP_XML: $DISK_PATH"
 
 if [ "$EXISTING_VM_XML" -eq 1 ]; then
   # Never replace or change permissions on a disk belonging to an existing VM.
@@ -635,12 +686,29 @@ else
     echo "Verify the file's identity and configure it manually; refusing to adopt it implicitly." >&2
     exit 1
   fi
-  sudo qemu-img create -f qcow2 "$DISK_PATH" 120G
-  sudo chown qemu-libvirtd:qemu-libvirtd "$DISK_PATH"
-  sudo chmod 0660 "$DISK_PATH"
+  # Keep partial image creation and metadata failures inside the disposable staging directory.
+  sudo qemu-img create -f qcow2 "$STAGED_DISK_PATH" 120G
+  sudo chown qemu-libvirtd:qemu-libvirtd "$STAGED_DISK_PATH"
+  sudo chmod 0660 "$STAGED_DISK_PATH"
+
+  # Publish without replacing a path created concurrently by another process.
+  if sudo test -e "$VM_XML" || sudo test -L "$VM_XML"; then
+    echo "ERROR: $VM_XML appeared during new-VM preparation; refusing to overwrite it." >&2
+    exit 1
+  fi
+  sudo mv --no-clobber --no-target-directory -- "$STAGED_DISK_PATH" "$DISK_PATH"
+  if sudo test -e "$STAGED_DISK_PATH"; then
+    echo "ERROR: The VM disk destination changed during preparation; refusing to continue." >&2
+    exit 1
+  fi
+  sudo mv --no-clobber --no-target-directory -- "$BOOTSTRAP_XML" "$VM_XML"
+  if sudo test -e "$BOOTSTRAP_XML"; then
+    echo "ERROR: The VM XML destination changed during preparation; refusing to overwrite it." >&2
+    exit 1
+  fi
 fi
 
-# The CD-ROM source preflight passed before disk creation; define that same XML.
+# Define only the validated XML at its final path.
 sudo virsh define "$VM_XML"
 sudo virsh list --all     # win10 should appear as "shut off"
 ```
