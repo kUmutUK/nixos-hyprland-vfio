@@ -6,6 +6,8 @@ This guide walks through an AMD-oriented **NixOS + LUKS2 + Btrfs + Hyprland + VF
 
 > **Recommended approach: install manually.** This guide is for a clean installation. Follow the steps in order and understand each command before running it. `install.sh` is not a clean installer or disk-partitioning tool; it is an optional, higher-risk helper for advanced users migrating an existing NixOS system. Read [`README.md`](README.md) for its risk notice and the alternative manual migration steps.
 
+> **Windows 10 guest lifecycle:** the default VM template targets Windows 10 22H2, whose standard Home/Pro support ended on 14 October 2025. The repository does not enroll the guest in ESU or verify license eligibility/update status. Confirm that the installed edition and license receive current security updates under an applicable ESU or other supported lifecycle before using the VM online. See [Microsoft's guidance](https://support.microsoft.com/en-us/windows/windows-10-support-has-ended-on-october-14-2025) and [ESU FAQ](https://learn.microsoft.com/en-us/lifecycle/faq/extended-security-updates). The existing XML is not a Windows 11 migration path.
+
 ---
 
 # ⚙️ Prerequisites
@@ -471,14 +473,15 @@ password_meta=$(sudo stat -c '%U:%G:%a' /mnt/etc/nixos/hashedPassword)
 > is separate and is used for console/emergency access; set it after installation succeeds
 > (Section 9).
 
-> 🔑 **SSH access:** the SSH server listens on TCP port 22 and the firewall allows this
-> port. Password login is permitted only for the `localhost` user, root SSH login is
-> disabled, and Fail2ban monitors failed logins. Use a strong, unique password and keep SSH
-> reachable only from networks you trust. Connect from another device with
-> `ssh localhost@<server-ip>`; find the server address with `ip -br address`. For safer
-> key-based access, generate a key with `ssh-keygen -t ed25519` and add its `.pub` contents
-> to `users.users.localhost.openssh.authorizedKeys.keys`. After confirming that key login
-> works, you can set `PasswordAuthentication = false`.
+> 🔑 **SSH access (key-only by default):** the SSH server listens on TCP port 22 and the
+> host firewall allows that port, but password and keyboard-interactive authentication are
+> disabled. Before activating the configuration, add your own public key (never a private
+> key) to `users.users.localhost.openssh.authorizedKeys.keys`, then verify
+> `ssh localhost@<server-ip>` from a second device and a fresh session. Find the server address
+> with `ip -br address`. `AllowUsers = [ "localhost" ]` restricts the login name, not the source
+> IP; restrict port 22 at the network edge or with a host-firewall allow-list. Root SSH login
+> is disabled and Fail2ban remains enabled. Keep physical console/recovery access until
+> key-based login is confirmed.
 
 ---
 
