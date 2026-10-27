@@ -21,7 +21,7 @@ This file summarizes notable changes in English. The original detailed Turkish h
 - Added the embedded-script extractor regression test to the README's manual validation commands, keeping the documented test sequence aligned with CONTRIBUTING and CI.
 - Updated the current repair report to record the successful CI run for the already-merged `main` commit and to distinguish that result from physical GPU/VM lifecycle validation.
 
-## Unreleased — 2026-10-23
+## Follow-up fixes — 2026-10-23
 
 ### Follow-up audit fixes
 - Preserved an existing deployed VM XML as the source of truth during migration and synchronized only the two GPU/audio PCI addresses. The helper retains the existing VM identity, custom CPU/firmware/NVRAM/device settings, disk path, USB passthrough entries, and extra source-address attributes; unsupported layouts fail closed. Added regression tests for new VM identity, existing XML preservation, backups, and unsafe XML refusal.

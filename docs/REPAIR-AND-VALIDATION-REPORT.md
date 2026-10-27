@@ -21,6 +21,7 @@
 ## Post-audit documentation and delivery corrections — 2026-10-27
 
 - Added `scripts/test-extract-embedded-scripts.py` to the README's manual validation sequence so it matches CONTRIBUTING and CI.
+- Renamed the older 2026-10-23 changelog subsection to `Follow-up fixes — 2026-10-23`, leaving one current `Unreleased` heading and making the dated history clearer.
 - Refreshed the current CI status above: commit `a631d195891ff6da74ae727ac3c531ffc77c50ed` is already on `main`, and workflow run #928 passed for that exact SHA.
 - The previously supplied ad-hoc full-source ZIP was not a valid distribution archive because it included `.git/` and did not preserve `install.sh`'s executable mode. Recreate the distributable bundle using the canonical `git archive` command in README, or use the CI-uploaded `nixos-hyprland-vfio-source` artifact. A corrected distributable ZIP is supplied alongside this report; the tracked Git mode for `install.sh` remains `100755`.
 
