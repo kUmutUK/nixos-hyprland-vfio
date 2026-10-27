@@ -8,6 +8,13 @@
 - The synchronizer now fails closed if the libvirt query/export fails or returns an unexpected domain. It creates a mode-`0600` recovery copy of the registered XML and backs up any existing on-disk XML before writing the PCI-address-synchronized result.
 - Restored the embedded-script extractor's Nix-attribute boundary guard, made unterminated indented strings fail closed, and added `scripts/test-extract-embedded-scripts.py`. CI and contributor validation now run this focused regression test before ShellCheck extracts the seven real scripts.
 - Both `install.sh` and the manual README flow pass `--domain win10`. The VM XML regression suite uses a fake `virsh` executable to cover registered-domain vs stale XML, registered-domain with missing on-disk XML, and list/dump failures with no mutation.
+
+### Cross-conversation recheck on 2026-10-27
+
+- The earlier report had not covered two fault paths deeply enough: a service stop may return success while systemd still reports an active unit, and `stateVersion` discovery could silently prefer one existing file when other existing candidates conflicted. The VFIO hook now checks the post-stop `ActiveState` and aborts before unbinding unless it is `inactive`/`failed`; mocked tests now cover stop failures, restoration failures, and retained retry state. Installer discovery now rejects duplicate or mixed literal/non-literal assignments and prompts when existing candidate values conflict; regression tests cover these cases.
+- Cross-checked the manual `INSTALLATION.md` VM synchronization example against the README and `install.sh`. It previously omitted `--domain win10`; it now uses the same persistent `virsh dumpxml --inactive win10` source-of-truth path and documents fail-closed behavior.
+- The report's historical audit is still not a reproducible 927-commit-per-finding manifest: imported conversation summaries and prior reports do not provide exact source/destination SHA coverage for every review turn. Findings are therefore mapped by report and current code state below rather than pretending every historical commit has been individually re-audited in this single pass.
+- These source/test changes require current-head CI before merging. They do not substitute for physical GPU passthrough or a full RT-Bore-LTO build.
 - This is source/test-level protection; no live libvirt guest, GPU passthrough, RT-Bore-LTO build, or target-host lifecycle run is claimed here. The new regression suite must pass in GitHub Actions before this change is merged.
 
 ## Follow-up corrections — 2026-10-23
