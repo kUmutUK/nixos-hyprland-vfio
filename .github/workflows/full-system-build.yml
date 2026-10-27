@@ -2,6 +2,11 @@ name: Full NixOS System Build (manual)
 
 on:
   workflow_dispatch:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'nixos/**'
+      - '.github/workflows/full-system-build.yml'
 
 permissions:
   contents: read
