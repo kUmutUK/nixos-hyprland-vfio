@@ -565,8 +565,12 @@ VM_XML=/var/lib/libvirt/win10.xml
 test -f "$REPO/scripts/sync-vm-xml.py"
 sudo mkdir -p /var/lib/libvirt/images /var/lib/libvirt/qemu
 
-# Remember whether this is an existing VM before the helper writes/updates its XML.
-if sudo test -e "$VM_XML" || sudo test -L "$VM_XML"; then
+# Query libvirt itself before treating this as a new VM. With set -e, a failed
+# query aborts instead of mistaking an unavailable daemon for an absent domain.
+REGISTERED_DOMAINS="$(sudo virsh list --all --name)"
+if printf '%s\n' "$REGISTERED_DOMAINS" | grep -Fxq win10; then
+  EXISTING_VM_XML=1
+elif sudo test -e "$VM_XML" || sudo test -L "$VM_XML"; then
   EXISTING_VM_XML=1
 else
   EXISTING_VM_XML=0
