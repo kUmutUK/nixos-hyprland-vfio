@@ -43,6 +43,29 @@ validate_nixos_source_files() {
 
 validate_nixos_source_files
 
+PCI_ADDRESS_HELPERS="$REPO_DIR/scripts/pci-address.sh"
+if [[ ! -s "$PCI_ADDRESS_HELPERS" ]]; then
+  error "Required PCI address helper is missing or empty: $PCI_ADDRESS_HELPERS. No system files have been changed."
+fi
+# shellcheck source=scripts/pci-address.sh
+source "$PCI_ADDRESS_HELPERS"
+
+require_btrfs_home() {
+  local fstype
+  if ! command -v findmnt >/dev/null 2>&1; then
+    error "findmnt is required to verify /home's filesystem; refusing to migrate without this check. No system files have been changed."
+    return 1
+  fi
+  if ! fstype="$(findmnt -rn -o FSTYPE --target /home 2>/dev/null)" || [[ -z "$fstype" ]]; then
+    error "Could not determine the filesystem covering /home; refusing to migrate without verifying Home Snapper compatibility. No system files have been changed."
+    return 1
+  fi
+  if [[ "${fstype,,}" != "btrfs" ]]; then
+    error "/home is on '$fstype', not Btrfs. This configuration enables services.snapper.configs.home and requires Btrfs snapshots. Installer aborted before changing system files; use the manual migration path to explicitly disable Home Snapper and remove any incompatible /home/.snapshots Btrfs mount if you need a non-Btrfs /home."
+    return 1
+  fi
+}
+
 echo ""
 echo -e "${CYAN}==============================================================${NC}"
 echo -e "${CYAN}   NixOS Hyprland + VFIO — High-Risk Migration Helper${NC}"
@@ -154,6 +177,11 @@ check_ssh_password_file() {
 if ! check_ssh_password_file "$NIXOS_DIR/hashedPassword"; then
   warn "Fix /etc/nixos/hashedPassword using the manual checklist before rebuilding; SSH password login will remain unavailable until then."
 fi
+# The shipped NixOS configuration enables Home Snapper. Do not let the helper
+# partially deploy that configuration on a filesystem where Home Snapper cannot work.
+# This check runs before backup creation or any system-file mutation.
+require_btrfs_home
+
 # ─── Hardware detection ───────────────────────────────────
 step "Hardware detection"
 
@@ -180,13 +208,9 @@ echo ""
 read -rp "Enter GPU VGA PCI address (e.g. 0000:0b:00.0): " gpu_pci
 read -rp "Enter GPU Audio PCI address (e.g. 0000:0b:00.1): " gpu_audio
 
-# Fix (2026-10-06): PCI addresses were not validated here. Invalid input such as
-# `0000:0b:00` or `gpu` could be written into the hook and fail much later when
-# the VM started. The XML synchronization code already used a regex; apply the
-# same validation before writing the hook configuration.
-valid_pci() {
-  [[ "$1" =~ ^[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}\.[0-9a-fA-F]$ ]]
-}
+# Reject malformed addresses and invalid PCI function numbers before writing
+# hook/configuration data. The shared helper accepts uppercase input, while the
+# addresses are normalized below before they are used as sysfs paths.
 
 iommu_group_number() {
   local link="$1" resolved group_num
@@ -199,18 +223,23 @@ iommu_group_number() {
 }
 
 for _try in 1 2 3; do
-  if valid_pci "$gpu_pci"; then break; fi
+  if valid_pci_address "$gpu_pci"; then break; fi
   warn "'$gpu_pci' is not a valid PCI address; expected format: 0000:0b:00.0"
   if [ "$_try" -lt 3 ]; then read -rp "GPU PCI address: " gpu_pci; fi
 done
-valid_pci "$gpu_pci" || error "Invalid GPU PCI address after 3 attempts; aborting installation."
+valid_pci_address "$gpu_pci" || error "Invalid GPU PCI address after 3 attempts; aborting installation."
 
 for _try in 1 2 3; do
-  if valid_pci "$gpu_audio"; then break; fi
+  if valid_pci_address "$gpu_audio"; then break; fi
   warn "'$gpu_audio' is not a valid PCI address; expected format: 0000:0b:00.1"
   if [ "$_try" -lt 3 ]; then read -rp "GPU audio PCI address: " gpu_audio; fi
 done
-valid_pci "$gpu_audio" || error "Invalid GPU audio PCI address after 3 attempts; aborting installation."
+valid_pci_address "$gpu_audio" || error "Invalid GPU audio PCI address after 3 attempts; aborting installation."
+
+# Linux sysfs exposes PCI BDF names in lowercase. Normalize both values once so
+# every later sysfs, lspci, hook, and XML check uses the same canonical form.
+gpu_pci="$(normalize_pci_address "$gpu_pci")"
+gpu_audio="$(normalize_pci_address "$gpu_audio")"
 
 for addr in "$gpu_pci" "$gpu_audio"; do
   if [ ! -e "/sys/bus/pci/devices/${addr}" ]; then
@@ -835,7 +864,7 @@ fi
 
 # ─── Btrfs snapshot subvolume ───────────────────────────
 step "Btrfs snapshot subvolume"
-if findmnt -no FSTYPE /home 2>/dev/null | grep -qi btrfs; then
+if findmnt -rn -o FSTYPE --target /home 2>/dev/null | grep -qi '^btrfs$'; then
   if sudo btrfs subvolume show "$SNAPSHOT_SUBVOL" >/dev/null 2>&1; then
     log "$SNAPSHOT_SUBVOL is an existing Btrfs subvolume."
   elif [ -e "$SNAPSHOT_SUBVOL" ]; then
@@ -849,7 +878,7 @@ if findmnt -no FSTYPE /home 2>/dev/null | grep -qi btrfs; then
     log "Created and verified $SNAPSHOT_SUBVOL Btrfs subvolume."
   fi
 else
-  warn "/home is not a btrfs mount — skipping (snapper home config will not work)."
+  error "/home no longer reports a Btrfs filesystem after preflight. Refusing to continue with Home Snapper enabled; the deployment rollback will run."
 fi
 echo ""
 
