@@ -4,6 +4,28 @@
 
 ## ZIP audit confirmation — 2026-10-27
 
+### Exact-byte identity of the attachment inspected in this review
+
+The ZIP bytes attached to this review were hashed and inspected directly on 2026-10-27. These are the measurements for that exact attachment, not estimates copied from an earlier report:
+
+- File size: `436,212` bytes.
+- SHA-256: `3f0f0ed580f58815f792635720a51b8c0066989add88460ccf3d2620ce771da0`.
+- ZIP central-directory entry count: `96`.
+- Entries under `nixos-hyprland-vfio/.git/`: `45` total, including `29` file entries and `16` directory entries.
+- Embedded `.git/HEAD` resolves to `a631d195891ff6da74ae727ac3c531ffc77c50ed`; the `.git/shallow` marker contains the same SHA.
+- The `install.sh` ZIP entry has `create_system=0` and `external_attr=0x00000000`, so it encodes no Unix permission bits. Extraction produces mode `0644`; the embedded Git index records mode `100755`.
+- GitHub `main` was observed at `81b4501392ea99ba431864367d8a15cc231fc1ff` during this review. The attached ZIP therefore does not represent that current source revision.
+
+The accompanying findings also mention SHA-256 `89362330c8565d27e58260aef3bb3a16ab8941415c9f02e6c20640f0a57838ed`, `101` entries, and embedded HEAD `81b4501392ea99ba431864367d8a15cc231fc1ff`. Those values do not identify the exact ZIP attached to this review. If a different archive was intended, its bytes must be supplied and measured independently; do not merge the two sets of measurements.
+
+### Regression checks performed against the attached snapshot
+
+Passed in this review: Bash syntax checks; `scripts/test-installer-invariants.sh`; `scripts/test-installer-rollback.sh`; `scripts/test-vfio-hook-driver-state.sh`; `scripts/test-vm-xml.py`; `scripts/test-vm-xml-sync.py`; `scripts/test-vm-diagnostic.py`; `scripts/test-lsfg-v1-config.py`; `scripts/test-extract-embedded-scripts.py`; and `python3 -m compileall -q scripts`. The installer-invariants test completed in 12 seconds, and the reported timeout was not reproduced in this run. This does not prove the timeout cannot occur under other runner loads or in a different combined invocation.
+
+The local environment did not provide Nix, ShellCheck, Statix, Deadnix, `xmllint`, or `virt-xml-validate`; no Nix evaluation/build or libvirt/QEMU semantic validation is claimed. Physical GPU passthrough and VM shutdown/display-recovery testing also remain outside this review. The SSH password-authentication setting remains a network-dependent security risk already documented by the project; it was not changed automatically because doing so without verifying a working alternate access path could lock out a deployed host.
+
+The tracked source already has the correct `install.sh` mode, and `.github/workflows/check.yml` already builds a canonical ZIP with `git archive` and rejects archives that include `.git/` or lose the executable mode. The source/workflow logic was not altered for a defect confined to this ad-hoc ZIP.
+
 Review baseline before this documentation correction: `e5d491b60f48a35a3cb0b4288c02a7e789a31e4d`. The uploaded ZIP's embedded shallow Git checkout points to `a631d195891ff6da74ae727ac3c531ffc77c50ed`; it is not a faithful snapshot of the then-current `main`.
 
 - The supplied `nixos-hyprland-vfio.zip` contains 96 ZIP entries. There are 45 entries under `nixos-hyprland-vfio/.git/`, including 29 actual files plus directory entries, so the internal Git metadata is definitely included.
