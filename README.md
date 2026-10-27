@@ -479,6 +479,7 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 ├── scripts/
 │   ├── check-vm-iso-paths.py
 │   ├── extract-embedded-scripts.py
+│   ├── pci-address.sh
 │   ├── prepare-vm-diagnostic.py
 │   ├── test-extract-embedded-scripts.py
 │   ├── test-lsfg-v1-config.py
@@ -509,7 +510,7 @@ Run from the repository root. The command uses fail-fast behavior, validates Nix
 ```bash
 nix develop ./nixos --command bash -euo pipefail -c '
   find ./nixos -type f -name "*.nix" -print0 | xargs -0 -r nixfmt --check
-  shellcheck -S warning install.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh
+  shellcheck -S warning install.sh scripts/pci-address.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh
   python3 -c "import xml.etree.ElementTree as ET; ET.parse(\"vm-xml/win10.xml\")"
   python3 scripts/test-lsfg-v1-config.py
   python3 scripts/test-extract-embedded-scripts.py
@@ -531,9 +532,13 @@ nix develop ./nixos --command bash -euo pipefail -c '
   shellcheck -S warning "${embedded_scripts[@]}"
   (cd nixos && nix flake check --no-build --show-trace --no-update-lock-file --option warn-dirty false)
   (cd nixos && nix build --no-link --no-update-lock-file .#lsfg-vk)
+  statix check .
+  deadnix .
 '
 ```
 `nix flake check --no-build` evaluates the flake but does not build the complete system or kernel. The separate `nix build .#lsfg-vk` command builds only the selected LSFG-VK package. Neither command replaces a full system/kernel build, libvirt domain validation, or a physical GPU lifecycle test. To intentionally rewrite formatting, run `nixfmt` without `--check` as a separate reviewed edit.
+
+The manual sequence also runs `statix check .` and `deadnix .`, both required CI gates. `statix.toml` disables only the style-only repeated-key lint used by the repository's intentionally flat option assignments; actionable Statix and Deadnix findings still fail validation.
 
 For a complete NixOS system build on GitHub Actions, open **Actions → Full NixOS System Build (manual) → Run workflow**. This six-hour, manually dispatched job builds `nixosConfigurations.nixos.config.system.build.toplevel`, including the selected RT-Bore-LTO kernel. It is kept out of normal push/PR CI because the custom kernel can be expensive to compile. A successful build validates the build graph on the runner; it does not prove GPU passthrough or host-display recovery on physical hardware.
 
