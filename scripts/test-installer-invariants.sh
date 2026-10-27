@@ -106,6 +106,13 @@ if ! grep -Fq 'packages.${system}.lsfg-vk' "$FLAKE"; then
   echo "FAIL: the selected LSFG-VK package must be exposed for an explicit build check." >&2
   exit 1
 fi
+if ! grep -Fq 'LSFG-VK schema decision' "$README" \
+  || ! grep -Fq 'v1 `[[game]]`/`exe` profile format' "$README" \
+  || ! grep -Fq 'python3 scripts/test-lsfg-v1-config.py' "$ROOT/.github/workflows/check.yml" \
+  || ! grep -Fq 'Build the selected LSFG-VK v1 package' "$ROOT/.github/workflows/check.yml"; then
+  echo "FAIL: the documented LSFG-VK v1 schema decision must match the CI test/build contract." >&2
+  exit 1
+fi
 if ! grep -Fq 'nixfmt --check' "$README" \
   || ! grep -Fq '├── .gitignore' "$README" \
   || ! grep -Fq '├── DISCLAIMER.md' "$README" \
@@ -169,6 +176,87 @@ bash "$state_test_dir/state-version-harness.sh" \
   "$state_test_dir/home.nix" home.stateVersion 24.11
 if ! grep -Fxq 'home.stateVersion = "24.11";' "$state_test_dir/home.nix"; then
   echo "FAIL: existing home.stateVersion was not applied to the copied template." >&2
+  exit 1
+fi
+
+# Test the installer’s source-selection logic separately from the destructive top-level flow.
+state_source_helpers="$state_test_dir/read-state-version-functions.sh"
+awk '/^extract_state_version\(\) \{/ { capture=1 } capture { print } capture && /^}/ { exit }' "$INSTALLER" > "$state_source_helpers"
+awk '/^read_state_version\(\) \{/ { capture=1 } capture { print } capture && /^}/ { exit }' "$INSTALLER" >> "$state_source_helpers"
+if ! grep -q '^extract_state_version() {' "$state_source_helpers" \
+  || ! grep -q '^read_state_version() {' "$state_source_helpers"; then
+  echo "FAIL: could not extract stateVersion source-selection helpers." >&2
+  exit 1
+fi
+cat > "$state_test_dir/read-state-version-harness.sh" <<'BASH'
+set -euo pipefail
+warn() { printf 'WARN: %s\n' "$*" >&2; }
+error() { printf 'ERROR: %s\n' "$*" >&2; exit 90; }
+source "$1"
+read_state_version "$2" "${@:3}"
+printf '%s|%s\n' "$STATE_VERSION_VALUE" "$STATE_VERSION_SOURCE"
+BASH
+state_candidate_a="$state_test_dir/state-candidate-a.nix"
+state_candidate_b="$state_test_dir/state-candidate-b.nix"
+printf 'system.stateVersion = "24.11";\n' > "$state_candidate_a"
+printf 'system.stateVersion = "24.11";\n' > "$state_candidate_b"
+state_output="$(bash "$state_test_dir/read-state-version-harness.sh" "$state_source_helpers" system.stateVersion "$state_candidate_a" "$state_candidate_b")"
+if [[ "$state_output" != "24.11|$state_candidate_a" ]]; then
+  echo "FAIL: identical stateVersion candidates should preserve the established candidate priority." >&2
+  exit 1
+fi
+
+# Conflicting existing files must prompt for explicit confirmation, not silently
+# choose the first candidate, because either file may be an older snapshot.
+printf 'home.stateVersion = "26.05";\n' > "$state_candidate_a"
+printf 'home.stateVersion = "24.11";\n' > "$state_candidate_b"
+printf '25.11\n' | bash "$state_test_dir/read-state-version-harness.sh" "$state_source_helpers" home.stateVersion "$state_candidate_a" "$state_candidate_b" \
+  > "$state_test_dir/conflicting-state-output" 2> "$state_test_dir/conflicting-state-warning"
+if ! grep -Fxq '25.11|user input after ambiguous/conflicting sources' "$state_test_dir/conflicting-state-output" \
+  || ! grep -Fq 'Cannot safely infer home.stateVersion' "$state_test_dir/conflicting-state-warning"; then
+  echo "FAIL: conflicting stateVersion candidates must require explicit user selection." >&2
+  exit 1
+fi
+
+# A setting that exists but is duplicated or not a simple literal is ambiguous;
+# the helper must not ignore it and silently use a different file's value.
+printf 'system.stateVersion = "24.11";\nsystem.stateVersion = "26.05";\n' > "$state_candidate_a"
+printf 'system.stateVersion = "24.11";\n' > "$state_candidate_b"
+printf '25.05\n' | bash "$state_test_dir/read-state-version-harness.sh" "$state_source_helpers" system.stateVersion "$state_candidate_a" "$state_candidate_b" \
+  > "$state_test_dir/ambiguous-state-output" 2> "$state_test_dir/ambiguous-state-warning"
+if ! grep -Fxq '25.05|user input after ambiguous/conflicting sources' "$state_test_dir/ambiguous-state-output" \
+  || ! grep -Fq 'ambiguous or non-literal' "$state_test_dir/ambiguous-state-warning"; then
+  echo "FAIL: an ambiguous stateVersion assignment must require explicit user selection." >&2
+  exit 1
+fi
+
+# A valid literal plus a second non-literal assignment must also be ambiguous.
+printf 'system.stateVersion = "24.11";\nsystem.stateVersion = lib.mkDefault selectedVersion;\n' > "$state_candidate_a"
+printf 'system.stateVersion = "24.11";\n' > "$state_candidate_b"
+printf '25.07\n' | bash "$state_test_dir/read-state-version-harness.sh" "$state_source_helpers" system.stateVersion "$state_candidate_a" "$state_candidate_b" \
+  > "$state_test_dir/mixed-state-output" 2> "$state_test_dir/mixed-state-warning"
+if ! grep -Fxq '25.07|user input after ambiguous/conflicting sources' "$state_test_dir/mixed-state-output" \
+  || ! grep -Fq 'ambiguous or non-literal' "$state_test_dir/mixed-state-warning"; then
+  echo "FAIL: mixed literal/non-literal stateVersion assignments must require explicit user selection." >&2
+  exit 1
+fi
+
+# An unreadable/invalid-UTF-8 candidate must not be treated as absent and
+# silently replaced by the next file's value.
+printf '\377' > "$state_candidate_a"
+printf 'system.stateVersion = "24.11";\n' > "$state_candidate_b"
+printf '25.09\n' | bash "$state_test_dir/read-state-version-harness.sh" "$state_source_helpers" system.stateVersion "$state_candidate_a" "$state_candidate_b" \
+  > "$state_test_dir/unreadable-state-output" 2> "$state_test_dir/unreadable-state-warning"
+if ! grep -Fxq '25.09|user input after ambiguous/conflicting sources' "$state_test_dir/unreadable-state-output" \
+  || ! grep -Fq 'ambiguous or non-literal' "$state_test_dir/unreadable-state-warning"; then
+  echo "FAIL: an unreadable stateVersion source must require explicit user selection." >&2
+  exit 1
+fi
+
+# A genuinely new install, with no source files, keeps the repository default.
+state_output="$(bash "$state_test_dir/read-state-version-harness.sh" "$state_source_helpers" system.stateVersion "$state_test_dir/missing-a" "$state_test_dir/missing-b")"
+if [[ "$state_output" != "|repository default (new install)" ]]; then
+  echo "FAIL: stateVersion defaults should be preserved only when no existing candidate exists." >&2
   exit 1
 fi
 
@@ -354,7 +442,8 @@ fi
 if ! grep -Fq 'registered_domain_xml(domain)' "$ROOT/scripts/sync-vm-xml.py" \
   || ! grep -Fq '"dumpxml", "--inactive", domain' "$ROOT/scripts/sync-vm-xml.py" \
   || ! grep -Fq '"$PATCHED_XML" --domain win10' "$INSTALLER" \
-  || ! grep -Fq '"$REPO/vm-xml/win10.xml" "$VM_XML" --domain win10' "$README"; then
+  || ! grep -Fq '"$REPO/vm-xml/win10.xml" "$VM_XML" --domain win10' "$README" \
+  || ! grep -Fq '"$REPO/vm-xml/win10.xml" "$VM_XML" --domain win10' "$ROOT/INSTALLATION.md"; then
   echo "FAIL: installer/manual VM preparation must prefer a validated registered libvirt XML and fail closed on query errors." >&2
   exit 1
 fi

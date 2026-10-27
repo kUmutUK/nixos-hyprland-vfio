@@ -605,38 +605,65 @@ path, setting = sys.argv[1], sys.argv[2]
 try:
     content = Path(path).read_text(encoding="utf-8")
 except (OSError, UnicodeError):
-    raise SystemExit(1)
+    # The file exists but cannot be read/decoded: treat this as an ambiguous
+    # source, not as a missing assignment that permits fallback to stale data.
+    raise SystemExit(2)
 pattern = re.compile(
     r"^\s*" + re.escape(setting) +
     r'\s*=\s*(?:lib\.mkDefault\s*)?"(\d{2}\.\d{2})"\s*;',
     re.MULTILINE,
 )
-match = pattern.search(content)
-if not match:
+assignment = re.compile(r"^\s*" + re.escape(setting) + r"\s*=", re.MULTILINE)
+if not assignment.search(content):
     raise SystemExit(1)
-print(match.group(1))
+assignments = assignment.findall(content)
+values = pattern.findall(content)
+# Exit 2 distinguishes a present but non-literal/duplicated setting from a
+# file that does not define this setting. The count must match exactly; one
+# valid literal plus one non-literal assignment is still ambiguous.
+if len(assignments) != 1 or len(values) != 1:
+    raise SystemExit(2)
+print(values[0])
 PY_STATE_VERSION
 }
 
 read_state_version() {
-  local setting="$1" candidate value="" found_file=0
+  local setting="$1" candidate value="" selected_value="" selected_source=""
+  local found_file=0 conflict=0 ambiguous=0 parse_status
+  local -a observed=()
   shift
   for candidate in "$@"; do
     [ -f "$candidate" ] || continue
     found_file=1
     if value="$(extract_state_version "$candidate" "$setting")"; then
-      STATE_VERSION_VALUE="$value"
-      STATE_VERSION_SOURCE="$candidate"
-      return 0
+      observed+=("$candidate=$value")
+      if [ -z "$selected_value" ]; then
+        selected_value="$value"
+        selected_source="$candidate"
+      elif [ "$value" != "$selected_value" ]; then
+        conflict=1
+      fi
+    else
+      parse_status=$?
+      if [ "$parse_status" -eq 2 ]; then
+        ambiguous=1
+        observed+=("$candidate=<ambiguous or non-literal>")
+      fi
     fi
   done
 
-  if [ "$found_file" -eq 1 ]; then
-    warn "${setting} was not found as a simple literal in existing files. Refusing to guess for safety."
-    read -rp "Enter the existing ${setting} value (e.g. 24.11; leave blank to cancel if unknown): " value
+  # Multiple existing files can be stale copies of one another. Never silently
+  # choose the first version when another candidate disagrees or cannot be
+  # parsed unambiguously; require the operator to review the active config.
+  if [ "$conflict" = "1" ] || [ "$ambiguous" = "1" ] || { [ "$found_file" = "1" ] && [ -z "$selected_value" ]; }; then
+    warn "Cannot safely infer ${setting} from existing files: ${observed[*]:-no literal value found}."
+    read -rp "Review the active configuration and enter its existing ${setting} value (e.g. 24.11; leave blank to cancel): " value
     [[ "$value" =~ ^[0-9]{2}\.[0-9]{2}$ ]] || error "${setting} could not be validated; installation stopped before files were changed."
     STATE_VERSION_VALUE="$value"
-    STATE_VERSION_SOURCE="user input"
+    STATE_VERSION_SOURCE="user input after ambiguous/conflicting sources"
+  elif [ -n "$selected_value" ]; then
+    STATE_VERSION_VALUE="$selected_value"
+    STATE_VERSION_SOURCE="$selected_source"
   else
     # A genuinely new installation has no existing compatibility baseline;
     # leave the repository template's documented default unchanged.
