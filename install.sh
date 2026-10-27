@@ -177,6 +177,7 @@ check_ssh_password_file() {
 if ! check_ssh_password_file "$NIXOS_DIR/hashedPassword"; then
   warn "Fix /etc/nixos/hashedPassword using the manual checklist before rebuilding; SSH password login will remain unavailable until then."
 fi
+
 # The shipped NixOS configuration enables Home Snapper. Do not let the helper
 # partially deploy that configuration on a filesystem where Home Snapper cannot work.
 # This check runs before backup creation or any system-file mutation.
