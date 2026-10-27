@@ -1,6 +1,13 @@
-# Repair and validation report — updated 2026-10-23
+# Repair and validation report — updated 2026-10-27
 
 > **Delivery-scope note:** This report is included in the full project tree. References below to “patch-only ZIP” describe correction bundles produced on the dates stated in each section; they do not describe the full-source ZIP that currently contains this report. To create a canonical full-source ZIP, use the `git archive` command documented in `README.md`; that excludes `.git/` and preserves the tracked executable mode of `install.sh`.
+
+## Current follow-up correction — 2026-10-27
+
+- Closed the VM-definition source-of-truth gap found in the October 24 audit. The XML synchronizer accepts an optional `--domain win10`, checks libvirt's registered domain list, and, when the domain exists, uses a validated `virsh dumpxml win10` result instead of trusting a stale or missing `/var/lib/libvirt/win10.xml`.
+- The synchronizer now fails closed if the libvirt query/export fails or returns an unexpected domain. It creates a mode-`0600` recovery copy of the registered XML and backs up any existing on-disk XML before writing the PCI-address-synchronized result.
+- Both `install.sh` and the manual README flow pass `--domain win10`. The VM XML regression suite uses a fake `virsh` executable to cover registered-domain vs stale XML, registered-domain with missing on-disk XML, and list/dump failures with no mutation.
+- This is source/test-level protection; no live libvirt guest, GPU passthrough, RT-Bore-LTO build, or target-host lifecycle run is claimed here. The new regression suite must pass in GitHub Actions before this change is merged.
 
 ## Follow-up corrections — 2026-10-23
 
