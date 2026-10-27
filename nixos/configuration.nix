@@ -174,7 +174,7 @@ in
   ];
 
   security.apparmor.enable = true;
-  # Fail2ban protects password-enabled SSH from repeated failed authentication attempts.
+  # Fail2ban monitors repeated SSH authentication failures as defence in depth; SSH uses public keys by default.
   # Private LAN ranges are not exempt: an untrusted device on the local network must be
   # subject to the same ban policy as any other source.
   services.fail2ban = {
@@ -394,9 +394,9 @@ in
       "render"
     ];
     openssh.authorizedKeys.keys = [
-      # Optional: add your own public key here for key-based login. Password login is
-      # enabled only for this account; root SSH login remains disabled. Never commit a
-      # private key. Example: "ssh-ed25519 AAAA... user@host"
+      # Add your own public key here before relying on remote SSH access. Password
+      # and keyboard-interactive SSH authentication are disabled by default. Never
+      # commit a private key. Example: "ssh-ed25519 AAAA... user@host"
     ];
   };
 
@@ -596,11 +596,13 @@ in
   services.openssh = {
     enable = true;
     settings = {
-      # Password authentication makes SSH usable without requiring a key to be baked
-      # into this repository. Restrict access to the configured normal user and never
-      # permit root login; use a strong unique password and add a personal SSH key when able.
-      PasswordAuthentication = true;
+      # Require public-key authentication. Add the account owner's own public key
+      # under users.users.localhost.openssh.authorizedKeys.keys before relying on SSH.
+      # AllowUsers limits the login name, not the source IP; restrict port 22 at the
+      # network edge or with an appropriate host-firewall allow-list as well.
+      PasswordAuthentication = false;
       KbdInteractiveAuthentication = false;
+      PubkeyAuthentication = true;
       PermitRootLogin = "no";
       AllowUsers = [ "localhost" ];
       X11Forwarding = false;
