@@ -5,7 +5,7 @@
 valid_pci_address() {
   local address="${1-}"
   address="${address,,}"
-  [[ "$address" =~ ^[0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}\.[0-7]$ ]]
+  [[ "$address" =~ ^[0-9a-f]{4}:[0-9a-f]{2}:[01][0-9a-f]\.[0-7]$ ]]
 }
 
 normalize_pci_address() {

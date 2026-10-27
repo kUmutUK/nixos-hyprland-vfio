@@ -31,13 +31,13 @@ bash -n "$ROOT/scripts/pci-address.sh"
 
 # Exercise the exact shared PCI validator used by install.sh.
 source "$ROOT/scripts/pci-address.sh"
-for address in 0000:0b:00.0 0000:0B:00.0 0000:0B:00.7; do
+for address in 0000:0b:00.0 0000:0B:00.0 0000:0B:00.7 0000:0b:1f.7 0000:0B:1F.0; do
   if ! valid_pci_address "$address"; then
     echo "FAIL: valid PCI address was rejected: $address" >&2
     exit 1
   fi
 done
-for address in 0000:0b:00.8 0000:0b:00.f 0000:0b:00 0000:0b:00.g; do
+for address in 0000:0b:00.8 0000:0b:00.f 0000:0b:00 0000:0b:00.g 0000:0b:20.0 0000:0b:ff.0; do
   if valid_pci_address "$address"; then
     echo "FAIL: invalid PCI address was accepted: $address" >&2
     exit 1

@@ -314,7 +314,23 @@ def main() -> int:
         if got != [GPU, AUDIO]:
             return fail(f"uppercase PCI addresses were not normalized in XML: {got!r}")
 
-    # Invalid function numbers and duplicate addresses must be rejected before writing.
+    # Slot 0x1f is the highest valid PCI device number and must remain accepted.
+    with tempfile.TemporaryDirectory(prefix="vm-xml-sync-slot-boundary-") as temp:
+        temp_path = Path(temp)
+        template = temp_path / "template.xml"
+        deployed = temp_path / "win10.xml"
+        template.write_text(template_data, encoding="utf-8")
+        boundary_gpu = "0000:0b:1f.0"
+        boundary_audio = "0000:0B:1F.1"
+        result = run_sync(template, deployed, boundary_gpu, boundary_audio)
+        if result.returncode != 0 or not deployed.is_file():
+            return fail(f"valid PCI slot boundary 0x1f was rejected: {result.stdout}{result.stderr}")
+        generated = ET.parse(deployed).getroot()
+        got = [source_bdf(node) for node in generated.findall("./devices/hostdev[@type='pci']")]
+        if got != [boundary_gpu.lower(), boundary_audio.lower()]:
+            return fail(f"valid PCI slot boundary was not normalized correctly: {got!r}")
+
+    # Invalid function numbers, slot numbers, and duplicate addresses must be rejected before writing.
     with tempfile.TemporaryDirectory(prefix="vm-xml-sync-invalid-") as temp:
         temp_path = Path(temp)
         template = temp_path / "template.xml"
@@ -323,7 +339,7 @@ def main() -> int:
         result = run_sync(template, deployed, GPU, GPU)
         if result.returncode == 0 or deployed.exists():
             return fail("duplicate GPU/audio PCI addresses were not rejected before writing")
-        for invalid in ("0000:0b:02.8", "0000:0b:02.f"):
+        for invalid in ("0000:0b:02.8", "0000:0b:02.f", "0000:0b:20.0", "0000:0b:ff.0"):
             result = run_sync(template, deployed, invalid, AUDIO)
             if result.returncode == 0 or deployed.exists():
                 return fail(f"invalid PCI function number was accepted: {invalid}")
