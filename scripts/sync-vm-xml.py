@@ -225,7 +225,7 @@ def atomic_write(destination: Path, data: str, previous_stat: os.stat_result | N
 
 
 def registered_domain_xml(domain: str) -> str | None:
-    """Return the live libvirt XML, or None only when the domain is absent.
+    """Return the registered inactive/persistent libvirt XML, or None only when absent.
 
     Listing failure and dump failure are fatal: they must not be mistaken for a
     missing VM, because doing so could cause a template to replace a registered
@@ -255,22 +255,22 @@ def registered_domain_xml(domain: str) -> str | None:
         return None
     try:
         dumped = subprocess.run(
-            [virsh, "dumpxml", domain],
+            [virsh, "dumpxml", "--inactive", domain],
             capture_output=True,
             text=True,
             check=False,
             timeout=15,
         )
     except (OSError, subprocess.TimeoutExpired) as exc:
-        fail(f"could not export the registered libvirt domain {domain!r}: {exc}")
+        fail(f"could not export the registered inactive libvirt definition {domain!r}: {exc}")
     if dumped.returncode != 0:
         detail = dumped.stderr.strip() or f"exit status {dumped.returncode}"
-        fail(f"could not export the registered libvirt domain {domain!r}; refusing to use stale XML: {detail}")
-    live_data = dumped.stdout
-    live_root = parse_xml(live_data, f"live libvirt domain {domain!r}")
-    if live_root.tag != "domain" or live_root.findtext("name") != domain:
-        fail(f"virsh dumpxml returned an unexpected domain for {domain!r}; no file was written.")
-    return live_data
+        fail(f"could not export the registered inactive libvirt definition {domain!r}; refusing to use stale XML: {detail}")
+    registered_data = dumped.stdout
+    registered_root = parse_xml(registered_data, f"registered inactive libvirt domain {domain!r}")
+    if registered_root.tag != "domain" or registered_root.findtext("name") != domain:
+        fail(f"virsh dumpxml --inactive returned an unexpected domain for {domain!r}; no file was written.")
+    return registered_data
 
 
 def main() -> int:
@@ -323,35 +323,35 @@ def main() -> int:
 
     # The registered definition outranks a potentially stale/missing on-disk XML.
     # A failed libvirt query is fatal; it is never silently interpreted as an absent VM.
-    live_data = registered_domain_xml(domain) if domain is not None else None
+    registered_data = registered_domain_xml(domain) if domain is not None else None
     previous_stat: os.stat_result | None = None
     existing_data: str | None = None
     if os.path.lexists(destination):
         try:
             existing_data = destination.read_text(encoding="utf-8")
         except OSError as exc:
-            if live_data is None:
+            if registered_data is None:
                 fail(f"could not read existing deployed VM XML {destination}: {exc}")
-            print(f"WARNING: on-disk XML could not be read, but a validated live domain export is available: {exc}")
+            print(f"WARNING: on-disk XML could not be read, but a validated registered-domain export is available: {exc}")
         if existing_data is not None:
             try:
                 existing_root = parse_xml(existing_data, "existing deployed VM XML")
             except SystemExit:
-                if live_data is None:
+                if registered_data is None:
                     raise
-                print("WARNING: existing on-disk XML is invalid; a validated live libvirt definition will be used and the old file will be backed up.")
+                print("WARNING: existing on-disk XML is invalid; a validated registered libvirt definition will be used and the old file will be backed up.")
                 existing_root = None
             if existing_root is not None and existing_root.findtext("name") != template_domain:
                 fail("existing deployed XML belongs to a different VM domain; refusing to overwrite it.")
         previous_stat = destination.stat()
 
-    if live_data is not None:
-        live_root = parse_xml(live_data, "live libvirt VM XML")
-        live_disk_path = primary_disk_path(live_root, "the live libvirt VM XML")
-        if live_disk_path != template_disk_path:
-            print(f"NOTE: preserving live libvirt Windows disk path -> {live_disk_path}")
-        data = live_data
-        print(f"NOTE: using virsh dumpxml {domain} as the source of truth for the registered VM.")
+    if registered_data is not None:
+        registered_root = parse_xml(registered_data, "registered inactive libvirt VM XML")
+        registered_disk_path = primary_disk_path(registered_root, "the registered inactive libvirt VM XML")
+        if registered_disk_path != template_disk_path:
+            print(f"NOTE: preserving registered libvirt Windows disk path -> {registered_disk_path}")
+        data = registered_data
+        print(f"NOTE: using virsh dumpxml --inactive {domain} as the source of truth for the registered VM.")
     elif existing_data is not None:
         if not existing_data.strip():
             fail("existing deployed VM XML is empty; refusing to replace it automatically.")
@@ -369,17 +369,17 @@ def main() -> int:
 
     # Save the current registered definition even if the on-disk XML was absent.
     # Exclusive creation ensures an existing recovery copy is never overwritten.
-    if live_data is not None:
-        live_backup = Path(f"{destination}.libvirt-{domain}-{time.time_ns()}.xml")
+    if registered_data is not None:
+        registered_backup = Path(f"{destination}.libvirt-{domain}-{time.time_ns()}.xml")
         try:
-            fd = os.open(live_backup, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            fd = os.open(registered_backup, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
             with os.fdopen(fd, "w", encoding="utf-8") as handle:
-                handle.write(live_data)
+                handle.write(registered_data)
                 handle.flush()
                 os.fsync(handle.fileno())
-            print(f"NOTE: registered live XML backup -> {live_backup}")
+            print(f"NOTE: registered inactive XML backup -> {registered_backup}")
         except OSError as exc:
-            fail(f"could not save a recovery copy of the live libvirt XML: {exc}")
+            fail(f"could not save a recovery copy of the registered inactive libvirt XML: {exc}")
     if previous_stat is not None:
         backup = Path(f"{destination}.bak-{time.time_ns()}")
         try:
