@@ -6,6 +6,7 @@
 
 - Closed the VM-definition source-of-truth gap found in the October 24 audit. The XML synchronizer accepts an optional `--domain win10`, checks libvirt's registered domain list, and, when the domain exists, uses a validated `virsh dumpxml win10` result instead of trusting a stale or missing `/var/lib/libvirt/win10.xml`.
 - The synchronizer now fails closed if the libvirt query/export fails or returns an unexpected domain. It creates a mode-`0600` recovery copy of the registered XML and backs up any existing on-disk XML before writing the PCI-address-synchronized result.
+- Restored the embedded-script extractor's Nix-attribute boundary guard, made unterminated indented strings fail closed, and added `scripts/test-extract-embedded-scripts.py`. CI and contributor validation now run this focused regression test before ShellCheck extracts the seven real scripts.
 - Both `install.sh` and the manual README flow pass `--domain win10`. The VM XML regression suite uses a fake `virsh` executable to cover registered-domain vs stale XML, registered-domain with missing on-disk XML, and list/dump failures with no mutation.
 - This is source/test-level protection; no live libvirt guest, GPU passthrough, RT-Bore-LTO build, or target-host lifecycle run is claimed here. The new regression suite must pass in GitHub Actions before this change is merged.
 
