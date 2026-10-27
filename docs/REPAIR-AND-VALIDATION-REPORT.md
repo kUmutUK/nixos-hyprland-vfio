@@ -4,29 +4,37 @@
 
 ## ZIP audit confirmation — 2026-10-27
 
-### Exact-byte identity of the attachment inspected in this review
+### Exact-byte measurements for the ZIP attached to this review
 
-The ZIP bytes attached to this review were hashed and inspected directly on 2026-10-27. These are the measurements for that exact attachment, not estimates copied from an earlier report:
+The uploaded `nixos-hyprland-vfio(1).zip` was measured directly from its bytes on 2026-10-27:
 
-- File size: `436,212` bytes.
-- SHA-256: `3f0f0ed580f58815f792635720a51b8c0066989add88460ccf3d2620ce771da0`.
-- ZIP central-directory entry count: `96`.
-- Entries under `nixos-hyprland-vfio/.git/`: `45` total, including `29` file entries and `16` directory entries.
-- Embedded `.git/HEAD` resolves to `a631d195891ff6da74ae727ac3c531ffc77c50ed`; the `.git/shallow` marker contains the same SHA.
-- The `install.sh` ZIP entry has `create_system=0` and `external_attr=0x00000000`, so it encodes no Unix permission bits. Extraction produces mode `0644`; the embedded Git index records mode `100755`.
-- GitHub `main` was observed at `81b4501392ea99ba431864367d8a15cc231fc1ff` during this review. The attached ZIP therefore does not represent that current source revision.
+- File size: **456,770 bytes**.
+- SHA-256: `69168ea0d90285a879baf08dfb7be0425db2cedb6539344d4ab603caf1f36094`.
+- ZIP central-directory entry count: **101**.
+- Entries whose names are under `nixos-hyprland-vfio/.git/`: **45** (29 file entries and 16 directory entries).
+- Embedded `.git/shallow` commit: `8c6cf467038bacbc8cba46a0c9dcfe54e13c467d`. The checkout's `.git/HEAD` points to `refs/heads/main`.
+- GitHub `main` was independently observed at the same commit, `8c6cf467038bacbc8cba46a0c9dcfe54e13c467d`; this identifies the embedded baseline but does not make the ZIP a valid distribution artifact.
+- The `install.sh` ZIP entry has `create_system=0` and `external_attr=0x00000000`, so no Unix permission bits are encoded. A normal Unix extraction therefore does not retain the executable bit. The embedded Git index records the intended tracked mode as `100755`.
 
-Earlier audit notes also mention SHA-256 `89362330c8565d27e58260aef3bb3a16ab8941415c9f02e6c20640f0a57838ed`, `101` entries, and embedded HEAD `81b4501392ea99ba431864367d8a15cc231fc1ff`; that is a separate, unverified measurement set for this attachment. A later audit message labels another archive `nixos-hyprland-vfio(7).zip` and reports `455,316` bytes, `101` entries, SHA-256 prefix `8d38226c…`, and embedded HEAD `8467e496f6ec40d46fec1af71326e32e5c8e2337`. Those latter values were not reproduced from the bytes available in this review: the mounted attachment still measures exactly as listed above. The reported embedded HEAD happens to match the current GitHub `main` commit, but that alone does not prove that a ZIP contains those bytes or that its entry count and hash are correct. If the separately named v7 archive is intended to be audited, its exact bytes must be supplied and measured independently; do not merge these measurement sets.
+**Confirmed distribution defect:** this uploaded ZIP includes the repository's `.git/` metadata and loses `install.sh`'s executable mode. Do not distribute this ad-hoc ZIP. The current `.github/workflows/check.yml` already generates a canonical source archive with `git archive` and fails validation if `.git/` is included or the executable mode is lost; `README.md` documents the same approach. Use that command or the CI artifact for the exact commit being distributed. No change to `install.sh` contents or its tracked Git mode is justified by this packaging defect.
 
-### Regression checks performed against the attached snapshot
+**Confirmed report defect:** the previous version of this section attributed a different archive's measurements to the current attachment. The prior figures (436,212 bytes, 96 entries, SHA-256 beginning `3f0f0ed5`, embedded commit `a631d195`) do **not** describe the bytes inspected here. Older measurement sets mentioned elsewhere in this report are historical and must not be reused as current attachment facts.
 
-Passed in this review: `scripts/test-installer-invariants.sh`; `scripts/test-installer-rollback.sh`; `scripts/test-vfio-hook-driver-state.sh`; `scripts/test-vm-xml.py`; `scripts/test-vm-xml-sync.py`; `scripts/test-vm-diagnostic.py`; `scripts/test-lsfg-v1-config.py`; and `scripts/test-extract-embedded-scripts.py` (each invocation printed its success result). Separate follow-up checks also passed for `bash -n` on the installer, QEMU hook, and three shell regression scripts; `python3 -m compileall -q scripts`; `nixos/flake.lock` JSON parsing; and `vm-xml/win10.xml` parsing. A prior isolated installer-invariants run completed in about 12 seconds. In this later combined invocation, however, the outer 120-second command limit expired after the tests and follow-up checks had printed success, before the final elapsed-time marker. That reproduces a combined-run timeout, but it does not identify a failing test or prove the test suite itself hung; per-test timings and an exact runner timeout trace were not captured. Treat test stability under a combined runner as unresolved.
+### Regression checks performed against the uploaded snapshot
 
-The local environment did not provide Nix, ShellCheck, Statix, Deadnix, `xmllint`, or `virt-xml-validate`; no Nix evaluation/build or libvirt/QEMU semantic validation is claimed. Physical GPU passthrough and VM shutdown/display-recovery testing also remain outside this review. The SSH password-authentication setting remains a network-dependent security risk already documented by the project; it was not changed automatically because doing so without verifying a working alternate access path could lock out a deployed host.
+These checks were run after extracting the uploaded archive and restoring `install.sh` to its intended executable mode for source-level testing:
+
+- Passed with successful exit status: `scripts/test-installer-invariants.sh`, `scripts/test-installer-rollback.sh`, `scripts/test-vfio-hook-driver-state.sh`, `scripts/test-vm-xml.py`, and `scripts/test-vm-xml-sync.py`.
+- `scripts/test-vm-diagnostic.py` printed its success message, but the combined runner did not return control after that message before the outer command timed out. Its output alone is not treated as a verified clean process exit in this invocation.
+- `scripts/test-lsfg-v1-config.py`, `scripts/test-extract-embedded-scripts.py`, `scripts/test-vm-iso-paths.py`, and the follow-up syntax/parsing checks were not reached by that timed-out combined invocation; no pass is claimed for them here.
+
+The local environment did not provide Nix, ShellCheck, Statix, Deadnix, `xmllint`, or `virt-xml-validate`; no Nix evaluation/build or libvirt/QEMU semantic validation is claimed. Physical GPU passthrough and VM shutdown/display-recovery testing remain unverified. The SSH password-authentication setting remains a documented, network-dependent security risk; it was not changed automatically because doing so without verifying a working alternate access path could lock out a deployed host.
 
 The tracked source already has the correct `install.sh` mode, and `.github/workflows/check.yml` already builds a canonical ZIP with `git archive` and rejects archives that include `.git/` or lose the executable mode. The source/workflow logic was not altered for a defect confined to this ad-hoc ZIP.
 
-Review baseline before this documentation correction: `e5d491b60f48a35a3cb0b4288c02a7e789a31e4d`. The uploaded ZIP's embedded shallow Git checkout points to `a631d195891ff6da74ae727ac3c531ffc77c50ed`; it is not a faithful snapshot of the then-current `main`.
+### Historical audit notes for earlier ZIP attachments (not the file measured above)
+
+An earlier review used baseline `e5d491b60f48a35a3cb0b4288c02a7e789a31e4d` and examined a different ZIP whose embedded shallow checkout pointed to `a631d195891ff6da74ae727ac3c531ffc77c50ed`. The following older measurements and CI references are retained as historical records only; they do not describe the 456,770-byte attachment measured at the top of this report.
 
 - The supplied `nixos-hyprland-vfio.zip` contains 96 ZIP entries. There are 45 entries under `nixos-hyprland-vfio/.git/`, including 29 actual files plus directory entries, so the internal Git metadata is definitely included.
 - The `nixos-hyprland-vfio/install.sh` ZIP entry uses DOS/FAT creator metadata (`create_system=0`) and carries no Unix permission bits (`external_attr` mode `0000`). Extracting this archive therefore does not preserve the executable bit required by the documented `./install.sh` command and may cause `Permission denied` on Unix. The embedded Git index records `install.sh` as `100755`; the tracked script content and Git mode are not the defect.
@@ -34,7 +42,7 @@ Review baseline before this documentation correction: `e5d491b60f48a35a3cb0b4288
 - GitHub Actions run [#928](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/40478786307) succeeded for SHA `a631d195891ff6da74ae727ac3c531ffc77c50ed` and produced the canonical source artifact. That artifact cannot be the supplied ZIP because the run's archive validation excludes `.git/`, while this ZIP contains it. Run #928 is historical evidence for its exact SHA only, not for the later main revision.
 - Remediation: after the desired source changes are committed, generate the ZIP from that exact commit with the README's `git archive` command, or use the CI artifact produced for that exact commit. Do not distribute a manually compressed checkout containing `.git/`.
 
-- **Re-verification against current `main` — 2026-10-27:** At parent revision `5959a79dcba3a0b8c7db4743c9a4a57a1025e36b`, I rechecked the exact ZIP attached to this review. Its measured values remain **96 entries**, **45 entries under `.git/`**, DOS/FAT creator metadata with no encoded Unix mode for `install.sh`, and embedded Git HEAD `a631d195891ff6da74ae727ac3c531ffc77c50ed`. Thus the proposed figures of 101 entries and embedded HEAD `5959a79…` do not describe this attached file. The existing report's 96/`a631d195…` values are correct for this attachment; no installer content or tracked mode change is warranted.
+- **Historical re-verification from an earlier review — 2026-10-27 (different ZIP):** At parent revision `5959a79dcba3a0b8c7db4743c9a4a57a1025e36b`, a separate attachment was measured as 96 entries with embedded Git HEAD `a631d195891ff6da74ae727ac3c531ffc77c50ed`. These figures were correct only for that older attachment and must not be applied to the current 456,770-byte ZIP described at the top of this report.
 - GitHub Actions run [#953](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/40518482880) succeeded for parent SHA `5959a79dcba3a0b8c7db4743c9a4a57a1025e36b` and uploaded the validated `nixos-hyprland-vfio-source` artifact (artifact ID `12739669466`, SHA-256 `df7db0982c1ebeb7f65d0279368cb85946eef2de2eb5a3f373e4d1c59492125b`). This run applies only to that exact parent SHA. The documentation-only update below must receive its own CI run before its resulting artifact is considered validated.
 
 ## Manual validation parity and installer-test timeout follow-up — 2026-10-27
