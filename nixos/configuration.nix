@@ -245,10 +245,9 @@ in
   networking.firewall = {
     enable = true;
     allowedTCPPorts = [ 22 ];
-    # The previous broad TCP/UDP range 1714–1764 (51 ports) has been removed. If you
-    # need P2P/seed traffic, open only the required port (for example, 51413).
-    # allowedTCPPortRanges = [ { from = 1714; to = 1764; } ];
-    # allowedUDPPortRanges = [ { from = 1714; to = 1764; } ];
+    # KDE Connect is enabled below; its NixOS module independently opens TCP and UDP
+    # ports 1714–1764. Do not treat that application-specific range as generic P2P/seed
+    # access: add only the specific ports those services require to the lists above.
     allowPing = true;
   };
 
