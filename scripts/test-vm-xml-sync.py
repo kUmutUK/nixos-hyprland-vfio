@@ -54,19 +54,19 @@ def fake_virsh_env(
     bin_dir.mkdir(parents=True, exist_ok=True)
     virsh = bin_dir / "virsh"
     virsh.write_text(
-        "#!/usr/bin/env bash\\n"
-        "set -euo pipefail\\n"
-        'if [[ "${1:-}" == "list" ]]; then\\n'
-        '  if [[ "${FAKE_VIRSH_FAIL_LIST:-0}" == "1" ]]; then exit 3; fi\\n'
-        '  cat "$FAKE_VIRSH_NAMES"\\n'
-        "  exit 0\\n"
-        "fi\\n"
-        'if [[ "${1:-}" == "dumpxml" && "${2:-}" == "win10" ]]; then\\n'
-        '  if [[ "${FAKE_VIRSH_FAIL_DUMP:-0}" == "1" ]]; then exit 4; fi\\n'
-        '  cat "$FAKE_VIRSH_XML"\\n'
-        "  exit 0\\n"
-        "fi\\n"
-        "exit 90\\n",
+        "#!/usr/bin/env bash\n"
+        "set -euo pipefail\n"
+        'if [[ "${1:-}" == "list" ]]; then\n'
+        '  if [[ "${FAKE_VIRSH_FAIL_LIST:-0}" == "1" ]]; then exit 3; fi\n'
+        '  cat "$FAKE_VIRSH_NAMES"\n'
+        "  exit 0\n"
+        "fi\n"
+        'if [[ "${1:-}" == "dumpxml" && "${2:-}" == "win10" ]]; then\n'
+        '  if [[ "${FAKE_VIRSH_FAIL_DUMP:-0}" == "1" ]]; then exit 4; fi\n'
+        '  cat "$FAKE_VIRSH_XML"\n'
+        "  exit 0\n"
+        "fi\n"
+        "exit 90\n",
         encoding="utf-8",
     )
     virsh.chmod(0o755)
@@ -332,7 +332,7 @@ def main() -> int:
             5,
         )
         deployed.write_text(stale_data, encoding="utf-8")
-        env = fake_virsh_env(temp_path, "win10\\n", live_data)
+        env = fake_virsh_env(temp_path, "win10\n", live_data)
         result = run_sync(template, deployed, domain="win10", env=env)
         if result.returncode != 0:
             return fail(f"live-domain XML sync failed: {result.stdout}{result.stderr}")
@@ -367,7 +367,7 @@ def main() -> int:
             "/var/lib/libvirt/images/missing-file-live-disk.qcow2",
             3,
         )
-        env = fake_virsh_env(temp_path, "win10\\n", live_data)
+        env = fake_virsh_env(temp_path, "win10\n", live_data)
         result = run_sync(template, deployed, domain="win10", env=env)
         if result.returncode != 0:
             return fail(f"live-domain sync with missing on-disk XML failed: {result.stdout}{result.stderr}")
@@ -392,7 +392,7 @@ def main() -> int:
             template.write_text(template_data, encoding="utf-8")
             deployed.write_text(template_data, encoding="utf-8")
             before = deployed.read_text(encoding="utf-8")
-            env = fake_virsh_env(temp_path, "win10\\n", template_data, **failure_options)
+            env = fake_virsh_env(temp_path, "win10\n", template_data, **failure_options)
             result = run_sync(template, deployed, domain="win10", env=env)
             if result.returncode == 0:
                 return fail(f"libvirt {failure_name} failure did not fail closed")
