@@ -17,6 +17,8 @@ This file summarizes notable changes in English. The original detailed Turkish h
 - Made VFIO service stops fail closed when a previously active unit cannot be verified inactive, while retaining the saved pre-VM state for rollback. Added mocked stop/start failure coverage. Installer `stateVersion` discovery now prompts instead of choosing silently when existing candidate files conflict or contain duplicate/non-literal assignments; regression tests cover conflict and ambiguity cases.
 - Updated the manual installation guide to pass `--domain win10` and document the persistent `virsh dumpxml --inactive` source of truth, aligning it with the README and installer.
 
+- Documented the deliberate LSFG-VK v1 (`[[game]]`/`exe`) schema decision; v2 is not partially wired into the active tree, and any later migration must coordinate the package, profiles, deployment/rollback paths, tests, and CI.
+
 ## Unreleased — 2026-10-23
 
 ### Follow-up audit fixes
