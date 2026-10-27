@@ -2,6 +2,16 @@
 
 > **Delivery-scope note:** This report is part of the tracked source tree. The dated “patch-only ZIP” notes below are historical. For a canonical full-source ZIP, use the `git archive` command documented in `README.md` or the CI-uploaded `nixos-hyprland-vfio-source` artifact; CI validates `.git/` exclusion and `install.sh`’s tracked executable mode.
 
+## ZIP audit confirmation — 2026-10-27
+
+Review baseline before this documentation correction: `e5d491b60f48a35a3cb0b4288c02a7e789a31e4d`. The uploaded ZIP's embedded shallow Git checkout points to `a631d195891ff6da74ae727ac3c531ffc77c50ed`; it is not a faithful snapshot of the then-current `main`.
+
+- The supplied `nixos-hyprland-vfio.zip` contains 96 ZIP entries. There are 45 entries under `nixos-hyprland-vfio/.git/`, including 29 actual files plus directory entries, so the internal Git metadata is definitely included.
+- The `nixos-hyprland-vfio/install.sh` ZIP entry uses DOS/FAT creator metadata (`create_system=0`) and carries no Unix permission bits (`external_attr` mode `0000`). Extracting this archive therefore does not preserve the executable bit required by the documented `./install.sh` command and may cause `Permission denied` on Unix. The embedded Git index records `install.sh` as `100755`; the tracked script content and Git mode are not the defect.
+- The current source workflow `.github/workflows/check.yml` already has the correct defense: it generates the source archive using `git archive`, rejects `.git/` entries, and validates the Unix executable mode on `install.sh`. The README already documents the same canonical command. This audit does not justify changing the installer or weakening/replacing those checks; the problem is the supplied noncanonical ZIP.
+- GitHub Actions run [#928](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/40478786307) succeeded for SHA `a631d195891ff6da74ae727ac3c531ffc77c50ed` and produced the canonical source artifact. That artifact cannot be the supplied ZIP because the run's archive validation excludes `.git/`, while this ZIP contains it. Run #928 is historical evidence for its exact SHA only, not for the later main revision.
+- Remediation: after the desired source changes are committed, generate the ZIP from that exact commit with the README's `git archive` command, or use the CI artifact produced for that exact commit. Do not distribute a manually compressed checkout containing `.git/`.
+
 ## Audit follow-up — 2026-10-27
 
 - The reviewed ad-hoc full-source ZIP included `.git/` metadata and did not preserve `install.sh`’s Unix executable bit. These are packaging defects: the existing GitHub Actions workflow already creates the canonical archive with `git archive`, checks that `.git/` is absent and `install.sh` retains mode `100755`, then uploads that exact validated ZIP. Distribution should use the CI artifact rather than manually compressing a checkout.
@@ -22,15 +32,15 @@
 - Closed the old LSFG-v2 scope question as a version decision, not an active v1/v2 mismatch: the current repo explicitly targets upstream v1 `[[game]]`/`exe` profiles, tests that schema, and builds `.#lsfg-vk`. A future v2 change must migrate packaging, profile format, deployment/rollback handling, and CI together.
 - Cross-checked the manual `INSTALLATION.md` VM synchronization example against the README and `install.sh`. It previously omitted `--domain win10`; it now uses the same persistent `virsh dumpxml --inactive win10` source-of-truth path and documents fail-closed behavior.
 - The report's historical audit is still not a reproducible 927-commit-per-finding manifest: imported conversation summaries and prior reports do not provide exact source/destination SHA coverage for every review turn. Findings are therefore mapped by report and current code state below rather than pretending every historical commit has been individually re-audited in this single pass.
-- The follow-up source/test changes are present on `main` at commit `a631d195891ff6da74ae727ac3c531ffc77c50ed`. GitHub Actions run [#928](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/40478786307) completed successfully for that exact commit on 2026-10-27. This confirms the repository's configured CI checks, not physical hardware behavior.
+- Historical CI note (not current HEAD): commit `a631d195891ff6da74ae727ac3c531ffc77c50ed` was the `main` revision used by GitHub Actions run [#928](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/40478786307), which succeeded on 2026-10-27. Before this documentation correction, `main` had advanced to `e5d491b60f48a35a3cb0b4288c02a7e789a31e4d`. Run #928 validates only its exact SHA, not later commits or physical hardware behavior.
 - No live libvirt guest, physical GPU passthrough/release cycle, full RT-Bore-LTO kernel build, or target-host lifecycle run was performed as part of this follow-up audit. The CI result does not replace those target-machine checks.
 
 ## Post-audit documentation and delivery corrections — 2026-10-27
 
 - Added `scripts/test-extract-embedded-scripts.py` to the README's manual validation sequence so it matches CONTRIBUTING and CI.
 - Renamed the older 2026-10-23 changelog subsection to `Follow-up fixes — 2026-10-23`, leaving one current `Unreleased` heading and making the dated history clearer.
-- Refreshed the current CI status above: commit `a631d195891ff6da74ae727ac3c531ffc77c50ed` is already on `main`, and workflow run #928 passed for that exact SHA.
-- The previously supplied ad-hoc full-source ZIP was not a valid distribution archive because it included `.git/` and did not preserve `install.sh`'s executable mode. Recreate the distributable bundle using the canonical `git archive` command in README, or use the CI-uploaded `nixos-hyprland-vfio-source` artifact. A corrected distributable ZIP is supplied alongside this report; the tracked Git mode for `install.sh` remains `100755`.
+- Historical CI reference: run #928 passed for SHA `a631d195891ff6da74ae727ac3c531ffc77c50ed`; it should not be described as CI status for the later `main` revision.
+- The inspected ad-hoc full-source ZIP was not a valid distribution archive because it included `.git/` and did not preserve `install.sh`'s executable mode. The tracked Git mode remains `100755`. Recreate the distributable bundle with the canonical `git archive` command in README, or use the CI artifact for the exact source commit being distributed; do not infer that an artifact from an earlier commit validates the current tree.
 
 ## Follow-up corrections — 2026-10-23
 
