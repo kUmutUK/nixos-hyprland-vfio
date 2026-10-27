@@ -224,9 +224,9 @@ if ! grep -Fxq '25.05|user input after ambiguous/conflicting sources' "$state_te
 fi
 
 # A valid literal plus a second non-literal assignment must also be ambiguous.
-printf 'system.stateVersion = "24.11";\\nsystem.stateVersion = lib.mkDefault selectedVersion;\\n' > "$state_candidate_a"
-printf 'system.stateVersion = "24.11";\\n' > "$state_candidate_b"
-printf '25.07\\n' | bash "$state_test_dir/read-state-version-harness.sh" "$state_source_helpers" system.stateVersion "$state_candidate_a" "$state_candidate_b" \
+printf 'system.stateVersion = "24.11";\nsystem.stateVersion = lib.mkDefault selectedVersion;\n' > "$state_candidate_a"
+printf 'system.stateVersion = "24.11";\n' > "$state_candidate_b"
+printf '25.07\n' | bash "$state_test_dir/read-state-version-harness.sh" "$state_source_helpers" system.stateVersion "$state_candidate_a" "$state_candidate_b" \
   > "$state_test_dir/mixed-state-output" 2> "$state_test_dir/mixed-state-warning"
 if ! grep -Fxq '25.07|user input after ambiguous/conflicting sources' "$state_test_dir/mixed-state-output" \
   || ! grep -Fq 'ambiguous or non-literal' "$state_test_dir/mixed-state-warning"; then
