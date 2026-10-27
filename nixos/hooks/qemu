@@ -67,6 +67,53 @@ save_service_state() {
   return 0
 }
 
+# Stop a service only according to its recorded pre-VM state, and verify the
+# unit actually left the active/transitional states before touching the GPU.
+# A failed stop is safe to tolerate only if systemd confirms the unit is inactive.
+stop_saved_service() {
+  local service="$1" previous stop_status=0 active_state
+  previous="$(awk -F= -v name="$service" '$1 == name { print $2; found=1 } END { if (!found) exit 1 }' "$SERVICE_STATE_FILE" 2>/dev/null)" || previous="invalid"
+  case "$previous" in
+    0)
+      log "Leaving $service stopped (it was inactive before VM start)."
+      return 0
+      ;;
+    1) ;;
+    *)
+      log "ERROR: Invalid/missing saved state for $service; aborting GPU handoff."
+      return 1
+      ;;
+  esac
+
+  if systemctl stop "$service" 2>/dev/null; then
+    :
+  else
+    stop_status=$?
+  fi
+  if ! active_state="$(systemctl show --property=ActiveState --value "$service" 2>/dev/null)"; then
+    log "ERROR: Could not verify ActiveState for $service after stop; aborting GPU handoff."
+    return 1
+  fi
+  case "$active_state" in
+    inactive|failed)
+      if [ "$stop_status" -ne 0 ]; then
+        log "WARNING: Stop returned $stop_status for $service, but systemd confirms it is inactive."
+      else
+        log "Stopped $service before GPU handoff."
+      fi
+      return 0
+      ;;
+    active|reloading|activating|deactivating)
+      log "ERROR: $service remains $active_state after stop (exit $stop_status); aborting GPU handoff."
+      return 1
+      ;;
+    *)
+      log "ERROR: Unknown ActiveState '$active_state' for $service after stop; aborting GPU handoff."
+      return 1
+      ;;
+  esac
+}
+
 restore_saved_services() {
   local service previous failed=0
   if [ ! -r "$SERVICE_STATE_FILE" ]; then
@@ -256,21 +303,13 @@ stop_hyprland() {
   # After the state is durable, services may be partially stopped. If a later operation
   # fails, rollback restores only the state recorded by this preparation stage.
   PREPARE_DESKTOP_TOUCHED=1
-  log "Stopping greetd..."
-  systemctl stop greetd 2>/dev/null || true
-
-  # The hook previously stopped only greetd. Ollama/ROCm could keep `/dev/dri/card*` in use,
-  # so the wait timed out and the following `amdgpu` unbind could hang. Stop all user
-  # services that may retain the GPU before attempting unbind.
-  log "Stopping services that may use the GPU (ollama/polkit/Waydroid/...)..."
-  for svc in ollama polkit.service waydroid-container.service; do
-    if systemctl is-active --quiet "$svc" 2>/dev/null; then
-      log "  stopping: $svc"
-      # Do not hide a failed service stop; otherwise it appears later as an opaque `fuser`
-      # timeout.
-      if ! systemctl stop "$svc" 2>/dev/null; then
-        log "  WARNING: Could not stop $svc; /dev/kfd may still be open."
-      fi
+  # The pre-VM state was recorded before this loop. Stop every service which
+  # was active at capture time, and abort immediately if it cannot be verified
+  # inactive; do not rely on fuser alone to infer that a failed stop is harmless.
+  for svc in greetd ollama polkit.service waydroid-container.service; do
+    if ! stop_saved_service "$svc"; then
+      log "ERROR: Could not safely stop/verify $svc; aborting before GPU unbind."
+      return 1
     fi
   done
   # End only the local graphical seat. Do not use `loginctl terminate-user` here: it
