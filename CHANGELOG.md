@@ -5,6 +5,7 @@ This file summarizes notable changes in English. The original detailed Turkish h
 ## Unreleased — 2026-10-27
 
 ### Audit regression fixes
+- Confirmed that the supplied full-source ZIP is noncanonical: it includes `.git/` and does not encode Unix execute permissions for `install.sh`, while the Git index retains mode `100755`. The canonical `git archive` generation and CI checks were already correct; clarified the report's historical run #928 reference so it applies only to SHA `a631d195891ff6da74ae727ac3c531ffc77c50ed`, not later `main` revisions.
 - Added a manually dispatched full NixOS system-build workflow with a six-hour budget; it builds the complete `nixosConfigurations.nixos.config.system.build.toplevel` (including RT-Bore-LTO) without slowing every push/PR run. The workflow still does not replace physical GPU/VM lifecycle validation.
 - Removed unused `self` and `pkgs` function parameters, configured Statix to ignore only the style-only `repeated_keys` warning for the repository's flat NixOS option style, and promoted Statix/Deadnix from informational steps to required CI gates.
 - Restricted PCI slot/device numbers to the hardware-valid range `00`–`1f` in installer-side and VM XML address validation; regression tests cover acceptance of `1f` and rejection of `20`/`ff`.
