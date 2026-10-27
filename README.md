@@ -253,8 +253,12 @@ VM_XML=/var/lib/libvirt/win10.xml
 test -f "$REPO/scripts/sync-vm-xml.py"
 sudo mkdir -p /var/lib/libvirt/images /var/lib/libvirt/qemu
 
-# Remember whether this is an existing VM before the helper writes/updates its XML.
-if sudo test -e "$VM_XML" || sudo test -L "$VM_XML"; then
+# Query libvirt itself before treating this as a new VM. With set -e, a failed
+# query aborts instead of mistaking an unavailable daemon for an absent domain.
+REGISTERED_DOMAINS="$(sudo virsh list --all --name)"
+if printf '%s\\n' "$REGISTERED_DOMAINS" | grep -Fxq win10; then
+  EXISTING_VM_XML=1
+elif sudo test -e "$VM_XML" || sudo test -L "$VM_XML"; then
   EXISTING_VM_XML=1
 else
   EXISTING_VM_XML=0
@@ -264,7 +268,7 @@ read -rp "GPU display PCI address from /etc/nixos/nixos/hooks/qemu: " GPU_PCI
 read -rp "GPU audio PCI address from /etc/nixos/nixos/hooks/qemu: " GPU_AUDIO
 sudo python3 "$REPO/scripts/sync-vm-xml.py" \
   "$GPU_PCI" "$GPU_AUDIO" \
-  "$REPO/vm-xml/win10.xml" "$VM_XML"
+  "$REPO/vm-xml/win10.xml" "$VM_XML" --domain win10
 
 # Read the primary disk path from the synchronized XML; do not assume a filename.
 DISK_PATH="$(sudo python3 - "$VM_XML" <<'PY'
@@ -314,7 +318,7 @@ fi
 sudo virsh define "$VM_XML"
 ```
 
-The helper creates a fresh UUID and MAC when the deployed XML does not exist. If it already exists, the helper makes a timestamped backup, preserves the existing VM settings and changes only the two GPU/audio PCI addresses. It refuses to replace a symlink, malformed XML, a different VM domain, or an unsupported disk/PCI layout. It never edits `vm-xml/win10.xml`. The disk setup above reads the actual primary disk path from the synchronized XML: existing VM disks are preserved and are never auto-created, re-owned, or re-permissioned; a missing disk for an existing VM stops for manual recovery. Automatic creation is limited to the reviewed 120G default path for a new VM. Verify the Windows and VirtIO ISO paths in the deployed XML exist before starting the guest. The XML's PCI addresses must match `GPU_PCI` and `GPU_AUDIO` in `/etc/nixos/nixos/hooks/qemu`; `install.sh` performs this synchronization when run successfully.
+When called with --domain win10, the helper checks libvirt itself and prefers virsh dumpxml win10 over a missing or stale on-disk XML; if libvirt cannot be queried or the registered domain cannot be exported, it stops without writing. The live definition and any existing on-disk XML are backed up before the destination changes. If win10 is not registered, an existing deployed XML remains the source of truth; only a genuinely new, unregistered VM starts from the template and receives a fresh UUID/MAC. The helper preserves existing VM settings and changes only the two GPU/audio PCI addresses. It refuses to replace a symlink, malformed XML, a different VM domain, or an unsupported disk/PCI layout. It never edits `vm-xml/win10.xml`. The disk setup above reads the actual primary disk path from the synchronized XML: existing VM disks are preserved and are never auto-created, re-owned, or re-permissioned; a missing disk for an existing VM stops for manual recovery. Automatic creation is limited to the reviewed 120G default path for a new VM. Verify the Windows and VirtIO ISO paths in the deployed XML exist before starting the guest. The XML's PCI addresses must match `GPU_PCI` and `GPU_AUDIO` in `/etc/nixos/nixos/hooks/qemu`; `install.sh` performs this synchronization when run successfully.
 
 The default XML contains two active USB passthrough entries with fixed vendor/product IDs `1532:0098` and `05ac:024f`; they are not detected or substituted automatically by the installer. Confirm with `lsusb` that these IDs identify the devices you intend to pass through, and edit or remove the corresponding USB `<hostdev>` entries in `/var/lib/libvirt/win10.xml` before starting the VM if they do not. The XML intentionally has no emulated graphics console, so verify that the guest has a usable display and input path before handing it the only GPU.
 
