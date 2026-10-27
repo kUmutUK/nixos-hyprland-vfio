@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import re
 import secrets
+import subprocess
 import shutil
 import stat
 import sys
@@ -223,10 +224,65 @@ def atomic_write(destination: Path, data: str, previous_stat: os.stat_result | N
                 pass
 
 
+def registered_domain_xml(domain: str) -> str | None:
+    """Return the live libvirt XML, or None only when the domain is absent.
+
+    Listing failure and dump failure are fatal: they must not be mistaken for a
+    missing VM, because doing so could cause a template to replace a registered
+    domain's on-disk XML.
+    """
+    if not re.fullmatch(r"[A-Za-z0-9_.-]+", domain):
+        fail(f"invalid libvirt domain name {domain!r}.")
+    virsh = shutil.which("virsh")
+    if virsh is None:
+        fail("--domain requires virsh so the registered VM definition can be checked safely.")
+    try:
+        listed = subprocess.run(
+            [virsh, "list", "--all", "--name"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=15,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        fail(f"could not query libvirt domains; refusing to use an on-disk/template XML instead: {exc}")
+    if listed.returncode != 0:
+        detail = listed.stderr.strip() or f"exit status {listed.returncode}"
+        fail(f"could not query libvirt domains; refusing to proceed: {detail}")
+    names = {line.strip() for line in listed.stdout.splitlines() if line.strip()}
+    if domain not in names:
+        print(f"NOTE: libvirt domain {domain!r} is not registered; the on-disk XML/template path may be used.")
+        return None
+    try:
+        dumped = subprocess.run(
+            [virsh, "dumpxml", domain],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=15,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        fail(f"could not export the registered libvirt domain {domain!r}: {exc}")
+    if dumped.returncode != 0:
+        detail = dumped.stderr.strip() or f"exit status {dumped.returncode}"
+        fail(f"could not export the registered libvirt domain {domain!r}; refusing to use stale XML: {detail}")
+    live_data = dumped.stdout
+    live_root = parse_xml(live_data, f"live libvirt domain {domain!r}")
+    if live_root.tag != "domain" or live_root.findtext("name") != domain:
+        fail(f"virsh dumpxml returned an unexpected domain for {domain!r}; no file was written.")
+    return live_data
+
+
 def main() -> int:
-    if len(sys.argv) != 5:
-        fail("usage: sync-vm-xml.py GPU_PCI GPU_AUDIO TEMPLATE_XML DEPLOYED_XML")
-    gpu, audio, template_name, destination_name = sys.argv[1:]
+    args = sys.argv[1:]
+    domain: str | None = None
+    if len(args) == 6 and args[4] == "--domain":
+        gpu, audio, template_name, destination_name, _, domain = args
+    elif len(args) == 4:
+        gpu, audio, template_name, destination_name = args
+    else:
+        fail("usage: sync-vm-xml.py GPU_PCI GPU_AUDIO TEMPLATE_XML DEPLOYED_XML [--domain DOMAIN]")
+
     gpu_components = pci_address_components(gpu)
     audio_components = pci_address_components(audio)
     if gpu_components == audio_components:
@@ -239,7 +295,8 @@ def main() -> int:
     except OSError as exc:
         fail(f"could not read VM XML template {template_path}: {exc}")
     template_root = parse_xml(template_data, "VM XML template")
-    if not template_root.findtext("name"):
+    template_domain = template_root.findtext("name")
+    if not template_domain:
         fail("VM XML template has no domain name; no file was written.")
     template_disk_path = primary_disk_path(template_root, "the VM XML template")
     template_hostdevs = template_root.findall(".//hostdev[@type='pci']")
@@ -257,47 +314,82 @@ def main() -> int:
         if key in role_by_guest_address:
             fail("VM XML template reuses a guest PCI target for both GPU and audio; no file was written.")
         role_by_guest_address[key] = role
-    # Validate the template's own PCI shape and role mapping even when an existing XML will be kept.
-    synchronize_pci_addresses(
-        template_data, "VM XML template", (gpu, audio), role_by_guest_address
-    )
+    synchronize_pci_addresses(template_data, "VM XML template", (gpu, audio), role_by_guest_address)
 
     if destination.is_symlink():
         fail(f"refusing to replace symlinked VM XML path {destination}.")
+    if os.path.lexists(destination) and not destination.is_file():
+        fail(f"existing deployed VM XML is not a regular file: {destination}.")
 
+    # The registered definition outranks a potentially stale/missing on-disk XML.
+    # A failed libvirt query is fatal; it is never silently interpreted as an absent VM.
+    live_data = registered_domain_xml(domain) if domain is not None else None
     previous_stat: os.stat_result | None = None
+    existing_data: str | None = None
     if os.path.lexists(destination):
-        if not destination.is_file():
-            fail(f"existing deployed VM XML is not a regular file: {destination}.")
         try:
             existing_data = destination.read_text(encoding="utf-8")
         except OSError as exc:
-            fail(f"could not read existing deployed VM XML {destination}: {exc}")
+            if live_data is None:
+                fail(f"could not read existing deployed VM XML {destination}: {exc}")
+            print(f"WARNING: on-disk XML could not be read, but a validated live domain export is available: {exc}")
+        if existing_data is not None:
+            try:
+                existing_root = parse_xml(existing_data, "existing deployed VM XML")
+            except SystemExit:
+                if live_data is None:
+                    raise
+                print("WARNING: existing on-disk XML is invalid; a validated live libvirt definition will be used and the old file will be backed up.")
+                existing_root = None
+            if existing_root is not None and existing_root.findtext("name") != template_domain:
+                fail("existing deployed XML belongs to a different VM domain; refusing to overwrite it.")
+        previous_stat = destination.stat()
+
+    if live_data is not None:
+        live_root = parse_xml(live_data, "live libvirt VM XML")
+        live_disk_path = primary_disk_path(live_root, "the live libvirt VM XML")
+        if live_disk_path != template_disk_path:
+            print(f"NOTE: preserving live libvirt Windows disk path -> {live_disk_path}")
+        data = live_data
+        print(f"NOTE: using virsh dumpxml {domain} as the source of truth for the registered VM.")
+    elif existing_data is not None:
         if not existing_data.strip():
             fail("existing deployed VM XML is empty; refusing to replace it automatically.")
         existing_root = parse_xml(existing_data, "existing deployed VM XML")
-        if existing_root.findtext("name") != template_root.findtext("name"):
-            fail("existing deployed XML belongs to a different VM domain; refusing to overwrite it.")
         existing_disk_path = primary_disk_path(existing_root, "the existing deployed VM XML")
         if existing_disk_path != template_disk_path:
             print(f"NOTE: preserving existing Windows disk path -> {existing_disk_path}")
-        # Use the user's deployed XML as the source of truth. This preserves firmware,
-        # NVRAM, CPU topology/features, extra non-primary devices, custom boot settings,
-        # and all other supported settings rather than rebuilding them from the template.
         data = existing_data
-        previous_stat = destination.stat()
     else:
-        # A new domain has no custom settings to preserve; start from the reviewed template
-        # and assign unique identity values before syncing the selected PCI addresses.
+        # An unregistered domain has no current definition to preserve; start from
+        # the reviewed template and assign a fresh UUID/MAC.
         data = fresh_identity(template_data)
 
     new_data = synchronize_pci_addresses(data, "VM XML", (gpu, audio), role_by_guest_address)
+
+    # Save the current registered definition even if the on-disk XML was absent.
+    # Exclusive creation ensures an existing recovery copy is never overwritten.
+    if live_data is not None:
+        live_backup = Path(f"{destination}.libvirt-{domain}-{time.time_ns()}.xml")
+        try:
+            fd = os.open(live_backup, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                handle.write(live_data)
+                handle.flush()
+                os.fsync(handle.fileno())
+            print(f"NOTE: registered live XML backup -> {live_backup}")
+        except OSError as exc:
+            fail(f"could not save a recovery copy of the live libvirt XML: {exc}")
     if previous_stat is not None:
         backup = Path(f"{destination}.bak-{time.time_ns()}")
-        shutil.copy2(destination, backup)
-        print(f"NOTE: existing XML backup -> {backup}")
-        print("NOTE: preserved the existing VM XML; only its two PCI hostdev source addresses were synchronized.")
+        try:
+            shutil.copy2(destination, backup)
+        except OSError as exc:
+            fail(f"could not back up existing deployed XML {destination}: {exc}")
+        print(f"NOTE: existing on-disk XML backup -> {backup}")
 
+    if previous_stat is not None:
+        print("NOTE: preserving the existing VM definition; only its two PCI hostdev source addresses were synchronized.")
     atomic_write(destination, new_data, previous_stat)
     print(f"OK: synchronized GPU/audio PCI addresses -> {destination}")
     return 0
