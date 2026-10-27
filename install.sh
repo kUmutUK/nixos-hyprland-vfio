@@ -653,9 +653,9 @@ read_state_version() {
   # choose the first version when another candidate disagrees or cannot be
   # parsed unambiguously; require the operator to review the active config.
   if [ "$conflict" = "1" ] || [ "$ambiguous" = "1" ] || { [ "$found_file" = "1" ] && [ -z "$selected_value" ]; }; then
-    warn "Cannot safely infer \${setting} from existing files: \${observed[*]:-no literal value found}."
-    read -rp "Review the active configuration and enter its existing \${setting} value (e.g. 24.11; leave blank to cancel): " value
-    [[ "$value" =~ ^[0-9]{2}\.[0-9]{2}$ ]] || error "\${setting} could not be validated; installation stopped before files were changed."
+    warn "Cannot safely infer ${setting} from existing files: ${observed[*]:-no literal value found}."
+    read -rp "Review the active configuration and enter its existing ${setting} value (e.g. 24.11; leave blank to cancel): " value
+    [[ "$value" =~ ^[0-9]{2}\.[0-9]{2}$ ]] || error "${setting} could not be validated; installation stopped before files were changed."
     STATE_VERSION_VALUE="$value"
     STATE_VERSION_SOURCE="user input after ambiguous/conflicting sources"
   elif [ -n "$selected_value" ]; then
