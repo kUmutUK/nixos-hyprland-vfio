@@ -29,6 +29,7 @@ nix develop ./nixos --command bash -euo pipefail -c '
   python3 scripts/test-vm-xml.py
   python3 scripts/test-vm-xml-sync.py
   python3 scripts/test-vm-diagnostic.py
+  python3 scripts/test-extract-embedded-scripts.py
   bash scripts/test-installer-invariants.sh
   bash scripts/test-installer-rollback.sh
   bash scripts/test-vfio-hook-driver-state.sh
@@ -46,7 +47,9 @@ nix develop ./nixos --command bash -euo pipefail -c '
 '
 ```
 
-For changes to NixOS options or kernel inputs, also evaluate the relevant output and, where feasible, run a real `nixos-rebuild dry-activate`. Do not claim that the full kernel or system builds unless the build was actually completed. The `--no-build` CI step only evaluates the flake; a separate targeted build verifies the selected LSFG-VK package. The Nix formatting check uses `nixfmt --check` and does not rewrite source files.
+For changes to NixOS options or kernel inputs, also evaluate the relevant output and, where feasible, run a real `nixos-rebuild dry-activate`.
+
+The `scripts/test-vm-xml-sync.py` suite also mocks libvirt to verify that a registered inactive `win10` definition from `virsh dumpxml --inactive` takes precedence over stale/missing `/var/lib/libvirt/win10.xml`, that live and on-disk definitions are backed up, and that failed `virsh` queries abort before modifying files. Do not claim that the full kernel or system builds unless the build was actually completed. The `--no-build` CI step only evaluates the flake; a separate targeted build verifies the selected LSFG-VK package. The Nix formatting check uses `nixfmt --check` and does not rewrite source files.
 
 The 2026-10-16 hardware result documented in README.md was obtained with standard (non-RT) BORE-LTO and is historical. In a later update dated 2026-10-23, the project owner reported that the target machine rebuilt successfully with RT-Bore-LTO ThinLTO, compiled the kernel, started and shut down the Windows VM, and returned to the Hyprland host session. This is owner-reported target-system validation, not independent reproduction or a compatibility guarantee for other hardware. The RT-Bore-LTO variant is not published in the upstream binary cache, so each newly selected upstream revision must be built locally and its boot and VM lifecycle revalidated before relying on it.
 

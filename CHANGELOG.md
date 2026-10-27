@@ -12,6 +12,8 @@ This file summarizes notable changes in English. The original detailed Turkish h
 - Updated `actions/checkout` to the pinned Node 24-compatible v7.0.1 revision, added a targeted LSFG-VK package build gate, added read-only Nix formatting checks, and included Python in the development shell.
 - Restored Lossless Scaling installation prerequisites, corrected the README repository map, and changed validation instructions to fail fast without rewriting Nix files.
 - Removed the duplicated installer-invariant test block, consolidated contributor validation into one correctly fenced command block, refreshed the root current-state index to 2026-10-27, and clarified that SSH's `AllowUsers` rule restricts the account name rather than the remote source address.
+- Made VM XML migration query libvirt's registered `win10` domain and prefer its persistent `virsh dumpxml --inactive win10` definition over a stale/missing `/var/lib/libvirt/win10.xml`; libvirt query/export failures now stop before writing, and both registered and existing on-disk XML are backed up.
+- Hardened `scripts/extract-embedded-scripts.py` so a `source = ...` attribute cannot capture a later script body's `text = ''` block, and unterminated Nix indented strings fail explicitly. Added a regression test and made it a CI and contributor-validation step.
 
 ## Unreleased — 2026-10-23
 

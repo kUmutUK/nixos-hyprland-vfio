@@ -775,7 +775,7 @@ else
   # skip-worktree, which can hide changes and cause later merge conflicts.
   # Run the XML update as root: the destination is owned by the system.
   if sudo mkdir -p /var/lib/libvirt && sudo "$PYTHON3" "$REPO_DIR/scripts/sync-vm-xml.py" \
-    "$gpu_pci" "$gpu_audio" "$REPO_DIR/vm-xml/win10.xml" "$PATCHED_XML"; then
+    "$gpu_pci" "$gpu_audio" "$REPO_DIR/vm-xml/win10.xml" "$PATCHED_XML" --domain win10; then
     log "VM XML -> ${PATCHED_XML} (GPU=${gpu_pci}, Audio=${gpu_audio})"
 
     log "The source repository file was NOT modified."
