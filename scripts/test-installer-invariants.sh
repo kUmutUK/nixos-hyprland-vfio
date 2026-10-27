@@ -496,7 +496,11 @@ if ! grep -Fq 'registered_domain_xml(domain)' "$ROOT/scripts/sync-vm-xml.py" \
   || ! grep -Fq '"dumpxml", "--inactive", domain' "$ROOT/scripts/sync-vm-xml.py" \
   || ! grep -Fq '"$PATCHED_XML" --domain win10' "$INSTALLER" \
   || ! grep -Fq '"$REPO/vm-xml/win10.xml" "$VM_XML" --domain win10' "$README" \
-  || ! grep -Fq '"$REPO/vm-xml/win10.xml" "$VM_XML" --domain win10' "$ROOT/INSTALLATION.md"; then
+  || ! grep -Fq '"$REPO/vm-xml/win10.xml" "$VM_XML" --domain win10' "$ROOT/INSTALLATION.md" \
+  || ! grep -Fq 'REGISTERED_DOMAINS="$(sudo virsh list --all --name)"' "$README" \
+  || ! grep -Fq 'REGISTERED_DOMAINS="$(sudo virsh list --all --name)"' "$ROOT/INSTALLATION.md" \
+  || ! grep -Fq 'grep -Fxq win10' "$README" \
+  || ! grep -Fq 'grep -Fxq win10' "$ROOT/INSTALLATION.md"; then
   echo "FAIL: installer/manual VM preparation must prefer a validated registered libvirt XML and fail closed on query errors." >&2
   exit 1
 fi
