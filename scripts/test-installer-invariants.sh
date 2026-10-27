@@ -234,6 +234,18 @@ if ! grep -Fxq '25.07|user input after ambiguous/conflicting sources' "$state_te
   exit 1
 fi
 
+# An unreadable/invalid-UTF-8 candidate must not be treated as absent and
+# silently replaced by the next file's value.
+printf '\377' > "$state_candidate_a"
+printf 'system.stateVersion = "24.11";\n' > "$state_candidate_b"
+printf '25.09\n' | bash "$state_test_dir/read-state-version-harness.sh" "$state_source_helpers" system.stateVersion "$state_candidate_a" "$state_candidate_b" \
+  > "$state_test_dir/unreadable-state-output" 2> "$state_test_dir/unreadable-state-warning"
+if ! grep -Fxq '25.09|user input after ambiguous/conflicting sources' "$state_test_dir/unreadable-state-output" \
+  || ! grep -Fq 'ambiguous or non-literal' "$state_test_dir/unreadable-state-warning"; then
+  echo "FAIL: an unreadable stateVersion source must require explicit user selection." >&2
+  exit 1
+fi
+
 # A genuinely new install, with no source files, keeps the repository default.
 state_output="$(bash "$state_test_dir/read-state-version-harness.sh" "$state_source_helpers" system.stateVersion "$state_test_dir/missing-a" "$state_test_dir/missing-b")"
 if [[ "$state_output" != "|repository default (new install)" ]]; then
