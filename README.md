@@ -53,6 +53,7 @@ set -Eeuo pipefail
 sudo nixos-generate-config --root /mnt
 
 git clone https://github.com/kUmutUK/nixos-hyprland-vfio.git /tmp/repo
+SOURCE_REVISION="$(git -C /tmp/repo rev-parse --verify HEAD)"
 cp /mnt/etc/nixos/hardware-configuration.nix /tmp/repo/nixos/hardware-configuration.nix
 TARGET_BACKUP="/mnt/etc/nixos-generated-backup-$(date +%Y%m%d-%H%M%S)"
 if [ -e "$TARGET_BACKUP" ] || [ -L "$TARGET_BACKUP" ]; then
@@ -63,6 +64,9 @@ sudo mv /mnt/etc/nixos "$TARGET_BACKUP"
 sudo mkdir -p /mnt/etc/nixos
 # Copy the repository contents but leave Git metadata out of the system config tree.
 tar --exclude='./.git' -C /tmp/repo -cf - . | sudo tar --no-same-owner -C /mnt/etc/nixos -xf -
+# Pin post-reboot VM tooling to the checkout used for this installation.
+printf '%s\n' "$SOURCE_REVISION" | sudo tee /mnt/etc/nixos/.source-revision >/dev/null
+sudo chmod 0644 /mnt/etc/nixos/.source-revision
 
 # Preserve the generated swap device path and add randomEncryption.enable = true
 # inside its swapDevices entry, then save and exit the editor.
@@ -81,6 +85,7 @@ sudo nixos-install --flake /mnt/etc/nixos/nixos#nixos
 
 - Replace `nixos/hardware-configuration.nix` with the file generated for the target machine. The repository's original UUIDs and device paths are machine-specific; never use them blindly.
 - Confirm `/mnt/etc/nixos/hashedPassword` exists and has permissions `0600`. Do not commit this file.
+- The clean-install commands record the original Git commit in `/mnt/etc/nixos/.source-revision`. After reboot, VM preparation checks out and verifies that exact revision and stops if the checkout is dirty or different, preventing VM scripts/XML from drifting away from the installed configuration.
 - Review the Nix Community binary-cache trust prompt before accepting it. The current flake configures `https://nix-community.cachix.org`; it does not configure the upstream CachyOS Attic cache. The flake follows the upstream `master` branch for CachyOS and uses `overlays.pinned`; no kernel version is hard-coded in `flake.nix`, and `nixos/flake.lock` records the resolved input revision. RT-Bore-LTO ThinLTO is not published in the upstream CachyOS binary cache, so expect a local kernel build.
 
   To update the running system after its first boot, first save the deployed lock, then update only this input and inspect the diff before rebuilding:
@@ -254,12 +259,36 @@ After the first system activation and reboot, prepare the VM disk and define the
 ```bash
 set -euo pipefail
 REPO="$HOME/nixos-hyprland-vfio"  # change this if your persistent checkout is elsewhere
+SOURCE_REVISION_FILE=/etc/nixos/.source-revision
+SOURCE_REVISION=
+if [ -f "$SOURCE_REVISION_FILE" ]; then
+  SOURCE_REVISION="$(tr -d '[:space:]' < "$SOURCE_REVISION_FILE")"
+  if [[ ! "$SOURCE_REVISION" =~ ^[0-9a-f]{40}$ ]]; then
+    echo "ERROR: Invalid source revision in $SOURCE_REVISION_FILE; inspect it before continuing." >&2
+    exit 1
+  fi
+fi
 if [ ! -d "$REPO/.git" ]; then
   if [ -e "$REPO" ] || [ -L "$REPO" ]; then
     echo "ERROR: $REPO exists but is not a Git checkout; inspect it before continuing." >&2
     exit 1
   fi
   git clone https://github.com/kUmutUK/nixos-hyprland-vfio.git "$REPO"
+  if [ -n "$SOURCE_REVISION" ]; then
+    git -C "$REPO" checkout --detach "$SOURCE_REVISION"
+  fi
+fi
+if [ -n "$SOURCE_REVISION" ]; then
+  CURRENT_SOURCE_REVISION="$(git -C "$REPO" rev-parse --verify HEAD)"
+  if [ "$CURRENT_SOURCE_REVISION" != "$SOURCE_REVISION" ]; then
+    echo "ERROR: Installed configuration came from $SOURCE_REVISION, but $REPO is at $CURRENT_SOURCE_REVISION." >&2
+    echo "Use a separate clean checkout at the recorded revision; do not mix VM tooling from different commits." >&2
+    exit 1
+  fi
+  if [ -n "$(git -C "$REPO" status --porcelain --untracked-files=all)" ]; then
+    echo "ERROR: $REPO has local or untracked changes; use a clean checkout of $SOURCE_REVISION for VM preparation." >&2
+    exit 1
+  fi
 fi
 cd "$REPO"
 VM_XML=/var/lib/libvirt/win10.xml
@@ -277,17 +306,36 @@ else
   EXISTING_VM_XML=0
 fi
 
+STAGING_XML_DIR=
+STAGING_DISK_DIR=
+STAGED_DISK_PATH=
+cleanup_vm_bootstrap() {
+  if [ -n "$STAGING_XML_DIR" ]; then sudo rm -rf -- "$STAGING_XML_DIR" || true; fi
+  if [ -n "$STAGING_DISK_DIR" ]; then sudo rm -rf -- "$STAGING_DISK_DIR" || true; fi
+}
+trap cleanup_vm_bootstrap EXIT
+
+# Existing VMs use their deployed XML directly. New VMs use disposable staging
+# locations so a failed ISO/disk preflight cannot leave a false "existing VM".
+BOOTSTRAP_XML="$VM_XML"
+if [ "$EXISTING_VM_XML" -eq 0 ]; then
+  STAGING_XML_DIR="$(sudo mktemp -d /var/lib/libvirt/.win10-bootstrap.XXXXXX)"
+  STAGING_DISK_DIR="$(sudo mktemp -d /var/lib/libvirt/images/.win10-bootstrap.XXXXXX)"
+  BOOTSTRAP_XML="$STAGING_XML_DIR/win10.xml"
+  STAGED_DISK_PATH="$STAGING_DISK_DIR/win10new.qcow2"
+fi
+
 read -rp "GPU display PCI address from /etc/nixos/nixos/hooks/qemu: " GPU_PCI
 read -rp "GPU audio PCI address from /etc/nixos/nixos/hooks/qemu: " GPU_AUDIO
 sudo python3 "$REPO/scripts/sync-vm-xml.py" \
   "$GPU_PCI" "$GPU_AUDIO" \
-  "$REPO/vm-xml/win10.xml" "$VM_XML" --domain win10
+  "$REPO/vm-xml/win10.xml" "$BOOTSTRAP_XML" --domain win10
 
 # Fail before creating a VM disk if any file-backed CD-ROM source is missing.
-sudo python3 "$REPO/scripts/check-vm-iso-paths.py" "$VM_XML"
+sudo python3 "$REPO/scripts/check-vm-iso-paths.py" "$BOOTSTRAP_XML"
 
 # Read the primary disk path from the synchronized XML; do not assume a filename.
-DISK_PATH="$(sudo python3 - "$VM_XML" <<'PY'
+DISK_PATH="$(sudo python3 - "$BOOTSTRAP_XML" <<'PY'
 import sys
 import xml.etree.ElementTree as ET
 
@@ -302,7 +350,7 @@ if not path or not path.startswith("/"):
 print(path)
 PY
 )"
-echo "Primary disk path in $VM_XML: $DISK_PATH"
+echo "Primary disk path in $BOOTSTRAP_XML: $DISK_PATH"
 
 if [ "$EXISTING_VM_XML" -eq 1 ]; then
   # Never replace or change permissions on a disk belonging to an existing VM.
@@ -325,16 +373,33 @@ else
     echo "Verify the file's identity and configure it manually; refusing to adopt it implicitly." >&2
     exit 1
   fi
-  sudo qemu-img create -f qcow2 "$DISK_PATH" 120G
-  sudo chown qemu-libvirtd:qemu-libvirtd "$DISK_PATH"
-  sudo chmod 0660 "$DISK_PATH"
+  # Keep partial image creation and metadata failures inside the disposable staging directory.
+  sudo qemu-img create -f qcow2 "$STAGED_DISK_PATH" 120G
+  sudo chown qemu-libvirtd:qemu-libvirtd "$STAGED_DISK_PATH"
+  sudo chmod 0660 "$STAGED_DISK_PATH"
+
+  # Publish without replacing a path created concurrently by another process.
+  if sudo test -e "$VM_XML" || sudo test -L "$VM_XML"; then
+    echo "ERROR: $VM_XML appeared during new-VM preparation; refusing to overwrite it." >&2
+    exit 1
+  fi
+  sudo mv --no-clobber --no-target-directory -- "$STAGED_DISK_PATH" "$DISK_PATH"
+  if sudo test -e "$STAGED_DISK_PATH"; then
+    echo "ERROR: The VM disk destination changed during preparation; refusing to continue." >&2
+    exit 1
+  fi
+  sudo mv --no-clobber --no-target-directory -- "$BOOTSTRAP_XML" "$VM_XML"
+  if sudo test -e "$BOOTSTRAP_XML"; then
+    echo "ERROR: The VM XML destination changed during preparation; refusing to overwrite it." >&2
+    exit 1
+  fi
 fi
 
-# The CD-ROM source preflight passed before disk creation; define that same XML.
+# Define only the validated XML at its final path.
 sudo virsh define "$VM_XML"
 ```
 
-When called with --domain win10, the helper checks libvirt itself and prefers the persistent `virsh dumpxml --inactive win10` definition over a missing or stale on-disk XML; if libvirt cannot be queried or the registered domain cannot be exported, it stops without writing. The registered persistent definition and any existing on-disk XML are backed up before the destination changes. If win10 is not registered, an existing deployed XML remains the source of truth; only a genuinely new, unregistered VM starts from the template and receives a fresh UUID/MAC. The helper preserves existing VM settings and changes only the two GPU/audio PCI addresses. It refuses to replace a symlink, malformed XML, a different VM domain, or an unsupported disk/PCI layout. It never edits `vm-xml/win10.xml`. The disk setup above reads the actual primary disk path from the synchronized XML: existing VM disks are preserved and are never auto-created, re-owned, or re-permissioned; a missing disk for an existing VM stops for manual recovery. Automatic creation is limited to the reviewed 120G default path for a new VM. Verify the Windows and VirtIO ISO paths in the deployed XML exist before starting the guest. The XML's PCI addresses must match `GPU_PCI` and `GPU_AUDIO` in `/etc/nixos/nixos/hooks/qemu`; `install.sh` performs this synchronization when run successfully.
+When called with --domain win10, the helper checks libvirt itself and prefers the persistent `virsh dumpxml --inactive win10` definition over a missing or stale on-disk XML; if libvirt cannot be queried or the registered domain cannot be exported, it stops without writing. The registered persistent definition and any existing on-disk XML are backed up before the destination changes. If win10 is not registered, an existing deployed XML remains the source of truth; only a genuinely new, unregistered VM starts from the template and receives a fresh UUID/MAC. The helper preserves existing VM settings and changes only the two GPU/audio PCI addresses. It refuses to replace a symlink, malformed XML, a different VM domain, or an unsupported disk/PCI layout. It never edits `vm-xml/win10.xml`. The disk setup above reads the actual primary disk path from the synchronized XML: existing VM disks are preserved and are never auto-created, re-owned, or re-permissioned; a missing disk for an existing VM stops for manual recovery. Automatic creation is limited to the reviewed 120G default path for a new VM. Verify the Windows and VirtIO ISO paths in the deployed XML exist before starting the guest. The XML's PCI addresses must match `GPU_PCI` and `GPU_AUDIO` in `/etc/nixos/nixos/hooks/qemu`; `install.sh` performs this synchronization when run successfully. For a new VM, the manual flow keeps the XML and disk in temporary staging directories until ISO checks and disk creation/ownership/permissions succeed. A missing ISO or staged disk-creation failure therefore leaves no deployed XML or final-path partial disk, and the user can retry safely; concurrent destination conflicts fail closed rather than overwriting files.
 
 The default XML contains two active USB passthrough entries with fixed vendor/product IDs `1532:0098` and `05ac:024f`; they are not detected or substituted automatically by the installer. Confirm with `lsusb` that these IDs identify the devices you intend to pass through, and edit or remove the corresponding USB `<hostdev>` entries in `/var/lib/libvirt/win10.xml` before starting the VM if they do not. The XML intentionally has no emulated graphics console, so verify that the guest has a usable display and input path before handing it the only GPU.
 
@@ -481,6 +546,7 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 ├── LICENSE
 ├── install.sh                      # migration/update helper for an existing NixOS host
 ├── .github/workflows/check.yml
+├── .github/workflows/full-system-build.yml
 ├── docs/
 │   ├── REPAIR-AND-VALIDATION-REPORT.md
 │   └── archive/                    # Historical audits and original Turkish release history
@@ -523,6 +589,7 @@ nix develop ./nixos --command bash -euo pipefail -c '
   python3 scripts/test-lsfg-v1-config.py
   python3 scripts/test-extract-embedded-scripts.py
   python3 scripts/test-vm-iso-paths.py
+  bash scripts/test-manual-vm-bootstrap.sh
   python3 scripts/test-vm-xml.py
   python3 scripts/test-vm-xml-sync.py
   python3 scripts/test-vm-diagnostic.py
