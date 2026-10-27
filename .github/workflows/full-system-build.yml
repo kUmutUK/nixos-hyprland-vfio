@@ -1,0 +1,49 @@
+name: Full NixOS System Build (manual)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: full-nixos-build-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  full-system-build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@3138316df39ed29be04236d7ffc686fa525866aa
+
+      - name: Report available disk space
+        run: df -h "$GITHUB_WORKSPACE" "$RUNNER_TEMP"
+
+      - name: Evaluate the locked flake
+        working-directory: nixos
+        run: |
+          nix flake check --no-build --show-trace --no-update-lock-file \
+            --option warn-dirty false
+
+      - name: Build the complete NixOS system and selected kernel
+        working-directory: nixos
+        run: |
+          nix build --no-link --show-trace --no-update-lock-file \
+            .#nixosConfigurations.nixos.config.system.build.toplevel
+
+      - name: Verify the lock file was not rewritten
+        run: |
+          if ! git diff --quiet -- nixos/flake.lock; then
+            echo "::error::flake.lock changed during the full system build."
+            git --no-pager diff -- nixos/flake.lock
+            exit 1
+          fi
+          echo "  flake.lock clean"
+
+      - name: Report remaining disk space
+        if: always()
+        run: df -h "$GITHUB_WORKSPACE" "$RUNNER_TEMP"

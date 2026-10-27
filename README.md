@@ -535,6 +535,8 @@ nix develop ./nixos --command bash -euo pipefail -c '
 ```
 `nix flake check --no-build` evaluates the flake but does not build the complete system or kernel. The separate `nix build .#lsfg-vk` command builds only the selected LSFG-VK package. Neither command replaces a full system/kernel build, libvirt domain validation, or a physical GPU lifecycle test. To intentionally rewrite formatting, run `nixfmt` without `--check` as a separate reviewed edit.
 
+For a complete NixOS system build on GitHub Actions, open **Actions → Full NixOS System Build (manual) → Run workflow**. This six-hour, manually dispatched job builds `nixosConfigurations.nixos.config.system.build.toplevel`, including the selected RT-Bore-LTO kernel. It is kept out of normal push/PR CI because the custom kernel can be expensive to compile. A successful build validates the build graph on the runner; it does not prove GPU passthrough or host-display recovery on physical hardware.
+
 ### Prior target-system hardware validation — 2026-10-16
 
 > **Historical scope as of 2026-10-16:** this result applies to the previous standard BORE-LTO kernel, not the then-untested RT-Bore-LTO kernel.
