@@ -29,6 +29,7 @@ nix develop ./nixos --command bash -euo pipefail -c '
   python3 scripts/test-vm-xml.py
   python3 scripts/test-vm-xml-sync.py
   python3 scripts/test-vm-diagnostic.py
+  python3 scripts/test-extract-embedded-scripts.py
   bash scripts/test-installer-invariants.sh
   bash scripts/test-installer-rollback.sh
   bash scripts/test-vfio-hook-driver-state.sh
