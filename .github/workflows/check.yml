@@ -79,6 +79,12 @@ jobs:
       - name: Installer partial-deployment rollback regression test
         run: bash scripts/test-installer-rollback.sh
 
+      - name: Installer process-lock regression test
+        run: |
+          bash -n scripts/installer-lock.sh
+          bash -n scripts/test-installer-lock.sh
+          bash scripts/test-installer-lock.sh
+
       # ---- GATE STEPS (must pass) ----
 
       - name: shellcheck
@@ -93,7 +99,7 @@ jobs:
             sudo apt-get update -qq
             sudo apt-get install -y -qq shellcheck
           fi
-          shellcheck -S warning install.sh scripts/pci-address.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh
+          shellcheck -S warning install.sh scripts/installer-lock.sh scripts/pci-address.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh scripts/test-installer-lock.sh scripts/test-manual-vm-bootstrap.sh
           echo "  shellcheck OK"
 
       - name: VFIO hook driver-state regression tests
@@ -170,6 +176,18 @@ jobs:
             --no-update-lock-file \
             --option warn-dirty false
           echo "  flake evaluates OK"
+
+      - name: Validate generated Hyprland Lua syntax
+        working-directory: nixos
+        run: |
+          set -euo pipefail
+          lua_file="$(mktemp)"
+          trap 'rm -f "$lua_file"' EXIT
+          nix eval --raw --no-update-lock-file \
+            '.#nixosConfigurations.nixos.config.home-manager.users.localhost.xdg.configFile."hypr/hyprland.lua".text' \
+            > "$lua_file"
+          nix develop . --no-update-lock-file --command luac -p "$lua_file"
+          echo "  generated Hyprland Lua syntax OK"
 
       - name: Build the selected LSFG-VK v1 package
         working-directory: nixos
