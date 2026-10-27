@@ -61,7 +61,7 @@ def fake_virsh_env(
         '  cat "$FAKE_VIRSH_NAMES"\n'
         "  exit 0\n"
         "fi\n"
-        'if [[ "${1:-}" == "dumpxml" && "${2:-}" == "win10" ]]; then\n'
+        'if [[ "${1:-}" == "dumpxml" && "${2:-}" == "--inactive" && "${3:-}" == "win10" ]]; then\n'
         '  if [[ "${FAKE_VIRSH_FAIL_DUMP:-0}" == "1" ]]; then exit 4; fi\n'
         '  cat "$FAKE_VIRSH_XML"\n'
         "  exit 0\n"
@@ -72,7 +72,7 @@ def fake_virsh_env(
     virsh.chmod(0o755)
     names_path = root / "domain-names.txt"
     names_path.write_text(domain_names, encoding="utf-8")
-    xml_path = root / "live-domain.xml"
+    xml_path = root / "registered-domain.xml"
     xml_path.write_text(live_xml, encoding="utf-8")
     env = os.environ.copy()
     env["PATH"] = f"{bin_dir}{os.pathsep}{env.get('PATH', '')}"
