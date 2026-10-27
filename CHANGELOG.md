@@ -27,6 +27,7 @@ This file summarizes notable changes in English. The original detailed Turkish h
 - Added the embedded-script extractor regression test to the README's manual validation commands, keeping the documented test sequence aligned with CONTRIBUTING and CI.
 - Updated the current repair report to record the successful CI run for the already-merged `main` commit and to distinguish that result from physical GPU/VM lifecycle validation.
 - Recorded that the currently attached ZIP independently measures 436,212 bytes, SHA-256 `3f0f0ed5…`, 96 entries, and embedded HEAD `a631d195…`; the separately reported v7 figures (455,316 bytes, 101 entries, SHA-256 prefix `8d38226c…`, embedded HEAD `8467e496…`) were not verifiable from those bytes and are explicitly kept separate pending the actual archive. No changes were made to tracked installer mode or the already-correct canonical ZIP workflow.
+- Updated the validation report to record a reproduced combined-command timeout at the outer 120-second limit after all eight regression scripts and separate syntax/compile/JSON/XML checks printed success. The tests themselves did not report failures; per-test timing and the exact runner timeout trace are still missing, so combined-run stability remains unresolved.
 
 - Added a fail-closed preflight for file-backed CD-ROM ISO paths before VM disk creation and XML definition, with regression tests wired into CI and documented in the README and installation guide.
 
