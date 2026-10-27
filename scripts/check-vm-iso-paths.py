@@ -77,11 +77,11 @@ def validate_vm_iso_paths(xml_path: str | Path, report: Reporter = print) -> int
         errors += 1
 
     if errors:
-        report(f"ERROR: VM ISO/source preflight failed ({errors} problem(s)); VM was not defined.")
+        report(f"ERROR: VM CD-ROM source preflight failed ({errors} problem(s)); VM was not defined.")
         return 1
 
     if file_sources_checked:
-        report(f"VM ISO/source preflight passed ({file_sources_checked} file path(s) checked).")
+        report(f"VM CD-ROM source preflight passed ({file_sources_checked} file path(s) checked).")
     else:
         report("VM CD-ROM source preflight passed; no file-backed source paths required checking.")
     return 0
