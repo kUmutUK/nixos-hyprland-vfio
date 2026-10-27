@@ -345,6 +345,12 @@ if ! grep -Fq 'scripts/sync-vm-xml.py' "$INSTALLER"; then
   echo "FAIL: installer must call the tested VM XML synchronization helper." >&2
   exit 1
 fi
+if [ ! -s "$ROOT/scripts/test-extract-embedded-scripts.py" ] \
+  || ! grep -Fq 'python3 scripts/test-extract-embedded-scripts.py' "$ROOT/.github/workflows/check.yml" \
+  || ! grep -Fq 'python3 scripts/test-extract-embedded-scripts.py' "$ROOT/CONTRIBUTING.md"; then
+  echo "FAIL: embedded-script extraction boundary regressions must be tested in CI and contributor validation." >&2
+  exit 1
+fi
 if ! grep -Fq 'registered_domain_xml(domain)' "$ROOT/scripts/sync-vm-xml.py" \
   || ! grep -Fq 'virsh dumpxml' "$ROOT/scripts/sync-vm-xml.py" \
   || ! grep -Fq '"$PATCHED_XML" --domain win10' "$INSTALLER" \
