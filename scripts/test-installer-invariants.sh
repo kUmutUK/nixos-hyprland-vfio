@@ -537,9 +537,14 @@ for name in sys.argv[1:]:
     else:
         anchor = "# Run these commands after the first reboot, not from the live ISO."
     begin = text.index(anchor)
-    fence = chr(96) * 3 + "bash\n"
-    start = text.index(fence, begin) + len(fence)
-    end = text.index("\n" + chr(96) * 3, start)
+    fence = chr(96) * 3 + "bash\\n"
+    # In README the anchor is prose before the code block. In INSTALLATION.md
+    # the anchor is a comment inside the block, so its opening fence is before it.
+    if name.endswith("README.md"):
+        start = text.index(fence, begin) + len(fence)
+    else:
+        start = text.rindex(fence, 0, begin) + len(fence)
+    end = text.index("\\n" + chr(96) * 3, start)
     block = text[start:end]
     required = (
         'BOOTSTRAP_XML="$STAGING_XML_DIR/win10.xml"',
