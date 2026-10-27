@@ -89,6 +89,7 @@
           curl
           jq
           libxml2
+          lua
         ];
         shellHook = ''
           echo "nixos-hyprland-vfio development shell — nixfmt, Python, statix, and deadnix are available"
