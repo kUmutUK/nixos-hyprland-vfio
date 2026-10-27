@@ -165,4 +165,4 @@ if [ ! -s "$VM_XML" ] || [ ! -s "$DISK_PATH" ] || ! grep -Fq "define $VM_XML" "$
 fi
 assert_no_staging_dirs
 
-echo "OK: missing-ISO retry, staged disk failure cleanup, orphan-disk refusal, and successful VM bootstrap passed."
+echo "OK: missing-ISO retry, staged disk failure cleanup, orphan-disk refusal, concurrent XML rollback, and successful VM bootstrap passed."
