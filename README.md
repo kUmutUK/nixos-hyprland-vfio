@@ -166,15 +166,18 @@ fi
 
 7. Find the GPU display and HDMI/DP audio functions with `lspci -Dnn`. Edit `/etc/nixos/nixos/hooks/qemu` so `GPU_PCI` and `GPU_AUDIO` match the actual PCI addresses. Validate IOMMU groups and make sure no unrelated device shares an unsafe group before using passthrough.
 
-8. For an existing VM, **do not replace its XML with the repository template**. Preserve its UUID, MAC, firmware/NVRAM and primary Windows disk path. When `win10` is already registered with libvirt, the `scripts/sync-vm-xml.py --domain win10` helper uses the persistent definition from `virsh dumpxml --inactive win10`; it fails closed if libvirt cannot be queried and backs up both the registered definition and any existing on-disk XML before synchronizing only the two GPU/audio PCI addresses. For a new VM, use the helper in [Preparing and starting the VM](#preparing-and-starting-the-vm) instead of copying the template directly; it generates a fresh UUID and MAC and leaves the source template unchanged. Review the disk/ISO paths and USB IDs before defining the XML. Define it with `sudo virsh define /var/lib/libvirt/win10.xml` after the guest is shut down.
+8. For an existing VM, **do not replace its XML with the repository template**. Preserve its UUID, MAC, firmware/NVRAM and primary Windows disk path. When `win10` is already registered with libvirt, the `scripts/sync-vm-xml.py --domain win10` helper uses the persistent definition from `virsh dumpxml --inactive win10`; it fails closed if libvirt cannot be queried and backs up both the registered definition and any existing on-disk XML before synchronizing only the two GPU/audio PCI addresses. For a new VM, use the helper in [Preparing and starting the VM](#preparing-and-starting-the-vm) instead of copying the template directly; it generates a fresh UUID and MAC and leaves the source template unchanged. Review the disk/ISO paths and USB IDs before defining the XML. Before any manual production-XML definition, run `sudo python3 "$REPO/scripts/check-vm-iso-paths.py" /var/lib/libvirt/win10.xml`; define the XML with `sudo virsh define /var/lib/libvirt/win10.xml` only after the preflight passes and the guest is shut down.
 
-9. Check the password file, run the test suite available on the host, and build before switching:
+9. Check the password file, run these **minimum pre-switch regression checks**, and build before switching. This is not the complete CI-equivalent validation suite; see [Validation](#validation) for the full repository checks.
 
 ```bash
 bash -n "$REPO/install.sh"
 bash "$REPO/scripts/test-installer-invariants.sh"
 bash "$REPO/scripts/test-installer-rollback.sh"
 bash "$REPO/scripts/test-vfio-hook-driver-state.sh"
+python3 "$REPO/scripts/test-lsfg-v1-config.py"
+python3 "$REPO/scripts/test-extract-embedded-scripts.py"
+python3 "$REPO/scripts/test-vm-iso-paths.py"
 python3 "$REPO/scripts/test-vm-xml.py"
 python3 "$REPO/scripts/test-vm-xml-sync.py"
 python3 "$REPO/scripts/test-vm-diagnostic.py"
@@ -270,6 +273,9 @@ sudo python3 "$REPO/scripts/sync-vm-xml.py" \
   "$GPU_PCI" "$GPU_AUDIO" \
   "$REPO/vm-xml/win10.xml" "$VM_XML" --domain win10
 
+# Fail before creating a VM disk if any file-backed CD-ROM source is missing.
+sudo python3 "$REPO/scripts/check-vm-iso-paths.py" "$VM_XML"
+
 # Read the primary disk path from the synchronized XML; do not assume a filename.
 DISK_PATH="$(sudo python3 - "$VM_XML" <<'PY'
 import sys
@@ -314,7 +320,7 @@ else
   sudo chmod 0660 "$DISK_PATH"
 fi
 
-# The XML's Windows and VirtIO ISO source paths must also point to existing files.
+# The CD-ROM source preflight passed before disk creation; define that same XML.
 sudo virsh define "$VM_XML"
 ```
 
@@ -469,14 +475,17 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 │   ├── REPAIR-AND-VALIDATION-REPORT.md
 │   └── archive/                    # Historical audits and original Turkish release history
 ├── scripts/
+│   ├── check-vm-iso-paths.py
 │   ├── extract-embedded-scripts.py
 │   ├── prepare-vm-diagnostic.py
+│   ├── test-extract-embedded-scripts.py
 │   ├── test-lsfg-v1-config.py
 │   ├── test-installer-invariants.sh
 │   ├── test-installer-rollback.sh
 │   ├── test-vfio-hook-driver-state.sh
 │   ├── sync-vm-xml.py
 │   ├── test-vm-diagnostic.py
+│   ├── test-vm-iso-paths.py
 │   ├── test-vm-xml-sync.py
 │   └── test-vm-xml.py
 ├── vm-xml/win10.xml
@@ -501,10 +510,11 @@ nix develop ./nixos --command bash -euo pipefail -c '
   shellcheck -S warning install.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh
   python3 -c "import xml.etree.ElementTree as ET; ET.parse(\"vm-xml/win10.xml\")"
   python3 scripts/test-lsfg-v1-config.py
+  python3 scripts/test-extract-embedded-scripts.py
+  python3 scripts/test-vm-iso-paths.py
   python3 scripts/test-vm-xml.py
   python3 scripts/test-vm-xml-sync.py
   python3 scripts/test-vm-diagnostic.py
-  python3 scripts/test-extract-embedded-scripts.py
   bash scripts/test-vfio-hook-driver-state.sh
   bash scripts/test-installer-invariants.sh
   bash scripts/test-installer-rollback.sh

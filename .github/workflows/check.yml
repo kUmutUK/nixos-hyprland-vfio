@@ -67,6 +67,7 @@ jobs:
           python3 scripts/test-vm-xml-sync.py
           python3 scripts/test-vm-diagnostic.py
           python3 scripts/test-lsfg-v1-config.py
+          python3 scripts/test-vm-iso-paths.py
 
       - name: Installer, English locale, global Reflex and SSH regression checks
         run: bash scripts/test-installer-invariants.sh

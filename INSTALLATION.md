@@ -554,7 +554,7 @@ sudo reboot
 > `Win10_22H2_English_x64v1.iso` and `virtio-win-0.1.285.iso` under
 > `/var/lib/libvirt/images/`. Confirm that both files exist at the exact paths shown by the
 > deployed XML; if you use different filenames or locations, edit those XML source paths first.
-> A missing Windows or VirtIO ISO prevents the VM from starting or completing Windows setup.
+> A missing Windows or VirtIO ISO prevents the VM from starting or completing Windows setup. The command block below runs `scripts/check-vm-iso-paths.py` against the synchronized deployed XML before creating a VM disk and before `virsh define`; it checks each file-backed CD-ROM source path and stops with a clear error when a referenced file is missing.
 >
 ```bash
 # Run these commands after the first reboot, not from the live ISO.
@@ -579,6 +579,9 @@ read -rp "GPU audio PCI address from /etc/nixos/nixos/hooks/qemu: " GPU_AUDIO
 sudo python3 "$REPO/scripts/sync-vm-xml.py" \
   "$GPU_PCI" "$GPU_AUDIO" \
   "$REPO/vm-xml/win10.xml" "$VM_XML" --domain win10
+
+# Validate file-backed CD-ROM sources before creating a disk or defining the VM.
+sudo python3 "$REPO/scripts/check-vm-iso-paths.py" "$VM_XML"
 
 # Read the primary disk path from the synchronized XML; do not assume a filename.
 DISK_PATH="$(sudo python3 - "$VM_XML" <<'PY'
@@ -624,7 +627,7 @@ else
   sudo chmod 0660 "$DISK_PATH"
 fi
 
-# The Windows and VirtIO ISO paths in $VM_XML must already point to existing files.
+# The CD-ROM source preflight passed before disk creation; define that same XML.
 sudo virsh define "$VM_XML"
 sudo virsh list --all     # win10 should appear as "shut off"
 ```

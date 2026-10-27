@@ -21,6 +21,8 @@ This file summarizes notable changes in English. The original detailed Turkish h
 - Added the embedded-script extractor regression test to the README's manual validation commands, keeping the documented test sequence aligned with CONTRIBUTING and CI.
 - Updated the current repair report to record the successful CI run for the already-merged `main` commit and to distinguish that result from physical GPU/VM lifecycle validation.
 
+- Added a fail-closed preflight for file-backed CD-ROM ISO paths before VM disk creation and XML definition, with regression tests wired into CI and documented in the README and installation guide.
+
 ## Follow-up fixes — 2026-10-23
 
 ### Follow-up audit fixes
