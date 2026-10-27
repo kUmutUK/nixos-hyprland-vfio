@@ -712,7 +712,7 @@ if grep -Fq 'nixos-install --flake /mnt/etc/nixos/nixos#nixos --accept-flake-con
   echo "FAIL: active install/update guidance must not silently bypass flake cache-trust prompts." >&2
   exit 1
 fi
-if ! grep -Fq 'services.openssh = {' "$CONFIG" || ! grep -Fq 'enable = true;' "$CONFIG" || ! grep -Fq 'PasswordAuthentication = true;' "$CONFIG" || ! grep -Fq 'AllowUsers = [ "localhost" ];' "$CONFIG" || ! grep -Fq 'PermitRootLogin = "no";' "$CONFIG"; then
+if ! grep -Fq 'services.openssh = {' "$CONFIG" || ! grep -Fq 'PasswordAuthentication = false;' "$CONFIG" || ! grep -Fq 'KbdInteractiveAuthentication = false;' "$CONFIG" || ! grep -Fq 'PubkeyAuthentication = true;' "$CONFIG" || ! grep -Fq 'AllowUsers = [ "localhost" ];' "$CONFIG" || ! grep -Fq 'PermitRootLogin = "no";' "$CONFIG"; then
   echo "FAIL: SSH must be usable for localhost without allowing root SSH login." >&2
   exit 1
 fi
