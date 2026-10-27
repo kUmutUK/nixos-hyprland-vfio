@@ -27,12 +27,65 @@ PY
 }
 
 bash -n "$INSTALLER"
+bash -n "$ROOT/scripts/pci-address.sh"
+
+# Exercise the exact shared PCI validator used by install.sh.
+source "$ROOT/scripts/pci-address.sh"
+for address in 0000:0b:00.0 0000:0B:00.0 0000:0B:00.7; do
+  if ! valid_pci_address "$address"; then
+    echo "FAIL: valid PCI address was rejected: $address" >&2
+    exit 1
+  fi
+done
+for address in 0000:0b:00.8 0000:0b:00.f 0000:0b:00 0000:0b:00.g; do
+  if valid_pci_address "$address"; then
+    echo "FAIL: invalid PCI address was accepted: $address" >&2
+    exit 1
+  fi
+done
+if [[ "$(normalize_pci_address 0000:0B:00.0)" != "0000:0b:00.0" ]]; then
+  echo "FAIL: PCI address normalization did not lowercase the address." >&2
+  exit 1
+fi
+
+# Exercise the early Home Snapper filesystem preflight without touching the host.
+home_preflight_test_dir="$(mktemp -d)"
+trap 'rm -rf "${state_test_dir:-}" "$home_preflight_test_dir"' EXIT
+awk '/^require_btrfs_home\(\) \{/ { capture=1 } capture { print } capture && /^}/ { exit }' "$INSTALLER" \
+  > "$home_preflight_test_dir/require-btrfs-home.sh"
+if ! grep -q '^require_btrfs_home() {' "$home_preflight_test_dir/require-btrfs-home.sh"; then
+  echo "FAIL: could not locate require_btrfs_home() for its regression test." >&2
+  exit 1
+fi
+cat > "$home_preflight_test_dir/harness.sh" <<'BASH'
+set -euo pipefail
+error() { printf '%s\n' "$*" >&2; return 1; }
+findmnt() { printf '%s\n' "$TEST_HOME_FSTYPE"; }
+source "$1"
+require_btrfs_home
+BASH
+if ! TEST_HOME_FSTYPE=btrfs bash "$home_preflight_test_dir/harness.sh" "$home_preflight_test_dir/require-btrfs-home.sh"; then
+  echo "FAIL: Btrfs /home was rejected by the installer preflight." >&2
+  exit 1
+fi
+for filesystem in ext4 xfs unknown; do
+  if TEST_HOME_FSTYPE="$filesystem" bash "$home_preflight_test_dir/harness.sh" "$home_preflight_test_dir/require-btrfs-home.sh" >/dev/null 2>&1; then
+    echo "FAIL: non-Btrfs /home was accepted by the installer preflight ($filesystem)." >&2
+    exit 1
+  fi
+done
+home_preflight_call_line="$(grep -n '^require_btrfs_home$' "$INSTALLER" | cut -d: -f1)"
+first_mutation_line="$(grep -n '^mkdir -m 700' "$INSTALLER" | head -n 1 | cut -d: -f1)"
+if [[ -z "$home_preflight_call_line" || -z "$first_mutation_line" ]] \
+  || (( home_preflight_call_line >= first_mutation_line )); then
+  echo "FAIL: Home Snapper filesystem preflight must run before deployment/backup mutations." >&2
+  exit 1
+fi
 
 # Exercise the real apply_state_version() helper without running the installer.
 # The installer is interactive and performs system changes at top level, so only
 # extract this pure helper and provide harmless stubs for sudo/log/error.
 state_test_dir="$(mktemp -d)"
-trap 'rm -rf "$state_test_dir"' EXIT
 
 # Exercise the actual installer source preflight against temporary repository trees.
 preflight_dir="$state_test_dir/source-preflight"
