@@ -106,6 +106,13 @@ if ! grep -Fq 'packages.${system}.lsfg-vk' "$FLAKE"; then
   echo "FAIL: the selected LSFG-VK package must be exposed for an explicit build check." >&2
   exit 1
 fi
+if ! grep -Fq 'LSFG-VK schema decision' "$README" \
+  || ! grep -Fq 'v1 `[[game]]`/`exe` profile format' "$README" \
+  || ! grep -Fq 'python3 scripts/test-lsfg-v1-config.py' "$ROOT/.github/workflows/check.yml" \
+  || ! grep -Fq 'Build the selected LSFG-VK v1 package' "$ROOT/.github/workflows/check.yml"; then
+  echo "FAIL: the documented LSFG-VK v1 schema decision must match the CI test/build contract." >&2
+  exit 1
+fi
 if ! grep -Fq 'nixfmt --check' "$README" \
   || ! grep -Fq '├── .gitignore' "$README" \
   || ! grep -Fq '├── DISCLAIMER.md' "$README" \
