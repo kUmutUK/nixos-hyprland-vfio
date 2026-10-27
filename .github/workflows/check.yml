@@ -69,6 +69,9 @@ jobs:
           python3 scripts/test-lsfg-v1-config.py
           python3 scripts/test-vm-iso-paths.py
 
+      - name: Manual VM bootstrap retry regression test
+        run: bash scripts/test-manual-vm-bootstrap.sh
+
       - name: Installer, English locale, global Reflex and SSH regression checks
         run: bash scripts/test-installer-invariants.sh
 
