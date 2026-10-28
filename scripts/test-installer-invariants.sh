@@ -172,8 +172,8 @@ if ! grep -Fq 'nixfmt --check' "$README" \
   || ! grep -Fq 'Lossless Scaling' "$README" \
   || ! grep -Fq 'Lossless Scaling' "$ENGLISH_GUIDE" \
   || ! grep -Fq 'nixfmt --check' "$CONTRIBUTING" \
-  || ! grep -Fq 'shellcheck -S warning install.sh scripts/package-source-zip.sh scripts/installer-lock.sh scripts/pci-address.sh nixos/hooks/qemu' "$README" \
-  || ! grep -Fq 'shellcheck -S warning install.sh scripts/package-source-zip.sh scripts/installer-lock.sh scripts/pci-address.sh nixos/hooks/qemu' "$CONTRIBUTING" \
+  || ! grep -Fq 'shellcheck -S warning install.sh scripts/package-source-zip.sh scripts/verify-source-revision.sh scripts/test-source-revision.sh scripts/installer-lock.sh scripts/pci-address.sh nixos/hooks/qemu' "$README" \
+  || ! grep -Fq 'shellcheck -S warning install.sh scripts/package-source-zip.sh scripts/verify-source-revision.sh scripts/test-source-revision.sh scripts/installer-lock.sh scripts/pci-address.sh nixos/hooks/qemu' "$CONTRIBUTING" \
   || ! grep -Fq 'bash scripts/test-installer-lock.sh' "$README" \
   || ! grep -Fq 'bash scripts/test-installer-lock.sh' "$CONTRIBUTING" \
   || ! grep -Fq 'scripts/package-source-zip.sh' "$ROOT/.github/workflows/check.yml" \
