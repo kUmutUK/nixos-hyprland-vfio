@@ -110,17 +110,18 @@ def main() -> int:
         if cdrom.find("boot") is None:
             return fail("Windows and VirtIO CD-ROM boot priorities must be explicit")
 
+    # ISO contents cannot be identified reliably from arbitrary filenames.
+    # The VM template contract is therefore that the first optical boot entry
+    # is the Windows installer and the second is the VirtIO driver ISO.
     cdroms.sort(key=lambda disk: int(disk.find("boot").get("order", "")))
     windows_iso, virtio_iso = cdroms
-    win_boot = windows_iso.find("boot")
-    virtio_boot = virtio_iso.find("boot")
-    windows_order = int(win_boot.get("order", ""))
-    virtio_order = int(virtio_boot.get("order", ""))
+    windows_order = int(windows_iso.find("boot").get("order", ""))
+    virtio_order = int(virtio_iso.find("boot").get("order", ""))
 
     if windows_order <= 1:
         return fail("the virtual system disk must boot before the Windows and VirtIO CD-ROMs")
-    if windows_order >= virtio_order:
-        return fail("the Windows installation ISO must be tried before the VirtIO driver ISO")
+    # Boot-order uniqueness is checked above, so sorting guarantees that
+    # windows_order is lower than virtio_order.
     if windows_iso.find("target") is None or windows_iso.find("target").get("bus") != "sata":
         return fail("Windows installation ISO should use the SATA CD-ROM device")
 
