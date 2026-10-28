@@ -305,6 +305,7 @@ python3 "$REPO/scripts/test-lsfg-v1-config.py"
 python3 "$REPO/scripts/test-extract-embedded-scripts.py"
 python3 "$REPO/scripts/test-vm-iso-paths.py"
 python3 "$REPO/scripts/test-vm-xml.py"
+python3 "$REPO/scripts/test-vm-xml-structure.py"
 python3 "$REPO/scripts/test-vm-xml-paths.py"
 python3 "$REPO/scripts/test-vm-xml-sync.py"
 python3 "$REPO/scripts/test-vm-diagnostic.py"
@@ -375,7 +376,7 @@ OpenSSH is enabled on TCP port 22 and the host firewall allows that port, but pa
 
 ## Preparing and starting the VM
 
-The VM domain is named `win10`. The default `vm-xml/win10.xml` expects these files under `/var/lib/libvirt/images/`: `Win10_22H2_English_x64v1.iso`, `virtio-win-0.1.285.iso`, and `win10new.qcow2`. Confirm that the ISO files you downloaded match the XML paths; edit the XML if their names or locations differ. The XML uses the SATA bus for both CD-ROM drives; the operating-system disk uses VirtIO and needs the VirtIO storage driver during Windows setup.
+The VM domain is named `win10`. The default `vm-xml/win10.xml` expects these files under `/var/lib/libvirt/images/`: `Win10_22H2_English_x64v1.iso`, `virtio-win-0.1.285.iso`, and `win10new.qcow2`. Confirm that the ISO files you downloaded match the XML paths; edit the XML if their names or locations differ. The XML uses the SATA bus for both CD-ROM drives; the operating-system disk uses VirtIO and needs the VirtIO storage driver during Windows setup. The structural XML test does not depend on ISO filenames: it requires two distinct, absolute file-backed CD-ROM paths with explicit boot priorities, and treats the earlier optical boot entry (after the system disk) as the Windows installer and the later one as the VirtIO driver ISO. This checks the declared XML structure, not the actual contents of the ISO files; `scripts/check-vm-iso-paths.py` separately checks that the paths exist.
 
 > **Windows 10 lifecycle:** Standard support for Windows 10 Home and Pro ended on October 14, 2025 ([Microsoft lifecycle policy](https://learn.microsoft.com/en-us/lifecycle/products/windows-10-home-and-pro)). Eligible, enrolled consumer devices may receive ESU protection through October 12, 2027; commercial ESU has separate licensing and coverage dates ([Microsoft ESU FAQ](https://learn.microsoft.com/en-us/lifecycle/faq/extended-security-updates)). This template does not enroll the guest, verify the license/edition, or install updates. Confirm the actual guest's ESU or other supported-lifecycle status before using it online; the ISO filename alone proves none of these conditions.
 
@@ -709,6 +710,7 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 │   ├── test-vm-diagnostic.py
 │   ├── test-vm-iso-paths.py
 │   ├── test-vm-xml-sync.py
+│   ├── test-vm-xml-structure.py
 │   └── test-vm-xml.py
 ├── vm-xml/win10.xml
 └── nixos/
@@ -759,7 +761,8 @@ nix develop ./nixos --command bash -euo pipefail -c '
   bash -n scripts/test-manual-vm-bootstrap.sh
   bash scripts/test-manual-vm-bootstrap.sh
   python3 scripts/test-vm-xml.py
-python3 scripts/test-vm-xml-paths.py
+  python3 scripts/test-vm-xml-structure.py
+  python3 scripts/test-vm-xml-paths.py
   python3 scripts/test-vm-xml-sync.py
   python3 scripts/test-vm-diagnostic.py
   bash scripts/test-vfio-hook-driver-state.sh

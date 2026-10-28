@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import sys
 import xml.etree.ElementTree as ET
@@ -81,20 +82,45 @@ def main() -> int:
     if disk_one.get("device") != "disk" or disk_one.find("target") is None:
         return fail("boot order 1 must refer to the virtual system disk")
 
-    windows_iso = next((d for d in disks if d.find("source") is not None and
-                        "Win10_" in d.find("source").get("file", "")), None)
-    virtio_iso = next((d for d in disks if d.find("source") is not None and
-                       "virtio-win-" in d.find("source").get("file", "")), None)
-    if windows_iso is None or windows_iso.get("device") != "cdrom":
-        return fail("the Windows installation ISO must be attached as a CD-ROM")
-    if virtio_iso is None or virtio_iso.get("device") != "cdrom":
-        return fail("the VirtIO driver ISO must be attached as a CD-ROM")
-    win_boot = windows_iso.find("boot")
-    virtio_boot = virtio_iso.find("boot")
-    if win_boot is None or virtio_boot is None:
-        return fail("Windows and VirtIO CD-ROM boot priorities must be explicit")
-    if int(win_boot.get("order", "99")) >= int(virtio_boot.get("order", "0")):
-        return fail("Windows installation ISO must be tried before the VirtIO driver ISO")
+    # The template has two file-backed CD-ROMs. Their roles are defined by
+    # boot priority, not filename conventions: the earlier optical boot entry
+    # is the Windows installer and the later entry is the VirtIO driver ISO.
+    # This intentionally allows users to rename or relocate either ISO.
+    cdroms = root.findall("./devices/disk[@device='cdrom']")
+    if len(cdroms) != 2:
+        return fail(
+            "VM XML must contain exactly two CD-ROM devices "
+            "(Windows installer and VirtIO driver)"
+        )
+
+    cdrom_paths: list[str] = []
+    for cdrom in cdroms:
+        source = cdrom.find("source")
+        if source is None:
+            return fail("every CD-ROM must declare a file-backed source path")
+        source_path = source.get("file", "").strip()
+        if not source_path:
+            return fail("every CD-ROM must declare a non-empty source file path")
+        if not Path(source_path).is_absolute():
+            return fail(f"CD-ROM source paths must be absolute: {source_path!r}")
+        normalized_path = os.path.normpath(source_path)
+        if normalized_path in cdrom_paths:
+            return fail("Windows and VirtIO CD-ROM source paths must be different")
+        cdrom_paths.append(normalized_path)
+        if cdrom.find("boot") is None:
+            return fail("Windows and VirtIO CD-ROM boot priorities must be explicit")
+
+    # ISO contents cannot be identified reliably from arbitrary filenames.
+    # The VM template contract is therefore that the first optical boot entry
+    # is the Windows installer and the second is the VirtIO driver ISO.
+    cdroms.sort(key=lambda disk: int(disk.find("boot").get("order", "")))
+    windows_iso = cdroms[0]
+    windows_order = int(windows_iso.find("boot").get("order", ""))
+
+    if windows_order <= 1:
+        return fail("the virtual system disk must boot before the Windows and VirtIO CD-ROMs")
+    # Boot-order uniqueness is checked above, so the second optical entry is
+    # guaranteed to have a later boot priority than the first.
     if windows_iso.find("target") is None or windows_iso.find("target").get("bus") != "sata":
         return fail("Windows installation ISO should use the SATA CD-ROM device")
 
