@@ -2,6 +2,7 @@
 """Check project-specific invariants in the Windows VM XML template."""
 from __future__ import annotations
 
+import argparse
 import re
 import sys
 import xml.etree.ElementTree as ET
@@ -12,16 +13,41 @@ XML_PATH = ROOT / "vm-xml" / "win10.xml"
 HOOK_PATH = ROOT / "nixos" / "hooks" / "qemu"
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Check VM XML invariants and compare its PCI addresses with a QEMU hook."
+    )
+    parser.add_argument(
+        "--xml-path",
+        type=Path,
+        default=XML_PATH,
+        help=f"VM XML to validate (default: {XML_PATH})",
+    )
+    parser.add_argument(
+        "--hook-path",
+        type=Path,
+        default=HOOK_PATH,
+        help=f"QEMU hook whose GPU_PCI/GPU_AUDIO values are checked (default: {HOOK_PATH})",
+    )
+    parser.add_argument(
+        "--allow-custom-usb-ids",
+        action="store_true",
+        help="allow local USB vendor/product IDs while still validating their numeric format and count",
+    )
+    return parser.parse_args()
+
+
 def fail(message: str) -> int:
     print(f"FAIL: {message}", file=sys.stderr)
     return 1
 
 
 def main() -> int:
+    args = parse_args()
     try:
-        root = ET.parse(XML_PATH).getroot()
+        root = ET.parse(args.xml_path).getroot()
     except (ET.ParseError, OSError) as exc:
-        return fail(f"cannot parse {XML_PATH}: {exc}")
+        return fail(f"cannot parse {args.xml_path}: {exc}")
 
     if root.tag != "domain":
         return fail("root element must be <domain>")
@@ -91,11 +117,14 @@ def main() -> int:
             return fail("USB hostdev vendor/product IDs must be numeric")
         actual_usb_ids.append((vendor_id, product_id))
 
-    if len(actual_usb_ids) != len(expected_usb_ids) or set(actual_usb_ids) != expected_usb_ids:
+    if len(actual_usb_ids) != len(expected_usb_ids) or (
+        not args.allow_custom_usb_ids and set(actual_usb_ids) != expected_usb_ids
+    ):
         formatted = sorted(f"{vendor:04x}:{product:04x}" for vendor, product in actual_usb_ids)
         expected = sorted(f"{vendor:04x}:{product:04x}" for vendor, product in expected_usb_ids)
         return fail(
-            "default XML USB passthrough IDs must match the documented fixed devices; "
+            "XML USB passthrough IDs must contain exactly two numeric devices; "
+            "default template IDs must match unless --allow-custom-usb-ids is set; "
             f"XML={formatted}, expected={expected}"
         )
 
@@ -130,9 +159,9 @@ def main() -> int:
         return fail("PCI hostdev source addresses must be unique; duplicate BDF found")
 
     try:
-        hook_text = HOOK_PATH.read_text(encoding="utf-8")
+        hook_text = args.hook_path.read_text(encoding="utf-8")
     except OSError as exc:
-        return fail(f"cannot read QEMU hook {HOOK_PATH}: {exc}")
+        return fail(f"cannot read QEMU hook {args.hook_path}: {exc}")
 
     def hook_pci_value(variable: str) -> str | None:
         match = re.search(rf'^{re.escape(variable)}="([0-9a-fA-F:_.]+)"$', hook_text, re.MULTILINE)
