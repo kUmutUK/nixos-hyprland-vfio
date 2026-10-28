@@ -526,8 +526,10 @@ sudo nixos-enter --root /mnt -c 'passwd root'
 > settings. Do not switch the system until `dry-activate` succeeds.
 > **The RT-Bore-LTO LTO variant is not published in the upstream binary cache**; the kernel
 > is expected to build locally, which may take a long time or fail due to source/toolchain
-> issues. `overlays.pinned` aligns the kernel and target nixpkgs revision but cannot create
-> a missing cache artifact.
+> issues. `overlays.pinned` selects the kernel package from the CachyOS flake's own locked
+> nixpkgs input. In the current `flake.lock`, that input is distinct from the root system
+> flake's `nixpkgs` input, so the overlay does not align those revisions. It also cannot
+> create a missing cache artifact.
 
 **CS2 / Source 2 low-latency note:** the [low_latency_layer v0.2.0 upstream release notes](https://github.com/Korthos-Software/low_latency_layer/releases/tag/v0.2.0) describe in-game FPS caps causing frame-pacing problems while the layer is enabled. Until the upstream issue is fixed, use `fps_max 0` in the CS2 console. External limiters such as MangoHud have not been reported to cause the same issue. If stuttering persists, compare frame times after disabling the layer only for CS2 with `DISABLE_LOW_LATENCY_LAYER=1 %command%` in Steam launch options.
 

@@ -151,9 +151,12 @@ jobs:
           # of any unexpected lock-file drift.
 
           #
-          # Substituters and trusted keys are unnecessary here: --no-build only
-          # evaluates the flake and does not download build inputs. Without
-          # `--accept-flake-config`, the flake nixConfig is treated as untrusted.
+          # This gate evaluates the flake without building its derivations.
+          # --no-build is not a no-network guarantee: evaluation can still fetch
+          # sources (for example, builtins.fetchGit in configuration.nix) when they
+          # are not already cached locally. Build-output substituters are not needed
+          # for this evaluation-only check. Without `--accept-flake-config`, the
+          # flake nixConfig is treated as untrusted.
           nix flake check --no-build --show-trace \
             --no-update-lock-file \
             --option warn-dirty false
