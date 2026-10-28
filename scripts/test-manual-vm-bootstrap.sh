@@ -12,11 +12,20 @@ MOCK_BIN="$TMP_ROOT/mock-bin"
 REAL_MV="$(command -v mv)"
 PREPARE_SCRIPT="$TMP_ROOT/prepare-vm.sh"
 VIRSH_LOG="$TMP_ROOT/virsh.log"
-mkdir -p "$REPO/.git" "$REPO/scripts" "$REPO/vm-xml" "$MOCK_BIN" \
+mkdir -p "$REPO/scripts" "$REPO/vm-xml" "$MOCK_BIN" \
   "$LIBVIRT_ROOT/images" "$LIBVIRT_ROOT/qemu" "$HOME_DIR"
 cp "$ROOT/scripts/sync-vm-xml.py" "$REPO/scripts/"
 cp "$ROOT/scripts/check-vm-iso-paths.py" "$REPO/scripts/"
 sed "s|/var/lib/libvirt|$LIBVIRT_ROOT|g" "$ROOT/vm-xml/win10.xml" > "$REPO/vm-xml/win10.xml"
+cp "$ROOT/scripts/verify-source-revision.sh" "$REPO/scripts/"
+git -C "$REPO" init -q
+git -C "$REPO" config user.name "VM Bootstrap Regression"
+git -C "$REPO" config user.email "vm-bootstrap-test@example.invalid"
+git -C "$REPO" add scripts vm-xml
+git -C "$REPO" commit -q -m "test fixture source snapshot"
+SOURCE_REVISION="$(git -C "$REPO" rev-parse --verify 'HEAD^{commit}')"
+mkdir -p "$TMP_ROOT/etc-nixos"
+printf '%s\n' "$SOURCE_REVISION" > "$TMP_ROOT/etc-nixos/.source-revision"
 
 cat > "$MOCK_BIN/sudo" <<'SH'
 #!/usr/bin/env bash

@@ -11,6 +11,7 @@ This file summarizes notable changes in English. The original detailed Turkish h
 - Confirmed the canonical `git archive` helper and CI already exclude `.git/` and preserve tracked executable modes. Added validation that each canonical ZIP embeds the exact commit being packaged.
 - Fixed inconsistent source pinning across clean install, README Path B, and `install.sh`: each deployment records the source commit, and VM preparation refuses a missing/malformed marker, a mismatched HEAD, or a dirty checkout.
 - Closed the initially-inactive-to-active VFIO service race with an ActiveState recheck, fail-closed handling, and a mocked regression test.
+- Adapted the manual VM-bootstrap regression fixture to create a real, clean temporary Git checkout and a matching source-revision marker, so it exercises mandatory pin verification rather than stopping early at the new preflight.
 
 ### Audit regression fixes
 - Corrected the installer’s `hashedPassword` preflight and regression tests to identify it as the local `localhost` account password hash, not an SSH password file; the warning now explicitly confirms SSH password authentication stays disabled. Added an invariant against reintroducing that mismatch.
