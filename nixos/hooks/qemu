@@ -213,11 +213,26 @@ device_driver_name() {
   printf '%s\n' "${resolved##*/}"
 }
 
-# Return true only when a real, non-empty driver other than `vfio-pci` is bound.
-device_has_real_driver() {
-  local drv
-  drv="$(device_driver_name "$1" "${2:-/sys/bus/pci/devices}")" || return 1
-  [ "$drv" != "vfio-pci" ]
+# Return true only when a PCI function is bound to its expected host driver.
+# Merely being bound to something other than vfio-pci (for example pci-stub)
+# does not mean that the GPU/audio function has been recovered.
+device_has_expected_host_driver() {
+  local dev="$1" devices_root="${2:-/sys/bus/pci/devices}" drv expected
+  case "$dev" in
+    "$GPU_PCI") expected="amdgpu" ;;
+    "$GPU_AUDIO") expected="snd_hda_intel" ;;
+    *)
+      log "ERROR: No expected host driver is defined for $dev; refusing to treat it as restored."
+      return 1
+      ;;
+  esac
+
+  drv="$(device_driver_name "$dev" "$devices_root")" || return 1
+  if [ "$drv" != "$expected" ]; then
+    log "WARNING: $dev is bound to unexpected driver '$drv'; expected '$expected'."
+    return 1
+  fi
+  return 0
 }
 
 # Recovery fallback for some RDNA1/RDNA2 cards (Navi 10–23, including RX 6700 XT):
@@ -423,13 +438,14 @@ restore_prepare_device() {
   local dev="$1" touched="$2" devices_root="${3:-/sys/bus/pci/devices}" drv
   [ "$touched" = "1" ] || return 0
 
-  if drv="$(device_driver_name "$dev" "$devices_root")" && [ "$drv" != "vfio-pci" ]; then
-    log "Rollback: $dev is still bound to driver $drv; the driver will not be unbound."
+  if device_has_expected_host_driver "$dev" "$devices_root"; then
+    drv="$(device_driver_name "$dev" "$devices_root")"
+    log "Rollback: $dev is bound to its expected host driver $drv; it will not be unbound."
     echo "" > "${devices_root}/${dev}/driver_override" 2>/dev/null || true
   else
-    # A missing or unresolved driver symlink means no driver is bound. Try probing the host
-    # driver again, but never treat `vfio-pci` as the host driver.
-    log "Rollback: $dev has no driver or is bound to vfio-pci; restoring the host driver."
+    # Unbound devices, vfio-pci, pci-stub, and all unexpected drivers must be
+    # reprobed; none is evidence that the expected host driver has been restored.
+    log "Rollback: $dev is not bound to its expected host driver; attempting host-driver recovery."
     release_host_driver "$dev"
   fi
 }
@@ -536,15 +552,15 @@ if [ "$ACTION" = "release" ]; then
 
   # If ordinary unbind/rebind fails (possible Navi 2x reset issue), use the heavier
   # remove/suspend/rescan method only when the explicit opt-in is enabled.
-  if ! device_has_real_driver "$GPU_PCI" || ! device_has_real_driver "$GPU_AUDIO"; then
+  if ! device_has_expected_host_driver "$GPU_PCI" || ! device_has_expected_host_driver "$GPU_AUDIO"; then
     suspend_rescan_recovery "$GPU_AUDIO" "$GPU_PCI"
-    if ! device_has_real_driver "$GPU_PCI"; then
-      log "WARNING: $GPU_PCI did not bind to its normal driver; recovery fallback may be disabled or rebinding may have failed. Host recovery may be required."
+    if ! device_has_expected_host_driver "$GPU_PCI"; then
+      log "WARNING: $GPU_PCI did not bind to expected host driver amdgpu; recovery fallback may be disabled or rebinding may have failed. Host recovery may be required."
     fi
     # Re-check both the GPU (.0) and audio (.1) functions after recovery; checking only the
     # GPU previously missed an audio function left without a driver.
-    if ! device_has_real_driver "$GPU_AUDIO"; then
-      log "WARNING: $GPU_AUDIO (audio function) did not bind to its normal driver; recovery fallback may be disabled or rebinding may have failed."
+    if ! device_has_expected_host_driver "$GPU_AUDIO"; then
+      log "WARNING: $GPU_AUDIO (audio function) did not bind to expected host driver snd_hda_intel; recovery fallback may be disabled or rebinding may have failed."
     fi
   fi
 
@@ -560,15 +576,15 @@ if [ "$ACTION" = "release" ]; then
   # If the GPU still has no host driver after recovery, show the warning and actionable
   # reboot instructions on tty1 rather than only writing a log entry and leaving the user
   # with a black screen.
-  if ! device_has_real_driver "$GPU_PCI"; then
-    log "CRITICAL: $GPU_PCI still has no driver. THE DISPLAY WILL BE BLACK (this is expected with the known"
+  if ! device_has_expected_host_driver "$GPU_PCI"; then
+    log "CRITICAL: $GPU_PCI is not bound to expected host driver amdgpu. THE DISPLAY WILL BE BLACK (this is expected with the known"
     log "Navi 2x reset issue). For recovery, enter the BOOT MENU during startup or"
     log "switch to a console (Ctrl+Alt+F2) and run 'systemctl reboot'."
     log "First try reloading the driver: 'sudo modprobe -r amdgpu && sudo modprobe amdgpu'."
     for tty in /dev/tty1 /dev/tty2; do
-      [ -w "$tty" ] && printf '%s\n' "No GPU driver is bound; a black screen is expected. Recovery: systemctl reboot" > "$tty" 2>/dev/null || true
+      [ -w "$tty" ] && printf '%s\n' "GPU driver amdgpu is not restored; a black screen is expected. Recovery: systemctl reboot" > "$tty" 2>/dev/null || true
     done
-  elif ! device_has_real_driver "$GPU_AUDIO"; then
+  elif ! device_has_expected_host_driver "$GPU_AUDIO"; then
     log "WARNING: GPU display function restored, but $GPU_AUDIO (HDMI/DP audio) has no normal host driver. Starting the desktop; GPU audio may remain unavailable."
   else
     log "GPU display and audio functions restored to the host; starting the desktop."
