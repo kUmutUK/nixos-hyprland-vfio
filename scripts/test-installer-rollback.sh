@@ -139,7 +139,7 @@ set -e
   || fail 'existing hooks directory was not restored from backup'
 [[ "$(cat "$PATCHED_XML")" == 'original vm xml' ]] \
   || fail 'existing VM XML was not restored from backup'
-[[ "$(cat "$SOURCE_REVISION_FILE")" == 'original source revision' ]] \\
+[[ "$(cat "$SOURCE_REVISION_FILE")" == 'original source revision' ]] \
   || fail 'previous .source-revision marker was not restored from backup'
 [[ ! -e "$NIXOS_FLAKE_DIR/home.nix" ]] \
   || fail 'newly created home.nix was not removed during rollback'
