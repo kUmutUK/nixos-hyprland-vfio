@@ -29,15 +29,17 @@ fi
 TEST_ROOT="$TMP_DIR/system"
 NIXOS_FLAKE_DIR="$TEST_ROOT/etc/nixos/nixos"
 PATCHED_XML="$TEST_ROOT/var/lib/libvirt/win10.xml"
+SOURCE_REVISION_FILE="$TEST_ROOT/etc/nixos/.source-revision"
 BACKUP_DIR="$TMP_DIR/backup"
 SYMLINK_TARGET="$NIXOS_FLAKE_DIR/symlink-config.nix"
 SYMLINK_REFERENT="$TEST_ROOT/original-referent.conf"
 DANGLING_TARGET="$NIXOS_FLAKE_DIR/dangling-config.nix"
 DANGLING_REFERENT="$TEST_ROOT/missing-original.conf"
-mkdir -p "$NIXOS_FLAKE_DIR/hooks" "$(dirname "$PATCHED_XML")" "$BACKUP_DIR"
+mkdir -p "$NIXOS_FLAKE_DIR/hooks" "$(dirname "$PATCHED_XML")" "$(dirname "$SOURCE_REVISION_FILE")" "$BACKUP_DIR"
 printf 'original configuration\n' > "$NIXOS_FLAKE_DIR/configuration.nix"
 printf 'original hook\n' > "$NIXOS_FLAKE_DIR/hooks/qemu"
 printf 'original vm xml\n' > "$PATCHED_XML"
+printf 'original source revision\n' > "$SOURCE_REVISION_FILE"
 printf 'original symlink referent\n' > "$SYMLINK_REFERENT"
 ln -s "$SYMLINK_REFERENT" "$SYMLINK_TARGET"
 ln -s "$DANGLING_REFERENT" "$DANGLING_TARGET"
@@ -72,7 +74,7 @@ ln -s "$NIXOS_FLAKE_DIR" "$SYMLINK_DIRECTORY"
 run_preflight_check 1 "$SYMLINK_DIRECTORY" "$NIXOS_FLAKE_DIR/normal-config.nix"
 
 # Use the same flattened backup naming convention as install.sh and preserve links.
-for target in "$NIXOS_FLAKE_DIR/configuration.nix" "$NIXOS_FLAKE_DIR/hooks" "$PATCHED_XML" "$SYMLINK_TARGET" "$DANGLING_TARGET"; do
+for target in "$NIXOS_FLAKE_DIR/configuration.nix" "$NIXOS_FLAKE_DIR/hooks" "$SOURCE_REVISION_FILE" "$PATCHED_XML" "$SYMLINK_TARGET" "$DANGLING_TARGET"; do
   backup_name="$(printf '%s' "$target" | tr '/' '_')"
   cp -a -- "$target" "$BACKUP_DIR/$backup_name"
 done
@@ -81,6 +83,7 @@ done
 # overwritten and targets that were previously absent have been created.
 printf 'partially deployed configuration\n' > "$NIXOS_FLAKE_DIR/configuration.nix"
 printf 'partially deployed hook\n' > "$NIXOS_FLAKE_DIR/hooks/qemu"
+printf 'new source revision\n' > "$SOURCE_REVISION_FILE"
 printf 'new home config\n' > "$NIXOS_FLAKE_DIR/home.nix"
 printf 'partially deployed xml\n' > "$PATCHED_XML"
 rm -- "$SYMLINK_TARGET" "$DANGLING_TARGET"
@@ -100,6 +103,7 @@ set +e
     "$NIXOS_FLAKE_DIR/flake.lock"
     "$NIXOS_FLAKE_DIR/hooks"
     "$NIXOS_FLAKE_DIR/hardware-configuration.nix"
+    "$SOURCE_REVISION_FILE"
     "$PATCHED_XML"
     "$SYMLINK_TARGET"
     "$DANGLING_TARGET"
@@ -107,7 +111,7 @@ set +e
   declare -A TRANSACTION_EXISTED=()
   for target in "${TRANSACTION_PATHS[@]}"; do
     case "$target" in
-      "$NIXOS_FLAKE_DIR/configuration.nix"|"$NIXOS_FLAKE_DIR/hooks"|"$PATCHED_XML"|"$SYMLINK_TARGET"|"$DANGLING_TARGET") TRANSACTION_EXISTED["$target"]=1 ;;
+      "$NIXOS_FLAKE_DIR/configuration.nix"|"$NIXOS_FLAKE_DIR/hooks"|"$SOURCE_REVISION_FILE"|"$PATCHED_XML"|"$SYMLINK_TARGET"|"$DANGLING_TARGET") TRANSACTION_EXISTED["$target"]=1 ;;
       *)
         # shellcheck disable=SC2034 # consumed by sourced installer helpers
         TRANSACTION_EXISTED["$target"]=0
@@ -135,6 +139,8 @@ set -e
   || fail 'existing hooks directory was not restored from backup'
 [[ "$(cat "$PATCHED_XML")" == 'original vm xml' ]] \
   || fail 'existing VM XML was not restored from backup'
+[[ "$(cat "$SOURCE_REVISION_FILE")" == 'original source revision' ]] \\
+  || fail 'previous .source-revision marker was not restored from backup'
 [[ ! -e "$NIXOS_FLAKE_DIR/home.nix" ]] \
   || fail 'newly created home.nix was not removed during rollback'
 [[ ! -e "$NIXOS_FLAKE_DIR/flake.nix" ]] \

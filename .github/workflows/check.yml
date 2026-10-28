@@ -52,6 +52,9 @@ jobs:
       - name: Installer, English locale, global Reflex and SSH regression checks
         run: bash scripts/test-installer-invariants.sh
 
+      - name: Home Snapper mount and UUID regression tests
+        run: python3 scripts/test-home-snapper-layout.py
+
       - name: Installer partial-deployment rollback regression test
         run: bash scripts/test-installer-rollback.sh
 

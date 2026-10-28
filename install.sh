@@ -25,6 +25,9 @@ source "$LOCK_HELPER"
 if ! acquire_nixos_installer_lock; then
   error "Could not acquire the installer process lock. No system files have been changed."
 fi
+TARGET_USER="localhost"
+TARGET_HOME="/home/$TARGET_USER"
+# Recovery copies stay in the invoking administrator home.
 BACKUP_DIR="$HOME/.nixos-config-backup-$(date +%Y%m%d-%H%M%S)"
 NIXOS_DIR="/etc/nixos"
 NIXOS_FLAKE_DIR="$NIXOS_DIR/nixos"
@@ -90,17 +93,34 @@ fi
 source "$PCI_ADDRESS_HELPERS"
 
 require_btrfs_home() {
-  local fstype
+  local hardware_config="${1:-}"
   if ! command -v findmnt >/dev/null 2>&1; then
-    error "findmnt is required to verify /home's filesystem; refusing to migrate without this check. No system files have been changed."
+    error "findmnt is required to verify Home Snapper mounts; no system files have been changed."
     return 1
   fi
-  if ! fstype="$(findmnt -rn -o FSTYPE --target /home 2>/dev/null)" || [[ -z "$fstype" ]]; then
-    error "Could not determine the filesystem covering /home; refusing to migrate without verifying Home Snapper compatibility. No system files have been changed."
+  if [[ -z "$hardware_config" ]]; then
+    if [[ -s "$NIXOS_DIR/hardware-configuration.nix" ]]; then
+      hardware_config="$NIXOS_DIR/hardware-configuration.nix"
+    elif [[ -s "$NIXOS_FLAKE_DIR/hardware-configuration.nix" ]]; then
+      hardware_config="$NIXOS_FLAKE_DIR/hardware-configuration.nix"
+    else
+      hardware_config="$REPO_DIR/nixos/hardware-configuration.nix"
+    fi
+  fi
+  if [[ ! -s "$hardware_config" ]]; then
+    error "No readable target hardware-configuration.nix is available for Home Snapper validation: $hardware_config"
     return 1
   fi
-  if [[ "${fstype,,}" != "btrfs" ]]; then
-    error "/home is on '$fstype', not Btrfs. This configuration enables services.snapper.configs.home and requires Btrfs snapshots. Installer aborted before changing system files; use the manual migration path to explicitly disable Home Snapper and remove any incompatible /home/.snapshots Btrfs mount if you need a non-Btrfs /home."
+  if ! "$PYTHON3" "$REPO_DIR/scripts/check-home-snapper-layout.py" "$hardware_config"; then
+    error "Home Snapper preflight rejected the active mount or target UUID/subvolume layout. No system files have been changed."
+    return 1
+  fi
+  if [[ -L "$SNAPSHOT_SUBVOL" ]]; then
+    error "$SNAPSHOT_SUBVOL is a symbolic link; refusing to use it as the Home Snapper subvolume."
+    return 1
+  fi
+  if [[ -e "$SNAPSHOT_SUBVOL" ]] && ! sudo btrfs subvolume show "$SNAPSHOT_SUBVOL" >/dev/null 2>&1; then
+    error "$SNAPSHOT_SUBVOL exists but is not a Btrfs subvolume; inspect it manually before installation."
     return 1
   fi
 }
@@ -217,10 +237,16 @@ if ! check_local_password_hash "$NIXOS_DIR/hashedPassword"; then
   warn "Fix /etc/nixos/hashedPassword using the manual checklist before rebuilding; this file supplies the local localhost account password and does not enable SSH password login. SSH remains public-key-only."
 fi
 
-# The shipped NixOS configuration enables Home Snapper. Do not let the helper
-# partially deploy that configuration on a filesystem where Home Snapper cannot work.
-# This check runs before backup creation or any system-file mutation.
-require_btrfs_home
+# Validate the proposed host mount layout and UUIDs before backups or any mutation.
+HOME_SNAPPER_HW_CONFIG=""
+if [[ -s "$NIXOS_DIR/hardware-configuration.nix" ]]; then
+  HOME_SNAPPER_HW_CONFIG="$NIXOS_DIR/hardware-configuration.nix"
+elif [[ -s "$NIXOS_FLAKE_DIR/hardware-configuration.nix" ]]; then
+  HOME_SNAPPER_HW_CONFIG="$NIXOS_FLAKE_DIR/hardware-configuration.nix"
+else
+  HOME_SNAPPER_HW_CONFIG="$REPO_DIR/nixos/hardware-configuration.nix"
+fi
+require_btrfs_home "$HOME_SNAPPER_HW_CONFIG"
 
 # ─── Hardware detection ───────────────────────────────────
 step "Hardware detection"
@@ -457,15 +483,15 @@ while [[ ! "$hypr_mon_mode" =~ ^(preferred|[0-9]{3,5}x[0-9]{3,5}(@[0-9]{1,3}([.]
 done
 
 echo ""
-wallpaper_video="/home/localhost/Downloads/arthur-leywin-the-beginning-after-the-end.3840x2160.mp4"
+wallpaper_video="$TARGET_HOME/Downloads/arthur-leywin-the-beginning-after-the-end.3840x2160.mp4"
 expand_home_prefix() {
   local value="$1"
 # shellcheck disable=SC2088
 # Intentional: match literal "~/" prefix from user input; do not expand.
 local tilde_prefix='~/'
   case "$value" in
-    '~')                  printf '%s' "$HOME" ;;
-    "$tilde_prefix"*)    printf '%s/%s' "$HOME" "${value:2}" ;;
+    '~')                  printf '%s' "$TARGET_HOME" ;;
+    "$tilde_prefix"*)    printf '%s/%s' "$TARGET_HOME" "${value:2}" ;;
     '~'*)                 error "Named-user tilde paths are not supported; use an absolute path or ~/relative/path." ;;
     *)                    printf '%s' "$value" ;;
   esac
@@ -531,13 +557,13 @@ if [[ -e "$BACKUP_DIR" || -L "$BACKUP_DIR" ]]; then
     error "Backup path already exists; refusing to reuse it: $BACKUP_DIR"
 fi
 mkdir -m 700 -- "$BACKUP_DIR"
-for src in "$HOME/.config/hypr" "$HOME/.config/waybar" "$HOME/.config/gtk-3.0" "$HOME/.config/gtk-4.0" \
-           "$NIXOS_FLAKE_DIR/configuration.nix" "$NIXOS_FLAKE_DIR/home.nix" \
-           "$NIXOS_FLAKE_DIR/flake.nix" "$NIXOS_FLAKE_DIR/flake.lock" \
-           "$NIXOS_FLAKE_DIR/hooks" \
-           "$NIXOS_DIR/hardware-configuration.nix" \
-           "$NIXOS_FLAKE_DIR/hardware-configuration.nix" \
-           "$PATCHED_XML"; do
+for src in "$TARGET_HOME/.config/hypr" "$TARGET_HOME/.config/waybar" "$TARGET_HOME/.config/gtk-3.0" "$TARGET_HOME/.config/gtk-4.0" \
+            "$NIXOS_FLAKE_DIR/configuration.nix" "$NIXOS_FLAKE_DIR/home.nix" \
+            "$NIXOS_FLAKE_DIR/flake.nix" "$NIXOS_FLAKE_DIR/flake.lock" \
+            "$NIXOS_FLAKE_DIR/hooks" \
+            "$NIXOS_DIR/hardware-configuration.nix" \
+            "$NIXOS_FLAKE_DIR/hardware-configuration.nix" \
+            "$SOURCE_REVISION_FILE" "$PATCHED_XML"; do
     if [[ -e "$src" || -L "$src" ]]; then
         # Full source paths avoid collisions between equal basenames. `cp -a`
         # preserves symlink identity and metadata in the recovery copy instead
@@ -750,7 +776,7 @@ HOME_STATE_VERSION=""
 read_state_version "system.stateVersion" "$NIXOS_FLAKE_DIR/configuration.nix" "$NIXOS_DIR/configuration.nix"
 SYSTEM_STATE_VERSION="$STATE_VERSION_VALUE"
 log "system.stateVersion source: $STATE_VERSION_SOURCE${SYSTEM_STATE_VERSION:+ (value $SYSTEM_STATE_VERSION)}"
-read_state_version "home.stateVersion" "$NIXOS_FLAKE_DIR/home.nix" "$NIXOS_DIR/home.nix" "$HOME/.config/home-manager/home.nix"
+read_state_version "home.stateVersion" "$NIXOS_FLAKE_DIR/home.nix" "$NIXOS_DIR/home.nix" "$TARGET_HOME/.config/home-manager/home.nix"
 HOME_STATE_VERSION="$STATE_VERSION_VALUE"
 log "home.stateVersion source: $STATE_VERSION_SOURCE${HOME_STATE_VERSION:+ (value $HOME_STATE_VERSION)}"
 
@@ -843,6 +869,10 @@ else
     HW_IN_PLACE=0
     warn "hardware-configuration.nix was not found; a rebuild will fail (see instructions below)."
 fi
+
+# The operator may have declined replacing the existing flake hardware file.
+# Re-check the exact file that will be built before installing the VFIO hook.
+require_btrfs_home "$NIXOS_FLAKE_DIR/hardware-configuration.nix"
 
 if [ -d "$REPO_DIR/nixos/hooks" ]; then
     sudo rm -rf "$NIXOS_FLAKE_DIR/hooks"

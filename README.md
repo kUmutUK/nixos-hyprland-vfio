@@ -688,6 +688,8 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 │   ├── check-vm-iso-paths.py
 │   ├── extract-embedded-scripts.py
 │   ├── package-source-zip.sh
+│   ├── check-home-snapper-layout.py
+│   ├── test-home-snapper-layout.py
 │   ├── verify-source-revision.sh
 │   ├── test-source-revision.sh
 │   ├── installer-lock.sh
@@ -748,6 +750,7 @@ nix develop ./nixos --command bash -euo pipefail -c '
   shellcheck -S warning install.sh scripts/package-source-zip.sh scripts/verify-source-revision.sh scripts/test-source-revision.sh scripts/installer-lock.sh scripts/pci-address.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-lock.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh
   python3 -c "import xml.etree.ElementTree as ET; ET.parse(\"vm-xml/win10.xml\")"
   python3 scripts/test-lsfg-v1-config.py
+  python3 scripts/test-home-snapper-layout.py
   python3 scripts/test-extract-embedded-scripts.py
   python3 scripts/test-vm-iso-paths.py
   bash -n scripts/test-manual-vm-bootstrap.sh

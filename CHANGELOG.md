@@ -4,6 +4,13 @@ This file summarizes notable changes in English. The original detailed Turkish h
 
 ## Unreleased — 2026-10-28
 
+### Installer safety and regression coverage — 2026-10-28
+- Added fail-closed Home Snapper validation for the exact `/home` mount, the `@home` and `@home/.snapshots` subvolumes, the target hardware configuration's device UUIDs, and any active `/home/.snapshots` mount. The preflight runs before backups/deployment and again after the final hardware configuration is selected.
+- Added mocked Home Snapper regression cases for wrong subvolumes, mismatched UUIDs, missing mounts, non-Btrfs filesystems, and the boot-critical snapshots mount.
+- Included `/etc/nixos/.source-revision` in the installer's backup set and added rollback coverage proving that a failed deployment restores the prior marker.
+- Aligned profile backups, Home Manager `home.stateVersion` fallback, and `~/` wallpaper expansion with the configured `localhost` home instead of the invoking administrator's `$HOME`.
+- Kept `SOURCE_REVISION` as an `export-subst` placeholder: canonical packaging expands it to the exact archived commit. A malformed manual ZIP should be replaced by a validated canonical archive, not given a stale fixed SHA.
+
 ### Archive provenance and validation correction — 2026-10-28
 - Fixed the README Bash syntax-validation command to run `bash -n` separately for each listed script in a fail-fast loop. Passing multiple pathnames to one `bash -n` invocation does not syntax-check every file independently.
 - Recorded the user-supplied measurements for the ZIP under review before remediation: **494,995 bytes**, SHA-256 prefix `00805455…`, embedded Git HEAD `cdfd3d8d5008e4b7405ce2433e29b8a0e34ffebe`, and 105 entries including 45 `.git/` entries. The ZIP bytes were not attached to this editing session, so these values were not independently recalculated.

@@ -118,31 +118,30 @@ if ! grep -q '^require_btrfs_home() {' "$home_preflight_test_dir/require-btrfs-h
   echo "FAIL: could not locate require_btrfs_home() for its regression test." >&2
   exit 1
 fi
-cat > "$home_preflight_test_dir/harness.sh" <<'BASH'
-set -euo pipefail
-error() { printf '%s\n' "$*" >&2; return 1; }
-findmnt() { printf '%s\n' "$TEST_HOME_FSTYPE"; }
-source "$1"
-require_btrfs_home
-BASH
-if ! TEST_HOME_FSTYPE=btrfs bash "$home_preflight_test_dir/harness.sh" "$home_preflight_test_dir/require-btrfs-home.sh"; then
-  echo "FAIL: Btrfs /home was rejected by the installer preflight." >&2
+if ! grep -Fq '"$PYTHON3" "$REPO_DIR/scripts/check-home-snapper-layout.py" "$hardware_config"' "$home_preflight_test_dir/require-btrfs-home.sh" \
+  || ! grep -Fq 'sudo btrfs subvolume show "$SNAPSHOT_SUBVOL"' "$home_preflight_test_dir/require-btrfs-home.sh"; then
+  echo "FAIL: Home Snapper preflight must validate mount UUIDs/subvolumes and reject an invalid existing .snapshots path." >&2
   exit 1
 fi
-for filesystem in ext4 xfs unknown; do
-  if TEST_HOME_FSTYPE="$filesystem" bash "$home_preflight_test_dir/harness.sh" "$home_preflight_test_dir/require-btrfs-home.sh" >/dev/null 2>&1; then
-    echo "FAIL: non-Btrfs /home was accepted by the installer preflight ($filesystem)." >&2
-    exit 1
-  fi
-done
-home_preflight_call_line="$(grep -n '^require_btrfs_home$' "$INSTALLER" | cut -d: -f1)"
+python3 "$ROOT/scripts/test-home-snapper-layout.py"
+home_preflight_call_line="$(grep -nF 'require_btrfs_home "$HOME_SNAPPER_HW_CONFIG"' "$INSTALLER" | cut -d: -f1)"
+final_home_preflight_line="$(grep -nF 'require_btrfs_home "$NIXOS_FLAKE_DIR/hardware-configuration.nix"' "$INSTALLER" | cut -d: -f1)"
 first_mutation_line="$(grep -n '^mkdir -m 700' "$INSTALLER" | head -n 1 | cut -d: -f1)"
-if [[ -z "$home_preflight_call_line" || -z "$first_mutation_line" ]] \
-  || (( home_preflight_call_line >= first_mutation_line )); then
-  echo "FAIL: Home Snapper filesystem preflight must run before deployment/backup mutations." >&2
+hook_mutation_line="$(grep -nF 'if [ -d "$REPO_DIR/nixos/hooks" ]; then' "$INSTALLER" | cut -d: -f1)"
+if [[ -z "$home_preflight_call_line" || -z "$final_home_preflight_line" || -z "$first_mutation_line" || -z "$hook_mutation_line" ]] \
+  || (( home_preflight_call_line >= first_mutation_line )) \
+  || (( final_home_preflight_line >= hook_mutation_line )); then
+  echo "FAIL: Home Snapper preflight must run before backup mutations and re-check the final hardware file before hook deployment." >&2
+  exit 1
+fi
+if ! grep -Fq '"$TARGET_HOME/.config/hypr"' "$INSTALLER" \
+  || ! grep -Fq '"$TARGET_HOME/.config/home-manager/home.nix"' "$INSTALLER" \
+  || ! grep -Fq 'TARGET_HOME="/home/$TARGET_USER"' "$INSTALLER"; then
+  echo "FAIL: installer backup and stateVersion paths must target localhost, not the invoking administrator." >&2
   exit 1
 fi
 
+# Exercise the real apply_state_version() helper
 # Exercise the real apply_state_version() helper without running the installer.
 # The installer is interactive and performs system changes at top level, so only
 # extract this pure helper and provide harmless stubs for sudo/log/error.
@@ -969,10 +968,11 @@ wallpaper_test_dir="$(mktemp -d)"
 awk '$0 == "expand_home_prefix() {" { capture=1 } capture { print } capture && /^}/ { exit }' "$INSTALLER" > "$wallpaper_test_dir/path-helper.sh"
 cat >> "$wallpaper_test_dir/path-helper.sh" <<'SH'
 error() { printf '%s\n' "$*" >&2; exit 1; }
-HOME=/home/test-user
-export HOME
-[ "$(expand_home_prefix '~/Downloads/wallpaper.mp4')" = '/home/test-user/Downloads/wallpaper.mp4' ]
-[ "$(expand_home_prefix '~')" = '/home/test-user' ]
+HOME=/home/test-admin
+TARGET_HOME=/home/localhost
+export HOME TARGET_HOME
+[ "$(expand_home_prefix '~/Downloads/wallpaper.mp4')" = '/home/localhost/Downloads/wallpaper.mp4' ]
+[ "$(expand_home_prefix '~')" = '/home/localhost' ]
 [ "$(expand_home_prefix '/mnt/media/wallpaper.mp4')" = '/mnt/media/wallpaper.mp4' ]
 SH
 bash "$wallpaper_test_dir/path-helper.sh"
