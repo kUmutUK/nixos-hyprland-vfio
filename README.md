@@ -228,8 +228,8 @@ if ! SNAPSHOT_INFO="$(LC_ALL=C sudo btrfs subvolume show /home/.snapshots 2>/dev
   exit 1
 fi
 SNAPSHOT_NAME="$(awk -F: '/^Name:/ { gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print $2; exit }' <<< "$SNAPSHOT_INFO")"
-if [[ "$SNAPSHOT_NAME" != ".snapshots" ]]; then
-  echo "ERROR: /home/.snapshots resolves to subvolume '$SNAPSHOT_NAME', not the expected child .snapshots." >&2
+if [[ "$SNAPSHOT_NAME" != ".snapshots" && "$SNAPSHOT_NAME" != "@home/.snapshots" ]]; then
+  echo "ERROR: /home/.snapshots resolves to subvolume '$SNAPSHOT_NAME', not the expected @home/.snapshots child." >&2
   echo "Do not use the root @snapshots subvolume here; inspect and correct the layout manually." >&2
   exit 1
 fi
@@ -279,9 +279,11 @@ fi
 printf 'Verified /home filesystem: %s\n' "$HOME_FSTYPE"
 printf 'Current /home source and options (compare with the target device/UUID):\n'
 findmnt -rn -o SOURCE,OPTIONS --target /home
+printf 'Filesystem UUID inventory for manual comparison with the target device entry:\n'
+lsblk -f
 printf 'Verified /home subvolume: %s; child snapshot subvolume: %s\n' "$HOME_NAME" "$SNAPSHOT_NAME"
 printf 'Target /home mount:\n%s\nTarget /home/.snapshots mount:\n%s\n' "$HOME_BLOCK" "$SNAPSHOT_BLOCK"
-echo "Home Snapper preflight passed. Still review the displayed source/UUID against the machine's lsblk -f/blkid output before building."
+echo "Home Snapper preflight passed. Compare the displayed mounted source, lsblk filesystem UUIDs, and both target device entries before building."
 ```
 
 If any test fails, stop. Do not run `nixos-rebuild build`, `dry-activate`, or `switch` until the Btrfs layout and target mount declaration have been corrected and this check passes. If the hardware file uses a different subvolume layout, adapt the mount declarations to the actual machine rather than copying the example literally.
