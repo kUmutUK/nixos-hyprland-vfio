@@ -34,6 +34,20 @@ Verified source behavior:
 
 Consequently, the placeholder in the source file is not itself an error, and the source code does not support a claim that the canonical packager loses executable bits. An archive produced by a file manager or other ad-hoc process can nevertheless include `.git/`, retain the placeholder literally, or lose Unix modes.
 
+A separate recursive Git-tree check for source revision [`00d7895f188e3e5460257bb0790bc27c10190c15`](https://github.com/kUmutUK/nixos-hyprland-vfio/commit/00d7895f188e3e5460257bb0790bc27c10190c15) (tree `7a6251e92091d87a0db16570c3b4325712a13420`) confirmed that all nine paths named in the supplied finding are tracked with Git mode `100755`:
+
+- `install.sh`
+- `nixos/hooks/qemu`
+- `scripts/package-source-zip.sh`
+- `scripts/test-installer-invariants.sh`
+- `scripts/test-installer-rollback.sh`
+- `scripts/test-manual-vm-bootstrap.sh`
+- `scripts/test-source-revision.sh`
+- `scripts/test-vfio-hook-driver-state.sh`
+- `scripts/verify-source-revision.sh`
+
+This proves the current source tree records executable permissions for those files; it does **not** prove that the missing-permissions allegation is accurate for the unattached ZIP. That requires inspecting the ZIP entries themselves.
+
 **Evidence boundary:** because `nixos-hyprland-vfio(6).zip` was not attached here, the particular archive's entries, hash, mode metadata, and embedded revision were not re-calculated. The ZIP report remains a delivery-specific allegation, not an independently reproduced measurement. The safe remediation is to create a new artifact with `scripts/package-source-zip.sh` or download the CI artifact for the exact commit.
 
 ### 3. Test the installed XML and hook inputs
