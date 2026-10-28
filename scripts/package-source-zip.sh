@@ -91,6 +91,9 @@ print(
 )
 PY
 
+# A source archive is a distributable artifact, not a secret: make it readable
+# by other users/services that may collect it from a shared output directory.
+chmod 0644 -- "$tmp_archive"
 mv -f -- "$tmp_archive" "$output"
 trap - EXIT
 printf 'Source ZIP created: %s\n' "$output"

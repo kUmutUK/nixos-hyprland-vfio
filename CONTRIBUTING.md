@@ -19,11 +19,11 @@ Run these commands from the repository root:
 
 ```bash
 nix develop ./nixos --command bash -euo pipefail -c '
-  for f in install.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh; do
+  for f in install.sh scripts/package-source-zip.sh scripts/installer-lock.sh scripts/test-installer-lock.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh; do
     bash -n "$f"
   done
   find ./nixos -type f -name "*.nix" -print0 | xargs -0 -r nixfmt --check
-  shellcheck -S warning install.sh scripts/pci-address.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh
+  shellcheck -S warning install.sh scripts/package-source-zip.sh scripts/installer-lock.sh scripts/pci-address.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-lock.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh
   python3 -c "import xml.etree.ElementTree as ET; ET.parse(\"vm-xml/win10.xml\")"
   python3 scripts/test-lsfg-v1-config.py
   python3 scripts/test-vm-iso-paths.py
@@ -32,6 +32,7 @@ nix develop ./nixos --command bash -euo pipefail -c '
   python3 scripts/test-vm-xml-sync.py
   python3 scripts/test-vm-diagnostic.py
   python3 scripts/test-extract-embedded-scripts.py
+  bash scripts/test-installer-lock.sh
   bash scripts/test-installer-invariants.sh
   bash scripts/test-installer-rollback.sh
   bash scripts/test-vfio-hook-driver-state.sh

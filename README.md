@@ -217,8 +217,12 @@ scripts/package-source-zip.sh "$PWD/nixos-hyprland-vfio.zip"
 
 Before rebuilding, make sure `/etc/nixos/hashedPassword` exists and contains a
 valid password hash. `localhost` uses this file via `hashedPasswordFile`; if it is
-missing, the account can remain locked and Hyprland login will fail. Preserve an
-existing valid hash. Only create a new one if the file is missing or empty:
+missing, the account can remain locked and Hyprland login will fail. This is the
+local account's password hash and **does not enable SSH password authentication**:
+SSH password and keyboard-interactive login remain disabled. Add a trusted public
+key under `users.users.localhost.openssh.authorizedKeys.keys` before relying on
+remote SSH access. Preserve an existing valid hash. Only create a new one if the
+file is missing or empty:
 
 ```bash
 if [ ! -s /etc/nixos/hashedPassword ]; then
@@ -576,11 +580,13 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 │   ├── check-vm-iso-paths.py
 │   ├── extract-embedded-scripts.py
 │   ├── package-source-zip.sh
+│   ├── installer-lock.sh
 │   ├── pci-address.sh
 │   ├── prepare-vm-diagnostic.py
 │   ├── test-extract-embedded-scripts.py
 │   ├── test-lsfg-v1-config.py
 │   ├── test-installer-invariants.sh
+│   ├── test-installer-lock.sh
 │   ├── test-installer-rollback.sh
 │   ├── test-manual-vm-bootstrap.sh
 │   ├── test-vfio-hook-driver-state.sh
@@ -608,7 +614,8 @@ Run from the repository root. The command uses fail-fast behavior, validates Nix
 ```bash
 nix develop ./nixos --command bash -euo pipefail -c '
   find ./nixos -type f -name "*.nix" -print0 | xargs -0 -r nixfmt --check
-  shellcheck -S warning install.sh scripts/pci-address.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh
+  bash -n install.sh scripts/package-source-zip.sh scripts/installer-lock.sh scripts/test-installer-lock.sh
+  shellcheck -S warning install.sh scripts/package-source-zip.sh scripts/installer-lock.sh scripts/pci-address.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-lock.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh
   python3 -c "import xml.etree.ElementTree as ET; ET.parse(\"vm-xml/win10.xml\")"
   python3 scripts/test-lsfg-v1-config.py
   python3 scripts/test-extract-embedded-scripts.py
@@ -619,6 +626,7 @@ nix develop ./nixos --command bash -euo pipefail -c '
   python3 scripts/test-vm-xml-sync.py
   python3 scripts/test-vm-diagnostic.py
   bash scripts/test-vfio-hook-driver-state.sh
+  bash scripts/test-installer-lock.sh
   bash scripts/test-installer-invariants.sh
   bash scripts/test-installer-rollback.sh
   tmpdir="$(mktemp -d)"

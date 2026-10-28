@@ -1,6 +1,13 @@
-# Repair and validation report — updated 2026-10-27
+# Repair and validation report — updated 2026-10-28
 
-> **Delivery-scope note:** This report is part of the tracked source tree. The dated “patch-only ZIP” notes below are historical. For a canonical full-source ZIP, use the `git archive` command documented in `README.md` or the CI-uploaded `nixos-hyprland-vfio-source` artifact; CI validates `.git/` exclusion and `install.sh`’s tracked executable mode.
+> **Delivery-scope note:** This report is part of the tracked source tree. The dated “patch-only ZIP” notes below are historical. For a canonical full-source ZIP, use `scripts/package-source-zip.sh` or the CI-uploaded `nixos-hyprland-vfio-source` artifact for the exact commit. The helper verifies tracked-file completeness, excludes `.git/`, preserves executable bits, and makes the finished artifact readable from shared output directories.
+
+## Audit remediation — 2026-10-28
+
+- Corrected `install.sh` and its regression test so `/etc/nixos/hashedPassword` is described as the local `localhost` account password hash. The current SSH configuration remains public-key-only; this hash does not enable SSH password authentication.
+- The source ZIP helper now sets the published ZIP to mode `0644`. README and CONTRIBUTING validation instructions include the package helper and installer-lock checks, and the README tree lists both lock scripts.
+- Current-state notes in `DEGISIKLIK_GECMISI.md` now describe the key-only SSH policy and the canonical ZIP helper. The 2026-10-16 section below is historical and must not be treated as current configuration guidance.
+- Local regression tests and the packaging helper are to be run against this commit. The full NixOS system build and physical VFIO/VM lifecycle remain separate validations.
 
 ## Current repository validation — 2026-10-27
 
@@ -289,14 +296,16 @@ The project owner has confirmed a successful RT-Bore-LTO build and rebuild, VM s
 - The pre-existing validation suite passed again for the 2026-10-16 correction set: `bash -n` for the installer, QEMU hook, and regression tests; `scripts/test-installer-invariants.sh`; `scripts/test-vfio-hook-driver-state.sh`; `scripts/test-vm-xml.py`; Python compilation for repository scripts; JSON parsing for `flake.lock`; and XML parsing for `win10.xml`. The newly added disk preflight code block in `KURULUM.md` was also extracted and Bash-syntax-checked. These checks do not simulate a real disk operation or VM lifecycle. Negative tests in the existing suite also confirm that duplicate PCI addresses and a third PCI `hostdev` are rejected.
 - `shellcheck`, Nix evaluation/build, and libvirt validation were not run by this reviewer because the required tools are unavailable in the preparation environment. Real hardware tests were also not run independently by this reviewer. The project owner confirms the VM problem is resolved on the target system: rebuild and BORE-LTO kernel build succeeded, the VM started and shut down normally, and the display/Hyprland session recovered. The report records this as owner-verified real-system validation, not independent reproduction or a general guarantee for other hardware.
 
-- The privileged XML updater uses the already-resolved Python interpreter. XML parsing errors, an incomplete/extra PCI `hostdev` pair, or a PCI node whose source-address structure cannot be synchronized now abort before a VM XML backup/write. Added a preflight guard against running the checkout from `/etc/nixos` (which would overlap source and destination), trimmed monitor-name input before generating Hyprland defaults, and expanded the installer regression tests. Source ZIPs should be built from Git so `install.sh` remains mode `100755`; patch ZIP delivery independently stores that mode in the archive metadata.
+- The privileged XML updater uses the already-resolved Python interpreter. XML parsing errors, an incomplete/extra PCI `hostdev` pair, or a PCI node whose source-address structure cannot be synchronized now abort before a VM XML backup/write. Added a preflight guard against running the checkout from `/etc/nixos` (which would overlap source and destination), trimmed monitor-name input before generating Hyprland defaults, and expanded the installer regression tests. Source ZIPs should be built with `scripts/package-source-zip.sh` so tracked executable modes remain intact and `.git/` is excluded; patch ZIP delivery independently stores executable modes in archive metadata.
 
 
-## Latest requested configuration changes — 2026-10-16
+## Historical configuration snapshot — 2026-10-16 (superseded; not current guidance)
+
+> This dated snapshot records an earlier configuration and contains statements that became outdated. In particular, the OpenSSH password-authentication claim in the next bullet is false for the current `nixos/configuration.nix`: password and keyboard-interactive SSH authentication are disabled; public-key authentication is required.
 
 - The current RT-Bore-LTO package follows `github:xddxdd/nix-cachyos-kernel/master`; the package version is not hard-coded in `flake.nix`. The lock file records the resolved upstream source revision for reproducibility, and a newer revision is selected by running `sudo nix flake update --flake /etc/nixos/nixos cachyos-kernel` followed by a review of the lock diff. Do not use `--accept-flake-config` simply to bypass the cache-trust prompt. The `nup` Fish alias targets only this CachyOS input and works from any directory.
 - `LOW_LATENCY_LAYER=1` and `LOW_LATENCY_LAYER_REFLEX=1` are set through `environment.sessionVariables` so PAM-launched desktop sessions receive the system-wide Reflex setting. Affected applications may opt out with `DISABLE_LOW_LATENCY_LAYER=1`.
-- OpenSSH password authentication is enabled for `localhost` only, root login is disabled, TCP/22 is permitted by the firewall, and Fail2ban no longer exempts RFC1918 ranges. The contradictory Fail2ban comment was removed. The installer now checks the SSH hash file's presence and `root:root:0600` metadata during preflight and warns if setup is incomplete. The QEMU hook terminates only `seat0` rather than all sessions for the desktop user, preserving a remote SSH session. The existing GPU-node check still aborts and rolls back if a process retains the device.
+- Historical note only: this snapshot claimed OpenSSH password authentication was enabled. That claim is superseded: the current configuration disables password and keyboard-interactive SSH authentication, requires public keys, and uses `/etc/nixos/hashedPassword` only for the local `localhost` account password. The QEMU hook terminates only `seat0` rather than all sessions for the desktop user, preserving a remote SSH session. The existing GPU-node check still aborts and rolls back if a process retains the device.
 - This environment did not run Nix evaluation or build the RT-Bore-LTO kernel. Test the lock update, full rebuild, SSH persistence during VM startup, and complete VM stop/host-GPU recovery sequence on the target system before relying on these changes.
 
 ## 2026-10-19 follow-up — VM XML preservation and Vulkan capture compatibility

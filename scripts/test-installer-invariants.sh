@@ -172,8 +172,12 @@ if ! grep -Fq 'nixfmt --check' "$README" \
   || ! grep -Fq 'Lossless Scaling' "$README" \
   || ! grep -Fq 'Lossless Scaling' "$ENGLISH_GUIDE" \
   || ! grep -Fq 'nixfmt --check' "$CONTRIBUTING" \
-  || ! grep -Fq 'shellcheck -S warning install.sh scripts/pci-address.sh nixos/hooks/qemu' "$README" \
-  || ! grep -Fq 'shellcheck -S warning install.sh scripts/pci-address.sh nixos/hooks/qemu' "$CONTRIBUTING" \
+  || ! grep -Fq 'shellcheck -S warning install.sh scripts/package-source-zip.sh scripts/installer-lock.sh scripts/pci-address.sh nixos/hooks/qemu' "$README" \
+  || ! grep -Fq 'shellcheck -S warning install.sh scripts/package-source-zip.sh scripts/installer-lock.sh scripts/pci-address.sh nixos/hooks/qemu' "$CONTRIBUTING" \
+  || ! grep -Fq 'bash scripts/test-installer-lock.sh' "$README" \
+  || ! grep -Fq 'bash scripts/test-installer-lock.sh' "$CONTRIBUTING" \
+  || ! grep -Fq 'scripts/package-source-zip.sh' "$ROOT/.github/workflows/check.yml" \
+  || ! grep -Fq 'scripts/test-installer-lock.sh' "$ROOT/.github/workflows/check.yml" \
   || ! grep -Fq 'pci-address.sh' "$README" \
   || ! grep -Fq 'statix check .' "$README" \
   || ! grep -Fq 'deadnix .' "$README" \
@@ -402,12 +406,12 @@ if grep -Eq 'basename "\$\(readlink -f .*iommu_group' "$INSTALLER"; then
   exit 1
 fi
 
-# Test the SSH password-file preflight without touching /etc/nixos.
+# Test the local-account password-hash preflight without touching /etc/nixos.
 password_test_dir="$(mktemp -d)"
 trap 'rm -rf -- "${state_test_dir:-}" "${monitor_test_dir:-}" "${password_test_dir:-}"' EXIT
-awk '/^check_ssh_password_file\(\) \{/ { capture=1 } capture { print } capture && /^}/ { exit }' "$INSTALLER" > "$password_test_dir/check-password.sh"
-if ! grep -q '^check_ssh_password_file() {' "$password_test_dir/check-password.sh"; then
-  echo "FAIL: could not locate check_ssh_password_file() for its regression test." >&2
+awk '/^check_local_password_hash\(\) \{/ { capture=1 } capture { print } capture && /^}/ { exit }' "$INSTALLER" > "$password_test_dir/check-password.sh"
+if ! grep -q '^check_local_password_hash() {' "$password_test_dir/check-password.sh"; then
+  echo "FAIL: could not locate check_local_password_hash() for its regression test." >&2
   exit 1
 fi
 cat > "$password_test_dir/harness.sh" <<'BASH'
@@ -415,24 +419,29 @@ warn() { :; }
 log() { :; }
 stat() { printf '%s\n' "${FAKE_STAT:-root:root:600}"; }
 source "$1"
-check_ssh_password_file "$2"
+check_local_password_hash "$2"
 BASH
 : > "$password_test_dir/empty"
 if FAKE_STAT='root:root:600' bash "$password_test_dir/harness.sh" "$password_test_dir/check-password.sh" "$password_test_dir/missing"; then
-  echo "FAIL: a missing SSH password file was accepted." >&2
+  echo "FAIL: a missing local-account password hash was accepted." >&2
   exit 1
 fi
 if FAKE_STAT='root:root:600' bash "$password_test_dir/harness.sh" "$password_test_dir/check-password.sh" "$password_test_dir/empty"; then
-  echo "FAIL: an empty SSH password file was accepted." >&2
+  echo "FAIL: an empty local-account password hash was accepted." >&2
   exit 1
 fi
 printf 'test-hash\n' > "$password_test_dir/valid"
 if FAKE_STAT='root:root:600' bash "$password_test_dir/harness.sh" "$password_test_dir/check-password.sh" "$password_test_dir/valid"; then :; else
-  echo "FAIL: a non-empty root:root/0600 SSH password file was rejected." >&2
+  echo "FAIL: a non-empty root:root/0600 local-account password hash was rejected." >&2
   exit 1
 fi
 if FAKE_STAT='localhost:users:644' bash "$password_test_dir/harness.sh" "$password_test_dir/check-password.sh" "$password_test_dir/valid"; then
-  echo "FAIL: an insecure SSH password file was accepted." >&2
+  echo "FAIL: an insecure local-account password hash was accepted." >&2
+  exit 1
+fi
+if ! grep -Fq 'check_local_password_hash "$NIXOS_DIR/hashedPassword"' "$INSTALLER" \
+  || ! grep -Fq 'does not enable SSH password login. SSH remains public-key-only.' "$INSTALLER"; then
+  echo "FAIL: installer must describe hashedPassword as a local-account hash and keep SSH public-key-only." >&2
   exit 1
 fi
 
@@ -696,8 +705,9 @@ if ! check_fail2ban_loopback_only "$CONFIG"; then
   echo "FAIL: Fail2ban must exempt only loopback addresses, not private LAN addresses." >&2
   exit 1
 fi
-if ! grep -Fq 'check_ssh_password_file "$NIXOS_DIR/hashedPassword"' "$INSTALLER" || ! grep -Fq 'root:root:600' "$INSTALLER"; then
-  echo "FAIL: installer preflight must check the SSH password hash file and its secure metadata." >&2
+if ! grep -Fq 'check_local_password_hash "$NIXOS_DIR/hashedPassword"' "$INSTALLER" \
+  || ! grep -Fq 'hashedPasswordFile = "/etc/nixos/hashedPassword";' "$CONFIG"; then
+  echo "FAIL: installer must validate the local account password hash configured by NixOS." >&2
   exit 1
 fi
 if ! grep -Fq 'nix flake update --flake /etc/nixos/nixos cachyos-kernel' "$README" \
