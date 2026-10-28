@@ -217,8 +217,25 @@ if [[ -z "$os_check_line" || -z "$live_check_line" ]] \
 fi
 
 vm_guard_definition_line="$(grep -n '^assert_win10_domain_stopped() {' "$INSTALLER" | cut -d: -f1)"
-vm_guard_call_count="$(grep -c '^assert_win10_domain_stopped
-
+vm_guard_call_count="$(grep -c '^assert_win10_domain_stopped$' "$INSTALLER" || true)"
+vm_guard_first_call_line="$(grep -n '^assert_win10_domain_stopped$' "$INSTALLER" | sed -n '1s/:.*//p')"
+vm_guard_second_call_line="$(grep -n '^assert_win10_domain_stopped$' "$INSTALLER" | sed -n '2s/:.*//p')"
+if [[ "$vm_guard_call_count" -ne 2 ]]; then
+  echo "FAIL: installer must call the win10 state guard exactly twice." >&2
+  exit 1
+fi
+if ! grep -Fq 'sudo virsh list --all --name' "$INSTALLER"; then
+  echo "FAIL: installer must query registered libvirt domains." >&2
+  exit 1
+fi
+if ! grep -Fq 'sudo virsh domstate win10' "$INSTALLER" || ! grep -Fq '[[ "$state" != "shut off" ]]' "$INSTALLER"; then
+  echo "FAIL: installer must reject win10 states other than shut off." >&2
+  exit 1
+fi
+if [[ -z "$vm_guard_definition_line" || -z "$vm_guard_first_call_line" || -z "$vm_guard_second_call_line" ]] || (( vm_guard_definition_line >= vm_guard_first_call_line || vm_guard_first_call_line <= acknowledgement_line || vm_guard_second_call_line >= backup_line || backup_line - vm_guard_second_call_line > 2 )); then
+  echo "FAIL: win10 state checks must occur after the acknowledgement and immediately before the first backup mutation." >&2
+  exit 1
+fi
 # Keep the development shell self-contained and documentation aligned with the shipped files.
 if ! grep -Fq 'python3' "$FLAKE"; then
   echo "FAIL: the Nix development shell must include Python for repository tests." >&2
