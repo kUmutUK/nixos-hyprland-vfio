@@ -54,12 +54,15 @@ def resolve_device(expression: str, text: str) -> str:
         literal = re.fullmatch(r'"([^"]+)"', value)
         if literal:
             return literal.group(1)
-        identifier = re.fullmatch(r"[A-Za-z_][A-Za-z0-9_'-]*", value)
-        if not identifier:
+        if (
+            not value
+            or not (value[0].isalpha() or value[0] == "_")
+            or not all(character.isalnum() or character == "_" for character in value)
+        ):
             fail(f"cannot safely resolve target hardware device expression: {expression!r}")
-        name = identifier.group(0)
+        name = value
         assignment = re.compile(
-            rf'(?m)^[ \t]*{re.escape(name)}[ \t]*=[ \t]*(?:"([^"]+)"|([A-Za-z_][A-Za-z0-9_\'-]*))[ \t]*;'
+            rf'(?m)^[ \t]*{re.escape(name)}[ \t]*=[ \t]*(?:"([^"]+)"|([A-Za-z_][A-Za-z0-9_]*))[ \t]*;'
         )
         matches = list(assignment.finditer(text))
         if len(matches) != 1:
