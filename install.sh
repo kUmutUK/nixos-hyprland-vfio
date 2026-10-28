@@ -16,6 +16,50 @@ step()  { echo -e "\n${BOLD}${CYAN}▶ $1${NC}"; }
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 
+# Reject unsupported/live environments before acquiring a lock or requesting
+# acknowledgement for this high-risk migration helper.
+if ! grep -qi nixos /etc/os-release 2>/dev/null; then
+  error "This script must be run on NixOS. No system files have been changed."
+fi
+
+# NixOS live installer media exposes the ISO at /iso and its read-only store at
+# /nix/.ro-store. This script migrates an already-booted installation and must
+# stop before prompting or changing files when run from the live environment.
+is_nixos_live_installer() {
+  command -v findmnt >/dev/null 2>&1 || return 1
+  findmnt -rn -M /iso -t iso9660 >/dev/null 2>&1 && return 0
+  findmnt -rn -M /nix/.ro-store -t squashfs >/dev/null 2>&1 && return 0
+  return 1
+}
+if is_nixos_live_installer; then
+  error "A NixOS live installer environment was detected. Do not run this migration script from the live ISO; follow INSTALLATION.md for a fresh install or boot the installed NixOS system first. No system files have been changed."
+fi
+
+# Fail closed if libvirt cannot confirm that the configured Windows VM is stopped.
+# "shut off" is the only accepted state; running/paused/shutting-down/crashed or
+# unknown states require the operator to resolve the VM manually before migration.
+assert_win10_domain_stopped() {
+  local registered_domains state
+  if ! command -v virsh >/dev/null 2>&1; then
+    error "virsh is required to verify the win10 VM state; no system files have been changed."
+  fi
+  if ! registered_domains="$(sudo virsh list --all --name)"; then
+    error "Could not query libvirt to verify whether win10 is stopped; no system files have been changed."
+  fi
+  if grep -Fxq win10 <<< "$registered_domains"; then
+    if ! state="$(sudo virsh domstate win10 2>/dev/null)"; then
+      error "Could not query the registered win10 VM state; no system files have been changed."
+    fi
+    state="$(printf '%s\n' "$state" | tr '[:upper:]' '[:lower:]' | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')"
+    if [[ "$state" != "shut off" ]]; then
+      error "The registered win10 VM is not confirmed shut off (libvirt state: ${state:-unknown}). Run 'sudo virsh shutdown win10', wait until it reports 'shut off', and rerun. No system files have been changed."
+    fi
+    log "Registered win10 VM is confirmed shut off."
+  else
+    log "No registered win10 domain exists; there is no running win10 guest to disrupt."
+  fi
+}
+
 LOCK_HELPER="$REPO_DIR/scripts/installer-lock.sh"
 if [[ ! -s "$LOCK_HELPER" ]]; then
   error "Required installer lock helper is missing or empty: $LOCK_HELPER. No system files have been changed."
@@ -168,21 +212,6 @@ exit 0
 }
 
 step "Preflight checks"
-if ! grep -qi nixos /etc/os-release 2>/dev/null; then
-  error "This script must be run on NixOS."
-fi
-# NixOS live installer media exposes the ISO at /iso and its read-only store at
-# /nix/.ro-store. This script migrates an already-booted installation and must
-# stop before prompting or changing files when run from the live environment.
-is_nixos_live_installer() {
-  command -v findmnt >/dev/null 2>&1 || return 1
-  findmnt -rn -M /iso -t iso9660 >/dev/null 2>&1 && return 0
-  findmnt -rn -M /nix/.ro-store -t squashfs >/dev/null 2>&1 && return 0
-  return 1
-}
-if is_nixos_live_installer; then
-  error "A NixOS live installer environment was detected. Do not run this migration script from the live ISO; follow INSTALLATION.md for a fresh install or boot the installed NixOS system first."
-fi
 # The deployment target is /etc/nixos/nixos. A checkout anywhere inside
 # /etc/nixos can overlap its source and deployment paths, not only when the
 # repository root is exactly /etc/nixos. Resolve physical paths before checking
@@ -201,6 +230,9 @@ ensure_repo_outside_deployment_target "$REPO_DIR" "$NIXOS_DIR"
 if [[ $EUID -eq 0 ]]; then
   error "Do not run as root. Use a normal user with sudo privileges."
 fi
+# Verify now to stop early, then repeat at the transaction boundary to narrow
+# the window in which another process could start the guest after this check.
+assert_win10_domain_stopped
 if ! command -v lspci &>/dev/null; then
   error "pciutils not found. Install it temporarily: nix-shell -p pciutils"
 fi
@@ -556,6 +588,9 @@ step "Backing up current configurations"
 if [[ -e "$BACKUP_DIR" || -L "$BACKUP_DIR" ]]; then
     error "Backup path already exists; refusing to reuse it: $BACKUP_DIR"
 fi
+# Recheck immediately before the first filesystem mutation; interactive hardware
+# prompts may have left time for another process to start the VM.
+assert_win10_domain_stopped
 mkdir -m 700 -- "$BACKUP_DIR"
 for src in "$TARGET_HOME/.config/hypr" "$TARGET_HOME/.config/waybar" "$TARGET_HOME/.config/gtk-3.0" "$TARGET_HOME/.config/gtk-4.0" \
             "$NIXOS_FLAKE_DIR/configuration.nix" "$NIXOS_FLAKE_DIR/home.nix" \
