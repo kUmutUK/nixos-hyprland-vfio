@@ -303,6 +303,7 @@ python3 "$REPO/scripts/test-lsfg-v1-config.py"
 python3 "$REPO/scripts/test-extract-embedded-scripts.py"
 python3 "$REPO/scripts/test-vm-iso-paths.py"
 python3 "$REPO/scripts/test-vm-xml.py"
+python3 "$REPO/scripts/test-vm-xml-paths.py"
 python3 "$REPO/scripts/test-vm-xml-sync.py"
 python3 "$REPO/scripts/test-vm-diagnostic.py"
 sudo nixos-rebuild build --flake /etc/nixos/nixos#nixos
@@ -756,6 +757,7 @@ nix develop ./nixos --command bash -euo pipefail -c '
   bash -n scripts/test-manual-vm-bootstrap.sh
   bash scripts/test-manual-vm-bootstrap.sh
   python3 scripts/test-vm-xml.py
+python3 scripts/test-vm-xml-paths.py
   python3 scripts/test-vm-xml-sync.py
   python3 scripts/test-vm-diagnostic.py
   bash scripts/test-vfio-hook-driver-state.sh
