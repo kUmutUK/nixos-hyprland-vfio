@@ -42,7 +42,7 @@ extract_function() {
 
 FUNCTIONS_FILE="$TMP_DIR/functions.sh"
 : > "$FUNCTIONS_FILE"
-for function_name in device_driver_name device_has_real_driver device_bound_to_vfio restore_prepare_device save_service_state stop_saved_service restore_saved_services; do
+for function_name in device_driver_name device_has_expected_host_driver device_bound_to_vfio restore_prepare_device save_service_state stop_saved_service restore_saved_services; do
   function_text="$(extract_function "$function_name")"
   [[ "$function_text" == *"${function_name}()"* ]] || fail "could not extract $function_name from hook"
   printf '%s\n\n' "$function_text" >> "$FUNCTIONS_FILE"
@@ -50,6 +50,13 @@ done
 
 # shellcheck disable=SC1090
 source "$FUNCTIONS_FILE"
+
+# Use the hook's configured BDFs so a deliberate address change does not make
+# this test silently exercise a different function.
+GPU_PCI="$(sed -n 's/^GPU_PCI="\([^"]*\)"$/\1/p' "$HOOK")"
+GPU_AUDIO="$(sed -n 's/^GPU_AUDIO="\([^"]*\)"$/\1/p' "$HOOK")"
+[[ -n "$GPU_PCI" && -n "$GPU_AUDIO" && "$GPU_PCI" != "$GPU_AUDIO" ]] \
+  || fail 'could not resolve distinct GPU and audio PCI defaults from the hook'
 
 # All service-state files are redirected into a temporary directory; no real systemd
 # services or /run/libvirt state are touched by this regression test.
@@ -96,15 +103,18 @@ release_host_driver() { released_devices+=("$1"); }
 
 DEVICES_ROOT="$TMP_DIR/sys/bus/pci/devices"
 DRIVERS_ROOT="$TMP_DIR/sys/bus/pci/drivers"
-DEVICE="0000:0b:00.0"
-mkdir -p "$DEVICES_ROOT/$DEVICE" "$DRIVERS_ROOT/amdgpu" "$DRIVERS_ROOT/vfio-pci"
+DEVICE="$GPU_PCI"
+AUDIO_DEVICE="$GPU_AUDIO"
+mkdir -p "$DEVICES_ROOT/$DEVICE" "$DEVICES_ROOT/$AUDIO_DEVICE" \
+  "$DRIVERS_ROOT/amdgpu" "$DRIVERS_ROOT/vfio-pci" "$DRIVERS_ROOT/pci-stub" \
+  "$DRIVERS_ROOT/snd_hda_intel" "$DRIVERS_ROOT/unexpected-driver"
 
 # No driver symlink: readlink -f would still return a path ending in /driver.
 # The fixed helper must instead treat this device as unbound.
 if device_driver_name "$DEVICE" "$DEVICES_ROOT" >/dev/null 2>&1; then
   fail 'unbound device was reported as having a driver'
 fi
-if device_has_real_driver "$DEVICE" "$DEVICES_ROOT"; then
+if device_has_expected_host_driver "$DEVICE" "$DEVICES_ROOT"; then
   fail 'unbound device was reported as having a real host driver'
 fi
 if device_bound_to_vfio "$DEVICE" "$DEVICES_ROOT"; then
@@ -119,7 +129,7 @@ restore_prepare_device "$DEVICE" 1 "$DEVICES_ROOT"
 ln -s "$DRIVERS_ROOT/amdgpu" "$DEVICES_ROOT/$DEVICE/driver"
 [[ "$(device_driver_name "$DEVICE" "$DEVICES_ROOT")" == 'amdgpu' ]] \
   || fail 'amdgpu driver name was not detected'
-device_has_real_driver "$DEVICE" "$DEVICES_ROOT" \
+device_has_expected_host_driver "$DEVICE" "$DEVICES_ROOT" \
   || fail 'amdgpu was not recognized as a real driver'
 if device_bound_to_vfio "$DEVICE" "$DEVICES_ROOT"; then
   fail 'amdgpu was reported as vfio-pci'
@@ -135,14 +145,49 @@ rm "$DEVICES_ROOT/$DEVICE/driver"
 ln -s "$DRIVERS_ROOT/vfio-pci" "$DEVICES_ROOT/$DEVICE/driver"
 [[ "$(device_driver_name "$DEVICE" "$DEVICES_ROOT")" == 'vfio-pci' ]] \
   || fail 'vfio-pci driver name was not detected'
-if device_has_real_driver "$DEVICE" "$DEVICES_ROOT"; then
-  fail 'vfio-pci was incorrectly reported as a real host driver'
+if device_has_expected_host_driver "$DEVICE" "$DEVICES_ROOT"; then
+  fail 'vfio-pci was incorrectly reported as the expected host driver'
 fi
 device_bound_to_vfio "$DEVICE" "$DEVICES_ROOT" \
   || fail 'vfio-pci was not detected'
 restore_prepare_device "$DEVICE" 1 "$DEVICES_ROOT"
 [[ "${#released_devices[@]}" -eq 2 ]] \
   || fail 'rollback did not try to restore the host driver from vfio-pci'
+
+# pci-stub is not a restored host driver. It must trigger the same recovery
+# path instead of suppressing the release warning/fallback.
+rm "$DEVICES_ROOT/$DEVICE/driver"
+ln -s "$DRIVERS_ROOT/pci-stub" "$DEVICES_ROOT/$DEVICE/driver"
+if device_has_expected_host_driver "$DEVICE" "$DEVICES_ROOT"; then
+  fail 'pci-stub was incorrectly accepted as the GPU host driver'
+fi
+restore_prepare_device "$DEVICE" 1 "$DEVICES_ROOT"
+[[ "${#released_devices[@]}" -eq 3 && "${released_devices[2]}" == "$DEVICE" ]] \
+  || fail 'rollback did not reprobe the GPU when pci-stub was bound'
+
+# An unknown non-VFIO driver must also be rejected.
+rm "$DEVICES_ROOT/$DEVICE/driver"
+ln -s "$DRIVERS_ROOT/unexpected-driver" "$DEVICES_ROOT/$DEVICE/driver"
+if device_has_expected_host_driver "$DEVICE" "$DEVICES_ROOT"; then
+  fail 'unexpected driver was incorrectly accepted as the GPU host driver'
+fi
+
+# The HDMI/DisplayPort audio function has its own expected host driver.
+: > "$DEVICES_ROOT/$AUDIO_DEVICE/driver_override"
+ln -s "$DRIVERS_ROOT/snd_hda_intel" "$DEVICES_ROOT/$AUDIO_DEVICE/driver"
+device_has_expected_host_driver "$AUDIO_DEVICE" "$DEVICES_ROOT" \
+  || fail 'snd_hda_intel was not recognized as the expected audio driver'
+rm "$DEVICES_ROOT/$AUDIO_DEVICE/driver"
+ln -s "$DRIVERS_ROOT/amdgpu" "$DEVICES_ROOT/$AUDIO_DEVICE/driver"
+if device_has_expected_host_driver "$AUDIO_DEVICE" "$DEVICES_ROOT"; then
+  fail 'amdgpu was incorrectly accepted as the HDMI/DP audio driver'
+fi
+rm "$DEVICES_ROOT/$AUDIO_DEVICE/driver"
+ln -s "$DRIVERS_ROOT/pci-stub" "$DEVICES_ROOT/$AUDIO_DEVICE/driver"
+if device_has_expected_host_driver "$AUDIO_DEVICE" "$DEVICES_ROOT"; then
+  fail 'pci-stub was incorrectly accepted as the HDMI/DP audio driver'
+fi
+rm "$DEVICES_ROOT/$AUDIO_DEVICE/driver"
 
 # A broken symlink must be treated as unresolved, not as a driver name.
 rm "$DEVICES_ROOT/$DEVICE/driver"
