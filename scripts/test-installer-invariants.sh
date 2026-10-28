@@ -85,6 +85,31 @@ if ! grep -Fq 'sha256sum nixos-hyprland-vfio-source.zip > nixos-hyprland-vfio-so
   exit 1
 fi
 echo "OK: partition-count guard and source ZIP checksum artifact contract verified."
+
+# Manual migration must document a fail-closed Home Snapper preflight before rebuild/switch.
+while IFS= read -r expected; do
+  if ! grep -Fq -- "$expected" "$README"; then
+    echo "FAIL: README Home Snapper preflight is missing: $expected" >&2
+    exit 1
+  fi
+done <<'EXPECTED'
+Mandatory Home Snapper preflight
+findmnt -rn -o FSTYPE --target /home
+sudo btrfs subvolume show /home
+sudo btrfs subvolume show /home/.snapshots
+TARGET_HW=/etc/nixos/nixos/hardware-configuration.nix
+HOME_BLOCK=
+SNAPSHOT_BLOCK=
+subvol=@home/.snapshots
+neededForBoot = true;
+device/UUID
+EXPECTED
+if ! grep -Fq 'mandatory **Home Snapper preflight**' "$ENGLISH_GUIDE" \
+  || ! grep -Fq 'neededForBoot = true' "$ENGLISH_GUIDE"; then
+  echo "FAIL: INSTALLATION.md must direct existing-system migrations through the Home Snapper preflight." >&2
+  exit 1
+fi
+echo "OK: manual Home Snapper migration preflight documentation contract verified."
 awk '/^require_btrfs_home\(\) \{/ { capture=1 } capture { print } capture && /^}/ { exit }' "$INSTALLER" \
   > "$home_preflight_test_dir/require-btrfs-home.sh"
 if ! grep -q '^require_btrfs_home() {' "$home_preflight_test_dir/require-btrfs-home.sh"; then
