@@ -61,6 +61,12 @@ jobs:
           bash -n scripts/test-installer-lock.sh
           bash scripts/test-installer-lock.sh
 
+      - name: Source revision provenance regression test
+        run: |
+          bash -n scripts/verify-source-revision.sh
+          bash -n scripts/test-source-revision.sh
+          bash scripts/test-source-revision.sh
+
       # ---- GATE STEPS (must pass) ----
 
       - name: shellcheck
@@ -75,7 +81,7 @@ jobs:
             sudo apt-get update -qq
             sudo apt-get install -y -qq shellcheck
           fi
-          shellcheck -S warning install.sh scripts/package-source-zip.sh scripts/installer-lock.sh scripts/pci-address.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh scripts/test-installer-lock.sh scripts/test-manual-vm-bootstrap.sh
+          shellcheck -S warning install.sh scripts/package-source-zip.sh scripts/verify-source-revision.sh scripts/test-source-revision.sh scripts/installer-lock.sh scripts/pci-address.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh scripts/test-installer-lock.sh scripts/test-manual-vm-bootstrap.sh
           echo "  shellcheck OK"
 
       - name: VFIO hook driver-state regression tests

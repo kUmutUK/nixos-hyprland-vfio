@@ -75,8 +75,25 @@ stop_saved_service() {
   previous="$(awk -F= -v name="$service" '$1 == name { print $2; found=1 } END { if (!found) exit 1 }' "$SERVICE_STATE_FILE" 2>/dev/null)" || previous="invalid"
   case "$previous" in
     0)
-      log "Leaving $service stopped (it was inactive before VM start)."
-      return 0
+      # A service may have been activated by another process after the initial
+      # snapshot. Re-query before allowing GPU handoff to proceed.
+      if ! active_state="$(systemctl show --property=ActiveState --value "$service" 2>/dev/null)"; then
+        log "ERROR: Could not verify $service state after it was recorded inactive; aborting GPU handoff."
+        return 1
+      fi
+      case "$active_state" in
+        inactive|failed)
+          log "Leaving $service stopped (it was inactive before VM start and remains inactive)."
+          return 0
+          ;;
+        active|reloading|activating|deactivating)
+          log "WARNING: $service became $active_state after being recorded inactive; stopping and verifying it before GPU handoff."
+          ;;
+        *)
+          log "ERROR: Unknown ActiveState '$active_state' for $service; aborting GPU handoff."
+          return 1
+          ;;
+      esac
       ;;
     1) ;;
     *)

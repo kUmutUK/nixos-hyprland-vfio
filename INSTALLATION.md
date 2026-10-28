@@ -576,36 +576,25 @@ sudo reboot
 set -euo pipefail
 REPO="$HOME/nixos-hyprland-vfio"  # change this if your persistent checkout is elsewhere
 SOURCE_REVISION_FILE=/etc/nixos/.source-revision
-SOURCE_REVISION=
-if [ -f "$SOURCE_REVISION_FILE" ]; then
-  SOURCE_REVISION="$(tr -d '[:space:]' < "$SOURCE_REVISION_FILE")"
-  if [[ ! "$SOURCE_REVISION" =~ ^[0-9a-f]{40}$ ]]; then
-    echo "ERROR: Invalid source revision in $SOURCE_REVISION_FILE; inspect it before continuing." >&2
-    exit 1
-  fi
+if [[ ! -f "$SOURCE_REVISION_FILE" || ! -s "$SOURCE_REVISION_FILE" ]]; then
+  echo "ERROR: Required source revision record is missing or empty: $SOURCE_REVISION_FILE." >&2
+  echo "Use the documented migration path to record the actual source commit; do not infer it from current main." >&2
+  exit 1
 fi
-if [ ! -d "$REPO/.git" ]; then
+SOURCE_REVISION="$(tr -d '[:space:]' < "$SOURCE_REVISION_FILE")"
+if [[ ! "$SOURCE_REVISION" =~ ^[0-9a-f]{40}$ ]]; then
+  echo "ERROR: Invalid source revision in $SOURCE_REVISION_FILE; inspect it before continuing." >&2
+  exit 1
+fi
+if ! git -C "$REPO" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   if [ -e "$REPO" ] || [ -L "$REPO" ]; then
     echo "ERROR: $REPO exists but is not a Git checkout; inspect it before continuing." >&2
     exit 1
   fi
   git clone https://github.com/kUmutUK/nixos-hyprland-vfio.git "$REPO"
-  if [ -n "$SOURCE_REVISION" ]; then
-    git -C "$REPO" checkout --detach "$SOURCE_REVISION"
-  fi
+  git -C "$REPO" checkout --detach "$SOURCE_REVISION"
 fi
-if [ -n "$SOURCE_REVISION" ]; then
-  CURRENT_SOURCE_REVISION="$(git -C "$REPO" rev-parse --verify HEAD)"
-  if [ "$CURRENT_SOURCE_REVISION" != "$SOURCE_REVISION" ]; then
-    echo "ERROR: Installed configuration came from $SOURCE_REVISION, but $REPO is at $CURRENT_SOURCE_REVISION." >&2
-    echo "Use a separate clean checkout at the recorded revision; do not mix VM tooling from different commits." >&2
-    exit 1
-  fi
-  if [ -n "$(git -C "$REPO" status --porcelain --untracked-files=all)" ]; then
-    echo "ERROR: $REPO has local or untracked changes; use a clean checkout of $SOURCE_REVISION for VM preparation." >&2
-    exit 1
-  fi
-fi
+bash "$REPO/scripts/verify-source-revision.sh" "$SOURCE_REVISION_FILE" "$REPO"
 cd "$REPO"
 VM_XML=/var/lib/libvirt/win10.xml
 test -f "$REPO/scripts/sync-vm-xml.py"

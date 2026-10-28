@@ -6,9 +6,11 @@ This file summarizes notable changes in English. The original detailed Turkish h
 
 ### Archive provenance and validation correction — 2026-10-28
 - Fixed the README Bash syntax-validation command to run `bash -n` separately for each listed script in a fail-fast loop. Passing multiple pathnames to one `bash -n` invocation does not syntax-check every file independently.
-- Recorded the latest archive measurements provided for this review: **493,030 bytes**, SHA-256 prefix `45e3edaa…`, embedded Git HEAD `c395611f2e0835799ce54178d4164d42eea9d721`, and 105 ZIP entries including 45 `.git/` entries. Only the digest prefix was supplied and the ZIP bytes were not attached to this editing session, so these values are transcribed from the audit record rather than independently recomputed here.
-- Explicitly separated the preceding 490,249-byte ZIP (`505ab8bc…`, embedded HEAD `8487ea4c…`) as a different, historical archive. Current and historical ZIP measurements must never be mixed.
-- Reconfirmed that `scripts/package-source-zip.sh` and CI already use canonical `git archive` packaging, exclude `.git/`, and validate tracked executable modes. The permissions and Git metadata defects belong to the manually compressed ZIP, not to the packaging helper or Git index.
+- Recorded the user-supplied measurements for the ZIP under review before remediation: **494,995 bytes**, SHA-256 prefix `00805455…`, embedded Git HEAD `cdfd3d8d5008e4b7405ce2433e29b8a0e34ffebe`, and 105 entries including 45 `.git/` entries. The ZIP bytes were not attached to this editing session, so these values were not independently recalculated.
+- Reclassified the previous **493,030-byte / `45e3edaa…` / `c395611f…`** ZIP as a different historical archive; do not use it as the provenance for the submitted file.
+- Confirmed the canonical `git archive` helper and CI already exclude `.git/` and preserve tracked executable modes. Added validation that each canonical ZIP embeds the exact commit being packaged.
+- Fixed inconsistent source pinning across clean install, README Path B, and `install.sh`: each deployment records the source commit, and VM preparation refuses a missing/malformed marker, a mismatched HEAD, or a dirty checkout.
+- Closed the initially-inactive-to-active VFIO service race with an ActiveState recheck, fail-closed handling, and a mocked regression test.
 
 ### Audit regression fixes
 - Corrected the installer’s `hashedPassword` preflight and regression tests to identify it as the local `localhost` account password hash, not an SSH password file; the warning now explicitly confirms SSH password authentication stays disabled. Added an invariant against reintroducing that mismatch.

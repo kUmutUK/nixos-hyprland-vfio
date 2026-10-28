@@ -151,13 +151,25 @@ grep -nE 'system\.stateVersion|home\.stateVersion' \
 5. After reviewing that diff and the values above, copy only the four flake files. This overwrites their corresponding target files, so do not run it before making and checking the backup:
 
 ```bash
+set -Eeuo pipefail
 REPO="$HOME/nixos-hyprland-vfio"   # same checkout path as above
+SOURCE_REVISION="$(git -C "$REPO" rev-parse --verify 'HEAD^{commit}')"
+if [[ ! "$SOURCE_REVISION" =~ ^[0-9a-f]{40}$ ]]; then
+  echo "ERROR: Could not resolve a valid source commit from $REPO." >&2
+  exit 1
+fi
+if [ -n "$(git -C "$REPO" status --porcelain --untracked-files=all)" ]; then
+  echo "ERROR: $REPO has local or untracked changes. Use a clean checkout before migrating." >&2
+  exit 1
+fi
 sudo install -d -m 0755 /etc/nixos/nixos
 for file in configuration.nix home.nix flake.nix flake.lock; do
   sudo install -m 0644 "$REPO/nixos/$file" /etc/nixos/nixos/
 done
 sudo install -d -m 0755 /etc/nixos/nixos/hooks
 sudo install -m 0755 "$REPO/nixos/hooks/qemu" /etc/nixos/nixos/hooks/qemu
+printf '%s\n' "$SOURCE_REVISION" | sudo tee /etc/nixos/.source-revision >/dev/null
+sudo chmod 0644 /etc/nixos/.source-revision
 ```
 
 6. **Preserve machine-specific settings.** If `/etc/nixos/nixos/hardware-configuration.nix` does not exist, first verify that `/etc/nixos/hardware-configuration.nix` was generated on this machine, then copy it (never use the repository template as a substitute):
@@ -265,36 +277,25 @@ After the first system activation and reboot, prepare the VM disk and define the
 set -euo pipefail
 REPO="$HOME/nixos-hyprland-vfio"  # change this if your persistent checkout is elsewhere
 SOURCE_REVISION_FILE=/etc/nixos/.source-revision
-SOURCE_REVISION=
-if [ -f "$SOURCE_REVISION_FILE" ]; then
-  SOURCE_REVISION="$(tr -d '[:space:]' < "$SOURCE_REVISION_FILE")"
-  if [[ ! "$SOURCE_REVISION" =~ ^[0-9a-f]{40}$ ]]; then
-    echo "ERROR: Invalid source revision in $SOURCE_REVISION_FILE; inspect it before continuing." >&2
-    exit 1
-  fi
+if [[ ! -f "$SOURCE_REVISION_FILE" || ! -s "$SOURCE_REVISION_FILE" ]]; then
+  echo "ERROR: Required source revision record is missing or empty: $SOURCE_REVISION_FILE." >&2
+  echo "Use the documented migration path to record the actual source commit; do not infer it from current main." >&2
+  exit 1
 fi
-if [ ! -d "$REPO/.git" ]; then
+SOURCE_REVISION="$(tr -d '[:space:]' < "$SOURCE_REVISION_FILE")"
+if [[ ! "$SOURCE_REVISION" =~ ^[0-9a-f]{40}$ ]]; then
+  echo "ERROR: Invalid source revision in $SOURCE_REVISION_FILE; inspect it before continuing." >&2
+  exit 1
+fi
+if ! git -C "$REPO" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   if [ -e "$REPO" ] || [ -L "$REPO" ]; then
     echo "ERROR: $REPO exists but is not a Git checkout; inspect it before continuing." >&2
     exit 1
   fi
   git clone https://github.com/kUmutUK/nixos-hyprland-vfio.git "$REPO"
-  if [ -n "$SOURCE_REVISION" ]; then
-    git -C "$REPO" checkout --detach "$SOURCE_REVISION"
-  fi
+  git -C "$REPO" checkout --detach "$SOURCE_REVISION"
 fi
-if [ -n "$SOURCE_REVISION" ]; then
-  CURRENT_SOURCE_REVISION="$(git -C "$REPO" rev-parse --verify HEAD)"
-  if [ "$CURRENT_SOURCE_REVISION" != "$SOURCE_REVISION" ]; then
-    echo "ERROR: Installed configuration came from $SOURCE_REVISION, but $REPO is at $CURRENT_SOURCE_REVISION." >&2
-    echo "Use a separate clean checkout at the recorded revision; do not mix VM tooling from different commits." >&2
-    exit 1
-  fi
-  if [ -n "$(git -C "$REPO" status --porcelain --untracked-files=all)" ]; then
-    echo "ERROR: $REPO has local or untracked changes; use a clean checkout of $SOURCE_REVISION for VM preparation." >&2
-    exit 1
-  fi
-fi
+bash "$REPO/scripts/verify-source-revision.sh" "$SOURCE_REVISION_FILE" "$REPO"
 cd "$REPO"
 VM_XML=/var/lib/libvirt/win10.xml
 test -f "$REPO/scripts/sync-vm-xml.py"
@@ -561,6 +562,8 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 ```text
 .
 ├── README.md
+├── .gitattributes                  # expand source commit identity in canonical ZIPs
+├── SOURCE_REVISION                 # Git archive expands this to the packaged commit
 ├── .gitignore
 ├── DISCLAIMER.md
 ├── KURULUM.md                      # English compatibility pointer to INSTALLATION.md
@@ -580,6 +583,8 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 │   ├── check-vm-iso-paths.py
 │   ├── extract-embedded-scripts.py
 │   ├── package-source-zip.sh
+│   ├── verify-source-revision.sh
+│   ├── test-source-revision.sh
 │   ├── installer-lock.sh
 │   ├── pci-address.sh
 │   ├── prepare-vm-diagnostic.py
@@ -617,12 +622,14 @@ nix develop ./nixos --command bash -euo pipefail -c '
   for f in \
     install.sh \
     scripts/package-source-zip.sh \
+    scripts/verify-source-revision.sh \
+    scripts/test-source-revision.sh \
     scripts/installer-lock.sh \
     scripts/test-installer-lock.sh
   do
     bash -n "$f" || exit 1
   done
-  shellcheck -S warning install.sh scripts/package-source-zip.sh scripts/installer-lock.sh scripts/pci-address.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-lock.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh
+  shellcheck -S warning install.sh scripts/package-source-zip.sh scripts/verify-source-revision.sh scripts/test-source-revision.sh scripts/installer-lock.sh scripts/pci-address.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-lock.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh
   python3 -c "import xml.etree.ElementTree as ET; ET.parse(\"vm-xml/win10.xml\")"
   python3 scripts/test-lsfg-v1-config.py
   python3 scripts/test-extract-embedded-scripts.py
@@ -634,6 +641,7 @@ nix develop ./nixos --command bash -euo pipefail -c '
   python3 scripts/test-vm-diagnostic.py
   bash scripts/test-vfio-hook-driver-state.sh
   bash scripts/test-installer-lock.sh
+  bash scripts/test-source-revision.sh
   bash scripts/test-installer-invariants.sh
   bash scripts/test-installer-rollback.sh
   tmpdir="$(mktemp -d)"

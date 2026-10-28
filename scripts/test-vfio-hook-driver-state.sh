@@ -167,6 +167,15 @@ restore_saved_services || fail 'service-state restoration reported failure'
 [[ "${MOCK_ACTIVE[ollama]}" == "0" ]] || fail 'Ollama was started despite being inactive before VM start'
 [[ ! -e "$SERVICE_STATE_FILE" ]] || fail 'service-state file was not removed after successful restoration'
 
+# If a service was recorded inactive but becomes active before the stop stage,
+# the hook must re-query it, stop it, and preserve the original inactive state.
+save_service_state || fail 'could not capture service state before inactive-to-active race test'
+MOCK_ACTIVE[ollama]=1
+stop_saved_service ollama || fail 'an Ollama service activated after the snapshot was not stopped'
+[[ "${MOCK_ACTIVE[ollama]}" == "0" ]] || fail 'the inactive-to-active race left Ollama active during GPU handoff'
+restore_saved_services || fail 'inactive-to-active race could not restore captured service state'
+[[ "${MOCK_ACTIVE[ollama]}" == "0" ]] || fail 'Ollama was started despite its initially inactive state'
+
 # A service stop failure that leaves the unit active must block GPU handoff.
 # The caller checks this status and invokes prepare rollback before unbinding.
 save_service_state || fail 'could not capture service state before stop-failure test'

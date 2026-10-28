@@ -19,11 +19,11 @@ Run these commands from the repository root:
 
 ```bash
 nix develop ./nixos --command bash -euo pipefail -c '
-  for f in install.sh scripts/package-source-zip.sh scripts/installer-lock.sh scripts/test-installer-lock.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh; do
+  for f in install.sh scripts/package-source-zip.sh scripts/verify-source-revision.sh scripts/test-source-revision.sh scripts/installer-lock.sh scripts/test-installer-lock.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh; do
     bash -n "$f"
   done
   find ./nixos -type f -name "*.nix" -print0 | xargs -0 -r nixfmt --check
-  shellcheck -S warning install.sh scripts/package-source-zip.sh scripts/installer-lock.sh scripts/pci-address.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-lock.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh
+  shellcheck -S warning install.sh scripts/package-source-zip.sh scripts/verify-source-revision.sh scripts/test-source-revision.sh scripts/installer-lock.sh scripts/pci-address.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-lock.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh
   python3 -c "import xml.etree.ElementTree as ET; ET.parse(\"vm-xml/win10.xml\")"
   python3 scripts/test-lsfg-v1-config.py
   python3 scripts/test-vm-iso-paths.py
@@ -33,6 +33,7 @@ nix develop ./nixos --command bash -euo pipefail -c '
   python3 scripts/test-vm-diagnostic.py
   python3 scripts/test-extract-embedded-scripts.py
   bash scripts/test-installer-lock.sh
+  bash scripts/test-source-revision.sh
   bash scripts/test-installer-invariants.sh
   bash scripts/test-installer-rollback.sh
   bash scripts/test-vfio-hook-driver-state.sh
@@ -53,6 +54,8 @@ nix develop ./nixos --command bash -euo pipefail -c '
 ```
 
 The `scripts/pci-address.sh` helper is included in ShellCheck because the installer sources it. `statix check .` and `deadnix .` are required CI gates; `statix.toml` disables only the style-only repeated-key lint, not actionable static-analysis findings.
+
+Source provenance is part of the migration contract: clean installation, manual migration, and `install.sh` record the actual Git commit in `/etc/nixos/.source-revision`. VM preparation refuses a missing/malformed marker, a different commit, or a dirty checkout. Canonical source ZIPs embed their commit using Git's `export-subst`; arbitrary ZIP exports without that identity are not accepted by the migration helper.
 
 For changes to NixOS options or kernel inputs, also evaluate the relevant output and, where feasible, run a real `nixos-rebuild dry-activate`.
 

@@ -528,12 +528,21 @@ fi
 for guide in "$README" "$ROOT/INSTALLATION.md"; do
   if ! grep -Fq 'SOURCE_REVISION="$(git -C /tmp/repo rev-parse --verify HEAD)"' "$guide" \
     || ! grep -Fq 'SOURCE_REVISION_FILE=/etc/nixos/.source-revision' "$guide" \
+    || ! grep -Fq 'if [[ ! -f "$SOURCE_REVISION_FILE" || ! -s "$SOURCE_REVISION_FILE" ]]; then' "$guide" \
     || ! grep -Fq 'git -C "$REPO" checkout --detach "$SOURCE_REVISION"' "$guide" \
-    || ! grep -Fq 'git -C "$REPO" status --porcelain --untracked-files=all' "$guide"; then
-    echo "FAIL: clean-install VM setup must pin and verify the post-reboot checkout to the original commit." >&2
+    || ! grep -Fq 'bash "$REPO/scripts/verify-source-revision.sh" "$SOURCE_REVISION_FILE" "$REPO"' "$guide"; then
+    echo "FAIL: VM preparation must require the recorded source commit and verify a clean, matching checkout." >&2
     exit 1
   fi
 done
+
+if ! grep -Fq 'SOURCE_REVISION_FILE="$NIXOS_DIR/.source-revision"' "$INSTALLER" \
+  || ! grep -Fq 'sudo tee "$SOURCE_REVISION_FILE"' "$INSTALLER" \
+  || ! grep -Fq 'SOURCE_REVISION="$(git -C "$REPO" rev-parse --verify' "$README" \
+  || ! grep -Fq 'sudo tee /etc/nixos/.source-revision' "$README"; then
+  echo "FAIL: automated and manual migration must record the source commit for later VM preparation." >&2
+  exit 1
+fi
 
 python3 - "$README" "$ROOT/INSTALLATION.md" <<'PY'
 from pathlib import Path

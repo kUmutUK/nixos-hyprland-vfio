@@ -62,6 +62,19 @@ with zipfile.ZipFile(archive_path) as bundle:
 
     entries = bundle.infolist()
     names = {entry.filename for entry in entries}
+    revision_name = prefix + "SOURCE_REVISION"
+    if revision_name not in names:
+        raise SystemExit("ERROR: source ZIP is missing its embedded SOURCE_REVISION identity.")
+    try:
+        archived_revision = bundle.read(revision_name).decode("ascii").strip()
+    except (UnicodeDecodeError, KeyError) as error:
+        raise SystemExit("ERROR: source ZIP has an invalid embedded SOURCE_REVISION identity.") from error
+    if archived_revision != commit:
+        raise SystemExit(
+            "ERROR: source ZIP SOURCE_REVISION does not match the packaged commit "
+            f"({archived_revision!r} != {commit!r})."
+        )
+
     if any(".git" in PurePosixPath(name).parts for name in names):
         raise SystemExit("ERROR: source ZIP must not include .git metadata.")
 
