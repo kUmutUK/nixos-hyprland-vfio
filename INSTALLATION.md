@@ -779,9 +779,31 @@ only for startup troubleshooting; it is not a permanent gaming configuration.
 >   backs up and preserves an existing deployed XML, and only writes to
 >   `/var/lib/libvirt/win10.xml`.
 >
-> Run `python3 scripts/test-vm-xml.py` from the repository root. It checks that the hook and XML
-> addresses match each other, but it cannot prove those addresses identify the correct physical
-> devices on your machine. Then rebuild the hook with
+> Run `python3 scripts/test-vm-xml.py` from the repository root for the repository template. To validate
+> the installed VM definition against the deployed hook source, pass the actual file paths:
+>
+> ```bash
+> python3 scripts/test-vm-xml.py \
+>   --xml-path /var/lib/libvirt/win10.xml \
+>   --hook-path /etc/nixos/nixos/hooks/qemu \
+>   --allow-custom-usb-ids
+> ```
+>
+> `--allow-custom-usb-ids` permits local USB vendor/product IDs while still checking their numeric
+> format and requiring the expected number of USB entries. The test compares PCI addresses and
+> other XML invariants; it cannot prove that a PCI address identifies the correct physical device.
+> `/etc/nixos/nixos/hooks/qemu` is the source hook, not necessarily the currently active generated
+> libvirt hook. To compare against the hook output selected by the deployed NixOS flake, use:
+>
+> ```bash
+> ACTIVE_HOOK="$(cd /etc/nixos/nixos && nix build --no-link --no-update-lock-file --print-out-paths .#nixosConfigurations.nixos.config.virtualisation.libvirtd.hooks.qemu.vfio)"
+> python3 scripts/test-vm-xml.py \
+>   --xml-path /var/lib/libvirt/win10.xml \
+>   --hook-path "$ACTIVE_HOOK" \
+>   --allow-custom-usb-ids
+> ```
+>
+> The path-override regression is covered by `python3 scripts/test-vm-xml-paths.py`. Then rebuild the hook with
 > `sudo nixos-rebuild switch --flake /etc/nixos/nixos#nixos`. Finally, define the synchronized
 > active file with `sudo virsh define /var/lib/libvirt/win10.xml`. Updating only the hook does not
 > update the VM's PCI resources, and updating only an XML does not activate the new hook.
