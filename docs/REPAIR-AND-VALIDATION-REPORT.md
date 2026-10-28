@@ -7,7 +7,8 @@
 - Corrected `install.sh` and its regression test so `/etc/nixos/hashedPassword` is described as the local `localhost` account password hash. The current SSH configuration remains public-key-only; this hash does not enable SSH password authentication.
 - The source ZIP helper now sets the published ZIP to mode `0644`. README and CONTRIBUTING validation instructions include the package helper and installer-lock checks, and the README tree lists both lock scripts.
 - Current-state notes in `DEGISIKLIK_GECMISI.md` now describe the key-only SSH policy and the canonical ZIP helper. The 2026-10-16 section below is historical and must not be treated as current configuration guidance.
-- Local regression tests and the packaging helper are to be run against this commit. The full NixOS system build and physical VFIO/VM lifecycle remain separate validations.
+- Validation on the extracted source tree: Bash syntax checks passed; the installer-lock, installer-invariants, installer-rollback, and VFIO driver-state tests passed; Python compilation, embedded-script extraction, LSFG-VK config, VM ISO-path tests (8 tests), VM XML invariants, JSON lock parsing, and XML parsing passed. The canonical package helper produced 51 tracked source files with `.git/` excluded, both tracked executable files encoded as `0755`, and the final ZIP file mode set to `0644`.
+- Incomplete in this runner: `scripts/test-manual-vm-bootstrap.sh` timed out when run with its standard output redirected at the concurrent XML race case, while a debug run with output visible completed its scenarios; `scripts/test-vm-xml-sync.py` timed out without output. These two tests are not claimed as standard passes. Nix, ShellCheck, Statix, and Deadnix are unavailable here, so no full NixOS/RT-Bore-LTO build or physical VFIO/VM lifecycle validation is claimed.
 
 ## Current repository validation — 2026-10-27
 
