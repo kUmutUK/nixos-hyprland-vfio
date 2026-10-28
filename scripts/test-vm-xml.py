@@ -114,7 +114,7 @@ def main() -> int:
     # The VM template contract is therefore that the first optical boot entry
     # is the Windows installer and the second is the VirtIO driver ISO.
     cdroms.sort(key=lambda disk: int(disk.find("boot").get("order", "")))
-    windows_iso, virtio_iso = cdroms
+    windows_iso = cdroms[0]
     windows_order = int(windows_iso.find("boot").get("order", ""))
 
     if windows_order <= 1:
