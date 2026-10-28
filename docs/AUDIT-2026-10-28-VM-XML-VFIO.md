@@ -235,7 +235,7 @@ Confirmed. The NixOS check and live-installer detection previously ran after the
 
 ### Regression coverage and remaining limits
 
-`scripts/test-installer-invariants.sh` now checks that both OS/live guards precede the acknowledgement, that the VM state check queries libvirt and only accepts `shut off`, and that the installer repeats the VM guard immediately before its first filesystem mutation. The existing `.github/workflows/check.yml` already executes this invariant suite, so no parallel workflow step was required.
+`scripts/test-installer-invariants.sh` checks that both OS/live guards precede the acknowledgement, that the VM state check queries libvirt and only accepts `shut off`, and that the installer repeats the VM guard immediately before its first filesystem mutation. It also executes the extracted guard against a mocked `virsh` interface: shut-off and unregistered states pass; running, paused, list-query failure, and state-query failure all fail closed. The existing `.github/workflows/check.yml` already executes this invariant suite, so no parallel workflow step was required.
 
 This GitHub edit did not itself execute the repository tests or a NixOS system build. The CI result for the new commit must be checked separately. Actual ZIP bytes, physical GPU binding/rebinding, and the Windows VM lifecycle remain unverified here.
 

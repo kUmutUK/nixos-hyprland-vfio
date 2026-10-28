@@ -238,6 +238,63 @@ fi
 
 
 
+# Execute the actual installer VM-state guard with a mocked libvirt CLI.
+vm_guard_test_dir="$(mktemp -d)"
+awk '/^assert_win10_domain_stopped\(\) \{/ { capture=1 } capture { print } capture && /^}/ { exit }' "$INSTALLER" > "$vm_guard_test_dir/guard.sh"
+if ! grep -q '^assert_win10_domain_stopped() {' "$vm_guard_test_dir/guard.sh"; then
+  echo "FAIL: could not extract assert_win10_domain_stopped() for runtime regression tests." >&2
+  exit 1
+fi
+cat > "$vm_guard_test_dir/harness.sh" <<'BASH'
+set -euo pipefail
+error() { printf 'ERROR: %s\n' "$*" >&2; exit 90; }
+log() { :; }
+virsh() {
+  case "$*" in
+    "list --all --name")
+      [[ "${MOCK_LIST_FAIL:-0}" != 1 ]] || return 1
+      if [[ "${MOCK_REGISTERED:-1}" == 1 ]]; then printf 'win10\n'; fi
+      ;;
+    "domstate win10")
+      [[ "${MOCK_STATE_FAIL:-0}" != 1 ]] || return 1
+      printf '%s\n' "${MOCK_STATE:-shut off}"
+      ;;
+    *) return 2 ;;
+  esac
+}
+sudo() {
+  [[ "$1" == virsh ]] || error "unexpected sudo command"
+  shift
+  virsh "$@"
+}
+source "$1"
+assert_win10_domain_stopped
+BASH
+expect_vm_guard_success() {
+  local description="$1"
+  shift
+  if ! env "$@" bash "$vm_guard_test_dir/harness.sh" "$vm_guard_test_dir/guard.sh" >/dev/null 2>&1; then
+    echo "FAIL: VM-state guard unexpectedly rejected $description." >&2
+    exit 1
+  fi
+}
+expect_vm_guard_failure() {
+  local description="$1"
+  shift
+  if env "$@" bash "$vm_guard_test_dir/harness.sh" "$vm_guard_test_dir/guard.sh" >/dev/null 2>&1; then
+    echo "FAIL: VM-state guard unexpectedly accepted $description." >&2
+    exit 1
+  fi
+}
+expect_vm_guard_success "a shut-off win10 VM" MOCK_REGISTERED=1 "MOCK_STATE=shut off"
+expect_vm_guard_success "an unregistered win10 VM" MOCK_REGISTERED=0
+expect_vm_guard_failure "a running win10 VM" MOCK_REGISTERED=1 MOCK_STATE=running
+expect_vm_guard_failure "a paused win10 VM" MOCK_REGISTERED=1 MOCK_STATE=paused
+expect_vm_guard_failure "a failed libvirt domain-list query" MOCK_LIST_FAIL=1
+expect_vm_guard_failure "a failed libvirt state query" MOCK_REGISTERED=1 MOCK_STATE_FAIL=1
+rm -rf -- "$vm_guard_test_dir"
+echo "OK: mocked win10 state guard accepts only shut-off or unregistered VM states and fails closed on libvirt errors."
+
 # Keep the development shell self-contained and documentation aligned with the shipped files.
 if ! grep -Fq 'python3' "$FLAKE"; then
   echo "FAIL: the Nix development shell must include Python for repository tests." >&2

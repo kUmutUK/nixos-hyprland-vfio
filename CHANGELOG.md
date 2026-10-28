@@ -6,7 +6,7 @@ This file summarizes notable changes in English. The original detailed Turkish h
 
 ### Installer safety and regression coverage — 2026-10-28
 - Moved NixOS/live-installer detection ahead of installer locking and the high-risk acknowledgement prompt, so unsupported environments stop before interactive consent.
-- Added a fail-closed win10 libvirt state guard: the installer now requires a successful domain query, only accepts the exact `shut off` state for a registered VM, and rechecks immediately before the first backup/file mutation. Extended the installer-invariant regression test; CI already runs that test.
+- Added a fail-closed win10 libvirt state guard: the installer now requires a successful domain query, only accepts the exact `shut off` state for a registered VM, and rechecks immediately before the first backup/file mutation. The installer-invariant suite now executes the guard with mocked `virsh` success, running/paused states, and list/state query failures.
 - Added fail-closed Home Snapper validation for the exact `/home` mount, the `@home` and `@home/.snapshots` subvolumes, the target hardware configuration's device UUIDs, and any active `/home/.snapshots` mount. The preflight runs before backups/deployment and again after the final hardware configuration is selected.
 - Added mocked Home Snapper regression cases for wrong subvolumes, mismatched UUIDs, missing mounts, non-Btrfs filesystems, and the boot-critical snapshots mount.
 - Included `/etc/nixos/.source-revision` in the installer's backup set and added rollback coverage proving that a failed deployment restores the prior marker.
