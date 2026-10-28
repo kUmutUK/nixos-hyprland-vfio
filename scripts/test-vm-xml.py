@@ -116,12 +116,11 @@ def main() -> int:
     cdroms.sort(key=lambda disk: int(disk.find("boot").get("order", "")))
     windows_iso, virtio_iso = cdroms
     windows_order = int(windows_iso.find("boot").get("order", ""))
-    virtio_order = int(virtio_iso.find("boot").get("order", ""))
 
     if windows_order <= 1:
         return fail("the virtual system disk must boot before the Windows and VirtIO CD-ROMs")
-    # Boot-order uniqueness is checked above, so sorting guarantees that
-    # windows_order is lower than virtio_order.
+    # Boot-order uniqueness is checked above, so the second optical entry is
+    # guaranteed to have a later boot priority than the first.
     if windows_iso.find("target") is None or windows_iso.find("target").get("bus") != "sata":
         return fail("Windows installation ISO should use the SATA CD-ROM device")
 
