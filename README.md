@@ -248,12 +248,24 @@ if [[ -z "$HOME_BLOCK" || -z "$SNAPSHOT_BLOCK" ]]; then
   echo "ERROR: Target hardware configuration must define both /home and /home/.snapshots mounts." >&2
   exit 1
 fi
-if ! grep -Fq 'fsType = "btrfs";' <<< "$HOME_BLOCK"   || ! grep -Fq '"subvol=@home"' <<< "$HOME_BLOCK"; then
-  echo "ERROR: The /home mount must use Btrfs subvol=@home for this configuration." >&2
+if ! grep -Fq 'fsType = "btrfs";' <<< "$HOME_BLOCK"; then
+  echo "ERROR: The /home mount must use Btrfs." >&2
   exit 1
 fi
-if ! grep -Fq 'fsType = "btrfs";' <<< "$SNAPSHOT_BLOCK"   || ! grep -Fq '"subvol=@home/.snapshots"' <<< "$SNAPSHOT_BLOCK"   || ! grep -Fq 'neededForBoot = true;' <<< "$SNAPSHOT_BLOCK"; then
-  echo "ERROR: /home/.snapshots must use Btrfs subvol=@home/.snapshots with neededForBoot = true." >&2
+if ! grep -Fq '"subvol=@home"' <<< "$HOME_BLOCK"; then
+  echo "ERROR: The /home mount must use subvol=@home for this configuration." >&2
+  exit 1
+fi
+if ! grep -Fq 'fsType = "btrfs";' <<< "$SNAPSHOT_BLOCK"; then
+  echo "ERROR: The /home/.snapshots mount must use Btrfs." >&2
+  exit 1
+fi
+if ! grep -Fq '"subvol=@home/.snapshots"' <<< "$SNAPSHOT_BLOCK"; then
+  echo "ERROR: The /home/.snapshots mount must use subvol=@home/.snapshots." >&2
+  exit 1
+fi
+if ! grep -Fq 'neededForBoot = true;' <<< "$SNAPSHOT_BLOCK"; then
+  echo "ERROR: The /home/.snapshots mount must include neededForBoot = true." >&2
   exit 1
 fi
 HOME_DEVICE="$(sed -n 's/^[[:space:]]*device[[:space:]]*=[[:space:]]*\(.*\);[[:space:]]*$/\1/p' <<< "$HOME_BLOCK" | head -n 1)"
