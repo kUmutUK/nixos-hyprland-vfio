@@ -103,6 +103,8 @@ SNAPSHOT_BLOCK=
 subvol=@home/.snapshots
 neededForBoot = true;
 device/UUID
+lsblk -f
+Compare the displayed mounted source, lsblk filesystem UUIDs, and both target device entries before building.
 EXPECTED
 if ! grep -Fq 'mandatory **Home Snapper preflight**' "$ENGLISH_GUIDE" \
   || ! grep -Fq 'neededForBoot = true' "$ENGLISH_GUIDE"; then
