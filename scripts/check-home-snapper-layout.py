@@ -68,7 +68,9 @@ def resolve_device(expression: str, text: str) -> str:
         if len(matches) != 1:
             fail(f"target hardware device variable {name!r} is missing or ambiguous")
         match = matches[0]
-        value = match.group(1) if match.group(1) is not None else match.group(2)
+        if match.group(1) is not None:
+            return match.group(1)
+        value = match.group(2)
     fail(f"target hardware device expression is too indirect to validate safely: {expression!r}")
 
 
