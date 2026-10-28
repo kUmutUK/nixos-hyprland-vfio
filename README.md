@@ -2,6 +2,8 @@
 
 A flake-based NixOS gaming desktop that passes its single AMD Radeon GPU through to a Windows 10 virtual machine, while using Hyprland for the host desktop.
 
+The latest follow-up review of canonical ZIP packaging, deployed VM XML validation, and VFIO host-driver recovery is recorded in [the 2026-10-28 audit report](docs/AUDIT-2026-10-28-VM-XML-VFIO.md).
+
 > **Windows guest lifecycle warning:** The default template targets Windows 10 22H2. Standard support for Windows 10 Home/Pro ended on 14 October 2025. This repository does not enroll the guest in Extended Security Updates (ESU), confirm license eligibility, or verify that guest updates are installed. Before using the VM for network-connected or sensitive activity, check the installed edition and license, verify current ESU or other supported-lifecycle coverage, and install all available security updates. See [Microsoft's end-of-support guidance](https://support.microsoft.com/en-us/windows/windows-10-support-has-ended-on-october-14-2025) and [ESU FAQ](https://learn.microsoft.com/en-us/lifecycle/faq/extended-security-updates). Windows 11 migration is not automated by this repository; do not assume the existing VM XML meets Windows 11 requirements.
 
 > **Target platform:** AMD Ryzen 5 5600 + AMD Radeon RX 6700 XT (Navi 22), UEFI, and a single physical GPU. Other RX 6000/7000 cards are not automatically supported: PCI/IOMMU grouping, GPU reset behavior, and ROCm settings must be verified separately. Intel CPUs and NVIDIA GPUs are outside this configuration's target scope.
