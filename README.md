@@ -614,6 +614,17 @@ Hyprland's native Lua configuration, Hyprlock, Waybar, Pyprland, MangoHud, lsfg-
 
 ## Validation
 
+To distribute a source ZIP, first commit the source you intend to ship, then run
+`./scripts/package-source-zip.sh ./dist/nixos-hyprland-vfio-source.zip`.
+This packages committed `HEAD` (uncommitted edits are deliberately excluded), expands
+`SOURCE_REVISION` to that commit, excludes `.git/`, and verifies the tracked-file
+inventory and executable permissions. Do not create the distributable by manually
+compressing the working directory: that can include Git metadata and leave the revision
+placeholder unresolved. CI uploads the validated ZIP as the `nixos-hyprland-vfio-source`
+artifact only after the required checks pass. The artifact also contains a relative-path
+`nixos-hyprland-vfio-source.zip.sha256` manifest; after downloading both files, verify it
+with `sha256sum -c nixos-hyprland-vfio-source.zip.sha256`.
+
 Run from the repository root. The command uses fail-fast behavior, validates Nix formatting without rewriting files, and runs tests inside the development shell.
 
 ```bash

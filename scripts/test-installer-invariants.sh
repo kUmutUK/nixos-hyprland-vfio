@@ -50,7 +50,41 @@ fi
 
 # Exercise the early Home Snapper filesystem preflight without touching the host.
 home_preflight_test_dir="$(mktemp -d)"
-trap 'rm -rf "${state_test_dir:-}" "$home_preflight_test_dir"' EXIT
+trap 'rm -rf "${state_test_dir:-}" "$home_preflight_test_dir" "${partition_count_test_dir:-}"' EXIT
+
+# Regression-test the manual installation guide's exact partition-count guard.
+partition_count_test_dir="$(mktemp -d)"
+awk '/^assert_exact_partition_count\(\) \{/ { capture=1 } capture { print } capture && /^}/ { exit }' "$ENGLISH_GUIDE" \
+  > "$partition_count_test_dir/assert-exact-partition-count.sh"
+if ! grep -q '^assert_exact_partition_count() {' "$partition_count_test_dir/assert-exact-partition-count.sh"; then
+  echo "FAIL: could not locate assert_exact_partition_count() in INSTALLATION.md." >&2
+  exit 1
+fi
+cat > "$partition_count_test_dir/harness.sh" <<'BASH'
+set -euo pipefail
+DISK_REAL=/dev/testdisk
+lsblk() { printf '%s\n' "${TEST_LSBLK_TYPES:?}"; }
+source "$1"
+assert_exact_partition_count
+BASH
+if ! TEST_LSBLK_TYPES=$'disk\npart\npart\npart' bash "$partition_count_test_dir/harness.sh" "$partition_count_test_dir/assert-exact-partition-count.sh"; then
+  echo "FAIL: exactly three partitions were rejected." >&2
+  exit 1
+fi
+if TEST_LSBLK_TYPES=$'disk\npart\npart' bash "$partition_count_test_dir/harness.sh" "$partition_count_test_dir/assert-exact-partition-count.sh" >/dev/null 2>&1; then
+  echo "FAIL: fewer than three partitions were accepted." >&2
+  exit 1
+fi
+if TEST_LSBLK_TYPES=$'disk\npart\npart\npart\npart' bash "$partition_count_test_dir/harness.sh" "$partition_count_test_dir/assert-exact-partition-count.sh" >/dev/null 2>&1; then
+  echo "FAIL: more than three partitions were accepted." >&2
+  exit 1
+fi
+if ! grep -Fq 'sha256sum nixos-hyprland-vfio-source.zip > nixos-hyprland-vfio-source.zip.sha256' "$ROOT/.github/workflows/check.yml" \
+  || ! grep -Fq '${{ runner.temp }}/nixos-hyprland-vfio-source.zip.sha256' "$ROOT/.github/workflows/check.yml"; then
+  echo "FAIL: the validated source ZIP must be uploaded with its SHA-256 manifest." >&2
+  exit 1
+fi
+echo "OK: partition-count guard and source ZIP checksum artifact contract verified."
 awk '/^require_btrfs_home\(\) \{/ { capture=1 } capture { print } capture && /^}/ { exit }' "$INSTALLER" \
   > "$home_preflight_test_dir/require-btrfs-home.sh"
 if ! grep -q '^require_btrfs_home() {' "$home_preflight_test_dir/require-btrfs-home.sh"; then

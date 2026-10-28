@@ -1,16 +1,31 @@
 # Repair and validation report — updated 2026-10-28
 
 > **Delivery-scope note:** This report is part of the tracked source tree. The dated “patch-only ZIP” notes below are historical. For a canonical full-source ZIP, use `scripts/package-source-zip.sh` or the CI-uploaded `nixos-hyprland-vfio-source` artifact for the exact commit. The helper verifies tracked-file completeness, excludes `.git/`, preserves executable bits, and makes the finished artifact readable from shared output directories.
+## Follow-up audit — source ZIP handling and partition-count verification — 2026-10-28
 
-## Current source-tree measurement before this update — 2026-10-28
+**GitHub `main` immediately before this follow-up:** [`0d748ed82244a51ce49f53e9fc458df16eca4a38`](https://github.com/kUmutUK/nixos-hyprland-vfio/commit/0d748ed82244a51ce49f53e9fc458df16eca4a38). The recursive tree has 55 tracked file blobs and eight executable-mode files (`100755`); the executable list remains `install.sh`, `nixos/hooks/qemu`, and the six packaging/test/verifier scripts named in the prior snapshot below.
+
+### Findings confirmed against source
+
+- **The canonical source-archive helper is already defensive.** `.gitattributes` marks `SOURCE_REVISION` as `export-subst`; `git archive` expands the checkout placeholder to the packaged commit, omits `.git/`, and preserves Git executable modes. `scripts/package-source-zip.sh` verifies the 40-character revision, exact tracked-file inventory, ZIP integrity, and executable bits. CI invokes this helper and uploads its validated ZIP only after required checks pass.
+- **The source-tree value `$Format:%H$` is intentional, not a bad committed revision.** It is the expected placeholder in a normal Git checkout. It is invalid only when a distributor bypasses canonical packaging and ships a manually compressed working directory.
+- **The exact ZIP described in the submitted audit was not attached to this turn.** Its reported size, SHA-256, `.git/` entries, and extracted permissions therefore could not be recalculated independently here. The source code proves how the canonical helper behaves, but not the metadata of an unavailable ZIP. Use the helper or the CI artifact associated with the exact commit; do not distribute the manually compressed archive.
+- **A real documentation/verification gap was found in `INSTALLATION.md`.** The text claimed that exactly three partitions are verified, while the snippet only checked the three expected device nodes and their parent-disk identity. The guide now counts `lsblk` partition entries and fails closed unless the total is exactly three. The existing installer-invariant test suite now exercises the guard for three, two, and four partitions.
+- **The report cannot safely pin the ZIP's digest inside itself.** Since the tracked report is included in the source ZIP, changing a digest recorded here would change the ZIP being hashed. CI now generates `nixos-hyprland-vfio-source.zip.sha256` using the relative archive filename and uploads the manifest beside the ZIP, so each artifact carries a digest for its exact bytes.
+- **Hardware-specific configuration remains a deployment condition, not a proven source defect.** The committed UUID/PARTUUID, LUKS, EFI, swap, and Btrfs settings must be adapted for a different target machine as the guide states. This review did not run a physical VFIO transfer/recovery test or a full-system build for the new commit; neither is claimed as verified.
+
+The remediation changes the install guide, its regression coverage, README packaging instructions, CI artifact metadata, and this report. GitHub Actions is the validation gate for the pushed commit; results must be read from that exact commit's run rather than inferred from earlier runs.
+
+
+## Prior source-tree measurement — superseded audit snapshot — 2026-10-28
 
 The pre-update GitHub `main` HEAD was [`1b652cb663feb7a60c62086b51f97a7d7611b804`](https://github.com/kUmutUK/nixos-hyprland-vfio/commit/1b652cb663feb7a60c62086b51f97a7d7611b804). Its recursive Git tree contains **55 tracked file blobs** and **8 files stored with mode `100755`**: `install.sh`, `nixos/hooks/qemu`, `scripts/package-source-zip.sh`, `scripts/test-installer-invariants.sh`, `scripts/test-manual-vm-bootstrap.sh`, `scripts/test-source-revision.sh`, `scripts/test-vfio-hook-driver-state.sh`, and `scripts/verify-source-revision.sh`. This count is from the Git tree rather than from a ZIP extraction.
 
 `SOURCE_REVISION` containing `$Format:%H$` in the checked-out Git source is intentional: `.gitattributes` declares `SOURCE_REVISION export-subst`, so `git archive` substitutes the packaged commit SHA into the ZIP. `scripts/package-source-zip.sh` packages committed `HEAD`, excludes `.git/`, compares the archive contents to the tracked tree, checks all executable bits, verifies ZIP integrity, and requires the embedded revision to equal the commit being packaged. Therefore, the reported `.git/` and lost-permissions issue is a defect in the manually created ZIP, not in the current canonical packaging script. The submitted ZIP bytes were not attached to this update, so its exact checksum and extracted metadata could not be independently recalculated here. Use the canonical script or a successful CI artifact for the exact commit; do not distribute the manually compressed archive.
 
-The changes in this update affect documentation and a CI comment only, so they do not change the source-tree counts above.
+That earlier update affected documentation and a CI comment only, so the 55/8 source-tree counts remained unchanged at that point.
 
-## Main/source baseline before this remediation — 2026-10-28
+## Earlier main/source baseline recorded during prior remediation — 2026-10-28
 
 **GitHub `main` at the start of this remediation:** [`cdfd3d8d5008e4b7405ce2433e29b8a0e34ffebe`](https://github.com/kUmutUK/nixos-hyprland-vfio/commit/cdfd3d8d5008e4b7405ce2433e29b8a0e34ffebe).
 

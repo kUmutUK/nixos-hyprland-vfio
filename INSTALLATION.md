@@ -152,6 +152,18 @@ case "$DISK_REAL" in
   *)      PART_PREFIX="$DISK_REAL" ;;
 esac
 
+assert_exact_partition_count() {
+  local count
+  if ! count="$(lsblk -nrpo TYPE "$DISK_REAL" | awk '$1 == "part" { count++ } END { print count + 0 }')"; then
+    echo "ERROR: Could not count partitions on $DISK_REAL." >&2
+    return 1
+  fi
+  if [[ "$count" -ne 3 ]]; then
+    printf 'ERROR: Expected exactly three partitions on %s, found %s; refusing to continue.\n' "$DISK_REAL" "$count" >&2
+    return 1
+  fi
+}
+
 assert_partition_on_target() {
   local part="$1" type parent parent_real mountpoints
   [ -b "$part" ] || { echo "ERROR: Expected partition device was not found: $part" >&2; return 1; }
@@ -226,9 +238,10 @@ sudo sgdisk -n 3:0:+800G -t 3:8309 -c 3:LUKS "$DISK_REAL"
 sudo partprobe "$DISK_REAL"
 sudo udevadm settle
 
-# Verify that exactly three partitions were created and belong to the same disk
-# before continuing. This block stops on command failure because of set -e.
+# Explicitly verify total count as well as each partition's identity and parent disk.
+# The sgdisk -Z plus three creation commands should leave exactly three.
 assert_disk_identity
+assert_exact_partition_count
 assert_partition_on_target "${PART_PREFIX}1"
 assert_partition_on_target "${PART_PREFIX}2"
 assert_partition_on_target "${PART_PREFIX}3"

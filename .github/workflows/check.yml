@@ -209,13 +209,20 @@ jobs:
           fi
           echo "  flake.lock clean"
 
-      # Upload the exact ZIP validated above, only after all required checks pass.
-      # The artifact contains the source ZIP as a file; its inner ZIP preserves
-      # the Unix executable bit and excludes .git.
+      # Create a relative-path manifest so consumers can verify the downloaded ZIP.
+      - name: create source ZIP SHA-256 manifest
+        run: |
+          cd "$RUNNER_TEMP"
+          sha256sum nixos-hyprland-vfio-source.zip > nixos-hyprland-vfio-source.zip.sha256
+
+      # Upload the validated source ZIP and its checksum only after required checks pass.
+      # The inner ZIP preserves tracked executable bits and excludes .git.
       - name: upload validated source ZIP
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: nixos-hyprland-vfio-source
-          path: ${{ runner.temp }}/nixos-hyprland-vfio-source.zip
+          path: |
+            ${{ runner.temp }}/nixos-hyprland-vfio-source.zip
+            ${{ runner.temp }}/nixos-hyprland-vfio-source.zip.sha256
           if-no-files-found: error
           retention-days: 14
