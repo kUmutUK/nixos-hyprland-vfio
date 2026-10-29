@@ -40,6 +40,11 @@
 >   hesabına izin verecek şekilde etkinleştirilmişti. **Bu ayar güncel değildir:** mevcut
 >   yapılandırma parola ve klavye-etkileşimli girişi kapatır, ortak anahtar doğrulaması
 >   gerektirir ve root girişini devre dışı bırakır.
+> - Güncel upstream davranışı farklıdır: [v0.2.0 sürüm notları](https://github.com/Korthos-Software/low_latency_layer/releases/tag/v0.2.0)
+>   katmanın artık opt-in olduğunu ve etkinleştirmek için `LOW_LATENCY_LAYER=1`
+>   gerektiğini açıkça söyler. Aşağıdaki [1.2.1] kaydı yalnızca o tarihte
+>   incelenen `948a561` sabitlenmiş revizyonunu anlatır; güncel yapılandırma
+>   bu eski kaynak incelemesini genellemez ve Reflex'i sistem genelinde açmaz.
 
 # [1.3.8] - 2026-10-12
 

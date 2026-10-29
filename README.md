@@ -153,7 +153,7 @@ grep -nE 'system\.stateVersion|home\.stateVersion' \
   /home/localhost/.config/home-manager/home.nix 2>/dev/null || true
 ```
 
-5. After reviewing that diff and the values above, copy only the four flake files. This overwrites their corresponding target files, so do not run it before making and checking the backup:
+5. After reviewing that diff and the values above, copy all five required Nix source files. This overwrites their corresponding target files, so do not run it before making and checking the backup:
 
 ```bash
 set -Eeuo pipefail

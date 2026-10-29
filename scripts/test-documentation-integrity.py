@@ -12,6 +12,7 @@ AUDIT = (ROOT / "docs/AUDIT-2026-10-28-VM-XML-VFIO.md").read_text(encoding="utf-
 ARCHIVE = (ROOT / "docs/archive/DEGISIKLIK_GECMISI.md").read_text(encoding="utf-8")
 CHANGELOG = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
 STATE_INDEX = (ROOT / "DEGISIKLIK_GECMISI.md").read_text(encoding="utf-8")
+CONFIG = (ROOT / "nixos/configuration.nix").read_text(encoding="utf-8")
 REPAIR = (ROOT / "docs/REPAIR-AND-VALIDATION-REPORT.md").read_text(encoding="utf-8")
 errors = []
 
@@ -29,6 +30,7 @@ for heading in (
 ):
     require(AUDIT.count(heading) == 1, f"audit report must contain exactly one {heading!r}")
 require("$Format:%H# Follow-up audit" not in AUDIT, "audit report still contains the broken ZIP sentence/heading splice")
+require("$Format:%H# Repair and validation report" not in REPAIR, "repair report still contains the pasted heading in the ZIP-provenance cell")
 
 map_start = README.find("## Repository map")
 map_end = README.find("## Validation", map_start)
@@ -69,15 +71,23 @@ require("PasswordAuthentication" in CHANGELOG and "KbdInteractiveAuthentication"
 require("Superseded on 2026-10-29" in CHANGELOG, "the old system-wide Reflex entry must be marked superseded")
 require("Superseded on 2026-10-30" in CHANGELOG, "the old password-enabled SSH entry must be marked superseded")
 require("Current configuration notes — 2026-10-30" in STATE_INDEX, "current-state index date is stale")
+require("2026-10-28 entry" in STATE_INDEX and "2026-10-27 entry" not in STATE_INDEX, "root index must point to the 2026-10-28 CHANGELOG section")
+require("copy all five required Nix source files" in README and "four flake files" not in README, "README must describe the five-file migration accurately")
+require("four Nix source files required at the time" in CHANGELOG and "fifth required source file" in CHANGELOG, "CHANGELOG must distinguish the historical four-file preflight from the current five-file source tree")
 
 require("Tarihsel anlık görüntü notu — 2026-10-19" in ARCHIVE, "archive note must be explicitly historical")
 require("geçersiz kılındı" in ARCHIVE and "Bu ayar güncel değildir" in ARCHIVE, "archive note must mark old Reflex and SSH policies as superseded")
 require("ile etkinleştirilmiştir. Uyumsuz" not in ARCHIVE, "archive must not present the old Reflex setting as current")
 require(not re.search(r"parola girişi yalnız.*kullanıcısına izin verir", ARCHIVE), "archive must not present the old SSH password policy as current")
 
-require("Current canonical source ZIP and artifact provenance — 2026-10-30" in REPAIR, "repair report must centralize current ZIP provenance")
-require("554,516 bytes" in REPAIR and "65ab86f1" in REPAIR, "repair report must label supplied current-ZIP measurements")
-require("the exact bytes were not attached" in REPAIR.lower(), "repair report must preserve the independent-verification boundary")
+require("Supplied ZIP provenance and canonical packaging — 2026-10-30" in REPAIR, "repair report must identify the supplied ZIP measurements as noncanonical provenance")
+require("561,513 bytes" in REPAIR and "c905b5036d04bf1e" in REPAIR and "116 entries" in REPAIR, "repair report must record the supplied ZIP measurements")
+require("bytes were not attached" in REPAIR.lower(), "repair report must preserve the independent-verification boundary")
+require("554,516 bytes" not in REPAIR[:2500] and "65ab86f1" not in REPAIR[:2500], "repair report's current provenance row still contains stale measurements")
+require("v0.2.0" in ARCHIVE and "948a561" in ARCHIVE, "archive note must distinguish the historical upstream revision from v0.2.0")
+latency_vars = re.search(r"environment\.sessionVariables\s*=\s*\{(.*?)\};", CONFIG, re.DOTALL)
+require(latency_vars is not None and re.search(r'(?m)^\s*LOW_LATENCY_LAYER\s*=\s*"1";', latency_vars.group(1)), "current configuration must opt in to low_latency_layer v0.2.0")
+require(latency_vars is not None and not re.search(r"(?m)^\s*LOW_LATENCY_LAYER_REFLEX\s*=", latency_vars.group(1)), "Reflex must remain unset globally")
 
 if errors:
     for error in errors:

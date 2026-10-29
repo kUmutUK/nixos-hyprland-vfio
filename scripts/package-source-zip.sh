@@ -55,6 +55,29 @@ for record in tracked_output.split(b"\0"):
     if mode == "100755":
         tracked_executables.add(archive_name)
 
+expected_executables = {
+    prefix + path
+    for path in (
+        "install.sh",
+        "nixos/hooks/qemu",
+        "scripts/package-source-zip.sh",
+        "scripts/test-installer-invariants.sh",
+        "scripts/test-installer-rollback.sh",
+        "scripts/test-manual-vm-bootstrap.sh",
+        "scripts/test-source-revision.sh",
+        "scripts/test-vfio-hook-driver-state.sh",
+        "scripts/verify-source-revision.sh",
+    )
+}
+if tracked_executables != expected_executables:
+    missing_executables = sorted(expected_executables - tracked_executables)
+    unexpected_executables = sorted(tracked_executables - expected_executables)
+    if missing_executables:
+        print("Missing tracked executable mode (expected 100755):", *missing_executables, sep="\n  ", file=sys.stderr)
+    if unexpected_executables:
+        print("Unexpected tracked executable mode (expected 100644):", *unexpected_executables, sep="\n  ", file=sys.stderr)
+    raise SystemExit("ERROR: tracked executable-mode set differs from canonical packaging policy.")
+
 with zipfile.ZipFile(archive_path) as bundle:
     corrupt_entry = bundle.testzip()
     if corrupt_entry is not None:

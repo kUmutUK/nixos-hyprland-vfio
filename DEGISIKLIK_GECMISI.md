@@ -4,7 +4,7 @@ This legacy filename now contains an English current-state summary so older link
 
 ## Current configuration notes — 2026-10-30
 
-- `CHANGELOG.md` is the maintained current change summary; its 2026-10-27 entry covers installer and VM diagnostic hardening, VFIO handoff, LSFG-VK profiles, registered-libvirt XML preservation, embedded-script extraction boundaries, and CI audit follow-ups.
+- `CHANGELOG.md` is the maintained current change summary; its 2026-10-28 entry covers installer and VM diagnostic hardening, VFIO handoff, LSFG-VK profiles, registered-libvirt XML preservation, embedded-script extraction boundaries, and CI audit follow-ups.
 - The 602-line duplicate block in `scripts/test-installer-invariants.sh` has been removed. `CONTRIBUTING.md` has one valid validation block; the extractor now refuses to cross Nix attribute boundaries or accept unterminated embedded strings, with a focused regression test.
 - 2026-10-29: LSFG-VK v2 is now the active target. Home Manager emits `version = 2` with `[[profile]]` entries, the flake builds the pinned `.#lsfg-vk-v2` package, and CI validates the v2 schema/package. The installer backup and rollback transaction includes `nixos/lsfg-vk-v2.nix`.
 - Cross-conversation recheck added fail-closed VFIO service-stop verification plus mocked stop/restore failure tests. Installer `stateVersion` source discovery now detects conflicting, duplicate, or non-literal definitions instead of silently selecting one; the tests exercise these paths. `INSTALLATION.md` now invokes VM XML sync with `--domain win10`, and both manual and automated migration docs describe the persistent registered libvirt XML source.
