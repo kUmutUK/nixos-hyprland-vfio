@@ -4,10 +4,14 @@ This file summarizes notable changes in English. The original detailed Turkish h
 
 ## Unreleased — 2026-10-29
 
+### System-wide Reflex default — 2026-10-29
+- Re-enabled `LOW_LATENCY_LAYER_REFLEX=1` through `environment.sessionVariables` alongside `LOW_LATENCY_LAYER=1`, so the Reflex interface is selected by default across Vulkan applications. Per-game compatibility opt-out remains available with `DISABLE_LOW_LATENCY_LAYER=1 %command%`.
+- Updated the installer regression gate and README to require and describe the system-wide Reflex setting.
+
 ### LSFG-VK v2 migration — 2026-10-29
 - Replaced the archived v1-only flake module with the upstream LSFG-VK v2 package, pinned to an immutable source revision and hash; registered the v2 Vulkan layer manifest and migrated the Home Manager TOML to `version = 2` / `[[profile]]`.
 - Updated the installer source preflight, private backup set, deployment transaction, rollback tests, contributor instructions, and CI to include `nixos/lsfg-vk-v2.nix` and build `.#lsfg-vk-v2`.
-- Kept the latency layer enabled globally while returning Reflex selection to per-game opt-in for compatible Proton titles; native Linux CS2 retains the default AMD Anti-Lag interface.
+- The initial v2 migration kept the latency layer global and Reflex opt-in per compatible Proton title. This historical choice was superseded by the system-wide Reflex default entry above.
 - The upstream v2 package is CC BY-NC-ND 4.0; the Nix expression pins and builds upstream source without patching it. Lossless Scaling remains a separate Steam prerequisite.
 
 ## Previous unreleased changes — 2026-10-28
