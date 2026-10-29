@@ -45,13 +45,13 @@ jobs:
           python3 scripts/test-vm-xml-paths.py
           python3 scripts/test-vm-xml-sync.py
           python3 scripts/test-vm-diagnostic.py
-          python3 scripts/test-lsfg-v1-config.py
+          python3 scripts/test-lsfg-vk-v2.py
           python3 scripts/test-vm-iso-paths.py
 
       - name: Manual VM bootstrap retry regression test
         run: bash -n scripts/test-manual-vm-bootstrap.sh && bash scripts/test-manual-vm-bootstrap.sh
 
-      - name: Installer, English locale, global Reflex and SSH regression checks
+      - name: Installer, English locale, opt-in Reflex and SSH regression checks
         run: bash scripts/test-installer-invariants.sh
 
       - name: Home Snapper mount and UUID regression tests
@@ -179,9 +179,9 @@ jobs:
           nix develop . --no-update-lock-file --command luac -p "$lua_file"
           echo "  generated Hyprland Lua syntax OK"
 
-      - name: Build the selected LSFG-VK v1 package
+      - name: Build the pinned LSFG-VK v2 package
         working-directory: nixos
-        run: nix build --no-link --no-update-lock-file .#lsfg-vk
+        run: nix build --no-link --no-update-lock-file .#lsfg-vk-v2
 
       # These are required gates. statix.toml disables only the style-only
       # repeated_keys lint because this repository intentionally uses flat dotted
