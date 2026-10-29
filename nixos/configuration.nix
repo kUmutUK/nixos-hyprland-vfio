@@ -9,6 +9,10 @@ let
     exec ${pkgs.hyprland}/bin/Hyprland "$@"
   '';
 
+  # Build the v2 Vulkan layer/UI/CLI from the pinned upstream source. The archived
+  # pabloaul NixOS module is v1-only and cannot read the v2 profile schema.
+  lsfgVkV2 = pkgs.callPackage ./lsfg-vk-v2.nix { };
+
   # Low-latency layer package derivation, pinned to upstream's latest published release.
   low-latency-layer = pkgs.stdenv.mkDerivation rec {
     pname = "low_latency_layer";
@@ -34,9 +38,10 @@ let
     # Let nixpkgs' standard CMake hooks handle configure, build, and install
     # using the install() rules shipped by upstream. No custom installPhase is
     # needed. The manifest is installed under $out/share/vulkan/implicit_layer.d.
-    # The upstream manifest registers an implicit Vulkan layer. It is enabled globally
-    # using LOW_LATENCY_LAYER=1 and selects Reflex via LOW_LATENCY_LAYER_REFLEX=1 in
-    # environment.sessionVariables below; per-game opt-out uses DISABLE_LOW_LATENCY_LAYER=1.
+    # The upstream manifest registers an implicit Vulkan layer. Enable it globally with
+    # LOW_LATENCY_LAYER=1 while retaining the default AMD Anti-Lag interface. Compatible
+    # Proton games can opt into Reflex per game; incompatible games can opt out with
+    # DISABLE_LOW_LATENCY_LAYER=1.
 
     meta = with lib; {
       description = "Vulkan layer for hardware agnostic input latency reduction (Reflex/Anti-Lag)";
@@ -84,11 +89,6 @@ let
 in
 {
   imports = [ ./hardware-configuration.nix ];
-
-  services.lsfg-vk = {
-    enable = true;
-    ui.enable = true;
-  };
 
   hardware.enableRedistributableFirmware = true;
 
@@ -265,14 +265,12 @@ in
     XCURSOR_SIZE = "20";
   };
 
-  # PAM initializes these variables for login sessions, including the greetd/Hyprland
-  # desktop. NixOS merges sessionVariables into the global environment as well.
-  # The layer is intentionally enabled for all Vulkan applications, with Reflex selected
-  # globally. Override it per game with DISABLE_LOW_LATENCY_LAYER=1 when compatibility
-  # problems occur. NVIDIA spoofing is not enabled because upstream warns it can break FSR4.
+  # PAM initializes these variables for login sessions, including greetd/Hyprland.
+  # Enable the latency layer globally but keep its default AMD Anti-Lag interface.
+  # Compatible Proton games can opt into Reflex with LOW_LATENCY_LAYER_REFLEX=1 per game;
+  # incompatible games can opt out with DISABLE_LOW_LATENCY_LAYER=1.
   environment.sessionVariables = {
     LOW_LATENCY_LAYER = "1";
-    LOW_LATENCY_LAYER_REFLEX = "1";
   };
 
   programs.fish.enable = true;
@@ -499,6 +497,7 @@ in
     kdePackages.konsole
     kdePackages.dolphin
     low-latency-layer
+    lsfgVkV2
     vulkan-tools
     # The installer synchronizes the PCI addresses in `win10.xml` with the QEMU hook.
     # If Python 3 is unavailable, synchronization cannot run; ensure the installer warns
@@ -515,6 +514,11 @@ in
 
   environment.etc."vulkan/implicit_layer.d/low_latency_layer.json".source =
     "${low-latency-layer}/share/vulkan/implicit_layer.d/low_latency_layer.json";
+
+  # Register the pinned v2 package's implicit Vulkan layer manifest. Its library
+  # path points to the same store output installed in environment.systemPackages.
+  environment.etc."vulkan/implicit_layer.d/VkLayer_LSFGVK_frame_generation.json".source =
+    "${lsfgVkV2}/share/vulkan/implicit_layer.d/VkLayer_LSFGVK_frame_generation.json";
 
   programs.gamemode = {
     enable = true;
