@@ -55,7 +55,7 @@ marker = '"lsfg-vk/conf.toml".text = \'\'\n'
 if marker not in home:
     raise SystemExit("FAIL: Home Manager no longer defines the LSFG-VK TOML config as expected.")
 start = home.index(marker) + len(marker)
-end = home.find("\n    \'\'\';", start)
+end = home.find("\n    '';", start)
 if end < 0:
     raise SystemExit("FAIL: could not find the end of the generated LSFG-VK TOML string.")
 toml_text = home[start:end]
