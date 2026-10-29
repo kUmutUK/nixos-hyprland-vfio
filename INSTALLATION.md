@@ -22,6 +22,8 @@ This guide walks through an AMD-oriented **NixOS + LUKS2 + Btrfs + Hyprland + VF
 
 **Gaming prerequisite:** If you plan to use LSFG-VK frame generation, install Lossless Scaling through Steam on the host. The Nix flake supplies the Vulkan layer, not the Lossless Scaling application. For a non-default Steam library, set the correct path in the LSFG-VK configuration.
 
+**LSFG-VK version:** The active configuration uses upstream v2, with `version = 2` and `[[profile]]` entries generated declaratively by Home Manager. The flake builds the layer/UI/CLI from the hash-pinned source expression `nixos/lsfg-vk-v2.nix`. It is a required part of the Nix source tree when deploying manually; do not copy only `configuration.nix`, `home.nix`, `flake.nix`, and `flake.lock`. Follow the README's five-file migration instructions. Upstream v2 is licensed CC BY-NC-ND 4.0; the package expression does not patch upstream source. When moving from an existing v1 setup, follow upstream's migration/validation guidance and check for stale v1 layer files before relying on the v2 install.
+
 ---
 
 # 🚀 1. Live environment
