@@ -45,8 +45,10 @@ jobs:
           python3 scripts/test-vm-xml-paths.py
           python3 scripts/test-vm-xml-sync.py
           python3 scripts/test-vm-diagnostic.py
-          python3 scripts/test-lsfg-vk-v2.py
           python3 scripts/test-vm-iso-paths.py
+
+      - name: LSFG-VK v2 package/configuration consistency
+        run: python3 scripts/test-lsfg-vk-v2.py
 
       - name: Manual VM bootstrap retry regression test
         run: bash -n scripts/test-manual-vm-bootstrap.sh && bash scripts/test-manual-vm-bootstrap.sh
