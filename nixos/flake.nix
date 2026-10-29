@@ -21,11 +21,6 @@
     cachyos-kernel.url = "github:xddxdd/nix-cachyos-kernel/master";
     home-manager.url = "github:nix-community/home-manager";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
-    # Keep Hyprland and its companion packages on the same nixpkgs input.
-    # A separate version-pinning overlay can create ABI mismatches between
-    # Hyprland and clients built against the system package set.
-    lsfg-vk-flake.url = "github:pabloaul/lsfg-vk-flake/main";
-    lsfg-vk-flake.inputs.nixpkgs.follows = "nixpkgs";
     # Impermanence is intentionally not imported: this configuration does
     # not define a persistent-storage layout. Reintroduce the input only
     # together with matching environment.persistence and Home Manager settings.
@@ -36,20 +31,24 @@
       nixpkgs,
       cachyos-kernel,
       home-manager,
-      lsfg-vk-flake,
       ...
     }:
     let
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
+      # LSFG-VK v2 is licensed CC BY-NC-ND 4.0, so allow it explicitly for this
+      # standalone package output while keeping the main package set unchanged.
+      pkgsUnfree = import nixpkgs {
+        inherit system;
+        config.allowUnfree = true;
+      };
+      lsfgVkV2Package = pkgsUnfree.callPackage ./lsfg-vk-v2.nix { };
     in
     {
       nixosConfigurations.nixos = nixpkgs.lib.nixosSystem {
         inherit system;
         modules = [
           home-manager.nixosModules.home-manager
-          lsfg-vk-flake.nixosModules.default
-
           ({ pkgs, ... }: {
             nixpkgs.config.allowUnfree = true;
             # Keep the CachyOS kernel and patch set on the upstream pinned nixpkgs revision.
@@ -68,8 +67,8 @@
         ];
       };
 
-      # Expose the selected LSFG-VK v1 package so CI and contributors can build it directly.
-      packages.${system}.lsfg-vk = lsfg-vk-flake.packages.${system}.lsfg-vk;
+      # Expose the pinned LSFG-VK v2 package so CI and contributors can build it directly.
+      packages.${system}.lsfg-vk-v2 = lsfgVkV2Package;
 
       # The README uses `nix develop`; expose one flake dev shell rather than a
       # separate legacy channel-based shell.
