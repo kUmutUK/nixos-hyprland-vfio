@@ -157,19 +157,19 @@ if ! grep -q '^validate_nixos_source_files() {' "$preflight_function"; then
   echo "FAIL: could not locate validate_nixos_source_files() for its regression test." >&2
   exit 1
 fi
-if ! grep -Fq 'REQUIRED_NIXOS_SOURCE_FILES=(configuration.nix home.nix flake.nix flake.lock)' "$INSTALLER"; then
+if ! grep -Fq 'REQUIRED_NIXOS_SOURCE_FILES=(configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix)' "$INSTALLER"; then
   echo "FAIL: installer source preflight must declare all four required Nix source files." >&2
   exit 1
 fi
 cat > "$preflight_dir/harness.sh" <<'BASH'
 set -euo pipefail
 REPO_DIR="$1"
-REQUIRED_NIXOS_SOURCE_FILES=(configuration.nix home.nix flake.nix flake.lock)
+REQUIRED_NIXOS_SOURCE_FILES=(configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix)
 error() { printf '%s\\n' "$*" >&2; return 1; }
 source "$2"
 validate_nixos_source_files
 BASH
-for file in configuration.nix home.nix flake.nix flake.lock; do
+for file in configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix; do
   printf 'valid %s\\n' "$file" > "$preflight_dir/repo/nixos/$file"
 done
 if ! bash "$preflight_dir/harness.sh" "$preflight_dir/repo" "$preflight_function"; then
@@ -178,7 +178,7 @@ if ! bash "$preflight_dir/harness.sh" "$preflight_dir/repo" "$preflight_function
 fi
 
 # Every required source must fail closed when missing or empty.
-for file in configuration.nix home.nix flake.nix flake.lock; do
+for file in configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix; do
   source_file="$preflight_dir/repo/nixos/$file"
   mv "$source_file" "$source_file.saved"
   if bash "$preflight_dir/harness.sh" "$preflight_dir/repo" "$preflight_function" >/dev/null 2>&1; then
@@ -300,15 +300,15 @@ if ! grep -Fq 'python3' "$FLAKE"; then
   echo "FAIL: the Nix development shell must include Python for repository tests." >&2
   exit 1
 fi
-if ! grep -Fq 'packages.${system}.lsfg-vk' "$FLAKE"; then
+if ! grep -Fq 'packages.${system}.lsfg-vk-v2' "$FLAKE"; then
   echo "FAIL: the selected LSFG-VK package must be exposed for an explicit build check." >&2
   exit 1
 fi
 if ! grep -Fq 'LSFG-VK schema decision' "$README" \
-  || ! grep -Fq 'v1 `[[game]]`/`exe` profile format' "$README" \
-  || ! grep -Fq 'python3 scripts/test-lsfg-v1-config.py' "$ROOT/.github/workflows/check.yml" \
-  || ! grep -Fq 'Build the selected LSFG-VK v1 package' "$ROOT/.github/workflows/check.yml"; then
-  echo "FAIL: the documented LSFG-VK v1 schema decision must match the CI test/build contract." >&2
+  || ! grep -Fq 'v2 `[[profile]]` profile format' "$README" \
+  || ! grep -Fq 'python3 scripts/test-lsfg-vk-v2.py' "$ROOT/.github/workflows/check.yml" \
+  || ! grep -Fq 'Build the pinned LSFG-VK v2 package' "$ROOT/.github/workflows/check.yml"; then
+  echo "FAIL: the documented LSFG-VK v2 schema decision must match the CI test/build contract." >&2
   exit 1
 fi
 if ! grep -Fq 'nixfmt --check' "$README" \
@@ -814,8 +814,13 @@ if ! grep -Fq 'if [ -n \"$2\" ] && [ ! -e \"$1\" ]; then notify-send -t 15000 -u
   echo "FAIL: missing-wallpaper notification must only run when live wallpaper is enabled." >&2
   exit 1
 fi
-if ! grep -Fq 'LOW_LATENCY_LAYER = "1";' "$CONFIG" || ! grep -Fq 'LOW_LATENCY_LAYER_REFLEX = "1";' "$CONFIG"; then
-  echo "FAIL: the low-latency Vulkan layer and Reflex interface must be enabled system-wide." >&2
+if ! grep -Fq 'LOW_LATENCY_LAYER = "1";' "$CONFIG" \
+  || grep -Eq '^[[:space:]]*LOW_LATENCY_LAYER_REFLEX[[:space:]]*=' "$CONFIG"; then
+  echo "FAIL: the Vulkan latency layer must be enabled globally while Reflex stays opt-in per compatible game." >&2
+  exit 1
+fi
+if ! grep -Fq 'LOW_LATENCY_LAYER_REFLEX=1 %command%' "$README"; then
+  echo "FAIL: README must document per-game Reflex opt-in." >&2
   exit 1
 fi
 if grep -Eq '^[[:space:]]*DISABLE_LOW_LATENCY_LAYER[[:space:]]*=' "$CONFIG" "$HOME_CONFIG"; then
@@ -1015,7 +1020,7 @@ if 'The included configuration sets `networking.hostName = "nixos"`' not in read
 print(f"OK: CachyOS branch {branch!r}, lock, active docs, and host-name guidance are consistent.")
 PY_KERNEL_REF
 
-echo "OK: installer, VM/VFIO, English locale/UI, updateable RT-Bore-LTO selection, global Reflex, SSH access, and SSH-preserving VFIO handoff invariants passed."
+echo "OK: installer, VM/VFIO, English locale/UI, updateable RT-Bore-LTO selection, opt-in Reflex, SSH access, and SSH-preserving VFIO handoff invariants passed."
 
 
 # The migration installer must fail closed on NixOS live media before any mutations.
