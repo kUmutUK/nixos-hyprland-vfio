@@ -319,7 +319,7 @@ if [ ! -s "$ROOT/nixos/lsfg-vk-v2.nix" ]; then
   exit 1
 fi
 if ! grep -Fq 'REQUIRED_NIXOS_SOURCE_FILES=(configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix)' "$INSTALLER" \
-  || ! grep -Fq 'for source_file in "${REQUIRED_NIXOS_SOURCE_FILES[@]}"; do' "$INSTALLER" \
+  || ! grep -Fq 'for file in "${REQUIRED_NIXOS_SOURCE_FILES[@]}"; do' "$INSTALLER" \
   || ! grep -Fq 'for f in "${REQUIRED_NIXOS_SOURCE_FILES[@]}"; do' "$INSTALLER"; then
   echo "FAIL: installer preflight and deployment must require/copy the v2 package expression." >&2
   exit 1
