@@ -842,12 +842,12 @@ if ! grep -Fq 'if [ -n \"$2\" ] && [ ! -e \"$1\" ]; then notify-send -t 15000 -u
   exit 1
 fi
 if ! grep -Fq 'LOW_LATENCY_LAYER = "1";' "$CONFIG" \
-  || grep -Eq '^[[:space:]]*LOW_LATENCY_LAYER_REFLEX[[:space:]]*=' "$CONFIG"; then
-  echo "FAIL: the Vulkan latency layer must be enabled globally while Reflex stays opt-in per compatible game." >&2
+  || ! grep -Fq 'LOW_LATENCY_LAYER_REFLEX = "1";' "$CONFIG"; then
+  echo "FAIL: both the Vulkan latency layer and Reflex interface must be enabled system-wide." >&2
   exit 1
 fi
-if ! grep -Fq 'LOW_LATENCY_LAYER_REFLEX=1 %command%' "$README"; then
-  echo "FAIL: README must document per-game Reflex opt-in." >&2
+if ! grep -Fq 'LOW_LATENCY_LAYER_REFLEX=1' "$README"; then
+  echo "FAIL: README must document the system-wide Reflex default." >&2
   exit 1
 fi
 if grep -Eq '^[[:space:]]*DISABLE_LOW_LATENCY_LAYER[[:space:]]*=' "$CONFIG" "$HOME_CONFIG"; then
@@ -1047,7 +1047,7 @@ if 'The included configuration sets `networking.hostName = "nixos"`' not in read
 print(f"OK: CachyOS branch {branch!r}, lock, active docs, and host-name guidance are consistent.")
 PY_KERNEL_REF
 
-echo "OK: installer, VM/VFIO, English locale/UI, updateable RT-Bore-LTO selection, opt-in Reflex, SSH access, and SSH-preserving VFIO handoff invariants passed."
+echo "OK: installer, VM/VFIO, English locale/UI, updateable RT-Bore-LTO selection, system-wide Reflex, SSH access, and SSH-preserving VFIO handoff invariants passed."
 
 
 # The migration installer must fail closed on NixOS live media before any mutations.
