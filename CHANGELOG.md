@@ -2,7 +2,15 @@
 
 This file summarizes notable changes in English. The original detailed Turkish history is preserved unchanged in [`docs/archive/DEGISIKLIK_GECMISI.md`](docs/archive/DEGISIKLIK_GECMISI.md).
 
-## Unreleased — 2026-10-28
+## Unreleased — 2026-10-29
+
+### LSFG-VK v2 migration — 2026-10-29
+- Replaced the archived v1-only flake module with the upstream LSFG-VK v2 package, pinned to an immutable source revision and hash; registered the v2 Vulkan layer manifest and migrated the Home Manager TOML to `version = 2` / `[[profile]]`.
+- Updated the installer source preflight, private backup set, deployment transaction, rollback tests, contributor instructions, and CI to include `nixos/lsfg-vk-v2.nix` and build `.#lsfg-vk-v2`.
+- Kept the latency layer enabled globally while returning Reflex selection to per-game opt-in for compatible Proton titles; native Linux CS2 retains the default AMD Anti-Lag interface.
+- The upstream v2 package is CC BY-NC-ND 4.0; the Nix expression pins and builds upstream source without patching it. Lossless Scaling remains a separate Steam prerequisite.
+
+## Previous unreleased changes — 2026-10-28
 
 ### Installer safety and regression coverage — 2026-10-28
 - Moved NixOS/live-installer detection ahead of installer locking and the high-risk acknowledgement prompt, so unsupported environments stop before interactive consent.
@@ -36,7 +44,7 @@ This file summarizes notable changes in English. The original detailed Turkish h
 - Added an early preflight for all four required Nix source files in `install.sh`; missing or empty sources now abort before the user prompt, and the deployment phase rechecks them so a disappearing source triggers rollback instead of mixing configuration trees.
 - Hardened the VM diagnostic helper against dangling output symlinks and destination races. It rejects output symlinks and publishes the temporary file atomically without overwriting an existing destination; a regression test covers dangling links.
 - Included `waydroid-container.service` in VFIO handoff state capture, stop, and restore because Waydroid is enabled in the reference configuration and may retain GPU resources. A real target-machine VM lifecycle test is still required.
-- Added common Proton/Wine Wuthering Waves LSFG-VK v1 process aliases and a TOML regression test. The actual process matched at runtime must still be confirmed from target-machine logs.
+- Added common Proton/Wine Wuthering Waves LSFG-VK process aliases and a TOML regression test. The actual process matched at runtime must still be confirmed from target-machine logs.
 - Updated `actions/checkout` to the pinned Node 24-compatible v7.0.1 revision, added a targeted LSFG-VK package build gate, added read-only Nix formatting checks, and included Python in the development shell.
 - Restored Lossless Scaling installation prerequisites, corrected the README repository map, and changed validation instructions to fail fast without rewriting Nix files.
 - Removed the duplicated installer-invariant test block, consolidated contributor validation into one correctly fenced command block, refreshed the root current-state index to 2026-10-27, and clarified that SSH's `AllowUsers` rule restricts the account name rather than the remote source address.
