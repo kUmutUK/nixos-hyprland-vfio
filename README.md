@@ -135,7 +135,7 @@ printf 'Backup saved to %s\n' "$BACKUP"
 
 ```bash
 REPO="$HOME/nixos-hyprland-vfio"   # same checkout path as above
-for file in configuration.nix home.nix flake.nix flake.lock; do
+for file in configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix; do
   target="/etc/nixos/nixos/$file"
   if [ -f "$target" ]; then
     diff -u "$target" "$REPO/nixos/$file" || test "$?" -eq 1
@@ -165,7 +165,7 @@ if [ -n "$(git -C "$REPO" status --porcelain --untracked-files=all)" ]; then
   exit 1
 fi
 sudo install -d -m 0755 /etc/nixos/nixos
-for file in configuration.nix home.nix flake.nix flake.lock; do
+for file in configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix; do
   sudo install -m 0644 "$REPO/nixos/$file" /etc/nixos/nixos/
 done
 sudo install -d -m 0755 /etc/nixos/nixos/hooks
@@ -301,7 +301,7 @@ bash -n "$REPO/install.sh"
 bash "$REPO/scripts/test-installer-invariants.sh"
 bash "$REPO/scripts/test-installer-rollback.sh"
 bash "$REPO/scripts/test-vfio-hook-driver-state.sh"
-python3 "$REPO/scripts/test-lsfg-v1-config.py"
+python3 "$REPO/scripts/test-lsfg-vk-v2.py"
 python3 "$REPO/scripts/test-extract-embedded-scripts.py"
 python3 "$REPO/scripts/test-vm-iso-paths.py"
 python3 "$REPO/scripts/test-vm-xml.py"
@@ -619,8 +619,8 @@ The OCR script now checks that the model is available before beginning; it repor
 | Component | Role |
 |---|---|
 | RADV | AMD Vulkan driver; `AMD_VULKAN_ICD=RADV`, `RADV_PERFTEST=gpl` |
-| `lsfg-vk` | Vulkan frame-generation layer; per-game settings in `~/.config/lsfg-vk/conf.toml` |
-| `low_latency_layer` | Vulkan latency layer, enabled system-wide through PAM session variables with `LOW_LATENCY_LAYER=1` and `LOW_LATENCY_LAYER_REFLEX=1`. This selects the Reflex (`VK_NV_low_latency2`) interface for all Vulkan applications instead of the default AMD Anti-Lag 2 interface. If a particular app has problems, use `DISABLE_LOW_LATENCY_LAYER=1 %command%` in that app's Steam launch options to opt it out. |
+| `lsfg-vk` | Pinned LSFG-VK v2 Vulkan layer, Qt6 UI, and CLI; per-game v2 profiles are declared in Home Manager `conf.toml` |
+| `low_latency_layer` | Vulkan latency layer enabled globally using `LOW_LATENCY_LAYER=1`; keeps the default AMD Anti-Lag interface for native Linux games such as CS2. Compatible Proton games can opt into Reflex with `LOW_LATENCY_LAYER_REFLEX=1 %command%`; incompatible games can use `DISABLE_LOW_LATENCY_LAYER=1 %command%`. |
 | GameMode | Applies the configured game-time priority and performance settings |
 | Gamescope | Fullscreen and window rules for games |
 | MangoHud | FPS, frametime, GPU/CPU, and temperature overlay |
@@ -630,7 +630,7 @@ The OCR script now checks that the model is available before beginning; it repor
 
 **Lossless Scaling prerequisite:** Install Lossless Scaling through Steam on the host. The `lsfg-vk` Nix package provides the Vulkan frame-generation layer; it does not bundle the Lossless Scaling application. If Lossless Scaling is installed in a non-default Steam library, configure the corresponding path in the LSFG-VK configuration.
 
-The upstream Vulkan manifest defines `enable_environment` for `LOW_LATENCY_LAYER=1` and `disable_environment` for `DISABLE_LOW_LATENCY_LAYER=1`. The system session also sets `LOW_LATENCY_LAYER=1` and `LOW_LATENCY_LAYER_REFLEX=1` globally, selecting the Reflex interface by default. To disable the layer for one incompatible game, launch it with `DISABLE_LOW_LATENCY_LAYER=1 %command%`. Inspect active layers with:
+The upstream Vulkan manifest enables the latency layer through `LOW_LATENCY_LAYER=1` and supports per-game opt-out through `DISABLE_LOW_LATENCY_LAYER=1`. The system keeps the default AMD Anti-Lag interface globally; compatible Proton games can opt into Reflex with `LOW_LATENCY_LAYER_REFLEX=1 %command%`. To disable the layer for one incompatible game, launch it with `DISABLE_LOW_LATENCY_LAYER=1 %command%`. Inspect active layers with:
 
 **CS2 / Source 2 note:** the upstream [`low_latency_layer` v0.2.0 release notes](https://github.com/Korthos-Software/low_latency_layer/releases/tag/v0.2.0) document frame-pacing issues when an in-engine FPS cap is enabled. While the layer is active, use `fps_max 0` in CS2 until upstream resolves the issue; an external cap such as MangoHud's has been reported not to trigger it. If you still see stutter or frame-pacing problems, opt CS2 out with `DISABLE_LOW_LATENCY_LAYER=1 %command%` and compare frametimes.
 
@@ -654,8 +654,8 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 
 - **RT-Bore-LTO validation:** the upstream source does not publish the ThinLTO variant in its binary cache, so each newly selected upstream revision needs a local build. The project owner reports that the currently locked revision built and passed the VM start/shutdown and Hyprland-recovery check on the target machine (see the 2026-10-23 update below); this result is owner-reported, not independently reproduced, and does not guarantee compatibility on other hardware. Real-time preemption does not guarantee higher FPS or better frametimes. Retain a known-good boot generation when testing future kernel revisions.
 - **Global Vulkan latency layer compatibility:** upstream `low_latency_layer` v0.2.0 documents an incompatibility with the `obs_vkcapture` Vulkan capture layer. If game capture or recording breaks while the layer is enabled, launch the affected game with `DISABLE_LOW_LATENCY_LAYER=1 %command%` and verify whether capture works again.
-- **LSFG-VK schema decision:** this repository intentionally targets the upstream v1 `[[game]]`/`exe` profile format and the `.#lsfg-vk` package. It does not include the previously explored v2 custom package/schema. The v1 TOML test and explicit package build are the current contract; a v2 migration should update the package, profiles, deployment/rollback paths, and CI together rather than mixing schema generations.
-- **Wuthering Waves LSFG profile:** the v1 configuration includes common Proton/Wine executable aliases `Client-Win64-Shipping.exe` and `Client-Win64-Shipping`. Confirm the actual process name selected by LSFG-VK from the target machine's runtime log; the static configuration test cannot prove the profile is activated in-game.
+- **LSFG-VK schema:** the current tree targets upstream v2 with `version = 2`, `[global]`, and `[[profile]]` entries. The layer/UI/CLI are built from the immutable revision and source hash in `nixos/lsfg-vk-v2.nix`; CI validates the generated TOML and builds `.#lsfg-vk-v2`. Upstream is licensed CC BY-NC-ND 4.0, so the package does not patch or redistribute modified upstream source. Lossless Scaling itself must be separately installed through Steam.
+- **Wuthering Waves LSFG profile:** the v2 configuration includes common Proton/Wine executable aliases `Client-Win64-Shipping.exe` and `Client-Win64-Shipping`. Confirm the actual process name selected by LSFG-VK from the target machine's runtime log; the static configuration test cannot prove the profile is activated in-game.
 - **Waydroid and single-GPU VFIO:** the hook records the prior activity of `waydroid-container.service`, stops it during GPU handoff, and restores it only if it was active beforehand. Mock tests cannot prove the target host releases every GPU file descriptor; verify the complete VM lifecycle on the physical target system.
 - **Navi 2x reset behavior:** reliable reset and host rebind cannot be guaranteed from static analysis. The optional `remove`/`rtcwake`/`rescan` recovery path is disabled by default. Enabling `VFIO_ALLOW_SUSPEND_RECOVERY=1` can suspend the host briefly and should only be attempted after checking firmware support and arranging recovery access.
 - **Single-GPU host:** while the VM owns the GPU, the host does not have a normal graphical session. Keep a physical recovery TTY available. The hook ends only local `seat0` sessions and is designed to preserve SSH sessions. The device-node usage check still fails closed if a process retains the GPU, so test the full VM lifecycle on the target hardware.
@@ -700,7 +700,7 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 │   ├── pci-address.sh
 │   ├── prepare-vm-diagnostic.py
 │   ├── test-extract-embedded-scripts.py
-│   ├── test-lsfg-v1-config.py
+│   ├── test-lsfg-vk-v2.py
 │   ├── test-installer-invariants.sh
 │   ├── test-installer-lock.sh
 │   ├── test-installer-rollback.sh
@@ -754,7 +754,7 @@ nix develop ./nixos --command bash -euo pipefail -c '
   done
   shellcheck -S warning install.sh scripts/package-source-zip.sh scripts/verify-source-revision.sh scripts/test-source-revision.sh scripts/installer-lock.sh scripts/pci-address.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-lock.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh
   python3 -c "import xml.etree.ElementTree as ET; ET.parse(\"vm-xml/win10.xml\")"
-  python3 scripts/test-lsfg-v1-config.py
+  python3 scripts/test-lsfg-vk-v2.py
   python3 scripts/test-home-snapper-layout.py
   python3 scripts/test-extract-embedded-scripts.py
   python3 scripts/test-vm-iso-paths.py
@@ -780,7 +780,7 @@ nix develop ./nixos --command bash -euo pipefail -c '
   fi
   shellcheck -S warning "${embedded_scripts[@]}"
   (cd nixos && nix flake check --no-build --show-trace --no-update-lock-file --option warn-dirty false)
-  (cd nixos && nix build --no-link --no-update-lock-file .#lsfg-vk)
+  (cd nixos && nix build --no-link --no-update-lock-file .#lsfg-vk-v2)
   statix check .
   deadnix .
 '
