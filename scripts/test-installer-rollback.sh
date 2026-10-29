@@ -176,6 +176,7 @@ TRANSACTION_PATHS=(
   "$NIXOS_FLAKE_DIR/home.nix"
   "$NIXOS_FLAKE_DIR/flake.nix"
   "$NIXOS_FLAKE_DIR/flake.lock"
+  "$NIXOS_FLAKE_DIR/lsfg-vk-v2.nix"
   "$NIXOS_FLAKE_DIR/hooks"
   "$NIXOS_FLAKE_DIR/hardware-configuration.nix"
   "$PATCHED_XML"
