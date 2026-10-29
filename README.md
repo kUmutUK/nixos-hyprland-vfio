@@ -749,7 +749,19 @@ Run from the repository root. The command uses fail-fast behavior, validates Nix
 ```bash
 nix develop ./nixos --command bash -euo pipefail -c '
   find ./nixos -type f -name "*.nix" -print0 | xargs -0 -r nixfmt --check
-  for f in install.sh scripts/package-source-zip.sh scripts/verify-source-revision.sh scripts/test-source-revision.sh scripts/installer-lock.sh scripts/test-installer-lock.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh; do
+  for f in \
+    install.sh \
+    scripts/package-source-zip.sh \
+    scripts/verify-source-revision.sh \
+    scripts/test-source-revision.sh \
+    scripts/installer-lock.sh \
+    scripts/test-installer-lock.sh \
+    nixos/hooks/qemu \
+    scripts/test-vfio-hook-driver-state.sh \
+    scripts/test-installer-invariants.sh \
+    scripts/test-installer-rollback.sh \
+    scripts/test-manual-vm-bootstrap.sh
+  do
     bash -n "$f" || exit 1
   done
   shellcheck -S warning install.sh scripts/package-source-zip.sh scripts/verify-source-revision.sh scripts/test-source-revision.sh scripts/installer-lock.sh scripts/pci-address.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-lock.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh
