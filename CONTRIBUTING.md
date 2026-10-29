@@ -25,7 +25,7 @@ nix develop ./nixos --command bash -euo pipefail -c '
   find ./nixos -type f -name "*.nix" -print0 | xargs -0 -r nixfmt --check
   shellcheck -S warning install.sh scripts/package-source-zip.sh scripts/verify-source-revision.sh scripts/test-source-revision.sh scripts/installer-lock.sh scripts/pci-address.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-lock.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh
   python3 -c "import xml.etree.ElementTree as ET; ET.parse(\"vm-xml/win10.xml\")"
-  python3 scripts/test-lsfg-v1-config.py
+  python3 scripts/test-lsfg-vk-v2.py
   python3 scripts/test-home-snapper-layout.py
   python3 scripts/test-vm-iso-paths.py
   bash scripts/test-manual-vm-bootstrap.sh
@@ -49,7 +49,7 @@ nix develop ./nixos --command bash -euo pipefail -c '
   fi
   shellcheck -S warning "${embedded_scripts[@]}"
   (cd nixos && nix flake check --no-build --show-trace --no-update-lock-file --option warn-dirty false)
-  (cd nixos && nix build --no-link --no-update-lock-file .#lsfg-vk)
+  (cd nixos && nix build --no-link --no-update-lock-file .#lsfg-vk-v2)
   statix check .
   deadnix .
 '
