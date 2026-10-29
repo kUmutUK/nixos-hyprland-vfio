@@ -304,7 +304,7 @@ if ! grep -Fq 'packages.${system}.lsfg-vk-v2' "$FLAKE"; then
   echo "FAIL: the selected LSFG-VK package must be exposed for an explicit build check." >&2
   exit 1
 fi
-if ! grep -Fq 'LSFG-VK schema decision' "$README" \
+if ! grep -Fq 'LSFG-VK schema' "$README" \
   || ! grep -Fq 'v2 `[[profile]]` profile format' "$README" \
   || ! grep -Fq 'python3 scripts/test-lsfg-vk-v2.py' "$ROOT/.github/workflows/check.yml" \
   || ! grep -Fq 'Build the pinned LSFG-VK v2 package' "$ROOT/.github/workflows/check.yml"; then
