@@ -2,7 +2,10 @@
 
 This file summarizes notable changes in English. The original detailed Turkish history is preserved unchanged in [`docs/archive/DEGISIKLIK_GECMISI.md`](docs/archive/DEGISIKLIK_GECMISI.md).
 
-## Unreleased — 2026-10-29
+## [Unreleased]
+
+### SSH authentication policy — 2026-10-30
+- Recorded the rollback of the 2026-10-23 password-enabled SSH setting. The current configuration disables `PasswordAuthentication` and `KbdInteractiveAuthentication`, requires configured public keys, and keeps root SSH login disabled. TCP 22 should remain restricted at the network edge.
 
 ### Correct Reflex default — 2026-10-29
 - Keep `LOW_LATENCY_LAYER=1` enabled globally while leaving `LOW_LATENCY_LAYER_REFLEX` unset in system-wide session variables, preserving the layer’s default AMD Anti-Lag interface. Compatible games can opt into Reflex per game with `LOW_LATENCY_LAYER_REFLEX=1 %command%`.
@@ -14,7 +17,7 @@ This file summarizes notable changes in English. The original detailed Turkish h
 - Kept the latency layer enabled globally while keeping Reflex selection opt-in per compatible Proton title; native Linux CS2 retains the default AMD Anti-Lag interface.
 - The upstream v2 package is CC BY-NC-ND 4.0; the Nix expression pins and builds upstream source without patching it. Lossless Scaling remains a separate Steam prerequisite.
 
-## Previous unreleased changes — 2026-10-28
+### Earlier unreleased work (2026-10-28)
 
 ### Installer safety and regression coverage — 2026-10-28
 - Moved NixOS/live-installer detection ahead of installer locking and the high-risk acknowledgement prompt, so unsupported environments stop before interactive consent.
@@ -83,8 +86,8 @@ This file summarizes notable changes in English. The original detailed Turkish h
 
 ### Changed
 - Switched the selected kernel from standard CachyOS BORE-LTO to `linuxPackages-cachyos-rt-bore-lto`. The version is not hard-coded: the flake follows the upstream `master` branch and the lock can be updated for newer upstream revisions with `nix flake update cachyos-kernel`. Upstream does not publish the RT-Bore-LTO ThinLTO build in its binary cache, so it is expected to compile locally. The project owner has since reported a successful local RT-Bore-LTO build and VM/Hyprland recovery cycle on the target machine.
-- Enabled the Vulkan low-latency layer and Reflex system-wide through PAM session variables `LOW_LATENCY_LAYER=1` and `LOW_LATENCY_LAYER_REFLEX=1`. Applications with compatibility issues can opt out with `DISABLE_LOW_LATENCY_LAYER=1` in their Steam launch options.
-- Enabled password SSH for the `localhost` user on TCP 22 while keeping root SSH login disabled, restricting allowed users, and applying Fail2ban to private LAN sources too. Updated the VFIO hook to terminate only the local `seat0` sessions so remote SSH sessions are not killed by `loginctl terminate-user`; a busy GPU still triggers the existing fail-closed handoff check.
+- Enabled the Vulkan low-latency layer and Reflex system-wide through PAM session variables `LOW_LATENCY_LAYER=1` and `LOW_LATENCY_LAYER_REFLEX=1`. Applications with compatibility issues can opt out with `DISABLE_LOW_LATENCY_LAYER=1` in their Steam launch options. **Superseded on 2026-10-29:** the global `LOW_LATENCY_LAYER_REFLEX=1` default was removed; Reflex is opt-in per compatible game.
+- Enabled password SSH for the `localhost` user on TCP 22 while keeping root SSH login disabled, restricting allowed users, and applying Fail2ban to private LAN sources too. Updated the VFIO hook to terminate only the local `seat0` sessions so remote SSH sessions are not killed by `loginctl terminate-user`; a busy GPU still triggers the existing fail-closed handoff check. **Superseded on 2026-10-30:** password and keyboard-interactive authentication are now disabled; public-key authentication is required.
 - The checked-in CachyOS lock in this tree resolves the upstream `master` input to `02ba4db52e62e1fbece80402d369127ae77cbbeb`. The lock keeps this checkout reproducible; advance it intentionally when a newer upstream revision is desired. The revision is recorded without inferring a kernel version from the commit hash.
 - Replaced the broad `nup` alias (`nix flake update`, which could update unrelated inputs and depended on the current directory) with a privileged CachyOS-only update targeting `/etc/nixos/nixos`.
 

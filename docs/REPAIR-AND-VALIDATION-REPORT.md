@@ -1,6 +1,25 @@
-# Repair and validation report — updated 2026-10-28
+# Repair and validation report — updated 2026-10-30
 
 > **Delivery-scope note:** This report is part of the tracked source tree. The dated “patch-only ZIP” notes below are historical. For a canonical full-source ZIP, use `scripts/package-source-zip.sh` or the CI-uploaded `nixos-hyprland-vfio-source` artifact for the exact commit. The helper verifies tracked-file completeness, excludes `.git/`, preserves executable bits, and makes the finished artifact readable from shared output directories.
+## Current canonical source ZIP and artifact provenance — 2026-10-30
+
+This table is the single current index for the archive measurements that have been repeatedly discussed in this report. Measurements marked as supplied were transcribed from prior audits; they are not represented as independently remeasured here because those ZIP bytes were not attached to this editing session. Only the canonical CI artifact associated with the exact desired commit should be distributed.
+
+| Archive | Recorded metadata | Disposition |
+|---|---|---|
+| ZIP named in the supplied 2026-10-30 audit | 554,516 bytes; SHA-256 prefix `65ab86f1…`; 115 entries including 45 `.git/` entries; `SOURCE_REVISION` is the literal `$Format:%H# Repair and validation report — updated 2026-10-30
+
+> **Delivery-scope note:** This report is part of the tracked source tree. The dated “patch-only ZIP” notes below are historical. For a canonical full-source ZIP, use `scripts/package-source-zip.sh` or the CI-uploaded `nixos-hyprland-vfio-source` artifact for the exact commit. The helper verifies tracked-file completeness, excludes `.git/`, preserves executable bits, and makes the finished artifact readable from shared output directories.
+; embedded `.git/HEAD` begins `16f9194`; `install.sh` uses ZIP `create_system=0`. | Reported noncanonical. The exact bytes were not attached here, so these metadata remain supplied measurements; do not distribute this archive. |
+| Earlier ZIP from the 2026-10-28 audit | 494,995 bytes; SHA-256 prefix `00805455…`; 105 entries including 45 `.git/` entries; embedded HEAD `cdfd3d8d5008e4b7405ce2433e29b8a0e34ffebe`. | Historical; it is not the 554,516-byte archive above. |
+| Historical ZIP(2) | 490,249 bytes; SHA-256 `505ab8bcadc4f7ad0459194e561d27e2d8f65627e859df35a8af7c385707046f`; 105 entries including 45 `.git/` entries; embedded HEAD `8487ea4cd82e75ede71bcad7eaada6438c40adb0`. | Historical submitted archive. |
+| Historical ZIP(10) | 475,881 bytes; SHA-256 `9b107f6a3579224944211349d46377e96ff48e26eb4bfa548c30276a86efbe6c`. | Historical; remaining metadata are recorded in its dated section below. |
+| Historical ZIP(9) | 475,483 bytes; SHA-256 `931c5d75f8af22e9de5ebfa64341a4d1777a47e2a0e6ad882ba65f1b4bd13f6c`; 102 entries including 45 `.git/` entries. | Historical submitted archive. |
+| Historical ZIP(1) | 456,770 bytes; SHA-256 `69168ea0d90285a879baf08dfb7be0425db2cedb6539344d4ab603caf1f36094`; 101 entries including 45 `.git/` entries; embedded commit `8c6cf467038bacbc8cba46a0c9dcfe54e13c467d`. | Historical; distinct from ZIP(9) and ZIP(10). |
+| Earlier archive from the 2026-10-27 audit | 436,212 bytes; SHA-256 prefix `3f0f0ed5`; 96 entries; embedded commit `a631d195891ff6da74ae727ac3c531ffc77c50ed`. | Historical; separate attachment. |
+| Another earlier archive | 493,030 bytes; SHA-256 prefix `45e3edaa…`; embedded revision prefix `c395611f…`. | Historical; not the 494,995-byte archive above. |
+
+The repository's `scripts/package-source-zip.sh` remains the canonical packager. It packages committed `HEAD`, checks the exact tracked-file inventory, ZIP integrity, embedded 40-character revision, absence of `.git/`, and tracked executable modes. The CI workflow uploads that same validated ZIP and a relative-path `.sha256` manifest after required checks pass. A digest cannot be hard-coded in this tracked report without changing the archive that digest describes; use the manifest delivered alongside the artifact for the exact commit.
 ## Follow-up audit — source ZIP handling and partition-count verification — 2026-10-28
 
 **GitHub `main` immediately before this follow-up:** [`0d748ed82244a51ce49f53e9fc458df16eca4a38`](https://github.com/kUmutUK/nixos-hyprland-vfio/commit/0d748ed82244a51ce49f53e9fc458df16eca4a38). The recursive tree has 55 tracked file blobs and eight executable-mode files (`100755`); the executable list remains `install.sh`, `nixos/hooks/qemu`, and the six packaging/test/verifier scripts named in the prior snapshot below.

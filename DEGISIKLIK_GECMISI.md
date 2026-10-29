@@ -2,7 +2,7 @@
 
 This legacy filename now contains an English current-state summary so older links remain useful. The maintained and current change log is [`CHANGELOG.md`](CHANGELOG.md).
 
-## Current configuration notes — 2026-10-28
+## Current configuration notes — 2026-10-30
 
 - `CHANGELOG.md` is the maintained current change summary; its 2026-10-27 entry covers installer and VM diagnostic hardening, VFIO handoff, LSFG-VK profiles, registered-libvirt XML preservation, embedded-script extraction boundaries, and CI audit follow-ups.
 - The 602-line duplicate block in `scripts/test-installer-invariants.sh` has been removed. `CONTRIBUTING.md` has one valid validation block; the extractor now refuses to cross Nix attribute boundaries or accept unterminated embedded strings, with a focused regression test.

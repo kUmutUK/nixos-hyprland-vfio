@@ -1,6 +1,8 @@
 # 📜 Changelog
 
-> **Güncel ağaç açıklaması — 2026-10-19**
+> **Tarihsel anlık görüntü notu — 2026-10-19 (güncel yapılandırma kaynağı değildir)**
+>
+> Bu blok 19 Ekim 2026 tarihindeki durumu kaydeder. Bazı maddeler sonraki değişikliklerle geçersiz kalmıştır; güncel ayarlar için kök `README.md` ve `nixos/configuration.nix` esas alınmalıdır.
 >
 > - Aşağıdaki `[1.3.6]` bölümünde `amd_iommu=on` parametresinin eklendiği
 >   yazıyor. Bu, tarihsel bir değişiklik kaydıdır ve mevcut yapılandırmanın
@@ -29,13 +31,15 @@
 > - Fail2ban yorumları etkin ayarla hizalandı: yalnızca loopback muaf, özel LAN aralıkları
 >   da ban politikasına tabidir. `nup` alias'ı tüm flake girdilerini güncellemek yerine
 >   `/etc/nixos/nixos` içindeki yalnızca CachyOS kernel girdisini günceller.
-> - Vulkan düşük gecikme katmanı PAM oturum değişkenleri üzerinden sistem genelinde
->   `LOW_LATENCY_LAYER=1` ve `LOW_LATENCY_LAYER_REFLEX=1` ile etkinleştirilmiştir. Uyumsuz
->   oyunlar `DISABLE_LOW_LATENCY_LAYER=1 %command%` ile hariç tutulabilir.
-> - OpenSSH TCP 22'de açıktır; parola girişi yalnız `localhost` kullanıcısına izin verir,
->   root girişi kapalıdır ve Fail2ban LAN adreslerini de denetler. VFIO hook yalnızca yerel
->   `seat0` oturumlarını sonlandıracak şekilde değiştirildi; SSH'nin açık kalması ve gerçek
->   RT-Bore-LTO VM yaşam döngüsü hedef sistemde yeniden doğrulanmalıdır.
+> - Bu 2026-10-19 snapshot'ında Vulkan düşük gecikme katmanı sistem genelinde
+>   `LOW_LATENCY_LAYER=1` ve `LOW_LATENCY_LAYER_REFLEX=1` ile etkinleştirilmişti.
+>   **Bu tercih 2026-10-29'da geçersiz kılındı:** güncel yapılandırma `LOW_LATENCY_LAYER=1`
+>   değerini sistem genelinde tutar, `LOW_LATENCY_LAYER_REFLEX` değerini varsayılan olarak
+>   ayarlamaz; uyumlu oyunlar Reflex'i `LOW_LATENCY_LAYER_REFLEX=1 %command%` ile açabilir.
+> - Bu 2026-10-19 snapshot'ında OpenSSH TCP 22'de açıktı ve parola girişi `localhost`
+>   hesabına izin verecek şekilde etkinleştirilmişti. **Bu ayar güncel değildir:** mevcut
+>   yapılandırma parola ve klavye-etkileşimli girişi kapatır, ortak anahtar doğrulaması
+>   gerektirir ve root girişini devre dışı bırakır.
 
 # [1.3.8] - 2026-10-12
 

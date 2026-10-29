@@ -26,6 +26,7 @@ nix develop ./nixos --command bash -euo pipefail -c '
   shellcheck -S warning install.sh scripts/package-source-zip.sh scripts/verify-source-revision.sh scripts/test-source-revision.sh scripts/installer-lock.sh scripts/pci-address.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-lock.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh
   python3 -c "import xml.etree.ElementTree as ET; ET.parse(\"vm-xml/win10.xml\")"
   python3 scripts/test-lsfg-vk-v2.py
+  python3 scripts/test-documentation-integrity.py
   python3 scripts/test-home-snapper-layout.py
   python3 scripts/test-vm-iso-paths.py
   bash scripts/test-manual-vm-bootstrap.sh

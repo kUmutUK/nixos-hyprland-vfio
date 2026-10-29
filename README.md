@@ -37,6 +37,9 @@ The repository is MIT-licensed and is provided “as is,” without warranty. Us
 | GPU | AMD Radeon RX 6700 XT (Navi 22) is the documented target. `rocmOverrideGfx = "10.3.0"` is configured for the target system; do not assume it is appropriate for another GPU. |
 | Firmware | UEFI. Enable IOMMU / AMD-Vi in firmware and verify it after boot with `dmesg` and `/sys/kernel/iommu_groups/`. |
 | Storage | The reference partitions total 809 GiB: 1 GiB EFI, 8 GiB swap, and an 800 GiB LUKS2/Btrfs volume. Use a disk of at least 810 GiB (about 870 GB decimal); a 1 TB-class disk is recommended. |
+| Guest memory | The Windows template assigns 16 GiB (16,777,216 KiB) to the VM; reserve additional memory for NixOS, Hyprland, and host applications. |
+| Guest CPU | The template assigns 6 vCPUs as six guest cores. Keep sufficient CPU capacity for the NixOS host; these vCPUs are not exclusive or pinned physical cores. |
+| VM devices | The template includes ICH9 emulated audio and an iTCO watchdog with reset action. Review these defaults before defining a new VM; preserve an existing VM definition rather than replacing it with the template. |
 | Filesystems | LUKS2 + Btrfs subvolumes + EFI. Disk swap sits outside the LUKS volume; the reference config encrypts it with a per-activation random key using `randomEncryption.enable = true`. Preserve that option in the generated hardware file for fresh installs. |
 | Kernel | CachyOS RT-Bore-LTO (real-time patch set + BORE scheduler + ThinLTO), selected through the upstream `master` flake input. The kernel version is not hard-coded; the lock file records the selected input revision until you intentionally update it. Upstream does not publish this LTO variant to its binary cache, so it must be built locally. |
 
@@ -687,6 +690,7 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 ├── .github/workflows/full-system-build.yml
 ├── docs/
 │   ├── REPAIR-AND-VALIDATION-REPORT.md
+│   ├── AUDIT-2026-10-28-VM-XML-VFIO.md
 │   └── archive/                    # Historical audits and original Turkish release history
 ├── scripts/
 │   ├── check-vm-iso-paths.py
@@ -700,6 +704,7 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 │   ├── pci-address.sh
 │   ├── prepare-vm-diagnostic.py
 │   ├── test-extract-embedded-scripts.py
+│   ├── test-documentation-integrity.py
 │   ├── test-lsfg-vk-v2.py
 │   ├── test-installer-invariants.sh
 │   ├── test-installer-lock.sh
@@ -709,6 +714,7 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 │   ├── sync-vm-xml.py
 │   ├── test-vm-diagnostic.py
 │   ├── test-vm-iso-paths.py
+│   ├── test-vm-xml-paths.py
 │   ├── test-vm-xml-sync.py
 │   ├── test-vm-xml-structure.py
 │   └── test-vm-xml.py
@@ -718,6 +724,7 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
     ├── flake.lock
     ├── configuration.nix
     ├── home.nix
+    ├── lsfg-vk-v2.nix
     ├── hardware-configuration.nix   # machine-specific: replace for another host
     └── hooks/qemu
 ```
@@ -757,6 +764,7 @@ nix develop ./nixos --command bash -euo pipefail -c '
   python3 scripts/test-lsfg-vk-v2.py
   python3 scripts/test-home-snapper-layout.py
   python3 scripts/test-extract-embedded-scripts.py
+  python3 scripts/test-documentation-integrity.py
   python3 scripts/test-vm-iso-paths.py
   bash -n scripts/test-manual-vm-bootstrap.sh
   bash scripts/test-manual-vm-bootstrap.sh
