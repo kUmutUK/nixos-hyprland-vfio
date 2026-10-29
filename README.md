@@ -620,7 +620,7 @@ The OCR script now checks that the model is available before beginning; it repor
 |---|---|
 | RADV | AMD Vulkan driver; `AMD_VULKAN_ICD=RADV`, `RADV_PERFTEST=gpl` |
 | `lsfg-vk` | Pinned LSFG-VK v2 Vulkan layer, Qt6 UI, and CLI; per-game v2 profiles are declared in Home Manager `conf.toml` |
-| `low_latency_layer` | Vulkan latency layer and Reflex interface enabled system-wide with `LOW_LATENCY_LAYER=1` and `LOW_LATENCY_LAYER_REFLEX=1`. This intentionally selects Reflex globally, including native Linux games such as CS2. Incompatible games can opt out with `DISABLE_LOW_LATENCY_LAYER=1 %command%`. |
+| `low_latency_layer` | Vulkan latency layer enabled globally using `LOW_LATENCY_LAYER=1`; keeps the default AMD Anti-Lag interface for native Linux games such as CS2. Compatible Proton games can opt into Reflex with `LOW_LATENCY_LAYER_REFLEX=1 %command%`; incompatible games can use `DISABLE_LOW_LATENCY_LAYER=1 %command%`. |
 | GameMode | Applies the configured game-time priority and performance settings |
 | Gamescope | Fullscreen and window rules for games |
 | MangoHud | FPS, frametime, GPU/CPU, and temperature overlay |
@@ -630,7 +630,7 @@ The OCR script now checks that the model is available before beginning; it repor
 
 **Lossless Scaling prerequisite:** Install Lossless Scaling through Steam on the host. The `lsfg-vk` Nix package provides the Vulkan frame-generation layer; it does not bundle the Lossless Scaling application. If Lossless Scaling is installed in a non-default Steam library, configure the corresponding path in the LSFG-VK configuration.
 
-The upstream Vulkan manifest enables the latency layer through `LOW_LATENCY_LAYER=1` and supports per-game opt-out through `DISABLE_LOW_LATENCY_LAYER=1`. This configuration deliberately sets both `LOW_LATENCY_LAYER=1` and `LOW_LATENCY_LAYER_REFLEX=1` system-wide, selecting the Reflex interface by default for all Vulkan applications. To disable the layer for one incompatible game, launch it with `DISABLE_LOW_LATENCY_LAYER=1 %command%`. Inspect active layers with:
+The upstream Vulkan manifest enables the latency layer through `LOW_LATENCY_LAYER=1` and supports per-game opt-out through `DISABLE_LOW_LATENCY_LAYER=1`. The system keeps the default AMD Anti-Lag interface globally; compatible Proton games can opt into Reflex with `LOW_LATENCY_LAYER_REFLEX=1 %command%`. To disable the layer for one incompatible game, launch it with `DISABLE_LOW_LATENCY_LAYER=1 %command%`. Inspect active layers with:
 
 **CS2 / Source 2 note:** the upstream [`low_latency_layer` v0.2.0 release notes](https://github.com/Korthos-Software/low_latency_layer/releases/tag/v0.2.0) document frame-pacing issues when an in-engine FPS cap is enabled. While the layer is active, use `fps_max 0` in CS2 until upstream resolves the issue; an external cap such as MangoHud's has been reported not to trigger it. If you still see stutter or frame-pacing problems, opt CS2 out with `DISABLE_LOW_LATENCY_LAYER=1 %command%` and compare frametimes.
 
