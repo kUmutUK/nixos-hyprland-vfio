@@ -266,11 +266,11 @@ in
   };
 
   # PAM initializes these variables for login sessions, including greetd/Hyprland.
-  # Enable the latency layer globally but keep its default AMD Anti-Lag interface.
-  # Compatible Proton games can opt into Reflex with LOW_LATENCY_LAYER_REFLEX=1 per game;
-  # incompatible games can opt out with DISABLE_LOW_LATENCY_LAYER=1.
+  # Enable both the Vulkan latency layer and its Reflex interface system-wide by default.
+  # Applications that misbehave can opt out per game with DISABLE_LOW_LATENCY_LAYER=1.
   environment.sessionVariables = {
     LOW_LATENCY_LAYER = "1";
+    LOW_LATENCY_LAYER_REFLEX = "1";
   };
 
   programs.fish.enable = true;
