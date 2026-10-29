@@ -53,7 +53,7 @@ jobs:
       - name: Manual VM bootstrap retry regression test
         run: bash -n scripts/test-manual-vm-bootstrap.sh && bash scripts/test-manual-vm-bootstrap.sh
 
-      - name: Installer, English locale, opt-in Reflex and SSH regression checks
+      - name: Installer, English locale, system-wide Reflex and SSH regression checks
         run: bash scripts/test-installer-invariants.sh
 
       - name: Home Snapper mount and UUID regression tests
