@@ -158,7 +158,7 @@ if ! grep -q '^validate_nixos_source_files() {' "$preflight_function"; then
   exit 1
 fi
 if ! grep -Fq 'REQUIRED_NIXOS_SOURCE_FILES=(configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix)' "$INSTALLER"; then
-  echo "FAIL: installer source preflight must declare all four required Nix source files." >&2
+  echo "FAIL: installer source preflight must declare all five required Nix source files." >&2
   exit 1
 fi
 cat > "$preflight_dir/harness.sh" <<'BASH'
@@ -309,6 +309,33 @@ if ! grep -Fq 'LSFG-VK schema decision' "$README" \
   || ! grep -Fq 'python3 scripts/test-lsfg-vk-v2.py' "$ROOT/.github/workflows/check.yml" \
   || ! grep -Fq 'Build the pinned LSFG-VK v2 package' "$ROOT/.github/workflows/check.yml"; then
   echo "FAIL: the documented LSFG-VK v2 schema decision must match the CI test/build contract." >&2
+  exit 1
+fi
+
+# The extra package expression is a required deployed source and must participate in
+# the same backup/rollback transaction as the main flake and configuration.
+if [ ! -s "$ROOT/nixos/lsfg-vk-v2.nix" ]; then
+  echo "FAIL: required LSFG-VK v2 package expression is missing or empty." >&2
+  exit 1
+fi
+if ! grep -Fq 'REQUIRED_NIXOS_SOURCE_FILES=(configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix)' "$INSTALLER" \
+  || ! grep -Fq 'for source_file in "${REQUIRED_NIXOS_SOURCE_FILES[@]}"; do' "$INSTALLER" \
+  || ! grep -Fq 'for f in "${REQUIRED_NIXOS_SOURCE_FILES[@]}"; do' "$INSTALLER"; then
+  echo "FAIL: installer preflight and deployment must require/copy the v2 package expression." >&2
+  exit 1
+fi
+transaction_block="$(sed -n '/^TRANSACTION_PATHS=(/,/^)/p' "$INSTALLER")"
+backup_block="$(sed -n '/^for src /,/PATCHED_XML"; do/p' "$INSTALLER")"
+if ! grep -Fq '"$NIXOS_FLAKE_DIR/lsfg-vk-v2.nix"' <<< "$transaction_block"; then
+  echo "FAIL: installer rollback transaction must include lsfg-vk-v2.nix." >&2
+  exit 1
+fi
+if ! grep -Fq '"$NIXOS_FLAKE_DIR/lsfg-vk-v2.nix"' <<< "$backup_block"; then
+  echo "FAIL: installer backup list must include lsfg-vk-v2.nix." >&2
+  exit 1
+fi
+if [ "$(grep -Fc 'for file in configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix; do' "$README")" -lt 2 ]; then
+  echo "FAIL: README manual migration loops must include lsfg-vk-v2.nix." >&2
   exit 1
 fi
 if ! grep -Fq 'nixfmt --check' "$README" \
