@@ -4,7 +4,7 @@
 >
 > Bu blok 19 Ekim 2026 tarihindeki durumu kaydeder. Bazı maddeler sonraki değişikliklerle geçersiz kalmıştır; güncel ayarlar için kök `README.md` ve `nixos/configuration.nix` esas alınmalıdır.
 >
-> - Aşağıdaki `[1.3.6]` bölümünde `amd_iommu=on` parametresinin eklendiği
+> - Aşağıdaki `[1.3.5]` bölümünde `amd_iommu=on` parametresinin eklendiği
 >   yazıyor. Bu, tarihsel bir değişiklik kaydıdır ve mevcut yapılandırmanın
 >   durumunu anlatmaz. Güncel `nixos/configuration.nix` içinde ne
 >   `amd_iommu=on` ne de `iommu=pt` etkinleştirilmiştir; `README.md` de bunu

@@ -8,6 +8,8 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 README = (ROOT / "README.md").read_text(encoding="utf-8")
+INSTALLATION = (ROOT / "INSTALLATION.md").read_text(encoding="utf-8")
+CONTRIBUTING = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
 AUDIT = (ROOT / "docs/AUDIT-2026-10-28-VM-XML-VFIO.md").read_text(encoding="utf-8")
 ARCHIVE = (ROOT / "docs/archive/DEGISIKLIK_GECMISI.md").read_text(encoding="utf-8")
 CHANGELOG = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
@@ -63,6 +65,16 @@ require(memory is not None and memory.get("unit") == "KiB" and (memory.text or "
 require(vcpu is not None and (vcpu.text or "").strip() == "6", "VM XML vCPU count no longer matches the documented 6 vCPUs")
 require(sound is not None and sound.get("model") == "ich9", "VM XML sound model no longer matches the README")
 require(watchdog is not None and watchdog.get("model", "").lower() == "itco" and watchdog.get("action") == "reset", "VM XML watchdog no longer matches the README")
+usb_ids = set()
+for hostdev in vm.findall("./devices/hostdev"):
+    if hostdev.get("type") == "usb":
+        vendor_node = hostdev.find("./source/vendor")
+        product_node = hostdev.find("./source/product")
+        if vendor_node is not None and product_node is not None:
+            vendor = vendor_node.get("id", "").removeprefix("0x").lower()
+            product = product_node.get("id", "").removeprefix("0x").lower()
+            usb_ids.add((vendor, product))
+require(usb_ids == {("1532", "0098"), ("05ac", "024f")}, "VM XML must contain only the two documented active USB passthrough IDs")
 
 require("## [Unreleased]" in CHANGELOG, "CHANGELOG must use the undated [Unreleased] heading")
 require(not re.search(r"(?m)^## (?:Unreleased|Previous unreleased changes)\s*[—-]\s*\d{4}-\d{2}-\d{2}", CHANGELOG), "CHANGELOG still gives an Unreleased heading a date")
@@ -70,6 +82,19 @@ require("rollback of the 2026-10-23 password-enabled SSH setting" in CHANGELOG, 
 require("PasswordAuthentication" in CHANGELOG and "KbdInteractiveAuthentication" in CHANGELOG, "CHANGELOG must describe both disabled SSH password and keyboard-interactive authentication")
 require("Superseded on 2026-10-29" in CHANGELOG, "the old system-wide Reflex entry must be marked superseded")
 require("Superseded on 2026-10-30" in CHANGELOG, "the old password-enabled SSH entry must be marked superseded")
+readme_bash_loop = re.search(
+    r"(?ms)^  for f in \\\n(?P<body>.*?)^  do\n    bash -n \"\$f\"",
+    README,
+)
+contrib_bash_loop = re.search(
+    r"(?ms)^  for f in (?P<body>[^;\n]+); do\n    bash -n \"\$f\"",
+    CONTRIBUTING,
+)
+require(readme_bash_loop is not None and contrib_bash_loop is not None, "README and CONTRIBUTING must both expose a full Bash syntax-check loop")
+if readme_bash_loop is not None and contrib_bash_loop is not None:
+    readme_bash_files = {line.strip().removesuffix("\\").strip() for line in readme_bash_loop.group("body").splitlines() if line.strip()}
+    contributing_bash_files = set(contrib_bash_loop.group("body").split())
+    require(readme_bash_files == contributing_bash_files, "README and CONTRIBUTING Bash syntax-check file lists have drifted")
 require("Current configuration notes — 2026-10-30" in STATE_INDEX, "current-state index date is stale")
 require("2026-10-28 entry" in STATE_INDEX and "2026-10-27 entry" not in STATE_INDEX, "root index must point to the 2026-10-28 CHANGELOG section")
 require("copy all five required Nix source files" in README and "four flake files" not in README, "README must describe the five-file migration accurately")
@@ -81,6 +106,16 @@ require("ile etkinleştirilmiştir. Uyumsuz" not in ARCHIVE, "archive must not p
 require(not re.search(r"parola girişi yalnız.*kullanıcısına izin verir", ARCHIVE), "archive must not present the old SSH password policy as current")
 
 require("Supplied ZIP provenance and canonical packaging — 2026-10-30" in REPAIR, "repair report must identify the supplied ZIP measurements as noncanonical provenance")
+require("565,429 bytes" in REPAIR and "89fab35d7ecd18bb2b39bb74cbf7b799f8d76bc4c9d59970e7e94060f82dc374" in REPAIR and "b413e6df50f64ab16d1694d9b19dae97a078f56c" in REPAIR, "repair report must record the third supplied ZIP without conflating it with the earlier archive")
+require("pre-correction" in REPAIR and "nine files with Git mode `100755`" in REPAIR and "scripts/test-installer-rollback.sh" in REPAIR, "repair report must distinguish the current nine-file executable set from its historical eight-file snapshot")
+require("historical note under release `[1.3.5]` about `amd_iommu=on`" in STATE_INDEX, "root history index must point to the correct historical section")
+require("historical note under release `[1.3.6]` about `amd_iommu=on`" not in STATE_INDEX, "root history index retains the wrong amd_iommu section reference")
+require("Aşağıdaki `[1.3.5]` bölümünde `amd_iommu=on`" in ARCHIVE and "Aşağıdaki `[1.3.6]` bölümünde `amd_iommu=on`" not in ARCHIVE, "archive header must point to the section that actually records amd_iommu=on")
+require("### Earlier unreleased work (2026-10-28)" not in CHANGELOG, "CHANGELOG still has an empty same-level group heading")
+require("approximately lines 9–15" in INSTALLATION and "approximately lines 4–12" not in INSTALLATION, "INSTALLATION must point to the current home.nix let-block line range")
+require("installer backups are not automatically pruned" in CHANGELOG, "CHANGELOG must describe current backup retention rather than the historical five-backup policy")
+require("verified current kernel defaults" in CHANGELOG and "does not establish a single removal commit" in CHANGELOG, "CHANGELOG must distinguish current kernel parameters from historical notes without inventing a removal history")
+require("older `[1.2.0]` archive entry" in CHANGELOG and "`2a7a:8a47` is absent" in CHANGELOG, "CHANGELOG must state current USB passthrough IDs and mark the old record historical")
 require("561,513 bytes" in REPAIR and "c905b5036d04bf1e" in REPAIR and "116 entries" in REPAIR, "repair report must record the supplied ZIP measurements")
 require("bytes were not attached" in REPAIR.lower(), "repair report must preserve the independent-verification boundary")
 require("554,516 bytes" not in REPAIR[:2500] and "65ab86f1" not in REPAIR[:2500], "repair report's current provenance row still contains stale measurements")

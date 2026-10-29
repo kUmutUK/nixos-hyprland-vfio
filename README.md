@@ -755,7 +755,12 @@ nix develop ./nixos --command bash -euo pipefail -c '
     scripts/verify-source-revision.sh \
     scripts/test-source-revision.sh \
     scripts/installer-lock.sh \
-    scripts/test-installer-lock.sh
+    scripts/test-installer-lock.sh \
+    nixos/hooks/qemu \
+    scripts/test-vfio-hook-driver-state.sh \
+    scripts/test-installer-invariants.sh \
+    scripts/test-installer-rollback.sh \
+    scripts/test-manual-vm-bootstrap.sh
   do
     bash -n "$f" || exit 1
   done
