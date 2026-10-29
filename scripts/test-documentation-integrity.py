@@ -92,7 +92,7 @@ contrib_bash_loop = re.search(
 )
 require(readme_bash_loop is not None and contrib_bash_loop is not None, "README and CONTRIBUTING must both expose a full Bash syntax-check loop")
 if readme_bash_loop is not None and contrib_bash_loop is not None:
-    readme_bash_files = {line.strip().removesuffix("\\") for line in readme_bash_loop.group("body").splitlines() if line.strip()}
+    readme_bash_files = {line.strip().removesuffix("\\").strip() for line in readme_bash_loop.group("body").splitlines() if line.strip()}
     contributing_bash_files = set(contrib_bash_loop.group("body").split())
     require(readme_bash_files == contributing_bash_files, "README and CONTRIBUTING Bash syntax-check file lists have drifted")
 require("Current configuration notes — 2026-10-30" in STATE_INDEX, "current-state index date is stale")
