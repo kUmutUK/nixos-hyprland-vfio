@@ -1107,9 +1107,9 @@ in
         GEOMETRY_CHOICE="''${WUWA_GEOMETRY_CHOICE:-$DEFAULT_GEOMETRY_CHOICE}"
 
         # Read the display size from `hyprctl`. If it is missing or unreadable, geometry
-        # validation is skipped. `hyprctl monitors` includes a refresh rate such as
-        # `2560x1440@170.00`; strip the `@...` suffix before parsing the height.
-        MON_SIZE=$(hyprctl monitors 2>/dev/null | grep -oPm1 '[0-9]+x[0-9]+@[0-9.]+' | head -n1 | cut -d@ -f1)
+        # validation is skipped. The refresh-rate suffix is optional because monitor output
+        # can report either `2560x1440@170.00` or just `2560x1440`.
+        MON_SIZE=$(hyprctl monitors 2>/dev/null | grep -oPm1 '[0-9]+x[0-9]+(@[0-9.]+)?' | head -n1 | cut -d@ -f1)
         MON_W=$(echo "$MON_SIZE" | cut -dx -f1)
         MON_H=$(echo "$MON_SIZE" | cut -dx -f2)
 
@@ -1707,7 +1707,7 @@ in
 
     mpvpaper-watchdog = lib.mkIf (monitorOutput != "") {
       Unit = {
-        Description = "Stop the live wallpaper when Brave starts.";
+        Description = "Stop the live wallpaper while Brave windows or GameMode are active.";
         After = [ "graphical-session.target" ];
         PartOf = [ "graphical-session.target" ];
       };
