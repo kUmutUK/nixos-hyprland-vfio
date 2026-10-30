@@ -133,7 +133,7 @@ if readme_bash_loop is not None and contrib_bash_loop is not None:
     readme_bash_files = {line.strip().removesuffix("\\").strip() for line in readme_bash_loop.group("body").splitlines() if line.strip()}
     contributing_bash_files = set(contrib_bash_loop.group("body").split())
     require(readme_bash_files == contributing_bash_files, "README and CONTRIBUTING Bash syntax-check file lists have drifted")
-require("Current configuration notes — 2026-10-30" in STATE_INDEX, "current-state index date is stale")
+require("Current configuration notes — 2026-10-31" in STATE_INDEX, "current-state index date is stale")
 require("2026-10-28 entry" in STATE_INDEX and "2026-10-27 entry" not in STATE_INDEX, "root index must point to the 2026-10-28 CHANGELOG section")
 require("copy all five required Nix/flake files" in README and "four flake files" not in README, "README must describe the five-file migration accurately")
 require(
