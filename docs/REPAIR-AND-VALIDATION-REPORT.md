@@ -13,6 +13,17 @@
 | Unix file modes | All 116 entries have `create_system=0` and `external_attr=0x00000000`; the archive carries no Unix mode metadata. The nine Git-tracked executable files extract as non-executable mode `0644` with the tested extractor. | Confirmed package-delivery defect; `./install.sh` and direct execution of the other eight tracked scripts/hooks fail after extraction. The Git tree itself correctly records all nine as `100755`. |
 | Source revision marker | `SOURCE_REVISION` contains the literal `$Format:%H# Repair and validation report — updated 2026-10-30
 
+> **Delivery-scope note:** This report is part of the tracked source tree. The dated “patch-only ZIP” notes below are historical. For a canonical full-source ZIP, use `scripts/package-source-zip.sh` or the CI-uploaded `nixos-hyprland-vfio-source` artifact for the exact commit. The helper verifies tracked-file completeness, excludes `.git/`, preserves executable bits, and makes the finished artifact readable from shared output directories.
+
+
+## Ninth audit cross-check — 2026-10-30
+
+**Independently inspected upload:** `/mnt/data/nixos-hyprland-vfio.zip`, 583,569 bytes; SHA-256 `98d5b073a12488f604dfc9f434f3f741d52defce055d30f22db44102ed1be25d`. Its embedded Git `HEAD` and `refs/heads/main` identify `65b0028cd76352daea9e5a01e4d7d9afb954b10b`, which independently matches GitHub `main` at inspection time. The tracked source tree contains 62 file blobs and 14,654 lines.
+
+| Measurement | Observed result | Disposition |
+|---|---|---|
+| ZIP structure | 116 entries: 91 files and 25 directories. The `.git/` subtree contributes 45 entries (29 files and 16 directories). | Noncanonical: a distributable source archive must not embed the checkout's local Git metadata. |
+| Unix file modes | All 116 entries have `create_system=0` and `external_attr=0x00000000`; the archive carries no Unix mode metadata. The nine Git-tracked executable files extract as non-executable mode `0644` with the tested extractor. | Confirmed package-delivery defect; `./install.sh` and direct execution of the other eight tracked scripts/hooks fail after extraction. The Git tree itself correctly records all nine as `100755`. |
 , not the archived commit SHA. | Confirmed provenance defect in this uploaded ZIP. The installer's source-revision guard cannot accept this placeholder as a 40-character commit. |
 | Git metadata | `.git/HEAD` points to `refs/heads/main`; the packed branch ref points to `65b0028cd76352daea9e5a01e4d7d9afb954b10b`. | The archive identifies its source commit, but shipping `.git/` is unnecessary and contrary to the documented distribution contract. |
 
