@@ -15,6 +15,7 @@ ARCHIVE = (ROOT / "docs/archive/DEGISIKLIK_GECMISI.md").read_text(encoding="utf-
 CHANGELOG = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
 STATE_INDEX = (ROOT / "DEGISIKLIK_GECMISI.md").read_text(encoding="utf-8")
 CONFIG = (ROOT / "nixos/configuration.nix").read_text(encoding="utf-8")
+FLAKE = (ROOT / "nixos/flake.nix").read_text(encoding="utf-8")
 REPAIR = (ROOT / "docs/REPAIR-AND-VALIDATION-REPORT.md").read_text(encoding="utf-8")
 errors = []
 
@@ -64,6 +65,12 @@ watchdog = vm.find("./devices/watchdog")
 require(memory is not None and memory.get("unit") == "KiB" and (memory.text or "").strip() == "16777216", "VM XML memory no longer matches the documented 16 GiB")
 require(vcpu is not None and (vcpu.text or "").strip() == "6", "VM XML vCPU count no longer matches the documented 6 vCPUs")
 require(sound is not None and sound.get("model") == "ich9", "VM XML sound model no longer matches the README")
+require('`audio type="none"`' in README and "has no host audio backend" in README, "README must explain that the ICH9 sound device has no host audio backend")
+require("passed-through GPU HDMI/DP audio function" in README, "README must identify the passed-through GPU audio function as the guest audio path")
+audio = vm.find("./devices/audio")
+require(audio is not None and audio.get("type") == "none", "VM XML audio backend changed; update the README and review the intended guest audio path")
+require("nix build .#lsfg-vk-v2" in README and "nix build .#lsfg-vk` command" not in README, "README must use the current LSFG-VK v2 flake output")
+require("packages.${system}.lsfg-vk-v2 =" in FLAKE and "packages.${system}.lsfg-vk =" not in FLAKE, "README package command must match the declared flake output")
 require(watchdog is not None and watchdog.get("model", "").lower() == "itco" and watchdog.get("action") == "reset", "VM XML watchdog no longer matches the README")
 usb_ids = set()
 for hostdev in vm.findall("./devices/hostdev"):
@@ -129,4 +136,4 @@ if errors:
         print(f"FAIL: {error}", file=sys.stderr)
     raise SystemExit(1)
 
-print("OK: audit integrity, README map and VM requirements, changelog supersession, and ZIP provenance checks passed.")
+print("OK: audit integrity, README/flake output, VM device/audio requirements, changelog supersession, and ZIP provenance checks passed.")

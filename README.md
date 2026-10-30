@@ -39,7 +39,7 @@ The repository is MIT-licensed and is provided “as is,” without warranty. Us
 | Storage | The reference partitions total 809 GiB: 1 GiB EFI, 8 GiB swap, and an 800 GiB LUKS2/Btrfs volume. Use a disk of at least 810 GiB (about 870 GB decimal); a 1 TB-class disk is recommended. |
 | Guest memory | The Windows template assigns 16 GiB (16,777,216 KiB) to the VM; reserve additional memory for NixOS, Hyprland, and host applications. |
 | Guest CPU | The template assigns 6 vCPUs as six guest cores. Keep sufficient CPU capacity for the NixOS host; these vCPUs are not exclusive or pinned physical cores. |
-| VM devices | The template includes ICH9 emulated audio and an iTCO watchdog with reset action. Review these defaults before defining a new VM; preserve an existing VM definition rather than replacing it with the template. |
+| VM devices | The template includes an ICH9 emulated sound device, but it has no host audio backend because `audio type="none"` is configured; use the passed-through GPU HDMI/DP audio function for guest output when available. It also includes an iTCO watchdog with reset action. Review these defaults before defining a new VM; preserve an existing VM definition rather than replacing it with the template. |
 | Filesystems | LUKS2 + Btrfs subvolumes + EFI. Disk swap sits outside the LUKS volume; the reference config encrypts it with a per-activation random key using `randomEncryption.enable = true`. Preserve that option in the generated hardware file for fresh installs. |
 | Kernel | CachyOS RT-Bore-LTO (real-time patch set + BORE scheduler + ThinLTO), selected through the upstream `master` flake input. The kernel version is not hard-coded; the lock file records the selected input revision until you intentionally update it. Upstream does not publish this LTO variant to its binary cache, so it must be built locally. |
 
@@ -798,7 +798,7 @@ nix develop ./nixos --command bash -euo pipefail -c '
   deadnix .
 '
 ```
-`nix flake check --no-build` evaluates the flake but does not build the complete system or kernel. The separate `nix build .#lsfg-vk` command builds only the selected LSFG-VK package. Neither command replaces a full system/kernel build, libvirt domain validation, or a physical GPU lifecycle test. To intentionally rewrite formatting, run `nixfmt` without `--check` as a separate reviewed edit.
+`nix flake check --no-build` evaluates the flake but does not build the complete system or kernel. The separate `nix build .#lsfg-vk-v2` command builds only the selected LSFG-VK v2 package. Neither command replaces a full system/kernel build, libvirt domain validation, or a physical GPU lifecycle test. To intentionally rewrite formatting, run `nixfmt` without `--check` as a separate reviewed edit.
 
 The manual sequence also runs `statix check .` and `deadnix .`, both required CI gates. `statix.toml` disables only the style-only repeated-key lint used by the repository's intentionally flat option assignments; actionable Statix and Deadnix findings still fail validation.
 
