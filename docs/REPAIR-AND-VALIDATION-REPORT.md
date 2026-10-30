@@ -1,6 +1,16 @@
-# Repair and validation report — updated 2026-10-30
+# Repair and validation report — updated 2026-10-31
 
 > **Delivery-scope note:** This report is part of the tracked source tree. The dated “patch-only ZIP” notes below are historical. For a canonical full-source ZIP, use `scripts/package-source-zip.sh` or the CI-uploaded `nixos-hyprland-vfio-source` artifact for the exact commit. The helper verifies tracked-file completeness, excludes `.git/`, preserves executable bits, and makes the finished artifact readable from shared output directories.
+
+## Current source verification — 2026-10-31
+
+**Reviewed code baseline:** `main` at `e291a78f11d94738df02abd0c79ffa6877bd86fe` (30 October 2026). The recursive Git tree contains **62 tracked file blobs** and was not truncated.
+
+- **Normal CI:** [run #1061](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/41124883935) completed successfully for this exact code baseline. Its gates included Nix flake evaluation, the LSFG-VK v2 package build, formatting, Statix, Deadnix, ShellCheck, generated Hyprland Lua syntax, installer/rollback/lock/provenance tests, Home Snapper tests, VFIO hook tests, and VM XML/bootstrap regressions.
+- **Full NixOS system build:** the latest successful manual full build available during this review was [run #4](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/40970014871), for revision `57680a46` on 29–30 October. The reviewed code baseline is **24 commits newer**. Those later commits include changes to `nixos/configuration.nix`, `nixos/home.nix`, and `install.sh`; therefore run #4 does not prove that the reviewed baseline builds as a complete NixOS system. No full-system build result for `e291a78` is recorded here. The full build remains a manual workflow: [Full NixOS System Build](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/workflows/full-system-build.yml).
+- **Runtime boundary:** CI does not establish physical RX 6700 XT reset/rebind behavior, a second VM start, display restoration, or compatibility of the installed host's OVMF/NVRAM paths. These still require tests on the target machine.
+- **Scope of this 31 October follow-up:** only `DEGISIKLIK_GECMISI.md` and this report are updated for documentation accuracy. Active NixOS configuration, kernel selection/lock, `vm-xml/win10.xml`, and the Arthur desktop theme are not changed.
+
 ## Seventh audit cross-check — 2026-10-30
 
 **Source snapshot:** GitHub `main` was at `de33e2ddb8481fc31408d42573df79f7f800d95c` when this review began. Its recursive Git tree contains **62 tracked file blobs**.
