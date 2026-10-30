@@ -22,4 +22,4 @@ This legacy filename now contains an English current-state summary so older link
 
 ## Original detailed historical record
 
-The complete original Turkish release history has been preserved unchanged at [`docs/archive/DEGISIKLIK_GECMISI.md`](docs/archive/DEGISIKLIK_GECMISI.md). It is an archival source, not the current configuration reference. For current and maintained entries, use [`CHANGELOG.md`](CHANGELOG.md).
+The Turkish release-by-release history is retained at [`docs/archive/DEGISIKLIK_GECMISI.md`](docs/archive/DEGISIKLIK_GECMISI.md); a dated status preface was added at the top to flag settings later superseded. It is an archival source, not the current configuration reference. For current and maintained entries, use [`CHANGELOG.md`](CHANGELOG.md).
