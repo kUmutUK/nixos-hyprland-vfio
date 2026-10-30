@@ -35,6 +35,7 @@ The repository is MIT-licensed and is provided “as is,” without warranty. Us
 | Component | Target / notes |
 |---|---|
 | CPU | AMD Ryzen desktop CPU. Intel is not supported by this configuration: `kvm-amd` and `amd_pstate` are AMD-oriented. |
+| Desktop environment | Hyprland 0.55 or newer; this configuration uses the native Lua API introduced in [Hyprland 0.55](https://hypr.land/news/update55/). |
 | GPU | AMD Radeon RX 6700 XT (Navi 22) is the documented target. `rocmOverrideGfx = "10.3.0"` is configured for the target system; do not assume it is appropriate for another GPU. |
 | Firmware | UEFI. Enable IOMMU / AMD-Vi in firmware and verify it after boot with `dmesg` and `/sys/kernel/iommu_groups/`. |
 | Storage | The reference partitions total 809 GiB: 1 GiB EFI, 8 GiB swap, and an 800 GiB LUKS2/Btrfs volume. Use a disk of at least 810 GiB (about 870 GB decimal); a 1 TB-class disk is recommended. |
