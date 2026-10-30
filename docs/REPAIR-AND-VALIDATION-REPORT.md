@@ -1,35 +1,6 @@
 # Repair and validation report — updated 2026-10-30
 
 > **Delivery-scope note:** This report is part of the tracked source tree. The dated “patch-only ZIP” notes below are historical. For a canonical full-source ZIP, use `scripts/package-source-zip.sh` or the CI-uploaded `nixos-hyprland-vfio-source` artifact for the exact commit. The helper verifies tracked-file completeness, excludes `.git/`, preserves executable bits, and makes the finished artifact readable from shared output directories.
-
-
-## Ninth audit cross-check — 2026-10-30
-
-**Independently inspected upload:** `/mnt/data/nixos-hyprland-vfio.zip`, 583,569 bytes; SHA-256 `98d5b073a12488f604dfc9f434f3f741d52defce055d30f22db44102ed1be25d`. Its embedded Git `HEAD` and `refs/heads/main` identify `65b0028cd76352daea9e5a01e4d7d9afb954b10b`, which independently matches GitHub `main` at inspection time. The tracked source tree contains 62 file blobs and 14,654 lines.
-
-| Measurement | Observed result | Disposition |
-|---|---|---|
-| ZIP structure | 116 entries: 91 files and 25 directories. The `.git/` subtree contributes 45 entries (29 files and 16 directories). | Noncanonical: a distributable source archive must not embed the checkout's local Git metadata. |
-| Unix file modes | All 116 entries have `create_system=0` and `external_attr=0x00000000`; the archive carries no Unix mode metadata. The nine Git-tracked executable files extract as non-executable mode `0644` with the tested extractor. | Confirmed package-delivery defect; `./install.sh` and direct execution of the other eight tracked scripts/hooks fail after extraction. The Git tree itself correctly records all nine as `100755`. |
-| Source revision marker | `SOURCE_REVISION` contains the literal `$Format:%H# Repair and validation report — updated 2026-10-30
-
-> **Delivery-scope note:** This report is part of the tracked source tree. The dated “patch-only ZIP” notes below are historical. For a canonical full-source ZIP, use `scripts/package-source-zip.sh` or the CI-uploaded `nixos-hyprland-vfio-source` artifact for the exact commit. The helper verifies tracked-file completeness, excludes `.git/`, preserves executable bits, and makes the finished artifact readable from shared output directories.
-
-
-## Ninth audit cross-check — 2026-10-30
-
-**Independently inspected upload:** `/mnt/data/nixos-hyprland-vfio.zip`, 583,569 bytes; SHA-256 `98d5b073a12488f604dfc9f434f3f741d52defce055d30f22db44102ed1be25d`. Its embedded Git `HEAD` and `refs/heads/main` identify `65b0028cd76352daea9e5a01e4d7d9afb954b10b`, which independently matches GitHub `main` at inspection time. The tracked source tree contains 62 file blobs and 14,654 lines.
-
-| Measurement | Observed result | Disposition |
-|---|---|---|
-| ZIP structure | 116 entries: 91 files and 25 directories. The `.git/` subtree contributes 45 entries (29 files and 16 directories). | Noncanonical: a distributable source archive must not embed the checkout's local Git metadata. |
-| Unix file modes | All 116 entries have `create_system=0` and `external_attr=0x00000000`; the archive carries no Unix mode metadata. The nine Git-tracked executable files extract as non-executable mode `0644` with the tested extractor. | Confirmed package-delivery defect; `./install.sh` and direct execution of the other eight tracked scripts/hooks fail after extraction. The Git tree itself correctly records all nine as `100755`. |
-, not the archived commit SHA. | Confirmed provenance defect in this uploaded ZIP. The installer's source-revision guard cannot accept this placeholder as a 40-character commit. |
-| Git metadata | `.git/HEAD` points to `refs/heads/main`; the packed branch ref points to `65b0028cd76352daea9e5a01e4d7d9afb954b10b`. | The archive identifies its source commit, but shipping `.git/` is unnecessary and contrary to the documented distribution contract. |
-
-**Important classification:** these findings are defects in the uploaded ZIP, not in the tracked packaging implementation. After restoring the nine extracted working-copy mode bits to their committed Git modes, `scripts/package-source-zip.sh` independently generated and validated a canonical archive for source commit `65b0028cd76352daea9e5a01e4d7d9afb954b10b`: 62 tracked files, nine executable files, 71 ZIP entries, no `.git/`, `SOURCE_REVISION` expanded to the exact commit, executable entries encoded as Unix `0755`, and the ZIP itself mode `0644`. The generated archive SHA-256 was `7abee4ca2a29e02cc3eea810c308f029603070c427a4758b3ceb399574b10a47` (283,401 bytes). It represents the inspected pre-update commit only; after this report/changelog update, obtain the artifact for the new commit from CI or rerun the helper from that clean committed checkout.
-
-**Local regression validation against the inspected source snapshot:** the XML/VM, LSFG-VK v2, Snapper, documentation, embedded-script, installer invariant/rollback/lock, source-revision, VFIO hook, and manual VM bootstrap test suites were exercised. Nix evaluation/full system build and physical GPU/VM lifecycle are separate verification gates and are not claimed by this local report. See the current update entry in `CHANGELOG.md` for the exact tested commands and limits.
 ## Seventh audit cross-check — 2026-10-30
 
 **Source snapshot:** GitHub `main` was at `de33e2ddb8481fc31408d42573df79f7f800d95c` when this review began. Its recursive Git tree contains **62 tracked file blobs**.
@@ -493,3 +464,21 @@ The code changes were first tested in the extracted source snapshot. The core in
 One aggregate test command exceeded the container's 300-second outer limit while waiting in `scripts/test-vm-xml-sync.py`, after the installer-invariants, rollback, VFIO driver-state and VM XML tests had printed success. The XML-sync test then passed in an isolated retry, measured at 21.66 seconds, and also passed on another isolated attempt. This reproduces variable aggregate behavior but does **not** identify the cause; it is not presented as a failed assertion or a proven product defect. Preserve the full runner trace and use an external per-test timeout on the next reproduction.
 
 Nix evaluation/system build, ShellCheck, Statix, Deadnix, libvirt/QEMU semantic validation, and physical GPU/VM lifecycle testing were not run in this environment. No claim of a successful real-host VM or GPU handoff is made.
+
+## Ninth audit cross-check — 2026-10-30
+
+**Inspected upload:** \`nixos-hyprland-vfio.zip\`, 583,569 bytes; SHA-256 \`98d5b073a12488f604dfc9f434f3f741d52defce055d30f22db44102ed1be25d\`. Its embedded Git \`HEAD\` and \`refs/heads/main\` identify \`65b0028cd76352daea9e5a01e4d7d9afb954b10b\`, matching GitHub \`main\` at inspection time. The tracked source tree has 62 file blobs and 14,654 lines.
+
+| Measurement | Observed result | Disposition |
+|---|---|---|
+| ZIP structure | 116 entries: 91 files and 25 directories. The \`.git/\` subtree contributes 45 entries (29 files and 16 directories). | Noncanonical distribution archive; local Git metadata should not be included. |
+| Unix mode metadata | All 116 entries have \`create_system=0\` and \`external_attr=0x00000000\`. The nine Git-tracked executable files extract as mode \`0644\` with the tested extractor; Git records them as \`100755\`. | Confirmed uploaded-artifact defect: direct execution of \`install.sh\`, eight scripts/hooks is not preserved by this ZIP. |
+| Source revision | \`SOURCE_REVISION\` contains the literal \`$Format:%H$\`, not the archived commit SHA. | Confirmed uploaded-artifact provenance defect. |
+| Embedded Git identity | \`.git/HEAD\` points to \`refs/heads/main\`; the packed branch ref identifies \`65b0028cd76352daea9e5a01e4d7d9afb954b10b\`. | Confirms the source snapshot; it does not make the archive canonical. |
+
+**Classification:** these issues belong to the uploaded ZIP, not the tracked packager. After restoring the nine extracted working-copy mode bits to their committed Git modes, \`scripts/package-source-zip.sh\` independently generated and validated a canonical ZIP for source commit \`65b0028cd76352daea9e5a01e4d7d9afb954b10b\`: 62 tracked files, nine executable files, 71 ZIP entries, no \`.git/\`, the exact commit expanded into \`SOURCE_REVISION\`, executable entries encoded as Unix \`0755\`, and the ZIP itself mode \`0644\`. Its SHA-256 was \`7abee4ca2a29e02cc3eea810c308f029603070c427a4758b3ceb399574b10a47\` (283,401 bytes). This reproduction is for the inspected pre-update commit; use the CI artifact for the current commit when distributing the project.
+
+The source tree's literal \`$Format:%H$\` is intentional: \`.gitattributes\` declares \`SOURCE_REVISION export-subst\`, and \`git archive\` expands it. No changes to \`install.sh\`, \`scripts/package-source-zip.sh\`, \`vm-xml/win10.xml\`, the active NixOS configuration, or kernel selection were needed.
+
+Regression validation exercised XML/VM, LSFG-VK v2, Snapper, documentation, embedded-script, installer invariant/rollback/lock, source-revision, VFIO hook, and manual VM bootstrap tests. Nix evaluation/full system build and physical GPU/VM lifecycle remain separate verification gates; this report does not claim those were proven by static tests.
+
