@@ -4,6 +4,12 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+### Eighth audit follow-up — 2026-10-30
+- Corrected the README and disclaimer to state that `install.sh` does not create VM XML for a new, unregistered VM; fresh XML generation belongs to the post-install VM-preparation flow.
+- Expanded the documentation-integrity test to reject the stale template-generation wording and verify the disclaimer's new-VM behavior.
+- Marked the archived `[1.3.8]` ICH9-removal statement as historical: the current template still defines a backend-less ICH9 device, while the available history does not establish when it returned or whether the old removal was fully applied.
+- Distinguished the archive's 2026-10-19 snapshot date from the 2026-10-30 preface update, and clarified that the file includes a dated preface rather than being a byte-for-byte unchanged copy.
+
 ### Seventh audit follow-up — 2026-10-30
 - Recorded the supplied seventh ZIP's reported size, SHA-256, embedded revision, and metadata as unverified provenance; the ZIP bytes were not attached for independent remeasurement.
 - Scoped the README's VM XML synchronization statement to registered/deployed VM state and documented that a genuinely new VM receives its XML in the post-install preparation flow.
@@ -159,4 +165,4 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## Historical releases
 
-The original detailed Turkish changelog is preserved unchanged in [`docs/archive/DEGISIKLIK_GECMISI.md`](docs/archive/DEGISIKLIK_GECMISI.md). This English index intentionally avoids restating historical claims as if they were re-tested against the current tree; consult the Turkish file for the release entries it actually contains.
+The historical Turkish release entries are retained below a dated status preface in [`docs/archive/DEGISIKLIK_GECMISI.md`](docs/archive/DEGISIKLIK_GECMISI.md); the combined file is not a byte-for-byte unchanged copy of the original changelog. This English index intentionally avoids restating historical claims as if they were re-tested against the current tree; consult the Turkish file for the release entries it actually contains.

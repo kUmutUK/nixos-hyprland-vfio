@@ -8,10 +8,12 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 README = (ROOT / "README.md").read_text(encoding="utf-8")
+DISCLAIMER = (ROOT / "DISCLAIMER.md").read_text(encoding="utf-8")
 INSTALLATION = (ROOT / "INSTALLATION.md").read_text(encoding="utf-8")
 CONTRIBUTING = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
 AUDIT = (ROOT / "docs/AUDIT-2026-10-28-VM-XML-VFIO.md").read_text(encoding="utf-8")
 ARCHIVE = (ROOT / "docs/archive/DEGISIKLIK_GECMISI.md").read_text(encoding="utf-8")
+ARCHIVE_INDEX = (ROOT / "docs/archive/README.md").read_text(encoding="utf-8")
 CHANGELOG = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
 STATE_INDEX = (ROOT / "DEGISIKLIK_GECMISI.md").read_text(encoding="utf-8")
 CONFIG = (ROOT / "nixos/configuration.nix").read_text(encoding="utf-8")
@@ -123,9 +125,21 @@ require("Current configuration notes — 2026-10-30" in STATE_INDEX, "current-st
 require("2026-10-28 entry" in STATE_INDEX and "2026-10-27 entry" not in STATE_INDEX, "root index must point to the 2026-10-28 CHANGELOG section")
 require("copy all five required Nix/flake files" in README and "four flake files" not in README, "README must describe the five-file migration accurately")
 require(
-    "when a registered `win10` domain or an already-deployed VM XML exists" in README
-    and "For a new, unregistered VM, `install.sh` defers fresh XML generation" in README,
-    "README must distinguish existing VM synchronization from new VM XML generation",
+    "The helper synchronizes `/var/lib/libvirt/win10.xml` only when `win10` is registered" in README
+    and "if neither condition is met, it writes no VM XML" in README
+    and "Fresh XML generation is deferred to the documented post-install VM-preparation flow" in README,
+    "README must distinguish existing VM synchronization from deferred new-VM XML generation",
+)
+require(
+    "On a new VM, it starts from the repository template." not in README
+    and "only a genuinely new, unregistered VM starts from the reviewed template." not in README,
+    "README retains a stale claim that install.sh creates XML from the template for a new VM",
+)
+require(
+    "For a new, unregistered VM with no deployed XML, the helper writes no VM XML." in DISCLAIMER
+    and "Fresh XML generation is deferred to the documented post-install VM-preparation flow" in DISCLAIMER
+    and "For a new domain, the repository XML template is used." not in DISCLAIMER,
+    "DISCLAIMER must describe deferred new-VM XML generation rather than the old template behavior",
 )
 require(
     'assertion = lib.versionAtLeast config.programs.hyprland.package.version "0.55.0";' in CONFIG,
@@ -133,8 +147,10 @@ require(
 )
 require("four Nix source files required at the time" in CHANGELOG and "fifth required source file" in CHANGELOG, "CHANGELOG must distinguish the historical four-file preflight from the current five-file source tree")
 
-require("Tarihsel anlık görüntü notu — 2026-10-19" in ARCHIVE, "archive note must be explicitly historical")
-require("a dated status preface was added" in (ROOT / "docs/archive/README.md").read_text(encoding="utf-8"), "archive index must not claim the dated preface is byte-for-byte original")
+require("ilk snapshot: 2026-10-19" in ARCHIVE and "önsöz son güncelleme: 2026-10-30" in ARCHIVE, "archive note must distinguish its snapshot date from the preface update date")
+require("Bu 19 Ekim snapshot'ındaki XML yazma açıklaması güncel değildir" in ARCHIVE, "archive preface must mark the old installer XML-writing statement as superseded")
+require("Aşağıdaki `[1.3.8]` kaydı" in ARCHIVE and "hangi commit/tarihte geri eklendiğini" in ARCHIVE, "archive preface must qualify the unresolved ICH9 history")
+require("not byte-for-byte identical to the original changelog" in ARCHIVE_INDEX and "historical Turkish release entries" in ARCHIVE_INDEX, "archive index must distinguish preserved release entries from the added preface")
 require("geçersiz kılındı" in ARCHIVE and "Bu ayar güncel değildir" in ARCHIVE, "archive note must mark old Reflex and SSH policies as superseded")
 require("ile etkinleştirilmiştir. Uyumsuz" not in ARCHIVE, "archive must not present the old Reflex setting as current")
 require(not re.search(r"parola girişi yalnız.*kullanıcısına izin verir", ARCHIVE), "archive must not present the old SSH password policy as current")
@@ -146,6 +162,8 @@ require("historical note under release `[1.3.5]` about `amd_iommu=on`" in STATE_
 require("historical note under release `[1.3.6]` about `amd_iommu=on`" not in STATE_INDEX, "root history index retains the wrong amd_iommu section reference")
 require("Aşağıdaki `[1.3.5]` bölümünde `amd_iommu=on`" in ARCHIVE and "Aşağıdaki `[1.3.6]` bölümünde `amd_iommu=on`" not in ARCHIVE, "archive header must point to the section that actually records amd_iommu=on")
 require("### Earlier unreleased work (2026-10-28)" not in CHANGELOG, "CHANGELOG still has an empty same-level group heading")
+require("### Eighth audit follow-up — 2026-10-30" in CHANGELOG, "CHANGELOG must record the eighth audit follow-up")
+require("byte-for-byte unchanged copy" in CHANGELOG and "preserved unchanged in" not in CHANGELOG, "CHANGELOG must describe the archive preface accurately")
 require("approximately lines 9–15" in INSTALLATION and "approximately lines 4–12" not in INSTALLATION, "INSTALLATION must point to the current home.nix let-block line range")
 wallpaper = re.search(r'(?m)^\s*wallpaperVideo\s*=\s*"\$\{config\.home\.homeDirectory\}/Downloads/([^"]+)"\s*;', HOME_NIX)
 require(wallpaper is not None and f"~/Downloads/{wallpaper.group(1)}" in INSTALLATION, "INSTALLATION wallpaper default must match the exact home.nix filename")

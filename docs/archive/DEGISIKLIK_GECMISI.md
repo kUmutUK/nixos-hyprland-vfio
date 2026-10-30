@@ -1,8 +1,8 @@
 # 📜 Changelog
 
-> **Tarihsel anlık görüntü notu — 2026-10-19 (güncel yapılandırma kaynağı değildir)**
+> **Tarihsel anlık görüntü notu — ilk snapshot: 2026-10-19; önsöz son güncelleme: 2026-10-30 (güncel yapılandırma kaynağı değildir)**
 >
-> Bu blok 19 Ekim 2026 tarihindeki durumu kaydeder. Bazı maddeler sonraki değişikliklerle geçersiz kalmıştır; güncel ayarlar için kök `README.md` ve `nixos/configuration.nix` esas alınmalıdır.
+> Bu blok 19 Ekim 2026 tarihindeki yapılandırma durumunu kaydeder. Bu tarihsel önsöz, sonraki değişikliklerle geçersiz kalan tercihleri işaretlemek amacıyla 30 Ekim 2026'da güncellenmiştir. Başlıktaki ilk tarih snapshot'ın kapsadığı yapılandırmayı, son güncelleme tarihi ise önsözdeki durum açıklamalarını belirtir; güncel ayarlar için kök `README.md` ve `nixos/configuration.nix` esas alınmalıdır.
 >
 > - Aşağıdaki `[1.3.5]` bölümünde `amd_iommu=on` parametresinin eklendiği
 >   yazıyor. Bu, tarihsel bir değişiklik kaydıdır ve mevcut yapılandırmanın
@@ -21,10 +21,19 @@
 > - `install.sh` ön kontrolü `/etc/nixos/hashedPassword` dosyasının varlığını, boş olmadığını
 >   ve `root:root`/`0600` izinlerini denetler. Eksik/uygunsuzsa uyarı verir; kullanıcıya
 >   kurulumu tamamlamadan önce dosyayı düzeltmesi gerektiğini söyler.
+> - Aşağıdaki `[1.3.8]` kaydı, emüle ICH9 ses aygıtının kaldırıldığını söyler; ancak güncel
+>   `vm-xml/win10.xml` içinde `<sound model="ich9">` aygıtı, `audio type="none"` arka ucu
+>   ile birlikte hâlâ tanımlıdır. Güncel README bu aygıtı host ses arka ucu olmayan bir
+>   emüle aygıt olarak açıklar. Eldeki geçmiş, aygıtın hangi commit/tarihte geri eklendiğini
+>   veya kaldırma kaydının hiç uygulanmadığını kanıtlamaz. `[1.3.8]` satırını tarihsel
+>   kayıt olarak değerlendirin; güncel VM tasarımı için mevcut XML ve README'yi esas alın.
 > - `install.sh` artık risk ve GPU uyumluluğu istemlerini İngilizce gösterir. Onay ifadesi
 >   tam olarak `I ACCEPT THE RISKS` olmalıdır. Betik `/etc/nixos/nixos/hooks/qemu` kaynak dosyasını
 >   günceller; etkin libvirt hook ancak başarılı `nixos-rebuild switch` sonrasında yenilenir.
->   Betik VM XML dosyasını yazar ama otomatik olarak `virsh define` çalıştırmaz.
+>   Bu 19 Ekim snapshot'ındaki XML yazma açıklaması güncel değildir: mevcut `install.sh`,
+>   yalnızca `win10` domain'i kayıtlıysa veya dağıtılmış VM XML'i zaten varsa senkronizasyon
+>   yapar; iki koşul da yoksa yeni XML üretimini VM hazırlama akışına bırakır. Betik yine de
+>   otomatik olarak `virsh define` çalıştırmaz.
 > - Yedek saklama politikasının güncel durumu: kurulum yedekleri otomatik budanmaz/silinmez.
 >   Aşağıdaki `[1.3.8]` içindeki “son beş yedek” ifadesi o sürümün tarihsel davranışıdır;
 >   mevcut kod için geçerli değildir.
