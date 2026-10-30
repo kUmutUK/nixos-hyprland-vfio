@@ -36,12 +36,13 @@ The repository is MIT-licensed and is provided “as is,” without warranty. Us
 |---|---|
 | CPU | AMD Ryzen desktop CPU. Intel is not supported by this configuration: `kvm-amd` and `amd_pstate` are AMD-oriented. |
 | Desktop environment | Hyprland 0.55 or newer; this configuration uses the native Lua API introduced in [Hyprland 0.55](https://hypr.land/news/update55/). |
-| GPU | AMD Radeon RX 6700 XT (Navi 22) is the documented target. `rocmOverrideGfx = "10.3.0"` is configured for the target system; do not assume it is appropriate for another GPU. |
+| GPU | AMD Radeon RX 6700 XT (Navi 22) is the documented target; its native LLVM target is `gfx1031`. The configured `rocmOverrideGfx = "10.3.0"` selects the `gfx1030` compatibility target, not the card's native identity. This is a compatibility workaround, not proof of official ROCm support; the RX 6700 XT is not listed in AMD's [current Linux ROCm support matrix](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/reference/system-requirements.html). Do not copy this override to another GPU. |
 | Firmware | UEFI. Enable IOMMU / AMD-Vi in firmware and verify it after boot with `dmesg` and `/sys/kernel/iommu_groups/`. |
 | Storage | The reference partitions total 809 GiB: 1 GiB EFI, 8 GiB swap, and an 800 GiB LUKS2/Btrfs volume. Use a disk of at least 810 GiB (about 870 GB decimal); a 1 TB-class disk is recommended. |
+| Host memory | 32 GiB is recommended with the template's default 16 GiB guest allocation; on smaller systems, reduce guest memory or limit concurrent host workloads. This is a recommendation, not a hard minimum. |
 | Guest memory | The Windows template assigns 16 GiB (16,777,216 KiB) to the VM; reserve additional memory for NixOS, Hyprland, and host applications. |
 | Guest CPU | The template assigns 6 vCPUs as six guest cores. Keep sufficient CPU capacity for the NixOS host; these vCPUs are not exclusive or pinned physical cores. |
-| VM devices | The template includes an ICH9 emulated sound device, but it has no host audio backend because `audio type="none"` is configured; use the passed-through GPU HDMI/DP audio function for guest output when available. It also includes an iTCO watchdog with reset action. Review these defaults before defining a new VM; preserve an existing VM definition rather than replacing it with the template. |
+| VM devices | The template includes an ICH9 emulated sound device, but it has no host audio backend because `audio type="none"` is configured; use the passed-through GPU HDMI/DP audio function for guest output when available. It also includes an e1000e emulated network adapter (Windows 10 has an inbox driver; no VirtIO network driver is needed) and an iTCO watchdog with reset action. Review these defaults before defining a new VM; preserve an existing VM definition rather than replacing it with the template. |
 | Filesystems | LUKS2 + Btrfs subvolumes + EFI. Disk swap sits outside the LUKS volume; the reference config encrypts it with a per-activation random key using `randomEncryption.enable = true`. Preserve that option in the generated hardware file for fresh installs. |
 | Kernel | CachyOS RT-Bore-LTO (real-time patch set + BORE scheduler + ThinLTO), selected through the upstream `master` flake input. The kernel version is not hard-coded; the lock file records the selected input revision until you intentionally update it. Upstream does not publish this LTO variant to its binary cache, so it must be built locally. |
 
@@ -385,6 +386,15 @@ The VM domain is named `win10`. The default `vm-xml/win10.xml` expects these fil
 
 > **Windows 10 lifecycle:** Standard support for Windows 10 Home and Pro ended on October 14, 2025 ([Microsoft lifecycle policy](https://learn.microsoft.com/en-us/lifecycle/products/windows-10-home-and-pro)). Eligible, enrolled consumer devices may receive ESU protection through October 12, 2027; commercial ESU has separate licensing and coverage dates ([Microsoft ESU FAQ](https://learn.microsoft.com/en-us/lifecycle/faq/extended-security-updates)). This template does not enroll the guest, verify the license/edition, or install updates. Confirm the actual guest's ESU or other supported-lifecycle status before using it online; the ISO filename alone proves none of these conditions.
 
+> **USB passthrough preflight:** The default VM XML contains the machine-specific USB IDs `1532:0098` and `05ac:024f`. Check both on the target host before defining or starting the VM:
+>
+> ```bash
+> lsusb -d 1532:0098
+> lsusb -d 05ac:024f
+> ```
+>
+> Both commands must identify the intended connected devices. If either ID is absent or identifies the wrong device, edit or remove its matching USB `<hostdev>` block in `vm-xml/win10.xml`; do not assume these IDs exist on another computer.
+
 After the first system activation and reboot, prepare the VM disk and define the domain. The `/tmp/repo` checkout used in Path A exists only in the Live ISO and is not available after reboot. The block below creates a persistent checkout at `~/nixos-hyprland-vfio` if one does not already exist; change `REPO` if your checkout lives elsewhere. Run it after reviewing the XML disk/ISO paths and USB passthrough IDs. Enter the exact `GPU_PCI` and `GPU_AUDIO` values from the deployed hook at `/etc/nixos/nixos/hooks/qemu`:
 
 ```bash
@@ -637,11 +647,11 @@ The OCR script now checks that the model is available before beginning; it repor
 
 The upstream Vulkan manifest enables the latency layer through `LOW_LATENCY_LAYER=1` and supports per-game opt-out through `DISABLE_LOW_LATENCY_LAYER=1`. The system keeps the default AMD Anti-Lag interface globally; compatible Proton games can opt into Reflex with `LOW_LATENCY_LAYER_REFLEX=1 %command%`. To disable the layer for one incompatible game, launch it with `DISABLE_LOW_LATENCY_LAYER=1 %command%`. Inspect active layers with:
 
-**CS2 / Source 2 note:** the upstream [`low_latency_layer` v0.2.0 release notes](https://github.com/Korthos-Software/low_latency_layer/releases/tag/v0.2.0) document frame-pacing issues when an in-engine FPS cap is enabled. While the layer is active, use `fps_max 0` in CS2 until upstream resolves the issue; an external cap such as MangoHud's has been reported not to trigger it. If you still see stutter or frame-pacing problems, opt CS2 out with `DISABLE_LOW_LATENCY_LAYER=1 %command%` and compare frametimes.
-
 ```bash
 VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 ```
+
+**CS2 / Source 2 note:** the upstream [`low_latency_layer` v0.2.0 release notes](https://github.com/Korthos-Software/low_latency_layer/releases/tag/v0.2.0) document frame-pacing issues when an in-engine FPS cap is enabled. While the layer is active, use `fps_max 0` in CS2 until upstream resolves the issue; an external cap such as MangoHud's has been reported not to trigger it. If you still see stutter or frame-pacing problems, opt CS2 out with `DISABLE_LOW_LATENCY_LAYER=1 %command%` and compare frametimes.
 
 ## Important configuration decisions
 
@@ -652,6 +662,7 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 - `vm.swappiness = 180` is an intentional aggressive swap tendency, not a priority setting. It can increase major page faults and frametime spikes if disk swap is used.
 - `hypridle` requests suspend after 900 seconds; Hyprlock is invoked through the configured pre-sleep command.
 - `HYPRLAND_CONFIG` is passed through the greetd wrapper and points to the native Lua config generated from `nixos/home.nix` at `~/.config/hypr/hyprland.lua`.
+- `input-remapper` is installed, but this configuration does not enable its background service. Installing the package alone does not apply mappings; enable `services.input-remapper.enable = true` only when you intentionally configure remapping rules.
 - `nowatchdog` and `nmi_watchdog=0` reduce watchdog-based lockup diagnostics in exchange for less diagnostic data.
 - `usbcore.autosuspend=-1` and `kvm.ignore_msrs=1` are **not enabled by default** in `nixos/configuration.nix`. The former disables USB autosuspend and may increase idle power consumption; the latter suppresses some unknown MSR access failures and can hide guest problems. Add either only when the target hardware/guest needs it and after considering the trade-offs.
 
