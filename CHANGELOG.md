@@ -4,6 +4,15 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+### Ninth audit follow-up — 2026-10-30
+- Independently remeasured the attached 583,569-byte source ZIP (`98d5b073a12488f604dfc9f434f3f741d52defce055d30f22db44102ed1be25d`): it embeds `.git/`, omits Unix mode metadata for every entry, and leaves `SOURCE_REVISION` as the unexpanded `$Format:%H# Changelog
+
+This file summarizes notable changes in English. The Turkish release-by-release history is retained in [`docs/archive/DEGISIKLIK_GECMISI.md`](docs/archive/DEGISIKLIK_GECMISI.md); a dated status preface was added there to flag settings later superseded.
+
+ placeholder. Its embedded `main` commit (`65b0028cd76352daea9e5a01e4d7d9afb954b10b`) matches the inspected GitHub `main` head.
+- Classified the ZIP defects correctly as a noncanonical uploaded artifact, not a source-packager defect. Independently ran `scripts/package-source-zip.sh` for that source commit and verified all 62 tracked files, all nine executable bits, exact `SOURCE_REVISION`, no `.git/`, and a readable `0644` output archive. The generated artifact applies to the pre-update commit; use the new commit's CI artifact for distribution.
+- Marked the older LSFG-VK v1 schema decision below as historical and superseded by the 2026-10-29 v2 migration, preventing it from being read as current configuration guidance.
+
 ### Eighth audit follow-up — 2026-10-30
 - Corrected the README and disclaimer to state that `install.sh` does not create VM XML for a new, unregistered VM; fresh XML generation belongs to the post-install VM-preparation flow.
 - Expanded the documentation-integrity test to reject the stale template-generation wording and verify the disclaimer's new-VM behavior.
@@ -97,7 +106,7 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 - Made the clean-install VM-preparation blocks self-contained after reboot: because `/tmp/repo` belongs to the Live ISO session, README and INSTALLATION.md now create/use a persistent checkout under `$HOME` when needed and refuse to overwrite a conflicting non-Git path.
 - Historical provenance note: the recheck against parent `8e063bd3ddcf5774dba10553fe06be2cbcb15fdc` referred to a different earlier ZIP with embedded HEAD `8c6cf467038bacbc8cba46a0c9dcfe54e13c467d`. Those identifiers do not describe the latest archive now summarized at the top of the repair report.
 
-- Documented the deliberate LSFG-VK v1 (`[[game]]`/`exe`) schema decision; v2 is not partially wired into the active tree, and any later migration must coordinate the package, profiles, deployment/rollback paths, tests, and CI.
+- Historical pre-v2 design note (superseded 2026-10-29): the earlier LSFG-VK v1 (`[[game]]`/`exe`) schema decision said v2 was not wired into the active tree. That statement no longer describes the current configuration; see “LSFG-VK v2 migration — 2026-10-29” above for the active package, `version = 2` / `[[profile]]` configuration, deployment/rollback paths, tests, and CI.
 - Added the embedded-script extractor regression test to the README's manual validation commands, keeping the documented test sequence aligned with CONTRIBUTING and CI.
 - Updated the current repair report to record the successful CI run for the already-merged `main` commit and to distinguish that result from physical GPU/VM lifecycle validation.
 - Historical archive-audit provenance: the 456,770-byte / 101-entry upload, the 436,212-byte / 96-entry upload (`a631d195…`), and the 455,316-byte / 101-entry upload (`8467e496…`) were separate prior attachments. They are retained only as historical records and must not be reused as measurements of the latest 493,030-byte archive. No change to the installer's tracked executable mode is justified by a ZIP-only permission defect.
