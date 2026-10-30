@@ -20,14 +20,15 @@ HOME_NIX = (ROOT / "nixos/home.nix").read_text(encoding="utf-8")
 REPAIR = (ROOT / "docs/REPAIR-AND-VALIDATION-REPORT.md").read_text(encoding="utf-8")
 errors = []
 
-readme_top = "\n".join(README.splitlines()[:8])
-require("docs/REPAIR-AND-VALIDATION-REPORT.md" in readme_top and "docs/AUDIT-2026-10-28-VM-XML-VFIO.md" not in readme_top, "README must point to the latest 2026-10-30 repair report, not the older audit")
-require("- [License](#license)" in README and "## License" in README, "README contents must link to the License section")
-
 
 def require(condition: bool, message: str) -> None:
     if not condition:
         errors.append(message)
+
+
+readme_top = "\n".join(README.splitlines()[:8])
+require("docs/REPAIR-AND-VALIDATION-REPORT.md" in readme_top and "docs/AUDIT-2026-10-28-VM-XML-VFIO.md" not in readme_top, "README must point to the latest 2026-10-30 repair report, not the older audit")
+require("- [License](#license)" in README and "## License" in README, "README contents must link to the License section")
 
 
 for heading in (
