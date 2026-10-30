@@ -92,7 +92,8 @@ in
 
   assertions = [
     {
-      assertion = lib.versionAtLeast config.programs.hyprland.package.version "0.55.0";
+      assertion =
+        lib.versionAtLeast config.programs.hyprland.package.version "0.55.0";
       message = "The Hyprland Lua configuration requires Hyprland 0.55.0 or newer.";
     }
   ];
