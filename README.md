@@ -2,7 +2,7 @@
 
 A flake-based NixOS gaming desktop that passes its single AMD Radeon GPU through to a Windows 10 virtual machine, while using Hyprland for the host desktop.
 
-The latest follow-up review of canonical ZIP packaging, deployed VM XML validation, and VFIO host-driver recovery is recorded in [the 2026-10-28 audit report](docs/AUDIT-2026-10-28-VM-XML-VFIO.md).
+The latest follow-up review of canonical ZIP provenance, deployed VM XML validation, VFIO host-driver recovery, and the 2026-10-30 source-tree checks is recorded in the [repair and validation report](docs/REPAIR-AND-VALIDATION-REPORT.md). The 2026-10-28 audit remains a dated historical review.
 
 > **Windows guest lifecycle warning:** The default template targets Windows 10 22H2. Standard support for Windows 10 Home/Pro ended on 14 October 2025. This repository does not enroll the guest in Extended Security Updates (ESU), confirm license eligibility, or verify that guest updates are installed. Before using the VM for network-connected or sensitive activity, check the installed edition and license, verify current ESU or other supported-lifecycle coverage, and install all available security updates. See [Microsoft's end-of-support guidance](https://support.microsoft.com/en-us/windows/windows-10-support-has-ended-on-october-14-2025) and [ESU FAQ](https://learn.microsoft.com/en-us/lifecycle/faq/extended-security-updates). Windows 11 migration is not automated by this repository; do not assume the existing VM XML meets Windows 11 requirements.
 
@@ -20,6 +20,7 @@ The latest follow-up review of canonical ZIP packaging, deployed VM XML validati
 - [Known limitations](#known-limitations)
 - [Repository map](#repository-map)
 - [Validation](#validation)
+- [License](#license)
 
 ## Purpose and safety
 
@@ -153,7 +154,7 @@ grep -nE 'system\.stateVersion|home\.stateVersion' \
   /home/localhost/.config/home-manager/home.nix 2>/dev/null || true
 ```
 
-5. After reviewing that diff and the values above, copy all five required Nix source files. This overwrites their corresponding target files, so do not run it before making and checking the backup:
+5. After reviewing that diff and the values above, copy all five required Nix/flake files. This overwrites their corresponding target files, so do not run it before making and checking the backup:
 
 ```bash
 set -Eeuo pipefail
@@ -329,7 +330,7 @@ bash -n install.sh
 ./install.sh
 ```
 
-The installer displays a risk notice and requires the exact acknowledgement phrase shown by the script. It takes a non-blocking per-user process lock before prompting, backing up, or deploying; another `install.sh` process for the same user exits rather than overlapping the transaction. This lock does not coordinate separately configured lock paths or different user accounts, so run the migration from one account at a time. The NixOS and live-ISO guards run before the acknowledgement prompt. After acknowledgement, the installer requires working `virsh`/libvirt access and verifies that a registered `win10` domain reports exactly `shut off`; inability to query the state or any other state aborts the migration. It repeats this check immediately before creating the first backup, narrowing the race window if another process starts the VM during interactive setup. It also requires `/home` to be backed by Btrfs because the shipped configuration enables Home Snapper; this is checked before backups or managed system changes. For a non-Btrfs `/home`, use the manual migration path and explicitly adapt the Home Snapper configuration and any `/home/.snapshots` mount before deploying. If you do not fully understand or accept the changes, cancel and use Path B.
+The installer displays a risk notice and requires the exact acknowledgement phrase shown by the script. It takes a non-blocking per-user process lock before prompting, backing up, or deploying; another `install.sh` process for the same user exits rather than overlapping the transaction. This lock does not coordinate separately configured lock paths or different user accounts, so run the migration from one account at a time. The NixOS and live-ISO guards run before the acknowledgement prompt. After acknowledgement, the installer requires working `virsh`/libvirt access and verifies that a registered `win10` domain reports exactly `shut off`; inability to query the state or any other state aborts the migration. It repeats this check immediately before creating the first backup, narrowing the race window if another process starts the VM during interactive setup. It also requires `/home` to be backed by Btrfs because the shipped configuration enables Home Snapper; this is checked before backups or managed system changes. For a non-Btrfs `/home`, use the manual migration path and explicitly adapt the Home Snapper configuration and any `/home/.snapshots` mount before deploying. The installer also preflights IOMMU-group availability for the selected GPU functions; enable AMD-Vi/IOMMU in firmware and verify the groups before continuing. It does not add `amd_iommu=on` or `iommu=pt` kernel parameters. If you do not fully understand or accept the changes, cancel and use Path B.
 
 Maintainers creating a source ZIP should use the repository packaging helper. It packages the committed `HEAD` (not uncommitted working-tree edits), verifies that every tracked file is present, rejects `.git` metadata, and checks the Unix executable bits of all tracked executable files before publishing the ZIP. Do not create a delivery ZIP by compressing the checkout folder in a file manager; that can include private/local Git metadata and lose the `install.sh` executable bit. CI runs the same helper and uploads its validated output as the `nixos-hyprland-vfio-source` workflow artifact.
 
@@ -755,6 +756,7 @@ nix develop ./nixos --command bash -euo pipefail -c '
     scripts/verify-source-revision.sh \
     scripts/test-source-revision.sh \
     scripts/installer-lock.sh \
+    scripts/pci-address.sh \
     scripts/test-installer-lock.sh \
     nixos/hooks/qemu \
     scripts/test-vfio-hook-driver-state.sh \
