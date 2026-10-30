@@ -18,6 +18,7 @@ CONFIG = (ROOT / "nixos/configuration.nix").read_text(encoding="utf-8")
 FLAKE = (ROOT / "nixos/flake.nix").read_text(encoding="utf-8")
 HOME_NIX = (ROOT / "nixos/home.nix").read_text(encoding="utf-8")
 REPAIR = (ROOT / "docs/REPAIR-AND-VALIDATION-REPORT.md").read_text(encoding="utf-8")
+SOURCE_REVISION_PLACEHOLDER = "$" + "Format:%H" + "$"
 errors = []
 
 
@@ -42,48 +43,7 @@ require("$Format:%H# Follow-up audit" not in AUDIT, "audit report still contains
 require("$Format:%H# Repair and validation report" not in REPAIR, "repair report still contains the pasted heading in the ZIP-provenance cell")
 require(REPAIR.count("## Seventh audit cross-check — 2026-10-30") == 1, "repair report must contain exactly one seventh-audit cross-check section")
 require(REPAIR.count("## Supplied ZIP provenance and canonical packaging — 2026-10-30") == 1, "repair report must contain exactly one supplied-ZIP provenance section")
-require("| ZIP described in the supplied seventh audit" in REPAIR and "`$Format:%H#!/usr/bin/env python3
-"""Regression checks for current documentation, archive notes, and VM requirements."""
-
-from pathlib import Path
-import re
-import sys
-import xml.etree.ElementTree as ET
-
-ROOT = Path(__file__).resolve().parents[1]
-README = (ROOT / "README.md").read_text(encoding="utf-8")
-INSTALLATION = (ROOT / "INSTALLATION.md").read_text(encoding="utf-8")
-CONTRIBUTING = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
-AUDIT = (ROOT / "docs/AUDIT-2026-10-28-VM-XML-VFIO.md").read_text(encoding="utf-8")
-ARCHIVE = (ROOT / "docs/archive/DEGISIKLIK_GECMISI.md").read_text(encoding="utf-8")
-CHANGELOG = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
-STATE_INDEX = (ROOT / "DEGISIKLIK_GECMISI.md").read_text(encoding="utf-8")
-CONFIG = (ROOT / "nixos/configuration.nix").read_text(encoding="utf-8")
-FLAKE = (ROOT / "nixos/flake.nix").read_text(encoding="utf-8")
-HOME_NIX = (ROOT / "nixos/home.nix").read_text(encoding="utf-8")
-REPAIR = (ROOT / "docs/REPAIR-AND-VALIDATION-REPORT.md").read_text(encoding="utf-8")
-errors = []
-
-
-def require(condition: bool, message: str) -> None:
-    if not condition:
-        errors.append(message)
-
-
-readme_top = "\n".join(README.splitlines()[:8])
-require("docs/REPAIR-AND-VALIDATION-REPORT.md" in readme_top and "docs/AUDIT-2026-10-28-VM-XML-VFIO.md" not in readme_top, "README must point to the latest 2026-10-30 repair report, not the older audit")
-require("- [License](#license)" in README and "## License" in README, "README contents must link to the License section")
-
-
-for heading in (
-    "# Follow-up audit: source ZIP, deployed VM XML, and VFIO driver recovery",
-    "## Executive result",
-    "## Evidence and reasoning",
-    "## Regression and validation record",
-):
-    require(AUDIT.count(heading) == 1, f"audit report must contain exactly one {heading!r}")
-require("$Format:%H# Follow-up audit" not in AUDIT, "audit report still contains the broken ZIP sentence/heading splice")
-" in REPAIR, "seventh ZIP provenance row must include the complete archive identity record")
+require("| ZIP described in the supplied seventh audit" in REPAIR and SOURCE_REVISION_PLACEHOLDER in REPAIR, "seventh ZIP provenance row must include the complete archive identity record")
 require(not re.search(r"(?m)^; all 116 entries", REPAIR), "repair report contains an orphaned ZIP metadata continuation")
 
 map_start = README.find("## Repository map")
