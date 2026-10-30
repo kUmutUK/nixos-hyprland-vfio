@@ -414,7 +414,7 @@ valid as-is; placeholder identity values and paths should be replaced where appl
 | 2 | `monitorOutput` | `""` (empty) | The exact output name used for the Hyprland monitor rule and optional `mpvpaper` wallpaper. A manually empty value keeps Hyprland's catch-all monitor rule and disables live wallpaper; the installer asks for a real output name. |
 | 3 | `gitName` | `"changeme"` | Commits are attributed to a placeholder name. |
 | 4 | `gitEmail` | `"you@example.com"` | Commits are attributed to a placeholder email address. |
-| 5 | `wallpaperVideo` | `~/Downloads/arthur-leywin-….mp4` | If the file is missing, `Unit.ConditionPathExists` prevents the service from starting. A login-time warning is shown only when `monitorOutput` is non-empty. |
+| 5 | `wallpaperVideo` | `~/Downloads/arthur-leywin-the-beginning-after-the-end.3840x2160.mp4` | If the file is missing, `Unit.ConditionPathExists` prevents the service from starting. A login-time warning is shown only when `monitorOutput` is non-empty. |
 
 Manual installation is recommended; fill in these values yourself. `install.sh` is optional
 for advanced users migrating an existing NixOS system and carries additional risk because
@@ -655,7 +655,8 @@ cleanup_vm_bootstrap() {
 }
 trap cleanup_vm_bootstrap EXIT
 
-# Existing VMs use their deployed XML directly. New VMs use disposable staging
+# A registered domain is sourced from `virsh dumpxml --inactive` by the XML helper;
+# an unregistered existing VM keeps its deployed XML. New VMs use disposable staging
 # locations so a failed ISO/disk preflight cannot leave a false "existing VM".
 BOOTSTRAP_XML="$VM_XML"
 if [ "$EXISTING_VM_XML" -eq 0 ]; then
