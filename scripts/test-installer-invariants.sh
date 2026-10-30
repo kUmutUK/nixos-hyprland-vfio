@@ -80,12 +80,14 @@ grep -Fxq 'GPU_PCI="0000:0c:00.0"' "$hook_pci_test_dir/valid-hook"
 grep -Fxq 'GPU_AUDIO="0000:0c:00.1"' "$hook_pci_test_dir/valid-hook"
 cp "$HOOK" "$hook_pci_test_dir/sed-failure-hook"
 cp "$hook_pci_test_dir/sed-failure-hook" "$hook_pci_test_dir/sed-failure-before"
-if MOCK_SUDO_FAIL_COMMAND=sed bash "$hook_pci_test_dir/harness.sh" \
+export MOCK_SUDO_FAIL_COMMAND=sed
+if bash "$hook_pci_test_dir/harness.sh" \
   "$hook_pci_test_dir/update-hook-pci.sh" "$hook_pci_test_dir/sed-failure-hook" \
   0000:0c:00.0 0000:0c:00.1 >/dev/null 2>&1; then
   echo "FAIL: a failed sed write was reported as a successful hook update." >&2
   exit 1
 fi
+unset MOCK_SUDO_FAIL_COMMAND
 if ! cmp -s "$hook_pci_test_dir/sed-failure-hook" "$hook_pci_test_dir/sed-failure-before"; then
   echo "FAIL: the hook changed when the sed operation failed." >&2
   exit 1
