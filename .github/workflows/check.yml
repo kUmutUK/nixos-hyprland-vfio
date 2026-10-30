@@ -35,7 +35,22 @@ jobs:
 
       - name: Nix formatting (read-only)
         run: |
-          nix develop ./nixos --no-update-lock-file --command bash -euo pipefail -c 'find ./nixos -type f -name "*.nix" -print0 | xargs -0 -r nixfmt --check'
+          nix develop ./nixos --no-update-lock-file --command bash -euo pipefail -c '
+            mapfile -d "" nix_files < <(find ./nixos -type f -name "*.nix" -print0)
+            failed=0
+            for file in "${nix_files[@]}"; do
+              if ! nixfmt --check "$file"; then
+                failed=1
+                formatted="$(mktemp)"
+                nixfmt < "$file" > "$formatted"
+                echo "::group::Expected nixfmt output for $file"
+                diff -u "$file" "$formatted" || true
+                echo "::endgroup::"
+                rm -f "$formatted"
+              fi
+            done
+            exit "$failed"
+          '
 
       - name: XML well-formedness and VM invariants
         run: |
