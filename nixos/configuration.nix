@@ -444,7 +444,6 @@ in
     tesseract
     translate-shell
     libnotify
-    steam
     gamemode
     gamescope
     mangohud
