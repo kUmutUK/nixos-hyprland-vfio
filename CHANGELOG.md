@@ -4,6 +4,13 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+### Seventh audit follow-up — 2026-10-30
+- Recorded the supplied seventh ZIP's reported size, SHA-256, embedded revision, and metadata as unverified provenance; the ZIP bytes were not attached for independent remeasurement.
+- Scoped the README's VM XML synchronization statement to registered/deployed VM state and documented that a genuinely new VM receives its XML in the post-install preparation flow.
+- Added an evaluation-time assertion for Hyprland 0.55.0+ and a documentation-integrity regression check for both the version guard and README wording.
+- Clarified that ZIP permission recovery depends on extraction behavior; corrected the report's inventory arithmetic note without inventing a replacement line count.
+- Confirmed that the reported “anual” typo is not present in the current report and left the protected `vm-xml/win10.xml` template unchanged.
+
 ### Audit follow-up — 2026-10-30
 - Repaired the pasted heading in the supplied-ZIP provenance table and expanded the documentation-integrity regression test to check both audit reports, the current archive record, the five-file migration instruction, and the date reference.
 - Restored the executable bit on `scripts/test-installer-invariants.sh`; the canonical ZIP helper now checks the complete expected executable-file set so a lost mode bit is caught before artifact publication.

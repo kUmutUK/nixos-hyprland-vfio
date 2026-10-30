@@ -117,6 +117,15 @@ if readme_bash_loop is not None and contrib_bash_loop is not None:
 require("Current configuration notes — 2026-10-30" in STATE_INDEX, "current-state index date is stale")
 require("2026-10-28 entry" in STATE_INDEX and "2026-10-27 entry" not in STATE_INDEX, "root index must point to the 2026-10-28 CHANGELOG section")
 require("copy all five required Nix/flake files" in README and "four flake files" not in README, "README must describe the five-file migration accurately")
+require(
+    "when a registered `win10` domain or an already-deployed VM XML exists" in README
+    and "For a new, unregistered VM, `install.sh` defers fresh XML generation" in README,
+    "README must distinguish existing VM synchronization from new VM XML generation",
+)
+require(
+    'assertion = lib.versionAtLeast config.programs.hyprland.package.version "0.55.0";' in CONFIG,
+    "configuration must enforce the Hyprland Lua API minimum during evaluation",
+)
 require("four Nix source files required at the time" in CHANGELOG and "fifth required source file" in CHANGELOG, "CHANGELOG must distinguish the historical four-file preflight from the current five-file source tree")
 
 require("Tarihsel anlık görüntü notu — 2026-10-19" in ARCHIVE, "archive note must be explicitly historical")

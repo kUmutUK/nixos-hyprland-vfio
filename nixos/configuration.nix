@@ -1,4 +1,4 @@
-{ pkgs, lib, ... }:
+{ pkgs, lib, config, ... }:
 
 let
   # Pass the native Lua config path directly to Hyprland through this wrapper.
@@ -89,6 +89,13 @@ let
 in
 {
   imports = [ ./hardware-configuration.nix ];
+
+  assertions = [
+    {
+      assertion = lib.versionAtLeast config.programs.hyprland.package.version "0.55.0";
+      message = "The Hyprland Lua configuration requires Hyprland 0.55.0 or newer.";
+    }
+  ];
 
   hardware.enableRedistributableFirmware = true;
 
@@ -511,6 +518,8 @@ in
   # and the impermanence module are disabled. On its own, the rule created an unused
   # empty directory. Restore it only together with a complete persistence configuration.
 
+  # This explicit /etc entry is intentional: it provides the system-level Vulkan
+  # loader manifest registration in addition to the copy shipped by the package.
   environment.etc."vulkan/implicit_layer.d/low_latency_layer.json".source =
     "${low-latency-layer}/share/vulkan/implicit_layer.d/low_latency_layer.json";
 
