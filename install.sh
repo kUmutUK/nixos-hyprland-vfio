@@ -14,6 +14,40 @@ info()  { echo -e "${CYAN}[i]${NC} $1"; }
 error() { echo -e "${RED}[✗]${NC} $1"; exit 1; }
 step()  { echo -e "\n${BOLD}${CYAN}▶ $1${NC}"; }
 
+# Update the GPU/audio PCI identities in the deployed hook only when both
+# assignments are present exactly once, and verify the written values. A failed
+# update must stop the installer before VM XML synchronization can continue.
+update_qemu_hook_pci() {
+  local hook_path="${1:-}" gpu_pci="${2:-}" gpu_audio="${3:-}"
+
+  [[ -n "$hook_path" && -f "$hook_path" ]] || return 1
+  [[ "$gpu_pci" =~ ^[[:xdigit:]]{4}:[[:xdigit:]]{2}:[[:xdigit:]]{2}\.[0-7]$ ]] || return 1
+  [[ "$gpu_audio" =~ ^[[:xdigit:]]{4}:[[:xdigit:]]{2}:[[:xdigit:]]{2}\.[0-7]$ ]] || return 1
+
+  if ! sudo awk '
+    /^[[:space:]]*GPU_PCI[[:space:]]*=/ { gpu_count++ }
+    /^[[:space:]]*GPU_AUDIO[[:space:]]*=/ { audio_count++ }
+    END { exit !(gpu_count == 1 && audio_count == 1) }
+  ' "$hook_path"; then
+    return 1
+  fi
+
+  if ! sudo sed -i \
+    -e "s|^GPU_PCI=\"[^\"]*\"$|GPU_PCI=\"${gpu_pci}\"|" \
+    -e "s|^GPU_AUDIO=\"[^\"]*\"$|GPU_AUDIO=\"${gpu_audio}\"|" \
+    "$hook_path"; then
+    return 1
+  fi
+
+  sudo awk -v expected_gpu="GPU_PCI=\"${gpu_pci}\"" \
+    -v expected_audio="GPU_AUDIO=\"${gpu_audio}\"" '
+      BEGIN { gpu_ok = 1; audio_ok = 1 }
+      /^GPU_PCI=/ { gpu_count++; if ($0 != expected_gpu) gpu_ok = 0 }
+      /^GPU_AUDIO=/ { audio_count++; if ($0 != expected_audio) audio_ok = 0 }
+      END { exit !(gpu_count == 1 && gpu_ok && audio_count == 1 && audio_ok) }
+    ' "$hook_path"
+}
+
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 
 # Reject unsupported/live environments before acquiring a lock or requesting
@@ -917,10 +951,10 @@ if [ -d "$REPO_DIR/nixos/hooks" ]; then
     sudo chmod 0755 "$NIXOS_FLAKE_DIR/hooks/qemu"
     log "Copied hooks/ (configuration.nix references ./hooks/qemu as a relative path)."
 
-    sudo sed -i \
-        -e "s|^GPU_PCI=\".*\"|GPU_PCI=\"${gpu_pci}\"|" \
-        -e "s|^GPU_AUDIO=\".*\"|GPU_AUDIO=\"${gpu_audio}\"|" \
-        "$NIXOS_FLAKE_DIR/hooks/qemu" && log "GPU PCI addresses in the hook were updated too."
+    if ! update_qemu_hook_pci "$NIXOS_FLAKE_DIR/hooks/qemu" "$gpu_pci" "$gpu_audio"; then
+        error "Could not update and verify both GPU PCI assignments in the deployed QEMU hook; refusing to continue with hook/XML PCI addresses potentially out of sync."
+    fi
+    log "GPU PCI addresses in the hook were updated and verified."
 
     # Do not use `git update-index --skip-worktree`: /etc/nixos is usually not a
     # Git checkout, and skip-worktree can cause confusing merge conflicts later.

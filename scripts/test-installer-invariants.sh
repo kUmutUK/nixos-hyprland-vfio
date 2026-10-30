@@ -50,7 +50,80 @@ fi
 
 # Exercise the early Home Snapper filesystem preflight without touching the host.
 home_preflight_test_dir="$(mktemp -d)"
-trap 'rm -rf "${state_test_dir:-}" "$home_preflight_test_dir" "${partition_count_test_dir:-}"' EXIT
+hook_pci_test_dir="$(mktemp -d)"
+trap 'rm -rf "${state_test_dir:-}" "$home_preflight_test_dir" "${partition_count_test_dir:-}" "$hook_pci_test_dir"' EXIT
+
+# Exercise the exact installer helper with a harmless sudo shim and temporary hook.
+awk '/^update_qemu_hook_pci\(\) \{/ { capture=1 } capture { print } capture && /^}/ { exit }' "$INSTALLER" \
+  > "$hook_pci_test_dir/update-hook-pci.sh"
+if ! grep -q '^update_qemu_hook_pci() {' "$hook_pci_test_dir/update-hook-pci.sh"; then
+  echo "FAIL: could not extract update_qemu_hook_pci() for its regression tests." >&2
+  exit 1
+fi
+cat > "$hook_pci_test_dir/harness.sh" <<'BASH'
+sudo() {
+  if [[ "${MOCK_SUDO_FAIL_COMMAND:-}" == "$1" ]]; then
+    return 91
+  fi
+  "$@"
+}
+source "$1"
+update_qemu_hook_pci "$2" "$3" "$4"
+BASH
+cp "$HOOK" "$hook_pci_test_dir/valid-hook"
+if ! bash "$hook_pci_test_dir/harness.sh" "$hook_pci_test_dir/update-hook-pci.sh" \
+  "$hook_pci_test_dir/valid-hook" 0000:0c:00.0 0000:0c:00.1; then
+  echo "FAIL: valid GPU/audio PCI assignments were not updated." >&2
+  exit 1
+fi
+grep -Fxq 'GPU_PCI="0000:0c:00.0"' "$hook_pci_test_dir/valid-hook"
+grep -Fxq 'GPU_AUDIO="0000:0c:00.1"' "$hook_pci_test_dir/valid-hook"
+cp "$HOOK" "$hook_pci_test_dir/sed-failure-hook"
+cp "$hook_pci_test_dir/sed-failure-hook" "$hook_pci_test_dir/sed-failure-before"
+if MOCK_SUDO_FAIL_COMMAND=sed bash "$hook_pci_test_dir/harness.sh" \
+  "$hook_pci_test_dir/update-hook-pci.sh" "$hook_pci_test_dir/sed-failure-hook" \
+  0000:0c:00.0 0000:0c:00.1 >/dev/null 2>&1; then
+  echo "FAIL: a failed sed write was reported as a successful hook update." >&2
+  exit 1
+fi
+if ! cmp -s "$hook_pci_test_dir/sed-failure-hook" "$hook_pci_test_dir/sed-failure-before"; then
+  echo "FAIL: the hook changed when the sed operation failed." >&2
+  exit 1
+fi
+sed '/^GPU_PCI=/d' "$HOOK" > "$hook_pci_test_dir/missing-assignment-hook"
+cp "$hook_pci_test_dir/missing-assignment-hook" "$hook_pci_test_dir/missing-assignment-before"
+if bash "$hook_pci_test_dir/harness.sh" "$hook_pci_test_dir/update-hook-pci.sh" \
+  "$hook_pci_test_dir/missing-assignment-hook" 0000:0c:00.0 0000:0c:00.1 >/dev/null 2>&1; then
+  echo "FAIL: a hook with a missing GPU_PCI assignment was accepted." >&2
+  exit 1
+fi
+if ! cmp -s "$hook_pci_test_dir/missing-assignment-hook" "$hook_pci_test_dir/missing-assignment-before"; then
+  echo "FAIL: a malformed hook was modified before preflight rejected it." >&2
+  exit 1
+fi
+if bash "$hook_pci_test_dir/harness.sh" "$hook_pci_test_dir/update-hook-pci.sh" \
+  "$hook_pci_test_dir/valid-hook" invalid 0000:0c:00.1 >/dev/null 2>&1; then
+  echo "FAIL: an invalid GPU PCI address was accepted by the hook updater." >&2
+  exit 1
+fi
+if bash "$hook_pci_test_dir/harness.sh" "$hook_pci_test_dir/update-hook-pci.sh" \
+  "$hook_pci_test_dir/valid-hook" 0000:0c:00.2 invalid >/dev/null 2>&1; then
+  echo "FAIL: an invalid GPU audio PCI address was accepted by the hook updater." >&2
+  exit 1
+fi
+sed '/^GPU_PCI=/a GPU_PCI="0000:0d:00.0"' "$HOOK" > "$hook_pci_test_dir/duplicate-assignment-hook"
+cp "$hook_pci_test_dir/duplicate-assignment-hook" "$hook_pci_test_dir/duplicate-assignment-before"
+if bash "$hook_pci_test_dir/harness.sh" "$hook_pci_test_dir/update-hook-pci.sh" \
+  "$hook_pci_test_dir/duplicate-assignment-hook" 0000:0c:00.0 0000:0c:00.1 >/dev/null 2>&1; then
+  echo "FAIL: duplicate GPU_PCI assignments were accepted by the hook updater." >&2
+  exit 1
+fi
+if ! cmp -s "$hook_pci_test_dir/duplicate-assignment-hook" "$hook_pci_test_dir/duplicate-assignment-before"; then
+  echo "FAIL: a hook with duplicate assignments changed before preflight rejected it." >&2
+  exit 1
+fi
+echo "OK: QEMU hook PCI updater rejects failed writes, malformed/duplicate assignments, and invalid addresses."
+
 
 # Regression-test the manual installation guide's exact partition-count guard.
 partition_count_test_dir="$(mktemp -d)"

@@ -7,6 +7,7 @@ import sys
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
+INSTALLER = (ROOT / "install.sh").read_text(encoding="utf-8")
 README = (ROOT / "README.md").read_text(encoding="utf-8")
 DISCLAIMER = (ROOT / "DISCLAIMER.md").read_text(encoding="utf-8")
 INSTALLATION = (ROOT / "INSTALLATION.md").read_text(encoding="utf-8")
@@ -45,6 +46,12 @@ require("$Format:%H# Follow-up audit" not in AUDIT, "audit report still contains
 require("$Format:%H# Repair and validation report" not in REPAIR, "repair report still contains the pasted heading in the ZIP-provenance cell")
 require(REPAIR.count("## Seventh audit cross-check — 2026-10-30") == 1, "repair report must contain exactly one seventh-audit cross-check section")
 require(REPAIR.count("## Ninth audit cross-check — 2026-10-30") == 1, "repair report must contain exactly one ninth-audit cross-check section")
+require(REPAIR.count("## Tenth audit cross-check — 2026-10-30") == 1, "repair report must contain exactly one tenth-audit cross-check section")
+require("587,335 bytes" in REPAIR and "6b0111ca7cfb442d84bdbc22c516efbde2e90c6ea5a1f88bf9076317d99b4b11" in REPAIR and "a627fcb13b15e71e90983a3a2ff391d38eb743e5" in REPAIR, "repair report must record the latest attached ZIP identity")
+require("Tenth audit cross-check" in REPAIR and "45 entries (29 files and 16 directories)" in REPAIR and "create_system=0" in REPAIR, "latest upload report must preserve the independently measured ZIP metadata")
+require("### Tenth audit follow-up — 2026-10-30" in CHANGELOG, "CHANGELOG must record the tenth audit follow-up")
+require("$Format:%H# Changelog" not in CHANGELOG and "placeholder. Its embedded" not in CHANGELOG, "CHANGELOG must not contain the malformed heading/source-revision splice")
+require("6b0111ca7cfb442d84bdbc22c516efbde2e90c6ea5a1f88bf9076317d99b4b11" in CHANGELOG and "587,335-byte ZIP" in CHANGELOG, "CHANGELOG must identify the most recently inspected supplied ZIP")
 require("583,569 bytes" in REPAIR and "98d5b073a12488f604dfc9f434f3f741d52defce055d30f22db44102ed1be25d" in REPAIR and "65b0028cd76352daea9e5a01e4d7d9afb954b10b" in REPAIR, "repair report must record the independently measured current ZIP identity")
 require("283,401 bytes" in REPAIR and "7abee4ca2a29e02cc3eea810c308f029603070c427a4758b3ceb399574b10a47" in REPAIR and "nine executable files" in REPAIR, "repair report must distinguish the verified canonical reproduction from the uploaded ZIP")
 require("45 entries (29 files and 16 directories)" in REPAIR and "create_system=0" in REPAIR and "external_attr=0x00000000" in REPAIR, "repair report must record the uploaded ZIP metadata and embedded Git subtree")
@@ -107,6 +114,7 @@ require(usb_ids == {("1532", "0098"), ("05ac", "024f")}, "VM XML must contain on
 require("lsusb -d 1532:0098" in README and "lsusb -d 05ac:024f" in README and "intended connected devices" in README, "README must require verification of both machine-specific USB passthrough IDs")
 
 require("## [Unreleased]" in CHANGELOG, "CHANGELOG must use the undated [Unreleased] heading")
+require("update_qemu_hook_pci()" in INSTALLER and "if ! update_qemu_hook_pci" in INSTALLER, "installer must use the checked QEMU hook PCI updater and fail closed on error")
 require(not re.search(r"(?m)^## (?:Unreleased|Previous unreleased changes)\s*[—-]\s*\d{4}-\d{2}-\d{2}", CHANGELOG), "CHANGELOG still gives an Unreleased heading a date")
 require("rollback of the 2026-10-23 password-enabled SSH setting" in CHANGELOG, "CHANGELOG must state the SSH password-authentication rollback")
 require("PasswordAuthentication" in CHANGELOG and "KbdInteractiveAuthentication" in CHANGELOG, "CHANGELOG must describe both disabled SSH password and keyboard-interactive authentication")

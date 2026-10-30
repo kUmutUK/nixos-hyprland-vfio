@@ -467,18 +467,35 @@ Nix evaluation/system build, ShellCheck, Statix, Deadnix, libvirt/QEMU semantic 
 
 ## Ninth audit cross-check — 2026-10-30
 
-**Inspected upload:** \`nixos-hyprland-vfio.zip\`, 583,569 bytes; SHA-256 \`98d5b073a12488f604dfc9f434f3f741d52defce055d30f22db44102ed1be25d\`. Its embedded Git \`HEAD\` and \`refs/heads/main\` identify \`65b0028cd76352daea9e5a01e4d7d9afb954b10b\`, matching GitHub \`main\` at inspection time. The tracked source tree has 62 file blobs and 14,654 lines.
+**Inspected upload:** `nixos-hyprland-vfio.zip`, 583,569 bytes; SHA-256 `98d5b073a12488f604dfc9f434f3f741d52defce055d30f22db44102ed1be25d`. Its embedded Git `HEAD` and `refs/heads/main` identify `65b0028cd76352daea9e5a01e4d7d9afb954b10b`, matching GitHub `main` at inspection time. The tracked source tree has 62 file blobs and 14,654 lines.
 
 | Measurement | Observed result | Disposition |
 |---|---|---|
-| ZIP structure | 116 entries: 91 files and 25 directories. The \`.git/\` subtree contributes 45 entries (29 files and 16 directories). | Noncanonical distribution archive; local Git metadata should not be included. |
-| Unix mode metadata | All 116 entries have \`create_system=0\` and \`external_attr=0x00000000\`. The nine Git-tracked executable files extract as mode \`0644\` with the tested extractor; Git records them as \`100755\`. | Confirmed uploaded-artifact defect: direct execution of \`install.sh\`, eight scripts/hooks is not preserved by this ZIP. |
-| Source revision | \`SOURCE_REVISION\` contains the literal \`$Format:%H$\`, not the archived commit SHA. | Confirmed uploaded-artifact provenance defect. |
-| Embedded Git identity | \`.git/HEAD\` points to \`refs/heads/main\`; the packed branch ref identifies \`65b0028cd76352daea9e5a01e4d7d9afb954b10b\`. | Confirms the source snapshot; it does not make the archive canonical. |
+| ZIP structure | 116 entries: 91 files and 25 directories. The `.git/` subtree contributes 45 entries (29 files and 16 directories). | Noncanonical distribution archive; local Git metadata should not be included. |
+| Unix mode metadata | All 116 entries have `create_system=0` and `external_attr=0x00000000`. The nine Git-tracked executable files extract as mode `0644` with the tested extractor; Git records them as `100755`. | Confirmed uploaded-artifact defect: direct execution of `install.sh`, eight scripts/hooks is not preserved by this ZIP. |
+| Source revision | `SOURCE_REVISION` contains the literal `$Format:%H$`, not the archived commit SHA. | Confirmed uploaded-artifact provenance defect. |
+| Embedded Git identity | `.git/HEAD` points to `refs/heads/main`; the packed branch ref identifies `65b0028cd76352daea9e5a01e4d7d9afb954b10b`. | Confirms the source snapshot; it does not make the archive canonical. |
 
-**Classification:** these issues belong to the uploaded ZIP, not the tracked packager. After restoring the nine extracted working-copy mode bits to their committed Git modes, \`scripts/package-source-zip.sh\` independently generated and validated a canonical ZIP for source commit \`65b0028cd76352daea9e5a01e4d7d9afb954b10b\`: 62 tracked files, nine executable files, 71 ZIP entries, no \`.git/\`, the exact commit expanded into \`SOURCE_REVISION\`, executable entries encoded as Unix \`0755\`, and the ZIP itself mode \`0644\`. Its SHA-256 was \`7abee4ca2a29e02cc3eea810c308f029603070c427a4758b3ceb399574b10a47\` (283,401 bytes). This reproduction is for the inspected pre-update commit; use the CI artifact for the current commit when distributing the project.
+**Classification:** these issues belong to the uploaded ZIP, not the tracked packager. After restoring the nine extracted working-copy mode bits to their committed Git modes, `scripts/package-source-zip.sh` independently generated and validated a canonical ZIP for source commit `65b0028cd76352daea9e5a01e4d7d9afb954b10b`: 62 tracked files, nine executable files, 71 ZIP entries, no `.git/`, the exact commit expanded into `SOURCE_REVISION`, executable entries encoded as Unix `0755`, and the ZIP itself mode `0644`. Its SHA-256 was `7abee4ca2a29e02cc3eea810c308f029603070c427a4758b3ceb399574b10a47` (283,401 bytes). This reproduction is for the inspected pre-update commit; use the CI artifact for the current commit when distributing the project.
 
-The source tree's literal \`$Format:%H$\` is intentional: \`.gitattributes\` declares \`SOURCE_REVISION export-subst\`, and \`git archive\` expands it. No changes to \`install.sh\`, \`scripts/package-source-zip.sh\`, \`vm-xml/win10.xml\`, the active NixOS configuration, or kernel selection were needed.
+The source tree's literal `$Format:%H$` is intentional: `.gitattributes` declares `SOURCE_REVISION export-subst`, and `git archive` expands it. No changes to `install.sh`, `scripts/package-source-zip.sh`, `vm-xml/win10.xml`, the active NixOS configuration, or kernel selection were needed.
 
 Regression validation exercised XML/VM, LSFG-VK v2, Snapper, documentation, embedded-script, installer invariant/rollback/lock, source-revision, VFIO hook, and manual VM bootstrap tests. Nix evaluation/full system build and physical GPU/VM lifecycle remain separate verification gates; this report does not claim those were proven by static tests.
+## Tenth audit cross-check — 2026-10-30
 
+**Inspected upload:** `nixos-hyprland-vfio.zip`, 587,335 bytes; SHA-256 `6b0111ca7cfb442d84bdbc22c516efbde2e90c6ea5a1f88bf9076317d99b4b11`. The embedded Git `HEAD` and `refs/heads/main` identify `a627fcb13b15e71e90983a3a2ff391d38eb743e5`, which was also confirmed as the GitHub `main` head at inspection time. The tracked tree contains 62 files and 14,687 lines.
+
+| Measurement | Observed result | Disposition |
+|---|---|---|
+| ZIP structure | 116 entries: 91 files and 25 directories. The `.git/` subtree contributes 45 entries (29 files and 16 directories). | Noncanonical distribution archive; local Git metadata must not be included. |
+| Unix mode metadata | Every entry has `create_system=0` and `external_attr=0x00000000`. The nine Git-tracked executable files extract as mode `0644`; Git records them as `100755`. | Confirmed uploaded-artifact defect: direct execution of `install.sh` and the eight other executable scripts/hooks is not preserved. |
+| Source revision | The supplied ZIP contains `SOURCE_REVISION` with the literal `$Format:%H$` placeholder. | The placeholder is expected in a Git worktree because `.gitattributes` applies `export-subst`; canonical `git archive` expands it to the archived commit. The supplied ZIP did not use that path. |
+| Embedded Git identity | `.git/HEAD` points to `refs/heads/main`; the packed branch ref identifies `a627fcb13b15e71e90983a3a2ff391d38eb743e5`. | Confirms the source snapshot, but does not make the uploaded archive canonical. |
+
+**Installer defect confirmed and corrected:** the previous `sudo sed ... && log ...` expression did not guarantee termination when `sed` failed because the command appeared in an `&&` list. The installer now calls `update_qemu_hook_pci()`, which checks that both assignments exist exactly once, validates both BDF inputs, checks the write command's status, and verifies the exact resulting assignments. A failure is passed to `error`, stopping the installer before deployed VM XML synchronization continues; the existing deployment rollback trap remains responsible for restoring transaction targets.
+
+**Regression coverage:** `scripts/test-installer-invariants.sh` extracts and executes the exact helper with a harmless `sudo` shim. It checks a successful update, a failed `sed` operation (including no file change), a missing assignment (rejected before writing), duplicate assignments, and invalid GPU/audio PCI input. The test does not replace a real-host test of sudo, filesystem permissions, libvirt or GPU handoff.
+
+The previous `Ninth audit cross-check` section above remains a historical record of the earlier 583,569-byte upload; its measurements are not attributed to this newer archive. The packaging helper itself remains the canonical delivery mechanism: it derives the commit identity through `git archive`, validates all tracked files and executable modes, excludes `.git/`, and checks `SOURCE_REVISION` against the exact source commit.
+
+No changes were made to `vm-xml/win10.xml`, active NixOS settings, kernel selection, or the desktop theme. Nix evaluation/full system build, ShellCheck/Statix/Deadnix, libvirt/QEMU semantic validation, and physical GPU/VM lifecycle testing remain separate verification gates and are not claimed by this static regression run.

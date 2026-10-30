@@ -4,15 +4,17 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+### Tenth audit follow-up — 2026-10-30
+- Repaired the malformed ninth-audit entry, which had accidentally pasted the changelog heading into the middle of a source-ZIP sentence.
+- Re-measured the newly supplied 587,335-byte ZIP (`6b0111ca7cfb442d84bdbc22c516efbde2e90c6ea5a1f88bf9076317d99b4b11`): 116 entries, including `.git/`; all entries lack Unix mode metadata; the nine Git-tracked executable files therefore extract as non-executable with the tested extractor. The embedded Git metadata identifies main commit `a627fcb13b15e71e90983a3a2ff391d38eb743e5`; the uploaded `SOURCE_REVISION` file itself still contains the literal `$Format:%H$` placeholder.
+- Confirmed that the ZIP defect is in the supplied artifact, not the canonical packager. Use `scripts/package-source-zip.sh` or the matching CI artifact; do not distribute a checkout ZIP containing `.git/` and missing executable modes.
+- Fixed `install.sh` so the GPU/audio PCI rewrite must succeed and both assignments must be present exactly once with the expected values before VM XML synchronization can continue. Added regression tests for failed writes, missing assignments, and invalid PCI input.
+- Left `vm-xml/win10.xml`, the active NixOS configuration, kernel selection, and the Arthur wallpaper/theme unchanged.
+
 ### Ninth audit follow-up — 2026-10-30
-- Independently remeasured the attached 583,569-byte source ZIP (`98d5b073a12488f604dfc9f434f3f741d52defce055d30f22db44102ed1be25d`): it embeds `.git/`, omits Unix mode metadata for every entry, and leaves `SOURCE_REVISION` as the unexpanded `$Format:%H# Changelog
-
-This file summarizes notable changes in English. The Turkish release-by-release history is retained in [`docs/archive/DEGISIKLIK_GECMISI.md`](docs/archive/DEGISIKLIK_GECMISI.md); a dated status preface was added there to flag settings later superseded.
-
- placeholder. Its embedded `main` commit (`65b0028cd76352daea9e5a01e4d7d9afb954b10b`) matches the inspected GitHub `main` head.
-- Classified the ZIP defects correctly as a noncanonical uploaded artifact, not a source-packager defect. Independently ran `scripts/package-source-zip.sh` for that source commit and verified all 62 tracked files, all nine executable bits, exact `SOURCE_REVISION`, no `.git/`, and a readable `0644` output archive. The generated artifact applies to the pre-update commit; use the new commit's CI artifact for distribution.
-- Marked the older LSFG-VK v1 schema decision below as historical and superseded by the 2026-10-29 v2 migration, preventing it from being read as current configuration guidance.
-
+- Recorded the prior supplied ZIP's independently verified provenance separately from the current upload; its measurements apply only to that earlier 583,569-byte artifact and commit `65b0028cd76352daea9e5a01e4d7d9afb954b10b`.
+- Classified the missing `.git` exclusion, Unix executable metadata, and expanded `SOURCE_REVISION` as canonical-package requirements; the tracked packager generates and validates those properties.
+- Marked the older LSFG-VK v1 schema decision as historical and superseded by the 2026-10-29 v2 migration.
 ### Eighth audit follow-up — 2026-10-30
 - Corrected the README and disclaimer to state that `install.sh` does not create VM XML for a new, unregistered VM; fresh XML generation belongs to the post-install VM-preparation flow.
 - Expanded the documentation-integrity test to reject the stale template-generation wording and verify the disclaimer's new-VM behavior.
