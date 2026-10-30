@@ -1,19 +1,20 @@
 # Changelog
 
-This file summarizes notable changes in English. The original detailed Turkish history is preserved unchanged in [`docs/archive/DEGISIKLIK_GECMISI.md`](docs/archive/DEGISIKLIK_GECMISI.md).
+This file summarizes notable changes in English. The Turkish release-by-release history is retained in [`docs/archive/DEGISIKLIK_GECMISI.md`](docs/archive/DEGISIKLIK_GECMISI.md); a dated status preface was added there to flag settings later superseded.
 
 ## [Unreleased]
 
 ### Audit follow-up — 2026-10-30
 - Repaired the pasted heading in the supplied-ZIP provenance table and expanded the documentation-integrity regression test to check both audit reports, the current archive record, the five-file migration instruction, and the date reference.
 - Restored the executable bit on `scripts/test-installer-invariants.sh`; the canonical ZIP helper now checks the complete expected executable-file set so a lost mode bit is caught before artifact publication.
+- Removed the 602-line duplicate block from `scripts/test-installer-invariants.sh`; the root current-state index records this cleanup.
 - The upstream [low_latency_layer v0.2.0 release](https://github.com/Korthos-Software/low_latency_layer/releases/tag/v0.2.0) explicitly requires `LOW_LATENCY_LAYER=1` to opt in. The current global setting is correct; Reflex remains unset globally and opt-in per compatible game.
 
 ### Documentation consistency follow-up — 2026-10-30
 - Corrected the README's stale `nix build .#lsfg-vk` reference to the actual `.#lsfg-vk-v2` flake output and extended the documentation-integrity test to compare the documented command with `nixos/flake.nix`.
 - Clarified that the ICH9 device in the VM template has no host audio backend (`audio type="none"`); guest audio is expected through the passed-through GPU HDMI/DP function when available. Added a regression check for the XML/README agreement; `vm-xml/win10.xml` itself is unchanged.
-- Recorded the verified current kernel defaults: `boot.kernelParams` contains `amd_pstate=active`, `nowatchdog`, and `nmi_watchdog=0`; `usbcore.autosuspend=-1`, `kvm.ignore_msrs=1`, `amdgpu.featuremask`, `amd_iommu=on`, and `iommu=pt` are not active defaults. The available record does not establish a single removal commit or rationale for every historical parameter, so this entry does not guess at one.
-- Clarified that the current VM template has active USB passthrough IDs `1532:0098` and `05ac:024f`; `2a7a:8a47` is absent. The older `[1.2.0]` archive entry describes a past state, and README instructions require users to verify these machine-specific IDs.
+- Recorded the verified current kernel defaults: `boot.kernelParams` contains `amd_pstate=active`, `nowatchdog`, and `nmi_watchdog=0`; `usbcore.autosuspend=-1`, `kvm.ignore_msrs=1`, `amdgpu.ppfeaturemask`, `amd_iommu=on`, and `iommu=pt` are not active defaults. The available record does not establish a single removal commit or rationale for every historical parameter, so this entry does not guess at one.
+- Clarified that the current VM template has active USB passthrough IDs `1532:0098` and `05ac:024f`; `2a7a:8a47` is absent. The older `[1.2.0]` archive entry describes a past state. The available history does not establish the exact commit or date when the two active IDs were re-enabled; README instructions require users to verify these machine-specific IDs.
 - Reaffirmed that installer backups are not automatically pruned; the older `[1.3.8]` “last five backups” line is historical, not the current policy.
 - Corrected the historical `amd_iommu=on` section reference, aligned README's full Bash syntax-check loop with CONTRIBUTING, updated the `home.nix` line hint, and recorded the supplied noncanonical ZIP's provenance separately from the earlier archive measurements.
 
@@ -48,7 +49,7 @@ This file summarizes notable changes in English. The original detailed Turkish h
 - Closed the initially-inactive-to-active VFIO service race with an ActiveState recheck, fail-closed handling, and a mocked regression test.
 - Adapted the manual VM-bootstrap regression fixture to create a real, clean temporary Git checkout and a matching source-revision marker, so it exercises mandatory pin verification rather than stopping early at the new preflight.
 
-### Audit regression fixes
+### Audit regression fixes — consolidated historical notes
 - Corrected the installer’s `hashedPassword` preflight and regression tests to identify it as the local `localhost` account password hash, not an SSH password file; the warning now explicitly confirms SSH password authentication stays disabled. Added an invariant against reintroducing that mismatch.
 - Made `scripts/package-source-zip.sh` publish its validated ZIP with mode `0644` so shared artifact collectors can read it. Updated README’s source tree and local validation commands plus CONTRIBUTING to cover the installer-lock test and ShellCheck/package-helper scope.
 - Updated current-state documentation to use the canonical packaging helper and describe SSH public-key-only authentication. The 2026-10-16 repair-report section is now explicitly historical and superseded.
