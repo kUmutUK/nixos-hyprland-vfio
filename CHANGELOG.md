@@ -18,6 +18,14 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 - Reaffirmed that installer backups are not automatically pruned; the older `[1.3.8]` “last five backups” line is historical, not the current policy.
 - Corrected the historical `amd_iommu=on` section reference, aligned README's full Bash syntax-check loop with CONTRIBUTING, updated the `home.nix` line hint, and recorded the supplied noncanonical ZIP's provenance separately from the earlier archive measurements.
 
+### Sixth audit follow-up — 2026-10-30
+- Corrected the README layer-inspection command placement, expanded the WuWa monitor parser to accept resolutions with or without a refresh-rate suffix, and updated the wallpaper watchdog description to include GameMode.
+- Documented the Hyprland 0.55+ Lua requirement from the upstream 0.55 release notes, the RX 6700 XT native `gfx1031` identity versus the `gfx1030` compatibility override, the e1000e guest NIC, and a qualified 32 GiB host-memory recommendation.
+- Added explicit `lsusb` checks for the two machine-specific USB passthrough IDs before VM definition. This is a manual preflight; the XML and installer behavior are unchanged.
+- Documented that `input-remapper` is installed but its daemon is not enabled; mappings require the optional `services.input-remapper.enable` setting. Removed the redundant direct `steam` package entry; `programs.steam.enable` remains authoritative.
+- Added the sixth supplied ZIP's reported measurements to the provenance table. The ZIP bytes were not attached, so the measurements and claimed payload match were not independently rechecked.
+- The available history still does not identify the exact USB reactivation commit or a complete rationale for the historical IOMMU-parameter removals. No rationale was fabricated; the current IOMMU and ICH9/audio state was already documented.
+
 ### SSH authentication policy — 2026-10-30
 - Recorded the rollback of the 2026-10-23 password-enabled SSH setting. The current configuration disables `PasswordAuthentication` and `KbdInteractiveAuthentication`, requires configured public keys, and keeps root SSH login disabled. TCP 22 should remain restricted at the network edge.
 
