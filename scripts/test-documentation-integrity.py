@@ -59,15 +59,19 @@ requirements_end = README.find("## Installation", requirements_start)
 require(requirements_start >= 0 and requirements_end > requirements_start, "README requirements section is missing")
 if requirements_start >= 0 and requirements_end > requirements_start:
     requirements = README[requirements_start:requirements_end]
+    require("| Desktop environment |" in requirements and "Hyprland 0.55 or newer" in requirements and "native Lua API" in requirements, "README must state the Hyprland 0.55+ Lua requirement")
+    require("| GPU |" in requirements and "gfx1031" in requirements and "gfx1030" in requirements and "10.3.0" in requirements, "README must distinguish the RX 6700 XT native target from its ROCm compatibility override")
+    require("| Host memory |" in requirements and "32 GiB is recommended" in requirements and "not a hard minimum" in requirements, "README must document the qualified 32 GiB host-memory recommendation")
     require("| Guest memory |" in requirements and "16 GiB" in requirements, "README must document the template's 16 GiB guest memory")
     require("| Guest CPU |" in requirements and "6 vCPUs" in requirements, "README must document the template's 6 vCPUs")
-    require("| VM devices |" in requirements and "ICH9" in requirements and "iTCO" in requirements, "README must document ICH9 audio and the iTCO watchdog")
+    require("| VM devices |" in requirements and "ICH9" in requirements and "iTCO" in requirements and "e1000e" in requirements, "README must document ICH9 audio, e1000e networking, and the iTCO watchdog")
 
 vm = ET.parse(ROOT / "vm-xml/win10.xml").getroot()
 memory = vm.find("memory")
 vcpu = vm.find("vcpu")
 sound = vm.find("./devices/sound")
 watchdog = vm.find("./devices/watchdog")
+network_model = vm.find("./devices/interface/model")
 require(memory is not None and memory.get("unit") == "KiB" and (memory.text or "").strip() == "16777216", "VM XML memory no longer matches the documented 16 GiB")
 require(vcpu is not None and (vcpu.text or "").strip() == "6", "VM XML vCPU count no longer matches the documented 6 vCPUs")
 require(sound is not None and sound.get("model") == "ich9", "VM XML sound model no longer matches the README")
@@ -78,6 +82,7 @@ require(audio is not None and audio.get("type") == "none", "VM XML audio backend
 require("nix build .#lsfg-vk-v2" in README and "nix build .#lsfg-vk` command" not in README, "README must use the current LSFG-VK v2 flake output")
 require("packages.${system}.lsfg-vk-v2 =" in FLAKE and "packages.${system}.lsfg-vk =" not in FLAKE, "README package command must match the declared flake output")
 require(watchdog is not None and watchdog.get("model", "").lower() == "itco" and watchdog.get("action") == "reset", "VM XML watchdog no longer matches the README")
+require(network_model is not None and network_model.get("type") == "e1000e", "VM XML network model no longer matches the README")
 usb_ids = set()
 for hostdev in vm.findall("./devices/hostdev"):
     if hostdev.get("type") == "usb":
@@ -88,6 +93,7 @@ for hostdev in vm.findall("./devices/hostdev"):
             product = product_node.get("id", "").removeprefix("0x").lower()
             usb_ids.add((vendor, product))
 require(usb_ids == {("1532", "0098"), ("05ac", "024f")}, "VM XML must contain only the two documented active USB passthrough IDs")
+require("lsusb -d 1532:0098" in README and "lsusb -d 05ac:024f" in README and "intended connected devices" in README, "README must require verification of both machine-specific USB passthrough IDs")
 
 require("## [Unreleased]" in CHANGELOG, "CHANGELOG must use the undated [Unreleased] heading")
 require(not re.search(r"(?m)^## (?:Unreleased|Previous unreleased changes)\s*[—-]\s*\d{4}-\d{2}-\d{2}", CHANGELOG), "CHANGELOG still gives an Unreleased heading a date")
@@ -142,6 +148,17 @@ require("v0.2.0" in ARCHIVE and "948a561" in ARCHIVE, "archive note must disting
 latency_vars = re.search(r"environment\.sessionVariables\s*=\s*\{(.*?)\};", CONFIG, re.DOTALL)
 require(latency_vars is not None and re.search(r'(?m)^\s*LOW_LATENCY_LAYER\s*=\s*"1";', latency_vars.group(1)), "current configuration must opt in to low_latency_layer v0.2.0")
 require(latency_vars is not None and not re.search(r"(?m)^\s*LOW_LATENCY_LAYER_REFLEX\s*=", latency_vars.group(1)), "Reflex must remain unset globally")
+
+require("services.input-remapper.enable = true" in README and "input-remapper" in CONFIG and "services.input-remapper.enable" not in CONFIG, "README must disclose that input-remapper is installed but its daemon is not enabled")
+require("Inspect active layers with:" in README and README.find("VK_LOADER_DEBUG=layer vulkaninfo") > README.find("Inspect active layers with:") and README.find("**CS2 / Source 2 note:**") > README.find("VK_LOADER_DEBUG=layer vulkaninfo"), "README layer-inspection command must follow its introduction before the separate CS2 note")
+require("[0-9]+x[0-9]+(@[0-9.]+)?" in HOME_NIX, "WuWa monitor parser must accept resolutions with or without a refresh-rate suffix")
+require('Description = "Stop the live wallpaper while Brave windows or GameMode are active."' in HOME_NIX, "mpvpaper watchdog description must cover Brave and GameMode")
+package_start = CONFIG.find("environment.systemPackages = with pkgs; [")
+package_end = CONFIG.find("\n  ];", package_start)
+require(package_start >= 0 and package_end > package_start, "system package list must remain discoverable for the Steam ownership check")
+if package_start >= 0 and package_end > package_start:
+    require("\n    steam\n" not in CONFIG[package_start:package_end], "Steam must not be redundantly listed in environment.systemPackages")
+require("programs.steam.enable = true;" in CONFIG, "Steam must remain enabled through programs.steam.enable")
 
 if errors:
     for error in errors:
