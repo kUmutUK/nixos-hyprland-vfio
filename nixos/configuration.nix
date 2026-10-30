@@ -1,4 +1,9 @@
-{ pkgs, lib, config, ... }:
+{
+  pkgs,
+  lib,
+  config,
+  ...
+}:
 
 let
   # Pass the native Lua config path directly to Hyprland through this wrapper.
@@ -92,8 +97,7 @@ in
 
   assertions = [
     {
-      assertion =
-        lib.versionAtLeast config.programs.hyprland.package.version "0.55.0";
+      assertion = lib.versionAtLeast config.programs.hyprland.package.version "0.55.0";
       message = "The Hyprland Lua configuration requires Hyprland 0.55.0 or newer.";
     }
   ];
