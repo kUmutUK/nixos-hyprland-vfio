@@ -64,6 +64,12 @@ require(
     and "3afc40d5549dc8f817d213e0f1f681d9a6a312ca" in STATE_INDEX,
     "current-state index must identify the latest verified CI and full-build baselines",
 )
+require(
+    "run #1080" in REPAIR
+    and "272f434e81bffa2bdf3f9462b14dd60ecb587f53" in REPAIR
+    and "[#1080]" in STATE_INDEX,
+    "repair report and current-state index must record the successful follow-up CI run",
+)
 
 
 
