@@ -59,8 +59,8 @@ require(
 )
 require(
     "Current configuration notes — 2026-11-01" in STATE_INDEX
-    and "run #1078" in STATE_INDEX
-    and "run #5" in STATE_INDEX
+    and "[#1078]" in STATE_INDEX
+    and "manual run #5" in STATE_INDEX
     and "3afc40d5549dc8f817d213e0f1f681d9a6a312ca" in STATE_INDEX,
     "current-state index must identify the latest verified CI and full-build baselines",
 )
