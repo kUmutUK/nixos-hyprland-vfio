@@ -20,6 +20,7 @@ The latest follow-up review of canonical ZIP provenance, deployed VM XML validat
 - [Known limitations](#known-limitations)
 - [Repository map](#repository-map)
 - [Validation](#validation)
+- [Releasing](#releasing)
 - [License](#license)
 
 ## Purpose and safety
@@ -827,6 +828,10 @@ For a complete NixOS system build on GitHub Actions, open **Actions → Full Nix
 ### Target-system validation update — 2026-10-23
 
 > The project owner now reports that NixOS rebuilt successfully, the RT-Bore-LTO ThinLTO kernel compiled successfully, the Windows VM started and shut down normally, and control returned to Hyprland. This is owner-reported validation on the target machine, not independent reproduction and not a guarantee for other hardware.
+
+## Releasing
+
+See [`RELEASING.md`](RELEASING.md) for the semantic-versioning process, release prerequisites, and tag-triggered GitHub Releases workflow. A release is published only when normal CI and the full NixOS system build pass for the exact tagged commit.
 
 ## License
 
