@@ -4,6 +4,13 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Stable release version (for example v1.4.0)"
+        required: true
+        default: "v1.4.0"
+        type: string
 
 permissions:
   actions: read
@@ -15,6 +22,7 @@ concurrency:
 
 jobs:
   publish:
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -23,51 +31,129 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Validate stable SemVer tag and main ancestry
+      - name: Resolve and validate release version
+        id: release
         shell: bash
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
         run: |
           set -Eeuo pipefail
 
-          if [[ ! "$GITHUB_REF_NAME" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
-            echo "::error::Only stable vMAJOR.MINOR.PATCH tags are accepted."
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            release_tag="$INPUT_VERSION"
+          else
+            release_tag="$GITHUB_REF_NAME"
+          fi
+
+          if [[ ! "$release_tag" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "::error::Only stable vMAJOR.MINOR.PATCH versions are accepted."
             exit 1
           fi
 
-          test "$(git rev-list -n 1 "$GITHUB_REF_NAME")" = "$GITHUB_SHA"
+          echo "tag=$release_tag" >> "$GITHUB_OUTPUT"
+
+          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
+            test "$(git rev-list -n 1 "$release_tag")" = "$GITHUB_SHA"
+          else
+            if git ls-remote --exit-code --tags origin "refs/tags/$release_tag" >/dev/null 2>&1; then
+              echo "::error::Tag $release_tag already exists."
+              exit 1
+            fi
+          fi
+
           git fetch --no-tags origin main
           if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
-            echo "::error::The release tag must point to a commit reachable from main."
+            echo "::error::The release commit must be reachable from main."
             exit 1
           fi
 
-      - name: Require successful CI and full-system build for this exact commit
+      - name: Require successful CI and a current-enough full-system build
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -Eeuo pipefail
 
-          for workflow in check.yml full-system-build.yml; do
-            runs="$(gh run list \
-              --workflow "$workflow" \
-              --commit "$GITHUB_SHA" \
-              --json headSha,headBranch,status,conclusion \
-              --limit 100)"
+          ci_runs="$(gh run list \
+            --workflow check.yml \
+            --branch main \
+            --commit "$GITHUB_SHA" \
+            --json headSha,headBranch,status,conclusion \
+            --limit 100)"
 
-            if ! jq -e --arg sha "$GITHUB_SHA" '
-              any(.[]; .headSha == $sha
-                and .headBranch == "main"
-                and .status == "completed"
-                and .conclusion == "success")
-            ' <<< "$runs" >/dev/null; then
-              echo "::error::No successful $workflow run exists for $GITHUB_SHA on main."
-              echo "Run the required workflow against this exact commit before publishing the tag."
-              exit 1
+          if ! jq -e --arg sha "$GITHUB_SHA" '
+            any(.[]; .headSha == $sha
+              and .headBranch == "main"
+              and .status == "completed"
+              and .conclusion == "success")
+          ' <<< "$ci_runs" >/dev/null; then
+            echo "::error::Normal CI has not passed for this exact main commit."
+            exit 1
+          fi
+          echo "  normal CI passed for $GITHUB_SHA"
+
+          build_runs="$(gh run list \
+            --workflow full-system-build.yml \
+            --branch main \
+            --json headSha,headBranch,status,conclusion \
+            --limit 100)"
+
+          build_sha=""
+          while IFS= read -r candidate; do
+            if git cat-file -e "$candidate^{commit}" 2>/dev/null \
+              && git merge-base --is-ancestor "$candidate" "$GITHUB_SHA"; then
+              build_sha="$candidate"
+              break
             fi
-            echo "  $workflow passed for $GITHUB_SHA"
-          done
+          done < <(
+            jq -r '.[] | select(.headBranch == "main"
+              and .status == "completed"
+              and .conclusion == "success") | .headSha' <<< "$build_runs"
+          )
+
+          if [[ -z "$build_sha" ]]; then
+            echo "::error::No successful full-system build exists on an ancestor of this main commit."
+            exit 1
+          fi
+
+          # A previous full-system build remains valid only when every later
+          # commit changes release metadata/docs, not NixOS or runtime inputs.
+          unexpected=0
+          while IFS= read -r path; do
+            [[ -z "$path" ]] && continue
+            case "$path" in
+              .git-cliff.toml|RELEASING.md|README.md|.github/workflows/release.yml)
+                ;;
+              *)
+                echo "::error::Full-system build is older and $path changed afterwards."
+                unexpected=1
+                ;;
+            esac
+          done < <(git diff --name-only "$build_sha" "$GITHUB_SHA")
+
+          if [[ "$unexpected" -ne 0 ]]; then
+            echo "::error::Run a new full-system build after the system-affecting changes."
+            exit 1
+          fi
+
+          echo "  full-system build passed at $build_sha"
+          echo "  changes since that build are release-only"
+
+      - name: Find previous version tag
+        id: previous
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          previous_tag="$(
+            git tag --merged "$GITHUB_SHA" --list 'v[0-9]*' |
+              grep -E '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$' |
+              sort -V |
+              tail -n 1 || true
+          )"
+          echo "tag=$previous_tag" >> "$GITHUB_OUTPUT"
 
       - name: Generate release notes with git-cliff
+        if: steps.previous.outputs.tag != ''
         uses: orhun/git-cliff-action@a9a95522b26fe6403f7bb24031f21fb573d0f5ff # v4.9.1
         with:
           version: v2.14.2
@@ -79,18 +165,11 @@ jobs:
           GITHUB_REPO: ${{ github.repository }}
 
       - name: Use curated notes for the first tagged release
+        if: steps.previous.outputs.tag == ''
         shell: bash
         run: |
           set -Eeuo pipefail
-
-          previous_tag="$(
-            git tag --merged "$GITHUB_SHA" --list |
-              grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+$' |
-              grep -Fvx "$GITHUB_REF_NAME" || true
-          )"
-
-          if [[ -z "$previous_tag" ]]; then
-            python3 - "$RUNNER_TEMP/release-notes.md" <<'PY'
+          python3 - "$RUNNER_TEMP/release-notes.md" <<'PY'
           from pathlib import Path
           import re
           import sys
@@ -110,10 +189,10 @@ jobs:
 
           Path(sys.argv[1]).write_text(body + "\n", encoding="utf-8")
           PY
-            echo "  first release: using curated CHANGELOG.md [Unreleased] notes"
-          fi
+          echo "  first release: using curated CHANGELOG.md [Unreleased] notes"
 
-          test -s "$RUNNER_TEMP/release-notes.md"
+      - name: Verify release notes
+        run: test -s "$RUNNER_TEMP/release-notes.md"
 
       - name: Build and validate canonical source ZIP
         run: scripts/package-source-zip.sh "$RUNNER_TEMP/nixos-hyprland-vfio-source.zip"
@@ -125,14 +204,25 @@ jobs:
           cd "$RUNNER_TEMP"
           sha256sum nixos-hyprland-vfio-source.zip > nixos-hyprland-vfio-source.zip.sha256
 
+      - name: Create and push annotated tag for manual releases
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          set -Eeuo pipefail
+          git tag -a "$RELEASE_TAG" -m "Release $RELEASE_TAG"
+          git push origin "$RELEASE_TAG"
+
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
         run: |
           set -Eeuo pipefail
-          gh release create "$GITHUB_REF_NAME" \
+          gh release create "$RELEASE_TAG" \
             "$RUNNER_TEMP/nixos-hyprland-vfio-source.zip" \
             "$RUNNER_TEMP/nixos-hyprland-vfio-source.zip.sha256" \
             --verify-tag \
-            --title "NixOS · Hyprland · VFIO ${GITHUB_REF_NAME#v}" \
+            --title "NixOS · Hyprland · VFIO ${RELEASE_TAG#v}" \
             --notes-file "$RUNNER_TEMP/release-notes.md"
