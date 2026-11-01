@@ -73,6 +73,10 @@ The automation never overwrites the hand-maintained `CHANGELOG.md`.
 
 ## Version rules
 
+Release tags must use the stable `vMAJOR.MINOR.PATCH` form (for example,
+`v1.4.0`). The `v` prefix is required, and numeric components must not contain
+leading zeroes. The release workflow and git-cliff use the same rule.
+
 - `feat:` → minor version.
 - `fix:` and other changes not excluded by the bump rules → patch version.
 - Conventional breaking changes (for example, `feat!:`) → major version.

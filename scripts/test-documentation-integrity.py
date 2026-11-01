@@ -14,6 +14,7 @@ INSTALLATION = (ROOT / "INSTALLATION.md").read_text(encoding="utf-8")
 CONTRIBUTING = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
 RELEASING = (ROOT / "RELEASING.md").read_text(encoding="utf-8")
 RELEASE_WORKFLOW = (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
+CLIFF_CONFIG = (ROOT / ".git-cliff.toml").read_text(encoding="utf-8")
 CHECK_WORKFLOW = (ROOT / ".github/workflows/check.yml").read_text(encoding="utf-8")
 AUDIT = (ROOT / "docs/AUDIT-2026-10-28-VM-XML-VFIO.md").read_text(encoding="utf-8")
 ARCHIVE = (ROOT / "docs/archive/DEGISIKLIK_GECMISI.md").read_text(encoding="utf-8")
@@ -43,6 +44,35 @@ require("scripts/test-vm-xml-structure.py" in CONTRIBUTING, "CONTRIBUTING valida
 require("scripts/test-vm-xml-structure.py" in CHECK_WORKFLOW, "CI must continue to run the VM XML structure regression test")
 require("DEGISIKLIK_GECMISI.md" in RELEASING and "DEGISIKLIK_GECMISI.md" in RELEASE_WORKFLOW and "CONTRIBUTING.md" in RELEASING and "CHANGELOG.md" in RELEASING and "docs/REPAIR-AND-VALIDATION-REPORT.md" in RELEASING and ".github/workflows/check.yml" in RELEASING and "scripts/test-documentation-integrity.py" in RELEASING, "RELEASING allowlist documentation must match release.yml")
 require("grep -E '^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$' |" in RELEASE_WORKFLOW, "release workflow must use a closed stable-semver regex when finding previous tags")
+require("stable \`vMAJOR.MINOR.PATCH\` form" in RELEASING and "numeric components must not contain" in RELEASING, "release guide must document the strict stable tag format")
+cliff_tag_match = re.search(r'(?m)^tag_pattern = "([^"]+)"$', CLIFF_CONFIG)
+release_tag_match = re.search(r'\[\[ ! "\$release_tag" =~ (.*?) \]\]', RELEASE_WORKFLOW)
+previous_tag_match = re.search(r"grep -E '([^']+)' \|", RELEASE_WORKFLOW)
+expected_stable_tag_pattern = r"^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$"
+cliff_tag_pattern = (
+    cliff_tag_match.group(1).replace("\\\\", "\\")
+    if cliff_tag_match is not None
+    else None
+)
+release_tag_pattern = release_tag_match.group(1) if release_tag_match else None
+previous_tag_pattern = previous_tag_match.group(1) if previous_tag_match else None
+require(
+    cliff_tag_pattern == expected_stable_tag_pattern
+    and release_tag_pattern == expected_stable_tag_pattern
+    and previous_tag_pattern == expected_stable_tag_pattern,
+    "git-cliff, release validation, and previous-tag selection must use the same strict vMAJOR.MINOR.PATCH pattern",
+)
+for valid_tag in ("v0.0.1", "v1.3.9", "v1.4.0", "v10.20.300"):
+    require(
+        re.fullmatch(expected_stable_tag_pattern, valid_tag) is not None,
+        f"strict stable-semver pattern must accept {valid_tag}",
+    )
+for invalid_tag in ("1.4.0", "v01.4.0", "v1.04.0", "v1.4.00", "v1.4", "v1.4.0-rc.1", "v1.4.0+build.1"):
+    require(
+        re.fullmatch(expected_stable_tag_pattern, invalid_tag) is None,
+        f"strict stable-semver pattern must reject {invalid_tag}",
+    )
+
 for step_name in ("Find previous version tag", "Generate release notes with git-cliff", "Use curated notes for the first tagged release", "Verify release notes", "Build and validate canonical source ZIP", "Create SHA-256 manifest", "Create annotated tag for manual releases", "Publish GitHub Release"):
     require(RELEASE_WORKFLOW.count(f"- name: {step_name}") == 1, f"release workflow must contain exactly one {step_name!r} step")
 require("actionlint" in CHECK_WORKFLOW and "go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7" in CHECK_WORKFLOW, "normal CI must run the pinned actionlint validator")
@@ -52,23 +82,18 @@ require(
 )
 require(
     "Current source verification — 2026-11-01" in REPAIR
-    and "run #1078" in REPAIR
-    and "41130097586" in REPAIR
-    and "da159dd20866fb026ce8bc3843af4d4f932649f9" in REPAIR,
-    "repair report must identify the 2026-11-01 source/CI baseline",
+    and "b7950eecfd3242dca882f4c69054aaef38827fd7" in REPAIR
+    and "run #1082" in REPAIR
+    and "41346239745" in REPAIR,
+    "repair report must identify the latest reviewed source/CI baseline",
 )
 require(
     "Current configuration notes — 2026-11-01" in STATE_INDEX
-    and "[#1078]" in STATE_INDEX
+    and "b7950eecfd3242dca882f4c69054aaef38827fd7" in STATE_INDEX
+    and "[#1082]" in STATE_INDEX
     and "manual run #5" in STATE_INDEX
     and "3afc40d5549dc8f817d213e0f1f681d9a6a312ca" in STATE_INDEX,
     "current-state index must identify the latest verified CI and full-build baselines",
-)
-require(
-    "run #1080" in REPAIR
-    and "272f434e81bffa2bdf3f9462b14dd60ecb587f53" in REPAIR
-    and "[#1080]" in STATE_INDEX,
-    "repair report and current-state index must record the successful follow-up CI run",
 )
 
 
