@@ -207,15 +207,36 @@ jobs:
           cd "$RUNNER_TEMP"
           sha256sum nixos-hyprland-vfio-source.zip > nixos-hyprland-vfio-source.zip.sha256
 
-      - name: Create and push annotated tag for manual releases
+      - name: Create annotated tag for manual releases
         if: github.event_name == 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
         run: |
           set -Eeuo pipefail
-          git tag -a "$RELEASE_TAG" -m "Release $RELEASE_TAG"
-          git push origin "$RELEASE_TAG"
+
+          # Create the annotated tag through the GitHub API. This avoids
+          # relying on an unconfigured git author in the runner and avoids
+          # recursively triggering the tag workflow with GITHUB_TOKEN.
+          tag_object_sha="$(
+            gh api "repos/$GITHUB_REPOSITORY/git/tags" \
+              --method POST \
+              -f "tag=$RELEASE_TAG" \
+              -f "message=Release $RELEASE_TAG" \
+              -f "object=$GITHUB_SHA" \
+              -f "type=commit" \
+              -f "tagger[name]=github-actions[bot]" \
+              -f "tagger[email]=41898282+github-actions[bot]@users.noreply.github.com" \
+              -f "tagger[date]=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+              --jq '.sha'
+          )"
+
+          gh api "repos/$GITHUB_REPOSITORY/git/refs" \
+            --method POST \
+            -f "ref=refs/tags/$RELEASE_TAG" \
+            -f "sha=$tag_object_sha"
+
+          echo "Created annotated tag $RELEASE_TAG at $GITHUB_SHA"
 
       - name: Publish GitHub Release
         env:
