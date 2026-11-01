@@ -691,6 +691,8 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 ├── .gitattributes                  # expand source commit identity in canonical ZIPs
 ├── SOURCE_REVISION                 # Git archive expands this to the packaged commit
 ├── .gitignore
+├── .git-cliff.toml                 # Conventional Commit release-note configuration
+├── RELEASING.md                    # release prerequisites and publication procedure
 ├── DISCLAIMER.md
 ├── KURULUM.md                      # English compatibility pointer to INSTALLATION.md
 ├── INSTALLATION.md                 # English fresh-install guide
@@ -702,6 +704,7 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 ├── install.sh                      # migration/update helper for an existing NixOS host
 ├── .github/workflows/check.yml
 ├── .github/workflows/full-system-build.yml
+├── .github/workflows/release.yml
 ├── docs/
 │   ├── REPAIR-AND-VALIDATION-REPORT.md
 │   ├── AUDIT-2026-10-28-VM-XML-VFIO.md
@@ -831,7 +834,7 @@ For a complete NixOS system build on GitHub Actions, open **Actions → Full Nix
 
 ## Releasing
 
-See [`RELEASING.md`](RELEASING.md) for the semantic-versioning process, release prerequisites, and tag-triggered GitHub Releases workflow. A release is published only when normal CI and the full NixOS system build pass for the exact tagged commit.
+See [`RELEASING.md`](RELEASING.md) for the semantic-versioning process, release prerequisites, and GitHub Releases workflow. Normal CI must pass for the exact tagged commit. A successful full NixOS system build must exist for that commit or an ancestor; an ancestor build is accepted only when every intervening change is limited to the release/documentation/CI metadata paths explicitly allowlisted in `.github/workflows/release.yml`.
 
 ## License
 

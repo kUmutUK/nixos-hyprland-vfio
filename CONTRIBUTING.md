@@ -31,6 +31,7 @@ nix develop ./nixos --command bash -euo pipefail -c '
   python3 scripts/test-vm-iso-paths.py
   bash scripts/test-manual-vm-bootstrap.sh
   python3 scripts/test-vm-xml.py
+  python3 scripts/test-vm-xml-structure.py
   python3 scripts/test-vm-xml-paths.py
   python3 scripts/test-vm-xml-sync.py
   python3 scripts/test-vm-diagnostic.py

@@ -122,7 +122,7 @@ jobs:
           while IFS= read -r path; do
             [[ -z "$path" ]] && continue
             case "$path" in
-              .git-cliff.toml|RELEASING.md|README.md|.github/workflows/release.yml)
+              .git-cliff.toml|RELEASING.md|README.md|CONTRIBUTING.md|CHANGELOG.md|docs/REPAIR-AND-VALIDATION-REPORT.md|scripts/test-documentation-integrity.py|.github/workflows/check.yml|.github/workflows/release.yml)
                 ;;
               *)
                 echo "::error::Full-system build is older and $path changed afterwards."
@@ -148,109 +148,7 @@ jobs:
           set -Eeuo pipefail
           previous_tag="$(
             git tag --merged "$GITHUB_SHA" --list 'v[0-9]*' |
-              grep -E '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*) |
-              grep -Fvx "$RELEASE_TAG" |
-              sort -V |
-              tail -n 1 || true
-          )"
-          echo "tag=$previous_tag" >> "$GITHUB_OUTPUT"
-
-      - name: Generate release notes with git-cliff
-        if: steps.previous.outputs.tag != ''
-        uses: orhun/git-cliff-action@a9a95522b26fe6403f7bb24031f21fb573d0f5ff # v4.9.1
-        with:
-          version: v2.14.2
-          config: .git-cliff.toml
-          args: --latest --strip header
-          github_token: ${{ github.token }}
-        env:
-          OUTPUT: ${{ runner.temp }}/release-notes.md
-          GITHUB_REPO: ${{ github.repository }}
-
-      - name: Use curated notes for the first tagged release
-        if: steps.previous.outputs.tag == ''
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-          python3 - "$RUNNER_TEMP/release-notes.md" <<'PY'
-          from pathlib import Path
-          import re
-          import sys
-
-          source = Path("CHANGELOG.md").read_text(encoding="utf-8")
-          match = re.search(r"(?m)^## \[Unreleased\]\s*\n", source)
-          if match is None:
-              raise SystemExit("CHANGELOG.md has no ## [Unreleased] section.")
-
-          body = source[match.end():]
-          next_section = re.search(r"(?m)^## ", body)
-          if next_section is not None:
-              body = body[:next_section.start()]
-          body = body.strip()
-          if not body:
-              raise SystemExit("The curated [Unreleased] section is empty.")
-
-          Path(sys.argv[1]).write_text(body + "\n", encoding="utf-8")
-          PY
-          echo "  first release: using curated CHANGELOG.md [Unreleased] notes"
-
-      - name: Verify release notes
-        run: test -s "$RUNNER_TEMP/release-notes.md"
-
-      - name: Build and validate canonical source ZIP
-        run: scripts/package-source-zip.sh "$RUNNER_TEMP/nixos-hyprland-vfio-source.zip"
-
-      - name: Create SHA-256 manifest
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-          cd "$RUNNER_TEMP"
-          sha256sum nixos-hyprland-vfio-source.zip > nixos-hyprland-vfio-source.zip.sha256
-
-      - name: Create annotated tag for manual releases
-        if: github.event_name == 'workflow_dispatch'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ steps.release.outputs.tag }}
-        run: |
-          set -Eeuo pipefail
-
-          # Create the annotated tag through the GitHub API. This avoids
-          # relying on an unconfigured git author in the runner and avoids
-          # recursively triggering the tag workflow with GITHUB_TOKEN.
-          tag_object_sha="$(
-            gh api "repos/$GITHUB_REPOSITORY/git/tags" \
-              --method POST \
-              -f "tag=$RELEASE_TAG" \
-              -f "message=Release $RELEASE_TAG" \
-              -f "object=$GITHUB_SHA" \
-              -f "type=commit" \
-              -f "tagger[name]=github-actions[bot]" \
-              -f "tagger[email]=41898282+github-actions[bot]@users.noreply.github.com" \
-              -f "tagger[date]=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-              --jq '.sha'
-          )"
-
-          gh api "repos/$GITHUB_REPOSITORY/git/refs" \
-            --method POST \
-            -f "ref=refs/tags/$RELEASE_TAG" \
-            -f "sha=$tag_object_sha"
-
-          echo "Created annotated tag $RELEASE_TAG at $GITHUB_SHA"
-
-      - name: Publish GitHub Release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ steps.release.outputs.tag }}
-        run: |
-          set -Eeuo pipefail
-          gh release create "$RELEASE_TAG" \
-            "$RUNNER_TEMP/nixos-hyprland-vfio-source.zip" \
-            "$RUNNER_TEMP/nixos-hyprland-vfio-source.zip.sha256" \
-            --verify-tag \
-            --title "NixOS · Hyprland · VFIO ${RELEASE_TAG#v}" \
-            --notes-file "$RUNNER_TEMP/release-notes.md"
- |
+              grep -E '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$' |
               grep -Fvx "$RELEASE_TAG" |
               sort -V |
               tail -n 1 || true

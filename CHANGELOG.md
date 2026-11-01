@@ -4,6 +4,17 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+### Release workflow and audit follow-up — 2026-11-01
+- Repaired `.github/workflows/release.yml`: closed the stable-semver filter, removed the stray fragment and duplicate publication steps, and kept one release pipeline.
+- Added pinned `actionlint` validation of every workflow to normal CI so malformed workflow YAML and common GitHub Actions expression/configuration errors fail the standard check.
+- Aligned README release prerequisites with `RELEASING.md`: normal CI is required for the exact tagged commit; the full-system build may be on an ancestor only when all later changed paths are explicitly allowlisted release/documentation/CI metadata.
+- Updated the release allowlist and its documentation together, added the omitted VM XML structure test to `CONTRIBUTING.md`, expanded documentation-integrity regressions, and completed the README repository map.
+- Rechecked the 2026-11-01 uploaded ZIP: its `.git/` directory and missing ZIP Unix-mode metadata are properties of that uploaded checkout archive, not the tracked source packager. The literal `$Format:%H# Changelog
+
+This file summarizes notable changes in English. The Turkish release-by-release history is retained in [`docs/archive/DEGISIKLIK_GECMISI.md`](docs/archive/DEGISIKLIK_GECMISI.md); a dated status preface was added there to flag settings later superseded.
+
+ in a normal Git worktree is intentional because `.gitattributes` applies `export-subst`; `scripts/package-source-zip.sh` uses `git archive` to expand the exact revision and preserve executable modes. No NixOS, VFIO, VM XML, kernel, latency-layer, or desktop-theme settings were changed.
+
 ### Tenth audit follow-up — 2026-10-30
 - Repaired the malformed ninth-audit entry, which had accidentally pasted the changelog heading into the middle of a source-ZIP sentence.
 - Re-measured the newly supplied 587,335-byte ZIP (`6b0111ca7cfb442d84bdbc22c516efbde2e90c6ea5a1f88bf9076317d99b4b11`): 116 entries, including `.git/`; all entries lack Unix mode metadata; the nine Git-tracked executable files therefore extract as non-executable with the tested extractor. The embedded Git metadata identifies main commit `a627fcb13b15e71e90983a3a2ff391d38eb743e5`; the uploaded `SOURCE_REVISION` file itself still contains the literal `$Format:%H$` placeholder.

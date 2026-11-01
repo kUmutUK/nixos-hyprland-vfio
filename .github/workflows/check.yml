@@ -30,6 +30,9 @@ jobs:
       - name: create and validate canonical source ZIP
         run: scripts/package-source-zip.sh "$RUNNER_TEMP/nixos-hyprland-vfio-source.zip"
 
+      - name: Validate GitHub Actions workflows
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/*.yml
+
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@3138316df39ed29be04236d7ffc686fa525866aa
 

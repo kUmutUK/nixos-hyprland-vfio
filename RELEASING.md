@@ -11,11 +11,13 @@ manual-dispatch input; ordinary pushes and pull requests never publish a release
 3. Confirm that a successful **Full NixOS System Build (manual)** exists on
    that commit or an ancestor of it.
 4. If the full-system build is from an ancestor, the release workflow verifies
-   that every later changed path is release-only metadata:
-   `.git-cliff.toml`, `RELEASING.md`, `README.md`, or
+   that every later changed path is explicitly allowlisted as release,
+   documentation, or CI metadata: `.git-cliff.toml`, `RELEASING.md`, `README.md`,
+   `CONTRIBUTING.md`, `CHANGELOG.md`, `docs/REPAIR-AND-VALIDATION-REPORT.md`,
+   `scripts/test-documentation-integrity.py`, `.github/workflows/check.yml`, or
    `.github/workflows/release.yml`. Any later change to NixOS, VM, installer,
-   hooks, scripts, or other source paths blocks publication and requires a new
-   full-system build.
+   runtime hooks, or other system-affecting source paths blocks publication and
+   requires a new full-system build.
 5. Review the release version and changelog before publishing.
 
 This is intentional: documentation and release automation do not alter the

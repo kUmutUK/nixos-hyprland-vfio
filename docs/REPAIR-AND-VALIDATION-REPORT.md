@@ -509,3 +509,30 @@ Regression validation exercised XML/VM, LSFG-VK v2, Snapper, documentation, embe
 The previous `Ninth audit cross-check` section above remains a historical record of the earlier 583,569-byte upload; its measurements are not attributed to this newer archive. The packaging helper itself remains the canonical delivery mechanism: it derives the commit identity through `git archive`, validates all tracked files and executable modes, excludes `.git/`, and checks `SOURCE_REVISION` against the exact source commit.
 
 No changes were made to `vm-xml/win10.xml`, active NixOS settings, kernel selection, or the desktop theme. Nix evaluation/full system build, ShellCheck/Statix/Deadnix, libvirt/QEMU semantic validation, and physical GPU/VM lifecycle testing remain separate verification gates and are not claimed by this static regression run.
+
+
+## Eleventh audit and release-workflow repair — 2026-11-01
+
+**Inspected source:** uploaded `nixos-hyprland-vfio.zip`; embedded Git HEAD `ae6e7b8faa52d8859db46a29994ddd3babbaa0dd`, matching the GitHub `main` head before this repair. The tracked source tree contains 65 files. The uploaded ZIP contains 119 entries and includes `.git/`; its ZIP entries do not retain Unix mode metadata. These are defects of the uploaded checkout ZIP, not of the tracked canonical source packager.
+
+**Release workflow defects confirmed and fixed:**
+
+- The previous-version `grep -E` expression lacked its closing quote and end anchor, making the embedded Bash invalid.
+- A stray fragment after the first `Publish GitHub Release` step made the YAML invalid.
+- A second copy of the release-notes, source-ZIP, checksum, tag, and publication steps was accidentally appended. The workflow now contains one publication pipeline.
+- The semver filter now matches complete stable `vMAJOR.MINOR.PATCH` tags and excludes the current tag before version sorting.
+
+**CI and documentation corrections:**
+
+- Normal CI now runs pinned `actionlint` v1.7.7 against all files in `.github/workflows/`.
+- README release prerequisites now match the workflow: normal CI must pass for the exact tagged commit; an ancestor full-system build is accepted only when every subsequent change is on the explicit release/documentation/CI metadata allowlist.
+- `RELEASING.md` documents the same allowlist, including the updated CI workflow, report, changelog, contributor guide, and documentation-integrity test.
+- `CONTRIBUTING.md` now includes `scripts/test-vm-xml-structure.py`, which normal CI already runs.
+- README's repository map now lists `.git-cliff.toml`, `RELEASING.md`, and `release.yml`.
+- `scripts/test-documentation-integrity.py` now guards these cross-file contracts and ensures each release stage appears exactly once.
+
+**Archive provenance clarification:** the supplied ZIP included `.git/` and omitted ZIP Unix file-mode metadata. The working-tree text `$Format:%H$` in `SOURCE_REVISION` is intentional: `.gitattributes` applies `export-subst`, and the canonical `scripts/package-source-zip.sh` uses `git archive` to expand the actual commit and validates the expected tracked executable modes. No change to `SOURCE_REVISION`, `.gitattributes`, or the canonical package helper was required. Use the canonical package script or its matching CI artifact rather than a generic ZIP of the checkout.
+
+**Scope preserved:** no changes were made to NixOS options, `flake.lock`, kernel inputs, VFIO hook behavior, PCI/USB identities, VM XML, Low Latency Layer / Reflex defaults, LSFG-VK configuration, or the desktop theme.
+
+**Validation boundary:** local YAML parsing, Bash syntax checks for every embedded workflow `run` block, and the documentation-integrity regression passed in the preparation environment. The pinned `actionlint` invocation was added to CI but could not be executed locally because the environment could not resolve `proxy.golang.org`; its result must be taken from the GitHub Actions run. Nix evaluation/full-system build and physical libvirt/QEMU/GPU lifecycle testing remain separate gates; this report does not claim to have independently reproduced them.
