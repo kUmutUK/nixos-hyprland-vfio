@@ -38,6 +38,7 @@ jobs:
 
       - name: Nix formatting (read-only)
         run: |
+          # shellcheck disable=SC2016
           nix develop ./nixos --no-update-lock-file --command bash -euo pipefail -c '
             mapfile -d "" nix_files < <(find ./nixos -type f -name "*.nix" -print0)
             failed=0
@@ -231,7 +232,7 @@ jobs:
         working-directory: nixos
         run: |
           if ! git diff --quiet -- flake.lock; then
-            echo "::error::flake.lock changed during CI; lock file is not canonical. Run `nix flake lock` and commit the result."
+            printf '%s\n' '::error::flake.lock changed during CI; lock file is not canonical. Run `nix flake lock` and commit the result.'
             git --no-pager diff -- flake.lock
             exit 1
           fi
