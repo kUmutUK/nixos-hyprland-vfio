@@ -1,24 +1,50 @@
 # Releasing
 
 This repository uses **git-cliff** for semantic version suggestions and release
-notes. Publishing is tag-driven; ordinary pushes and pull requests do not create
-releases.
+notes. Releases are created from a tag or from the **Release** workflow's
+manual-dispatch input; ordinary pushes and pull requests never publish a release.
 
-## Before creating a release
+## Release prerequisites
 
-1. Merge the intended stable code into `main` and make sure the worktree is
-   clean.
-2. Confirm that the **Nix Flake Check** workflow passed for the exact commit.
-3. Run **Full NixOS System Build (manual)** against that same `main` commit.
-   The run must complete successfully for the exact commit that will be tagged.
-4. Review the version suggested by git-cliff; do not accept it blindly.
+1. Merge the intended stable code into `main`.
+2. Confirm that **Nix Flake Check** passed for the exact commit to be released.
+3. Confirm that a successful **Full NixOS System Build (manual)** exists on
+   that commit or an ancestor of it.
+4. If the full-system build is from an ancestor, the release workflow verifies
+   that every later changed path is release-only metadata:
+   `.git-cliff.toml`, `RELEASING.md`, `README.md`, or
+   `.github/workflows/release.yml`. Any later change to NixOS, VM, installer,
+   hooks, scripts, or other source paths blocks publication and requires a new
+   full-system build.
+5. Review the release version and changelog before publishing.
 
-The full-system build is a separate, manually dispatched workflow on purpose.
-A successful evaluation-only CI run is not a substitute for building the full
-NixOS system and the selected RT-Bore-LTO kernel. A release still does not claim
-that every machine has passed a physical VFIO/VM lifecycle test.
+This is intentional: documentation and release automation do not alter the
+NixOS system derivation, but a successful evaluation-only CI run is not a
+substitute for building the full NixOS system and selected RT-Bore-LTO kernel.
+A release still does not claim that every machine has passed a physical
+GPU/VFIO/VM lifecycle test.
 
-## Calculate and publish a version
+## Publish a release
+
+Open **Actions → Release → Run workflow**, select the `main` branch, and enter
+a stable semantic version such as `v1.4.0`. The workflow validates the version,
+checks the CI/build prerequisites, generates the notes, creates and pushes an
+annotated tag, builds the canonical source ZIP, creates its SHA-256 manifest,
+and publishes the GitHub Release.
+
+Alternatively, a maintainer can create and push the annotated tag locally:
+
+```bash
+VERSION="v1.4.0"  # replace with the reviewed release version
+git status --short
+git tag -a "$VERSION" -m "Release $VERSION"
+git push origin "$VERSION"
+```
+
+The tag must point to a commit reachable from `main`. The same checks run for
+both the manual workflow and a pushed version tag.
+
+## Version calculation
 
 Install/run git-cliff without adding it to the NixOS system:
 
@@ -26,38 +52,22 @@ Install/run git-cliff without adding it to the NixOS system:
 nix run nixpkgs#git-cliff -- --config .git-cliff.toml --bumped-version
 ```
 
-Review the printed SemVer value. Then create and push an annotated tag for the
-commit whose CI and full-system build both passed:
-
-```bash
-VERSION="$(nix run nixpkgs#git-cliff -- --config .git-cliff.toml --bumped-version)"
-git status --short
-git tag -a "$VERSION" -m "Release $VERSION"
-git push origin "$VERSION"
-```
-
-The tag must point to a commit reachable from `main`. The release workflow
-checks that the normal CI and manual full-system build both succeeded for that
-exact commit on `main`; it stops rather than publishing when either result is
-missing or unsuccessful.
+The historical Turkish changelog ends at `1.3.8`, but that historical entry is
+not a Git tag. The current workflow's first-release notes therefore come from
+the curated `CHANGELOG.md` `[Unreleased]` section instead of treating the
+entire repository history as one release. The first release version is entered
+explicitly in the workflow. Once a version tag exists, git-cliff generates
+subsequent notes from commits since the previous matching tag.
 
 ## What the release workflow publishes
 
-When a valid `vMAJOR.MINOR.PATCH` tag is pushed, GitHub Actions:
+- git-cliff release notes (curated `[Unreleased]` notes for the first release);
+- a canonical source ZIP from `scripts/package-source-zip.sh`, excluding
+  `.git/` and preserving tracked executable modes;
+- a SHA-256 checksum file;
+- a GitHub Release with the ZIP, checksum, and notes.
 
-- generates release notes with git-cliff;
-- builds and validates the canonical source ZIP using
-  `scripts/package-source-zip.sh` (no `.git/` directory; tracked executable
-  modes retained);
-- creates a SHA-256 checksum file;
-- publishes a GitHub Release with the source ZIP, checksum, and generated notes.
-
-The existing hand-maintained `CHANGELOG.md` is not overwritten by automation.
-For the first tagged release, because this repository's historical `1.3.8`
-entry is not itself a Git tag, the workflow uses the curated
-`CHANGELOG.md` `[Unreleased]` section rather than dumping the entire Git
-history. After a first version tag exists, git-cliff generates notes from the
-commits since the previous matching version tag.
+The automation never overwrites the hand-maintained `CHANGELOG.md`.
 
 ## Version rules
 
@@ -69,4 +79,4 @@ commits since the previous matching version tag.
 
 The parser includes an `Other Changes` group so non-Conventional commits are
 not silently omitted from release notes. Prefer Conventional Commit messages
-for future commits to keep both grouping and version suggestions predictable.
+for future commits to keep grouping and version suggestions predictable.
