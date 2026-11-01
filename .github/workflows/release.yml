@@ -28,7 +28,7 @@ jobs:
         run: |
           set -Eeuo pipefail
 
-          if [[ ! "$GITHUB_REF_NAME" =~ ^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$ ]]; then
+          if [[ ! "$GITHUB_REF_NAME" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
             echo "::error::Only stable vMAJOR.MINOR.PATCH tags are accepted."
             exit 1
           fi
@@ -85,7 +85,7 @@ jobs:
 
           previous_tag="$(
             git tag --merged "$GITHUB_SHA" --list |
-              grep -E '^v?[0-9]+\\.[0-9]+\\.[0-9]+$' |
+              grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+$' |
               grep -Fvx "$GITHUB_REF_NAME" || true
           )"
 
@@ -96,7 +96,7 @@ jobs:
           import sys
 
           source = Path("CHANGELOG.md").read_text(encoding="utf-8")
-          match = re.search(r"(?m)^## \\[Unreleased\\]\\s*\\n", source)
+          match = re.search(r"(?m)^## \[Unreleased\]\s*\n", source)
           if match is None:
               raise SystemExit("CHANGELOG.md has no ## [Unreleased] section.")
 
@@ -108,7 +108,7 @@ jobs:
           if not body:
               raise SystemExit("The curated [Unreleased] section is empty.")
 
-          Path(sys.argv[1]).write_text(body + "\\n", encoding="utf-8")
+          Path(sys.argv[1]).write_text(body + "\n", encoding="utf-8")
           PY
             echo "  first release: using curated CHANGELOG.md [Unreleased] notes"
           fi
