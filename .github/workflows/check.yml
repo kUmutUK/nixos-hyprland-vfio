@@ -232,7 +232,7 @@ jobs:
         working-directory: nixos
         run: |
           if ! git diff --quiet -- flake.lock; then
-            printf '%s\n' '::error::flake.lock changed during CI; lock file is not canonical. Run `nix flake lock` and commit the result.'
+            printf '%s\n' "::error::flake.lock changed during CI; lock file is not canonical. Run nix flake lock and commit the result."
             git --no-pager diff -- flake.lock
             exit 1
           fi

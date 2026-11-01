@@ -7,7 +7,7 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 ### Release workflow and audit follow-up — 2026-11-01
 - Repaired `.github/workflows/release.yml`: closed the stable-semver filter, removed the stray fragment and duplicate publication steps, and kept one release pipeline.
 - Added pinned `actionlint` validation of every workflow to normal CI so malformed workflow YAML and common GitHub Actions expression/configuration errors fail the standard check.
-- Fixed two ShellCheck findings exposed by the new workflow lint gate: documented the intentional single-quoted nested Bash script and changed the `flake.lock` error message to print literal backticks safely rather than interpreting them as command substitutions.
+- Fixed two ShellCheck findings exposed by the new workflow lint gate: documented the intentional single-quoted nested Bash script and removed shell-sensitive backticks from the `flake.lock` error message so it is printed as plain text without triggering command-substitution checks.
 - Aligned README release prerequisites with `RELEASING.md`: normal CI is required for the exact tagged commit; the full-system build may be on an ancestor only when all later changed paths are explicitly allowlisted release/documentation/CI metadata.
 - Updated the release allowlist and its documentation together, added the omitted VM XML structure test to `CONTRIBUTING.md`, expanded documentation-integrity regressions, and completed the README repository map.
 - Rechecked the 2026-11-01 uploaded ZIP: its `.git/` directory and missing ZIP Unix-mode metadata are properties of that uploaded checkout archive, not the tracked source packager. The literal `$Format:%H# Changelog

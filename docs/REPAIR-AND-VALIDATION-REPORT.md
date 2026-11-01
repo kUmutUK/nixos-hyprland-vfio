@@ -536,3 +536,8 @@ No changes were made to `vm-xml/win10.xml`, active NixOS settings, kernel select
 **Scope preserved:** no changes were made to NixOS options, `flake.lock`, kernel inputs, VFIO hook behavior, PCI/USB identities, VM XML, Low Latency Layer / Reflex defaults, LSFG-VK configuration, or the desktop theme.
 
 **Validation boundary:** local YAML parsing, Bash syntax checks for every embedded workflow `run` block, and the documentation-integrity regression passed in the preparation environment. The pinned `actionlint` invocation could not be executed locally because the environment could not resolve `proxy.golang.org`. The first GitHub Actions run downloaded and executed it, then stopped on two ShellCheck findings in `check.yml`; the follow-up changes document and fix those findings. Nix evaluation/full-system build and physical libvirt/QEMU/GPU lifecycle testing remain separate gates; this report does not claim to have independently reproduced them.
+
+
+## ShellCheck follow-up — 2026-11-01
+
+The first actionlint run reported `SC2016` on the intentional single-quoted nested Bash program and `SC2006` on backticks in a double-quoted `echo` message. The next run confirmed the narrowly scoped `SC2016` directive fixed the nested-quote warning and the `SC2006` warning was gone. It also reported `SC2016` for the literal backticks moved into a single-quoted `printf` argument. Those backticks have now been removed from the message text; the error condition and failure behavior are unchanged. The next GitHub Actions run must verify the final lint result.
