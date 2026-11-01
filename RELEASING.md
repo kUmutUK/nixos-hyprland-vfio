@@ -13,7 +13,7 @@ manual-dispatch input; ordinary pushes and pull requests never publish a release
 4. If the full-system build is from an ancestor, the release workflow verifies
    that every later changed path is explicitly allowlisted as release,
    documentation, or CI metadata: `.git-cliff.toml`, `RELEASING.md`, `README.md`,
-   `CONTRIBUTING.md`, `CHANGELOG.md`, `docs/REPAIR-AND-VALIDATION-REPORT.md`,
+   `DEGISIKLIK_GECMISI.md`, `CONTRIBUTING.md`, `CHANGELOG.md`, `docs/REPAIR-AND-VALIDATION-REPORT.md`,
    `scripts/test-documentation-integrity.py`, `.github/workflows/check.yml`, or
    `.github/workflows/release.yml`. Any later change to NixOS, VM, installer,
    runtime hooks, or other system-affecting source paths blocks publication and

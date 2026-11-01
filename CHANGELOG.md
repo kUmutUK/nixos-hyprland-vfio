@@ -15,6 +15,7 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 - Refreshed current verification records with normal CI run #1078 for `da159dd` and successful full-system build #5 for `3afc40d`. The subsequent source diff is limited to the release/documentation/CI paths permitted by the ancestor-build release policy; no system derivation inputs changed.
 - Independently measured the 1 November ad-hoc ZIP and confirmed it is noncanonical (.git metadata, absent ZIP Unix-mode metadata, and an unexpanded worktree revision placeholder). Independently verified the matching CI artifact and its SHA-256 manifest instead; the canonical packager itself remains unchanged.
 - Follow-up commit `272f434e` passed normal CI run #1080, including the documentation-integrity regression, actionlint, Nix evaluation, LSFG-VK v2 package build, ShellCheck, Statix, and Deadnix. Its canonical source artifact was downloaded and independently verified (65 files, no `.git/`, matching manifest, nine executable entries at `0755`).
+- Added the root `DEGISIKLIK_GECMISI.md` current-state index to the full-build ancestor release allowlist, and pinned the matching `RELEASING.md` explanation and documentation-integrity regression. This keeps index-only documentation updates from blocking a release while system-affecting paths remain gated by a fresh full build.
 
 ### Tenth audit follow-up — 2026-10-30
 - Repaired the malformed ninth-audit entry, which had accidentally pasted the changelog heading into the middle of a source-ZIP sentence.
