@@ -1,0 +1,138 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Validate stable SemVer tag and main ancestry
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          if [[ ! "$GITHUB_REF_NAME" =~ ^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$ ]]; then
+            echo "::error::Only stable vMAJOR.MINOR.PATCH tags are accepted."
+            exit 1
+          fi
+
+          test "$(git rev-list -n 1 "$GITHUB_REF_NAME")" = "$GITHUB_SHA"
+          git fetch --no-tags origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::The release tag must point to a commit reachable from main."
+            exit 1
+          fi
+
+      - name: Require successful CI and full-system build for this exact commit
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+
+          for workflow in check.yml full-system-build.yml; do
+            runs="$(gh run list \
+              --workflow "$workflow" \
+              --commit "$GITHUB_SHA" \
+              --json headSha,headBranch,status,conclusion \
+              --limit 100)"
+
+            if ! jq -e --arg sha "$GITHUB_SHA" '
+              any(.[]; .headSha == $sha
+                and .headBranch == "main"
+                and .status == "completed"
+                and .conclusion == "success")
+            ' <<< "$runs" >/dev/null; then
+              echo "::error::No successful $workflow run exists for $GITHUB_SHA on main."
+              echo "Run the required workflow against this exact commit before publishing the tag."
+              exit 1
+            fi
+            echo "  $workflow passed for $GITHUB_SHA"
+          done
+
+      - name: Generate release notes with git-cliff
+        uses: orhun/git-cliff-action@a9a95522b26fe6403f7bb24031f21fb573d0f5ff # v4.9.1
+        with:
+          version: v2.14.2
+          config: .git-cliff.toml
+          args: --latest --strip header
+          github_token: ${{ github.token }}
+        env:
+          OUTPUT: ${{ runner.temp }}/release-notes.md
+          GITHUB_REPO: ${{ github.repository }}
+
+      - name: Use curated notes for the first tagged release
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          previous_tag="$(
+            git tag --merged "$GITHUB_SHA" --list |
+              grep -E '^v?[0-9]+\\.[0-9]+\\.[0-9]+$' |
+              grep -Fvx "$GITHUB_REF_NAME" || true
+          )"
+
+          if [[ -z "$previous_tag" ]]; then
+            python3 - "$RUNNER_TEMP/release-notes.md" <<'PY'
+          from pathlib import Path
+          import re
+          import sys
+
+          source = Path("CHANGELOG.md").read_text(encoding="utf-8")
+          match = re.search(r"(?m)^## \\[Unreleased\\]\\s*\\n", source)
+          if match is None:
+              raise SystemExit("CHANGELOG.md has no ## [Unreleased] section.")
+
+          body = source[match.end():]
+          next_section = re.search(r"(?m)^## ", body)
+          if next_section is not None:
+              body = body[:next_section.start()]
+          body = body.strip()
+          if not body:
+              raise SystemExit("The curated [Unreleased] section is empty.")
+
+          Path(sys.argv[1]).write_text(body + "\\n", encoding="utf-8")
+          PY
+            echo "  first release: using curated CHANGELOG.md [Unreleased] notes"
+          fi
+
+          test -s "$RUNNER_TEMP/release-notes.md"
+
+      - name: Build and validate canonical source ZIP
+        run: scripts/package-source-zip.sh "$RUNNER_TEMP/nixos-hyprland-vfio-source.zip"
+
+      - name: Create SHA-256 manifest
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cd "$RUNNER_TEMP"
+          sha256sum nixos-hyprland-vfio-source.zip > nixos-hyprland-vfio-source.zip.sha256
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+          gh release create "$GITHUB_REF_NAME" \
+            "$RUNNER_TEMP/nixos-hyprland-vfio-source.zip" \
+            "$RUNNER_TEMP/nixos-hyprland-vfio-source.zip.sha256" \
+            --verify-tag \
+            --title "NixOS · Hyprland · VFIO ${GITHUB_REF_NAME#v}" \
+            --notes-file "$RUNNER_TEMP/release-notes.md"
