@@ -10,7 +10,23 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 - Fixed ShellCheck findings exposed by the new workflow lint gate: documented the intentional single-quoted nested Bash script and removed shell-sensitive backticks from the flake.lock error message.
 - Aligned README release prerequisites with `RELEASING.md`: normal CI is required for the exact tagged commit; the full-system build may be on an ancestor only when all later changed paths are explicitly allowlisted release/documentation/CI metadata.
 - Updated the release allowlist and its documentation together, added the omitted VM XML structure test to `CONTRIBUTING.md`, expanded documentation-integrity regressions, and completed the README repository map.
-- Rechecked the 2026-11-01 uploaded ZIP: its `.git/` directory and missing ZIP Unix-mode metadata are properties of that uploaded checkout archive, not the tracked source packager. The literal `$Format:%H$` in a normal Git worktree is intentional because `.gitattributes` applies `export-subst`; `scripts/package-source-zip.sh` uses `git archive` to expand the exact revision and preserve executable modes. No NixOS, VFIO, VM XML, kernel, latency-layer, or desktop-theme settings were changed.
+- Rechecked the 2026-11-01 uploaded ZIP: its `.git/` directory and missing ZIP Unix-mode metadata are properties of that uploaded checkout archive, not the tracked source packager. The literal `$Format:%H# Changelog
+
+This file summarizes notable changes in English. The Turkish release-by-release history is retained in [`docs/archive/DEGISIKLIK_GECMISI.md`](docs/archive/DEGISIKLIK_GECMISI.md); a dated status preface was added there to flag settings later superseded.
+
+## [Unreleased]
+
+### Release workflow and audit follow-up — 2026-11-01
+- Repaired `.github/workflows/release.yml`: closed the stable-semver filter, removed the stray fragment and duplicate publication steps, and kept one release pipeline.
+- Added pinned `actionlint` validation of every workflow to normal CI so malformed workflow YAML and common GitHub Actions expression/configuration errors fail the standard check.
+- Fixed ShellCheck findings exposed by the new workflow lint gate: documented the intentional single-quoted nested Bash script and removed shell-sensitive backticks from the flake.lock error message.
+- Aligned README release prerequisites with `RELEASING.md`: normal CI is required for the exact tagged commit; the full-system build may be on an ancestor only when all later changed paths are explicitly allowlisted release/documentation/CI metadata.
+- Updated the release allowlist and its documentation together, added the omitted VM XML structure test to `CONTRIBUTING.md`, expanded documentation-integrity regressions, and completed the README repository map.
+ in a normal Git worktree is intentional because `.gitattributes` applies `export-subst`; `scripts/package-source-zip.sh` uses `git archive` to expand the exact revision and preserve executable modes. No NixOS, VFIO, VM XML, kernel, latency-layer, or desktop-theme settings were changed.
+- Refined git-cliff release-note selection: pushed version tags use `--current` to process commits belonging to the tag at HEAD; manual dispatch from `main` uses `--latest` to process commits since the previous tag. A documentation-integrity regression now pins this event-specific behavior.
+- Refreshed current verification records with normal CI run #1078 for `da159dd` and successful full-system build #5 for `3afc40d`. The subsequent source diff is limited to the release/documentation/CI paths permitted by the ancestor-build release policy; no system derivation inputs changed.
+- Independently measured the 1 November ad-hoc ZIP and confirmed it is noncanonical (.git metadata, absent ZIP Unix-mode metadata, and an unexpanded worktree revision placeholder). Independently verified the matching CI artifact and its SHA-256 manifest instead; the canonical packager itself remains unchanged.
+
 
 ### Tenth audit follow-up — 2026-10-30
 - Repaired the malformed ninth-audit entry, which had accidentally pasted the changelog heading into the middle of a source-ZIP sentence.

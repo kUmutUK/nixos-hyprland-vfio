@@ -46,6 +46,25 @@ require("grep -E '^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$' |" in 
 for step_name in ("Find previous version tag", "Generate release notes with git-cliff", "Use curated notes for the first tagged release", "Verify release notes", "Build and validate canonical source ZIP", "Create SHA-256 manifest", "Create annotated tag for manual releases", "Publish GitHub Release"):
     require(RELEASE_WORKFLOW.count(f"- name: {step_name}") == 1, f"release workflow must contain exactly one {step_name!r} step")
 require("actionlint" in CHECK_WORKFLOW and "go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7" in CHECK_WORKFLOW, "normal CI must run the pinned actionlint validator")
+require(
+    "args: ${{ github.event_name == 'push' && '--current --strip header' || '--latest --strip header' }}" in RELEASE_WORKFLOW,
+    "tag pushes must use git-cliff --current while manual main-branch releases use --latest",
+)
+require(
+    "Current source verification — 2026-11-01" in REPAIR
+    and "run #1078" in REPAIR
+    and "41130097586" in REPAIR
+    and "da159dd20866fb026ce8bc3843af4d4f932649f9" in REPAIR,
+    "repair report must identify the 2026-11-01 source/CI baseline",
+)
+require(
+    "Current configuration notes — 2026-11-01" in STATE_INDEX
+    and "run #1078" in STATE_INDEX
+    and "run #5" in STATE_INDEX
+    and "3afc40d5549dc8f817d213e0f1f681d9a6a312ca" in STATE_INDEX,
+    "current-state index must identify the latest verified CI and full-build baselines",
+)
+
 
 
 for heading in (
@@ -146,7 +165,7 @@ if readme_bash_loop is not None and contrib_bash_loop is not None:
     readme_bash_files = {line.strip().removesuffix("\\").strip() for line in readme_bash_loop.group("body").splitlines() if line.strip()}
     contributing_bash_files = set(contrib_bash_loop.group("body").split())
     require(readme_bash_files == contributing_bash_files, "README and CONTRIBUTING Bash syntax-check file lists have drifted")
-require("Current configuration notes — 2026-10-31" in STATE_INDEX, "current-state index date is stale")
+require("Current configuration notes — 2026-11-01" in STATE_INDEX, "current-state index date is stale")
 require("2026-10-28 entry" in STATE_INDEX and "2026-10-27 entry" not in STATE_INDEX, "root index must point to the 2026-10-28 CHANGELOG section")
 require("copy all five required Nix/flake files" in README and "four flake files" not in README, "README must describe the five-file migration accurately")
 require(

@@ -161,7 +161,8 @@ jobs:
         with:
           version: v2.14.2
           config: .git-cliff.toml
-          args: --latest --strip header
+          # A pushed tag is already at HEAD; manual dispatch runs on main before creating its new tag.
+          args: ${{ github.event_name == 'push' && '--current --strip header' || '--latest --strip header' }}
           github_token: ${{ github.token }}
         env:
           OUTPUT: ${{ runner.temp }}/release-notes.md
