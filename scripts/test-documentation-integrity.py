@@ -27,6 +27,7 @@ CONFIG = (ROOT / "nixos/configuration.nix").read_text(encoding="utf-8")
 FLAKE = (ROOT / "nixos/flake.nix").read_text(encoding="utf-8")
 HOME_NIX = (ROOT / "nixos/home.nix").read_text(encoding="utf-8")
 REPAIR = (ROOT / "docs/REPAIR-AND-VALIDATION-REPORT.md").read_text(encoding="utf-8")
+OPTISCALER_DOC = (ROOT / "docs/OPTISCALER.md").read_text(encoding="utf-8")
 SOURCE_REVISION_PLACEHOLDER = "$" + "Format:%H" + "$"
 errors = []
 
@@ -44,7 +45,7 @@ require("Normal CI must pass for the exact tagged commit" in README, "README mus
 require("successful full NixOS system build must exist for that commit or an ancestor" in README, "README must describe the permitted ancestor full-system build")
 require("scripts/test-vm-xml-structure.py" in CONTRIBUTING, "CONTRIBUTING validation commands must include the CI VM XML structure test")
 require("scripts/test-vm-xml-structure.py" in CHECK_WORKFLOW, "CI must continue to run the VM XML structure regression test")
-require("DEGISIKLIK_GECMISI.md" in RELEASING and "DEGISIKLIK_GECMISI.md" in RELEASE_WORKFLOW and "CONTRIBUTING.md" in RELEASING and "CHANGELOG.md" in RELEASING and "docs/REPAIR-AND-VALIDATION-REPORT.md" in RELEASING and ".github/workflows/check.yml" in RELEASING and "scripts/test-documentation-integrity.py" in RELEASING, "RELEASING allowlist documentation must match release.yml")
+require("DEGISIKLIK_GECMISI.md" in RELEASING and "DEGISIKLIK_GECMISI.md" in RELEASE_WORKFLOW and "CONTRIBUTING.md" in RELEASING and "CHANGELOG.md" in RELEASING and "docs/REPAIR-AND-VALIDATION-REPORT.md" in RELEASING and "docs/OPTISCALER.md" in RELEASING and "docs/OPTISCALER.md" in RELEASE_WORKFLOW and ".github/workflows/check.yml" in RELEASING and "scripts/test-documentation-integrity.py" in RELEASING, "RELEASING allowlist documentation must match release.yml")
 require("grep -E '^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$' |" in RELEASE_WORKFLOW, "release workflow must use a closed stable-semver regex when finding previous tags")
 require("stable `vMAJOR.MINOR.PATCH` form" in RELEASING and "numeric components must not contain" in RELEASING, "release guide must document the strict stable tag format")
 cliff_tag_match = re.search(r'(?m)^tag_pattern = "([^"]+)"$', CLIFF_CONFIG)
@@ -128,6 +129,7 @@ verification_metadata_paths = {
     "README.md",
     "RELEASING.md",
     "docs/REPAIR-AND-VALIDATION-REPORT.md",
+    "docs/OPTISCALER.md",
     "scripts/test-documentation-integrity.py",
 }
 for path in verification_metadata_paths:
@@ -328,6 +330,15 @@ require(package_start >= 0 and package_end > package_start, "system package list
 if package_start >= 0 and package_end > package_start:
     require("\n    steam\n" not in CONFIG[package_start:package_end], "Steam must not be redundantly listed in environment.systemPackages")
 require("programs.steam.enable = true;" in CONFIG, "Steam must remain enabled through programs.steam.enable")
+
+require("docs/OPTISCALER.md" in README and "OptiScaler" in README, "README must link the optional OptiScaler Proton guide")
+require("docs/OPTISCALER.md" in INSTALLATION, "installation guide must point to the optional per-game OptiScaler instructions")
+require("OptiScaler v0.9.4" in OPTISCALER_DOC and "575cb4df866116093df75af607e37fd70e10f5163e0f23fd5c804142e80ef0ad" in OPTISCALER_DOC, "OptiScaler guide must pin the official stable release asset and SHA-256")
+require('WINEDLLOVERRIDES="dxgi=n,b" %command%' in OPTISCALER_DOC, "OptiScaler guide must include the official Proton DXGI override")
+require("RX 6700 XT" in OPTISCALER_DOC and "RDNA2" in OPTISCALER_DOC and "FSR 4.1.1" in OPTISCALER_DOC, "OptiScaler guide must explain the target GPU FSR 4.1.1 limitation")
+require("anti-cheat" in OPTISCALER_DOC.lower() and "do not use" in OPTISCALER_DOC.lower(), "OptiScaler guide must retain the upstream anti-cheat warning")
+require("LSFG-VK" in OPTISCALER_DOC and "simultaneously" in OPTISCALER_DOC.lower(), "OptiScaler guide must warn against stacking frame-generation paths")
+require("OptiScaler" not in CONFIG and "OptiScaler" not in HOME_NIX, "OptiScaler must remain an optional game-local tool, not a global NixOS/Home Manager injection")
 
 if errors:
     for error in errors:

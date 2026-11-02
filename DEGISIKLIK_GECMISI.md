@@ -4,6 +4,7 @@ This legacy filename now contains an English current-state summary so older link
 
 ## Current configuration notes — 2026-11-02
 
+- Optional OptiScaler v0.9.4 support is documented for per-game Proton use in `docs/OPTISCALER.md`; it is not installed system-wide and does not change LSFG-VK or low-latency-layer defaults.
 - `CHANGELOG.md` is the maintained current change summary; its 2026-10-28 entry covers installer and VM diagnostic hardening, VFIO handoff, LSFG-VK profiles, registered-libvirt XML preservation, embedded-script extraction boundaries, and CI audit follow-ups.
 - The 602-line duplicate block in `scripts/test-installer-invariants.sh` has been removed. `CONTRIBUTING.md` has one valid validation block; the extractor now refuses to cross Nix attribute boundaries or accept unterminated embedded strings, with a focused regression test.
 - Sixth audit follow-up (2026-10-30): README now documents the Hyprland Lua minimum, RX 6700 XT ROCm override, host-memory recommendation, e1000e NIC and USB preflight; the WuWa geometry parser accepts monitor modes without a refresh-rate suffix. The sixth supplied ZIP measurements are recorded as unverified provenance, not as a canonical release.

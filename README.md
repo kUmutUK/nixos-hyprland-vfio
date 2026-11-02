@@ -16,6 +16,7 @@ The latest follow-up review of canonical ZIP provenance, deployed VM XML validat
 - [Preparing and starting the VM](#preparing-and-starting-the-vm)
 - [Keyboard shortcuts](#keyboard-shortcuts)
 - [Gaming stack](#gaming-stack)
+- [OptiScaler for Proton games](#optiscaler-for-proton-games)
 - [Important configuration decisions](#important-configuration-decisions)
 - [Known limitations](#known-limitations)
 - [Repository map](#repository-map)
@@ -636,6 +637,7 @@ The OCR script now checks that the model is available before beginning; it repor
 |---|---|
 | RADV | AMD Vulkan driver; `AMD_VULKAN_ICD=RADV`, `RADV_PERFTEST=gpl` |
 | `lsfg-vk` | Pinned LSFG-VK v2 Vulkan layer, Qt6 UI, and CLI; per-game v2 profiles are declared in Home Manager `conf.toml` |
+| `OptiScaler` | Optional game-local DLL proxy for supported Proton games; upscaler substitution and selected frame-generation paths. It is not installed or enabled system-wide; see [OptiScaler for Proton games](docs/OPTISCALER.md). |
 | `low_latency_layer` | Vulkan latency layer enabled globally using `LOW_LATENCY_LAYER=1`; keeps the default AMD Anti-Lag interface for native Linux games such as CS2. Compatible Proton games can opt into Reflex with `LOW_LATENCY_LAYER_REFLEX=1 %command%`; incompatible games can use `DISABLE_LOW_LATENCY_LAYER=1 %command%`. |
 | GameMode | Applies the configured game-time priority and performance settings |
 | Gamescope | Fullscreen and window rules for games |
@@ -643,6 +645,8 @@ The OCR script now checks that the model is available before beginning; it repor
 | Ananicy-cpp | Process priority rules |
 | power-profiles-daemon | Power profile / CPU governor management |
 | Steam / Proton / Wine | Windows game compatibility tools |
+
+**OptiScaler for Proton games:** OptiScaler is an optional per-game DLL proxy, not a NixOS system package or a Vulkan layer. Keep it confined to compatible offline/single-player games, and follow the [RX 6700 XT / RADV setup notes](docs/OPTISCALER.md). Do not enable its frame generation at the same time as LSFG-VK for one game.
 
 **Lossless Scaling prerequisite:** Install Lossless Scaling through Steam on the host. The `lsfg-vk` Nix package provides the Vulkan frame-generation layer; it does not bundle the Lossless Scaling application. If Lossless Scaling is installed in a non-default Steam library, configure the corresponding path in the LSFG-VK configuration.
 
@@ -707,6 +711,7 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 ├── .github/workflows/release.yml
 ├── docs/
 │   ├── REPAIR-AND-VALIDATION-REPORT.md
+│   ├── OPTISCALER.md                 # optional per-game Proton DLL proxy guide
 │   ├── AUDIT-2026-10-28-VM-XML-VFIO.md
 │   └── archive/                    # Historical audits and original Turkish release history
 ├── scripts/
