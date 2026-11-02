@@ -12,9 +12,10 @@ manual-dispatch input; ordinary pushes and pull requests never publish a release
    that commit or an ancestor of it.
 4. If the full-system build is from an ancestor, the release workflow verifies
    that every later changed path is explicitly allowlisted as release,
-   documentation, or CI metadata: `.git-cliff.toml`, `RELEASING.md`, `README.md`,
+   documentation, CI metadata, or a standalone opt-in helper not consumed by the NixOS flake: `.git-cliff.toml`, `RELEASING.md`, `README.md`,
    `DEGISIKLIK_GECMISI.md`, `INSTALLATION.md`, `CONTRIBUTING.md`, `CHANGELOG.md`, `docs/REPAIR-AND-VALIDATION-REPORT.md`,
-   `docs/OPTISCALER.md`,
+   `docs/OPTISCALER.md`, `docs/OPTISCALER-MANAGER.md`,
+   `scripts/optiscaler_manager.py`, `scripts/test-optiscaler-manager.py`,
    `scripts/test-documentation-integrity.py`, `.github/workflows/check.yml`, or
    `.github/workflows/release.yml`. Any later change to NixOS, VM, installer,
    runtime hooks, or other system-affecting source paths blocks publication and
