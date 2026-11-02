@@ -45,7 +45,7 @@ require("Normal CI must pass for the exact tagged commit" in README, "README mus
 require("successful full NixOS system build must exist for that commit or an ancestor" in README, "README must describe the permitted ancestor full-system build")
 require("scripts/test-vm-xml-structure.py" in CONTRIBUTING, "CONTRIBUTING validation commands must include the CI VM XML structure test")
 require("scripts/test-vm-xml-structure.py" in CHECK_WORKFLOW, "CI must continue to run the VM XML structure regression test")
-require("DEGISIKLIK_GECMISI.md" in RELEASING and "DEGISIKLIK_GECMISI.md" in RELEASE_WORKFLOW and "CONTRIBUTING.md" in RELEASING and "CHANGELOG.md" in RELEASING and "docs/REPAIR-AND-VALIDATION-REPORT.md" in RELEASING and "docs/OPTISCALER.md" in RELEASING and "docs/OPTISCALER.md" in RELEASE_WORKFLOW and ".github/workflows/check.yml" in RELEASING and "scripts/test-documentation-integrity.py" in RELEASING, "RELEASING allowlist documentation must match release.yml")
+require("DEGISIKLIK_GECMISI.md" in RELEASING and "DEGISIKLIK_GECMISI.md" in RELEASE_WORKFLOW and "CONTRIBUTING.md" in RELEASING and "CHANGELOG.md" in RELEASING and "docs/REPAIR-AND-VALIDATION-REPORT.md" in RELEASING and "docs/OPTISCALER.md" in RELEASING and "docs/OPTISCALER.md" in RELEASE_WORKFLOW and "INSTALLATION.md" in RELEASING and "INSTALLATION.md" in RELEASE_WORKFLOW and ".github/workflows/check.yml" in RELEASING and "scripts/test-documentation-integrity.py" in RELEASING, "RELEASING allowlist documentation must match release.yml")
 require("grep -E '^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$' |" in RELEASE_WORKFLOW, "release workflow must use a closed stable-semver regex when finding previous tags")
 require("stable `vMAJOR.MINOR.PATCH` form" in RELEASING and "numeric components must not contain" in RELEASING, "release guide must document the strict stable tag format")
 cliff_tag_match = re.search(r'(?m)^tag_pattern = "([^"]+)"$', CLIFF_CONFIG)
@@ -127,6 +127,7 @@ verification_metadata_paths = {
     "CONTRIBUTING.md",
     "DEGISIKLIK_GECMISI.md",
     "README.md",
+    "INSTALLATION.md",
     "RELEASING.md",
     "docs/REPAIR-AND-VALIDATION-REPORT.md",
     "docs/OPTISCALER.md",
