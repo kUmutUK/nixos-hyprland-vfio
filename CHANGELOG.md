@@ -4,6 +4,14 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+### Exact-HEAD verification refresh — 2026-11-02
+- Updated the current-state index and repair report from the superseded `b7950ee` / CI #1082 baseline to `ca6edf2a381118fbd81aeccb82287f234f44a257`, which passed normal CI #1084 and full NixOS system build #6 on the exact same commit.
+- Recorded the canonical CI source artifact metadata for run #1084 and clarified that the manually uploaded checkout ZIP is a noncanonical external archive; the tracked `scripts/package-source-zip.sh` implementation remains the supported packaging path.
+- Replaced fixed historical-SHA assertions in the documentation regression test with parsed cross-document baseline checks and a Git-history guard that permits only the documented release/documentation/CI allowlist after the last exact-HEAD verified baseline.
+- Made normal CI fetch full Git history so the documentation regression can check the baseline ancestor and changed-path allowlist instead of silently accepting a stale verification record.
+
+
+
 ### Release workflow and audit follow-up — 2026-11-01
 - Repaired `.github/workflows/release.yml`: closed the stable-semver filter, removed the stray fragment and duplicate publication steps, and kept one release pipeline.
 - Added pinned `actionlint` validation of every workflow to normal CI so malformed workflow YAML and common GitHub Actions expression/configuration errors fail the standard check.

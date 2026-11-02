@@ -2,7 +2,9 @@
 """Regression checks for current documentation, archive notes, and VM requirements."""
 
 from pathlib import Path
+import os
 import re
+import subprocess
 import sys
 import xml.etree.ElementTree as ET
 
@@ -81,20 +83,77 @@ require(
     "tag pushes must use git-cliff --current while manual main-branch releases use --latest",
 )
 require(
-    "Current source verification — 2026-11-01" in REPAIR
-    and "b7950eecfd3242dca882f4c69054aaef38827fd7" in REPAIR
-    and "run #1082" in REPAIR
-    and "41346239745" in REPAIR,
-    "repair report must identify the latest reviewed source/CI baseline",
+    "Current source verification — 2026-11-02" in REPAIR,
+    "repair report must label the current exact-HEAD verification section with its update date",
 )
-require(
-    "Current configuration notes — 2026-11-01" in STATE_INDEX
-    and "b7950eecfd3242dca882f4c69054aaef38827fd7" in STATE_INDEX
-    and "[#1082]" in STATE_INDEX
-    and "manual run #5" in STATE_INDEX
-    and "3afc40d5549dc8f817d213e0f1f681d9a6a312ca" in STATE_INDEX,
-    "current-state index must identify the latest verified CI and full-build baselines",
+repair_baseline_match = re.search(
+    r"(?m)^\*\*Verified source baseline:\*\* GitHub `main` at `([0-9a-f]{40})`",
+    REPAIR,
 )
+index_baseline_match = re.search(
+    r"(?m)^- Last completed exact-HEAD verification \(2026-11-02\): GitHub `main` is at `([0-9a-f]{40})`",
+    STATE_INDEX,
+)
+ci_run_match = re.search(
+    r"(?m)^- \*\*Normal CI:\*\* \[run #(\d+)\]\(https://github\.com/kUmutUK/nixos-hyprland-vfio/actions/runs/(\d+)\) completed successfully for that exact HEAD",
+    REPAIR,
+)
+build_run_match = re.search(
+    r"\[manual run #([0-9]+)\]\(https://github\.com/kUmutUK/nixos-hyprland-vfio/actions/runs/([0-9]+)\) completed successfully for the \*\*same exact commit\*\* `([0-9a-f]{40})`",
+    REPAIR,
+)
+require(repair_baseline_match is not None, "repair report must contain a full 40-character verified source SHA")
+require(index_baseline_match is not None, "current-state index must contain a full 40-character verified source SHA")
+if repair_baseline_match and index_baseline_match:
+    verified_sha = repair_baseline_match.group(1)
+    require(index_baseline_match.group(1) == verified_sha,
+            "current-state index and repair report must identify the same verified source commit")
+    require(build_run_match is not None and build_run_match.group(3) == verified_sha,
+            "normal CI and full-system build records must both cover the documented exact HEAD")
+require(ci_run_match is not None, "repair report must link a successful normal CI run for the exact documented HEAD")
+require(build_run_match is not None, "repair report must link a successful full-system build for the exact documented HEAD")
+require("[#" + (ci_run_match.group(1) if ci_run_match else "") + "]" in STATE_INDEX, "current-state index must reference the same normal-CI run as the repair report")
+require("run #" + (build_run_match.group(1) if build_run_match else "") in STATE_INDEX, "current-state index must reference the same full-system build as the repair report")
+
+# The baseline commit is intentionally the last commit for which exact-HEAD
+# normal CI and a full system build are documented. Later commits may update
+# release/documentation metadata, but must not silently change runtime inputs.
+verification_metadata_paths = {
+    ".git-cliff.toml",
+    ".github/workflows/check.yml",
+    ".github/workflows/release.yml",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "DEGISIKLIK_GECMISI.md",
+    "README.md",
+    "RELEASING.md",
+    "docs/REPAIR-AND-VALIDATION-REPORT.md",
+    "scripts/test-documentation-integrity.py",
+}
+for path in verification_metadata_paths:
+    require(path in RELEASE_WORKFLOW, f"release workflow must keep {path!r} in the full-build ancestor allowlist")
+require("fetch-depth: 0" in CHECK_WORKFLOW, "normal CI must fetch full Git history for the verified-baseline ancestry check")
+current_head = os.environ.get("GITHUB_SHA")
+if not current_head:
+    try:
+        head_result = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, check=True, capture_output=True, text=True)
+        current_head = head_result.stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        current_head = None
+require(current_head is not None and re.fullmatch(r"[0-9a-f]{40}", current_head or "") is not None,
+        "documentation verification test must be run from a Git checkout with a resolvable HEAD")
+if current_head and repair_baseline_match:
+    verified_sha = repair_baseline_match.group(1)
+    ancestor = subprocess.run(["git", "merge-base", "--is-ancestor", verified_sha, current_head], cwd=ROOT, capture_output=True, text=True)
+    require(ancestor.returncode == 0, "documented verified baseline must be an ancestor of the current checkout HEAD")
+    if ancestor.returncode == 0:
+        changed = subprocess.run(["git", "diff", "--name-only", verified_sha, current_head], cwd=ROOT, check=True, capture_output=True, text=True).stdout.splitlines()
+        unexpected = sorted(set(changed) - verification_metadata_paths)
+        require(
+            not unexpected,
+            "changes after the last exact-HEAD verification must stay within the release/documentation/CI allowlist; unexpected: "
+            + ", ".join(unexpected),
+        )
 
 
 
@@ -197,7 +256,7 @@ if readme_bash_loop is not None and contrib_bash_loop is not None:
     readme_bash_files = {line.strip().removesuffix("\\").strip() for line in readme_bash_loop.group("body").splitlines() if line.strip()}
     contributing_bash_files = set(contrib_bash_loop.group("body").split())
     require(readme_bash_files == contributing_bash_files, "README and CONTRIBUTING Bash syntax-check file lists have drifted")
-require("Current configuration notes — 2026-11-01" in STATE_INDEX, "current-state index date is stale")
+require("Current configuration notes — 2026-11-02" in STATE_INDEX, "current-state index date is stale")
 require("2026-10-28 entry" in STATE_INDEX and "2026-10-27 entry" not in STATE_INDEX, "root index must point to the 2026-10-28 CHANGELOG section")
 require("copy all five required Nix/flake files" in README and "four flake files" not in README, "README must describe the five-file migration accurately")
 require(
