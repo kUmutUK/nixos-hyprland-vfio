@@ -2,7 +2,7 @@
 
 OptiScaler is an **optional, per-game Windows DLL proxy** that can redirect supported game upscaler/Frame Generation interfaces to alternatives such as FSR or XeSS. It is not a NixOS package, a Vulkan layer, or a replacement for LSFG-VK. The files belong beside the selected game's Windows executable and are loaded by Proton for that game only.
 
-This guide targets the repository's AMD Radeon RX 6700 XT (Navi 22 / RDNA2), RADV, and Steam/Proton setup. It deliberately does not add a global DLL override, change Home Manager, or install OptiScaler automatically.
+This guide targets the repository's AMD Radeon RX 6700 XT (Navi 22 / RDNA2), RADV, and Steam/Proton setup. The optional [OptiScaler Manager](OPTISCALER-MANAGER.md) can check/download/verify a stable release and install it into one explicitly selected game executable directory after interactive confirmation. It is never run by NixOS or Home Manager, and it does not add a global DLL override or change system configuration. Manual installation steps remain below.
 
 ## Pinned upstream release
 
