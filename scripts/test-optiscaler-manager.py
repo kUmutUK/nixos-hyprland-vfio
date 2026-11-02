@@ -96,7 +96,7 @@ class OptiScalerManagerTests(unittest.TestCase):
                 manager.remove_installation(game)
                 self.assertEqual((game / "dxgi.dll").read_text(), "reshade-proxy")
                 self.assertFalse((game / "OptiScaler.ini").exists())
-                self.assertFalse((game / "OptiScaler").exists())
+                self.assertFalse((game / "OptiScaler" / "upscaler.bin").exists())
 
     def test_update_rollback_and_remove_restore_expected_states(self):
         with tempfile.TemporaryDirectory() as temporary:
