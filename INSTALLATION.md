@@ -550,7 +550,7 @@ sudo nixos-enter --root /mnt -c 'passwd root'
 
 **OBS Vulkan capture compatibility:** upstream `low_latency_layer` v0.2.0 also documents an incompatibility with the `obs_vkcapture` Vulkan layer. If capture or recording fails, test the game with `DISABLE_LOW_LATENCY_LAYER=1 %command%` and compare behavior.
 
-**Optional Proton upscaler integration:** OptiScaler is documented separately because it places a DLL proxy in an individual game's executable directory; it is not part of the NixOS install or Home Manager package set. See [`docs/OPTISCALER.md`](docs/OPTISCALER.md) for the pinned stable version, SHA-256 verification, per-game Proton override, and RX 6700 XT/RADV limitations.
+**Optional Proton upscaler integration:** OptiScaler remains outside the NixOS and Home Manager package sets. The repository provides a manually invoked helper for verified, user-confirmed installation into one selected offline/single-player game directory. See [`docs/OPTISCALER.md`](docs/OPTISCALER.md) and [`docs/OPTISCALER-MANAGER.md`](docs/OPTISCALER-MANAGER.md); nothing is installed or enabled during NixOS installation.
 
 ---
 
