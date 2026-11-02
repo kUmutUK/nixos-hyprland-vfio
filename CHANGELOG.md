@@ -5,7 +5,7 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 ## [Unreleased]
 
 ### Optional Proton gaming integration
-- Added a pinned OptiScaler v0.9.4 guide for per-game Proton use, including release-asset SHA-256 verification, the upstream DXGI DLL override, RDNA2/FSR 4.1.1 limitations, and anti-cheat cautions. No system-wide DLL injection, NixOS package, LSFG-VK profile, or latency-layer default was changed.
+- Added an optional OptiScaler Manager for stable-release checks, verified downloads, explicit per-game Proton installation, status, one-step rollback, and removal with original-file restoration. It fails closed without a trusted SHA-256, rejects unsafe archive paths, requires an offline/single-player confirmation, and never edits global Steam/NixOS settings. Added offline regression coverage; no NixOS derivation, LSFG-VK profile, or latency-layer default changed.
 
 ### Exact-HEAD verification refresh — 2026-11-02
 - Updated the current-state index and repair report from the superseded `b7950ee` / CI #1082 baseline to `ca6edf2a381118fbd81aeccb82287f234f44a257`, which passed normal CI #1084 and full NixOS system build #6 on the exact same commit.
