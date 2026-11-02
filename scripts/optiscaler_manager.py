@@ -356,6 +356,12 @@ def copy_atomic(source: Path, destination: Path) -> None:
         temporary.unlink(missing_ok=True)
 
 
+def snapshot_file(source: Path, destination: Path) -> None:
+    """Copy an existing file into the manager's backup area."""
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source, destination)
+
+
 def apply_payload(
     game_dir: Path,
     payload: dict[str, Path],
