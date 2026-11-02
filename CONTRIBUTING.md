@@ -27,6 +27,7 @@ nix develop ./nixos --command bash -euo pipefail -c '
   python3 -c "import xml.etree.ElementTree as ET; ET.parse(\"vm-xml/win10.xml\")"
   python3 scripts/test-lsfg-vk-v2.py
   python3 scripts/test-documentation-integrity.py
+  python3 scripts/test-optiscaler-manager.py
   python3 scripts/test-home-snapper-layout.py
   python3 scripts/test-vm-iso-paths.py
   bash scripts/test-manual-vm-bootstrap.sh
