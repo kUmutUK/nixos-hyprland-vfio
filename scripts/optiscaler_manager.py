@@ -14,6 +14,7 @@ import os
 from pathlib import Path, PurePosixPath, PureWindowsPath
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -226,14 +227,34 @@ def extract_payload(archive: Path, proxy_name: str) -> tuple[tempfile.TemporaryD
     if listing.returncode != 0:
         raise ManagerError("7-Zip could not list the verified OptiScaler archive.")
     members = []
+    listed_member_sizes = 0
+    listed_extracted_size = 0
     for line in listing.stdout.splitlines():
         if line.startswith("Path = "):
             name = line[7:]
             if name == str(archive):
                 continue
             members.append(validate_archive_member(name))
+        elif line.startswith("Size = "):
+            listed_member_sizes += 1
+            try:
+                member_size = int(line[7:])
+            except ValueError as exc:
+                raise ManagerError("7-Zip returned an invalid uncompressed member size.") from exc
+            if member_size < 0:
+                raise ManagerError("7-Zip returned a negative uncompressed member size.")
+            listed_extracted_size += member_size
+            if listed_extracted_size > MAX_EXTRACTED_BYTES:
+                raise ManagerError(
+                    "Archive advertises more than the 4 GiB extracted-size safety limit; "
+                    "refusing to extract it."
+                )
     if not members or len(members) > MAX_ARCHIVE_FILES:
         raise ManagerError("Archive file count is empty or exceeds the safety limit.")
+    if listed_member_sizes != len(members):
+        raise ManagerError(
+            "7-Zip listing omitted or duplicated uncompressed member sizes; refusing extraction."
+        )
 
     temporary = tempfile.TemporaryDirectory(prefix="optiscaler-manager-")
     stage = Path(temporary.name)
@@ -362,6 +383,34 @@ def snapshot_file(source: Path, destination: Path) -> None:
     shutil.copy2(source, destination)
 
 
+def require_regular_backup(path: Path, description: str) -> None:
+    """Fail before mutation if a required backup is absent or unsafe."""
+    try:
+        mode = path.lstat().st_mode
+    except OSError as exc:
+        raise ManagerError(f"{description} is unavailable: {path}: {exc}") from exc
+    if not stat.S_ISREG(mode):
+        raise ManagerError(f"{description} is not a regular file: {path}")
+
+
+def safe_backup_path(root: Path, relative: str) -> Path:
+    """Resolve a backup-relative path without following symlink components."""
+    safe = validate_archive_member(relative)
+    if root.is_symlink():
+        raise ManagerError(f"Refusing a symbolic-link backup directory: {root}")
+    candidate = root.joinpath(*safe.split("/"))
+    try:
+        candidate.relative_to(root)
+    except ValueError as exc:  # defensive; validate_archive_member already rejects '..'
+        raise ManagerError(f"Backup path escapes its root: {relative!r}") from exc
+    current = root
+    for part in safe.split("/"):
+        current = current / part
+        if current.is_symlink():
+            raise ManagerError(f"Refusing a symbolic link in the backup path: {current}")
+    return candidate
+
+
 def apply_payload(
     game_dir: Path,
     payload: dict[str, Path],
@@ -394,39 +443,60 @@ def apply_payload(
                 "use --replace-existing only when you intend to back it up."
             )
 
-    rollback_dir = backup_dir / "rollback"
-    if rollback_dir.exists():
-        shutil.rmtree(rollback_dir)
-    files_dir = rollback_dir / "files"
-    transaction = {"paths": {}}
-    for relative, target in targets.items():
-        exists = target.is_file()
-        transaction["paths"][relative] = exists
-        if exists:
-            snapshot_file(target, files_dir / relative)
-    if previous is not None:
-        atomic_json(rollback_dir / "previous-state.json", previous)
-    else:
-        rollback_dir.mkdir(parents=True, exist_ok=True)
-    atomic_json(rollback_dir / "transaction.json", transaction)
-
     backup_dir.mkdir(parents=True, exist_ok=True)
+    if backup_dir.is_symlink():
+        raise ManagerError(f"Refusing a symbolic-link backup directory: {backup_dir}")
+    rollback_dir = backup_dir / "rollback"
+    transaction = {"paths": {}}
+    # Build a complete rollback snapshot away from the active transaction. A failed
+    # snapshot must not erase the previous known-good rollback directory.
+    with tempfile.TemporaryDirectory(prefix=".rollback-stage-", dir=backup_dir) as staging:
+        staged_rollback = Path(staging)
+        files_dir = staged_rollback / "files"
+        for relative, target in targets.items():
+            exists = target.is_file()
+            transaction["paths"][relative] = exists
+            if exists:
+                snapshot_file(target, files_dir / relative)
+        if previous is not None:
+            atomic_json(staged_rollback / "previous-state.json", previous)
+        atomic_json(staged_rollback / "transaction.json", transaction)
+
+        old_rollback = backup_dir / ".rollback-previous"
+        if rollback_dir.is_symlink() or old_rollback.is_symlink():
+            raise ManagerError("Refusing a symbolic link in the rollback directory.")
+        for candidate in (rollback_dir, old_rollback):
+            if candidate.exists() and not candidate.is_dir():
+                raise ManagerError(f"Rollback path is not a directory: {candidate}")
+        if old_rollback.exists():
+            shutil.rmtree(old_rollback)
+        if rollback_dir.exists():
+            os.replace(rollback_dir, old_rollback)
+        try:
+            os.replace(staged_rollback, rollback_dir)
+        except Exception:
+            if old_rollback.exists() and not rollback_dir.exists():
+                os.replace(old_rollback, rollback_dir)
+            raise
+        if old_rollback.exists():
+            if previous is not None:
+                # The prior rollback snapshot has been superseded. Persist that fact
+                # before changing the game directory; if this write fails, put the
+                # previous rollback directory back and leave the game untouched.
+                previous = dict(previous)
+                previous["rollback_available"] = False
+                try:
+                    atomic_json(state_file, previous)
+                except Exception:
+                    shutil.rmtree(rollback_dir, ignore_errors=True)
+                    os.replace(old_rollback, rollback_dir)
+                    raise
+            shutil.rmtree(old_rollback, ignore_errors=True)
     for relative, target in targets.items():
         if target.is_file() and relative not in old_files and relative not in originals:
             backup_relative = f"originals/{relative}"
             snapshot_file(target, backup_dir / backup_relative)
             originals[relative] = backup_relative
-
-    try:
-        for relative in sorted(set(old_files) - set(payload)):
-            target = targets[relative]
-            if target.exists():
-                target.unlink()
-        for relative, source in payload.items():
-            copy_atomic(source, targets[relative])
-    except Exception:
-        restore_transaction(game_dir, rollback_dir, state_file)
-        raise
 
     state = {
         "schema": 1,
@@ -438,32 +508,91 @@ def apply_payload(
         "originals": originals,
         "rollback_available": True,
     }
-    atomic_json(state_file, state)
+    try:
+        for relative in sorted(set(old_files) - set(payload)):
+            target = targets[relative]
+            if target.exists():
+                target.unlink()
+        for relative, source in payload.items():
+            copy_atomic(source, targets[relative])
+        # The state record is part of the same transaction as the game files.
+        # A failed atomic write must not leave an untracked or partially updated install.
+        atomic_json(state_file, state)
+    except Exception as install_error:
+        try:
+            restore_transaction(game_dir, rollback_dir, state_file)
+        except Exception as rollback_error:
+            raise ManagerError(
+                "OptiScaler installation failed and automatic restoration was "
+                f"incomplete ({rollback_error}). Preserve {rollback_dir} and "
+                f"inspect {game_dir} before retrying; original error: {install_error}"
+            ) from rollback_error
+        raise
     return state
 
 
-def restore_transaction(game_dir: Path, rollback_dir: Path, state_file: Path) -> None:
+def restore_transaction(
+    game_dir: Path,
+    rollback_dir: Path,
+    state_file: Path,
+) -> None:
     transaction_file = rollback_dir / "transaction.json"
-    if not transaction_file.is_file():
-        raise ManagerError("No rollback transaction is available.")
-    transaction = json.loads(transaction_file.read_text(encoding="utf-8"))
+    if not transaction_file.is_file() or transaction_file.is_symlink():
+        raise ManagerError("No valid rollback transaction is available.")
+    try:
+        transaction = json.loads(transaction_file.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ManagerError(f"Could not read rollback transaction: {exc}") from exc
+    if not isinstance(transaction, dict) or not isinstance(transaction.get("paths"), dict):
+        raise ManagerError("Rollback transaction has an invalid paths map.")
+
     previous_file = rollback_dir / "previous-state.json"
-    previous = json.loads(previous_file.read_text(encoding="utf-8")) if previous_file.is_file() else None
+    if previous_file.exists() or previous_file.is_symlink():
+        if previous_file.is_symlink() or not previous_file.is_file():
+            raise ManagerError(f"Previous manager state is not a regular file: {previous_file}")
+        try:
+            previous = json.loads(previous_file.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ManagerError(f"Could not read previous manager state: {exc}") from exc
+        if not isinstance(previous, dict) or not isinstance(previous.get("files"), dict):
+            raise ManagerError("Previous manager state is invalid; refusing rollback.")
+    else:
+        previous = None
+
     current = load_state(state_file)
     current_files = current["files"] if current else {}
     paths = transaction["paths"]
+    if not isinstance(current_files, dict):
+        raise ManagerError("Current manager state has an invalid files map.")
 
+    # Validate every path and every needed backup before touching the game folder.
+    targets: dict[str, Path] = {}
+    backups: dict[str, Path] = {}
     for relative in set(paths) | set(current_files):
-        target = target_path(game_dir, relative)
-        if target.exists():
+        if relative not in paths:
+            raise ManagerError(
+                f"Rollback transaction does not contain a snapshot for managed file {relative!r}."
+            )
+        existed = paths[relative]
+        if not isinstance(existed, bool):
+            raise ManagerError(f"Rollback transaction has an invalid existence flag for {relative!r}.")
+        targets[relative] = target_path(game_dir, relative)
+        if existed:
+            saved = safe_backup_path(rollback_dir / "files", relative)
+            require_regular_backup(saved, "Rollback backup")
+            backups[relative] = saved
+
+    # Existing targets are replaced atomically from their snapshots; they are never
+    # unlinked first. Missing/corrupt backups therefore cannot destroy installed files.
+    for relative, target in targets.items():
+        if relative in backups:
+            copy_atomic(backups[relative], target)
+        elif target.exists():
             target.unlink()
-        if paths.get(relative):
-            saved = rollback_dir / "files" / relative
-            if not saved.is_file():
-                raise ManagerError(f"Rollback backup is missing: {saved}")
-            copy_atomic(saved, target)
 
     if previous is not None:
+        # The rollback transaction has just been consumed. The restored state is
+        # current again, so it no longer has a distinct one-step rollback target.
         previous["rollback_available"] = False
         atomic_json(state_file, previous)
     else:
@@ -478,27 +607,73 @@ def remove_installation(game_dir: Path) -> None:
     state = load_state(state_file)
     if state is None:
         raise ManagerError("OptiScaler is not managed in this game directory.")
-    for relative, expected_hash in state["files"].items():
+
+    managed_files = state["files"]
+    originals = state.get("originals", {})
+    if not isinstance(managed_files, dict) or not isinstance(originals, dict):
+        raise ManagerError("Manager state contains invalid managed/original file maps.")
+
+    root = backup_root(game_dir)
+    if root.is_symlink():
+        raise ManagerError(f"Refusing a symbolic-link backup directory: {root}")
+    targets: dict[str, Path] = {}
+    original_backups: dict[str, Path] = {}
+    for relative, expected_hash in managed_files.items():
         target = target_path(game_dir, relative)
+        targets[relative] = target
         if target.exists() and sha256_file(target) != expected_hash:
             raise ManagerError(
                 f"Managed file was modified; refusing to delete it: {target}. "
                 "Restore it manually or use rollback after reviewing the changes."
             )
-    for relative in state["files"]:
-        target = target_path(game_dir, relative)
-        if target.exists():
-            target.unlink()
-    root = backup_root(game_dir)
-    for relative, backup_relative in state.get("originals", {}).items():
-        target = target_path(game_dir, relative)
-        saved = root / backup_relative
-        if target.exists():
+
+    # Validate all original-file backups and their destinations before removing even
+    # one manager-owned file. Older versions performed this check after deletion.
+    for relative, backup_relative in originals.items():
+        target = targets.get(relative) or target_path(game_dir, relative)
+        if relative not in managed_files and target.exists():
             raise ManagerError(f"Cannot restore original because the destination exists: {target}")
-        if not saved.is_file():
-            raise ManagerError(f"Original-file backup is missing: {saved}")
-        copy_atomic(saved, target)
-    state_file.unlink(missing_ok=True)
+        saved = safe_backup_path(root, backup_relative)
+        require_regular_backup(saved, "Original-file backup")
+        original_backups[relative] = saved
+        targets[relative] = target
+
+    # Stage a snapshot of the current state so an I/O error during removal can be
+    # rolled back. The staging directory lives inside the backup root and is removed
+    # only after the state record has been safely deleted.
+    root.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix=".remove-transaction-", dir=root) as temporary:
+        snapshot_root = Path(temporary)
+        existed_before: dict[str, bool] = {}
+        for relative, target in targets.items():
+            existed_before[relative] = target.is_file()
+            if existed_before[relative]:
+                snapshot_file(target, snapshot_root / relative)
+
+        try:
+            for relative in managed_files:
+                if relative not in original_backups:
+                    target = targets[relative]
+                    if target.exists():
+                        target.unlink()
+            for relative, saved in original_backups.items():
+                copy_atomic(saved, targets[relative])
+            state_file.unlink()
+        except Exception as remove_error:
+            try:
+                for relative, target in targets.items():
+                    if existed_before[relative]:
+                        copy_atomic(snapshot_root / relative, target)
+                    elif target.exists():
+                        target.unlink()
+            except Exception as rollback_error:
+                raise ManagerError(
+                    "OptiScaler removal failed and automatic restoration was "
+                    f"incomplete ({rollback_error}). Preserve {root} and inspect "
+                    f"{game_dir}; original error: {remove_error}"
+                ) from rollback_error
+            raise
+
     shutil.rmtree(root, ignore_errors=True)
 
 

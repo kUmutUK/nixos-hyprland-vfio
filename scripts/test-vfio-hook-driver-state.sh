@@ -42,7 +42,7 @@ extract_function() {
 
 FUNCTIONS_FILE="$TMP_DIR/functions.sh"
 : > "$FUNCTIONS_FILE"
-for function_name in device_driver_name device_has_expected_host_driver device_bound_to_vfio restore_prepare_device save_service_state stop_saved_service restore_saved_services; do
+for function_name in device_driver_name device_has_expected_host_driver device_bound_to_vfio restore_prepare_device save_service_state stop_saved_service restore_saved_services restore_vfio_state; do
   function_text="$(extract_function "$function_name")"
   [[ "$function_text" == *"${function_name}()"* ]] || fail "could not extract $function_name from hook"
   printf '%s\n\n' "$function_text" >> "$FUNCTIONS_FILE"
@@ -267,5 +267,40 @@ started_count="${#MOCK_STARTED[@]}"
 save_service_state || fail 'could not capture all-inactive service state'
 restore_saved_services || fail 'all-inactive restoration reported failure'
 [[ "${#MOCK_STARTED[@]}" -eq "$started_count" ]] || fail 'a service was started despite all services being initially inactive'
+
+# Saved-state restore is a libvirt XML-filter operation: it must run the same
+# VFIO preparation as cold start and return the original XML byte-for-byte.
+PREPARE_CALLS=0
+MOCK_PREPARE_STATUS=0
+prepare_vfio() {
+  PREPARE_CALLS=$((PREPARE_CALLS + 1))
+  printf '%s\n' 'mock preparation diagnostic that must not enter XML stdout'
+  return "$MOCK_PREPARE_STATUS"
+}
+RESTORE_INPUT="$TMP_DIR/restore-domain.xml"
+RESTORE_OUTPUT="$TMP_DIR/restore-output.xml"
+printf '%s\n' '<domain><name>win10</name></domain>' > "$RESTORE_INPUT"
+restore_vfio_state < "$RESTORE_INPUT" > "$RESTORE_OUTPUT" \
+  || fail 'restore hook rejected a successful mocked VFIO preparation'
+cmp -s "$RESTORE_INPUT" "$RESTORE_OUTPUT" \
+  || fail 'restore hook did not return the input domain XML unchanged'
+[[ "$PREPARE_CALLS" -eq 1 ]] \
+  || fail 'saved-state restore did not invoke the VFIO prepare path'
+
+# If host preparation fails, restore must abort and emit no XML to libvirt.
+PREPARE_CALLS=0
+MOCK_PREPARE_STATUS=1
+: > "$RESTORE_OUTPUT"
+if restore_vfio_state < "$RESTORE_INPUT" > "$RESTORE_OUTPUT"; then
+  fail 'restore hook accepted a failed mocked VFIO preparation'
+fi
+[[ ! -s "$RESTORE_OUTPUT" ]] \
+  || fail 'restore hook emitted domain XML after VFIO preparation failed'
+[[ "$PREPARE_CALLS" -eq 1 ]] \
+  || fail 'restore failure did not invoke the VFIO prepare path exactly once'
+if ! grep -Fq 'if [ "$ACTION" = "restore" ]; then' "$HOOK" \
+  || ! grep -Fq 'restore_vfio_state || exit 1' "$HOOK"; then
+  fail 'the libvirt restore operation is not wired to the VFIO XML-filter handler'
+fi
 
 printf 'OK: VFIO driver-state and pre-VM service-state regression tests passed.\n'

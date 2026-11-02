@@ -146,6 +146,134 @@ class OptiScalerManagerTests(unittest.TestCase):
                 self.assertFalse((game / "dxgi.dll").exists())
                 self.assertFalse((game / "OptiScaler.ini").exists())
 
+
+    def test_missing_rollback_backup_is_refused_before_targets_are_changed(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            game = root / "Game"
+            game.mkdir()
+            (game / "game.exe").write_text("exe", encoding="utf-8")
+            with patch.object(manager, "state_root", lambda: root / "state"):
+                first = self.make_payload(root / "first", "1")
+                second = self.make_payload(root / "second", "2")
+                manager.apply_payload(game, first, "v1", "first.7z", "dxgi.dll", False)
+                manager.apply_payload(game, second, "v2", "second.7z", "dxgi.dll", False)
+                state_file = manager.game_state_file(game)
+                rollback_dir = manager.backup_root(game) / "rollback"
+                (rollback_dir / "files" / "dxgi.dll").unlink()
+
+                with self.assertRaisesRegex(manager.ManagerError, "Rollback backup is unavailable"):
+                    manager.restore_transaction(game, rollback_dir, state_file)
+
+                self.assertEqual((game / "dxgi.dll").read_text(), "proxy-2")
+                self.assertEqual((game / "OptiScaler.ini").read_text(), "config-2")
+                self.assertEqual(manager.load_state(state_file)["version"], "v2")
+
+    def test_missing_original_backup_is_refused_before_removal_mutates_game(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            game = root / "Game"
+            game.mkdir()
+            (game / "game.exe").write_text("exe", encoding="utf-8")
+            (game / "dxgi.dll").write_text("pre-existing-proxy", encoding="utf-8")
+            payload = self.make_payload(root / "payload", "1")
+            with patch.object(manager, "state_root", lambda: root / "state"):
+                manager.apply_payload(game, payload, "v1", "asset.7z", "dxgi.dll", True)
+                state_file = manager.game_state_file(game)
+                (manager.backup_root(game) / "originals" / "dxgi.dll").unlink()
+
+                with self.assertRaisesRegex(manager.ManagerError, "Original-file backup is unavailable"):
+                    manager.remove_installation(game)
+
+                self.assertEqual((game / "dxgi.dll").read_text(), "proxy-1")
+                self.assertEqual((game / "OptiScaler.ini").read_text(), "config-1")
+                self.assertTrue(state_file.is_file())
+
+    def test_state_write_failure_rolls_back_the_payload_and_original_files(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            game = root / "Game"
+            game.mkdir()
+            (game / "game.exe").write_text("exe", encoding="utf-8")
+            (game / "dxgi.dll").write_text("pre-existing-proxy", encoding="utf-8")
+            payload = self.make_payload(root / "payload", "1")
+            with patch.object(manager, "state_root", lambda: root / "state"):
+                state_file = manager.game_state_file(game)
+                original_atomic_json = manager.atomic_json
+
+                def fail_install_state(path, value):
+                    if path == state_file:
+                        raise OSError("simulated final state-file write failure")
+                    original_atomic_json(path, value)
+
+                with patch.object(manager, "atomic_json", side_effect=fail_install_state):
+                    with self.assertRaisesRegex(OSError, "simulated final state-file write failure"):
+                        manager.apply_payload(game, payload, "v1", "asset.7z", "dxgi.dll", True)
+
+                self.assertEqual((game / "dxgi.dll").read_text(), "pre-existing-proxy")
+                self.assertFalse((game / "OptiScaler.ini").exists())
+                self.assertFalse(state_file.exists())
+                self.assertFalse(manager.backup_root(game).exists())
+
+    def test_remove_io_failure_restores_the_pre_remove_game_state(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            game = root / "Game"
+            game.mkdir()
+            (game / "game.exe").write_text("exe", encoding="utf-8")
+            (game / "dxgi.dll").write_text("original-dxgi", encoding="utf-8")
+            (game / "OptiScaler.ini").write_text("original-ini", encoding="utf-8")
+            payload = self.make_payload(root / "payload", "1")
+            with patch.object(manager, "state_root", lambda: root / "state"):
+                manager.apply_payload(game, payload, "v1", "asset.7z", "dxgi.dll", True)
+                state_file = manager.game_state_file(game)
+                original_copy_atomic = manager.copy_atomic
+
+                def fail_second_original(source, destination):
+                    if source.name == "OptiScaler.ini" and "originals" in source.parts:
+                        raise OSError("simulated restore-copy failure")
+                    return original_copy_atomic(source, destination)
+
+                with patch.object(manager, "copy_atomic", side_effect=fail_second_original):
+                    with self.assertRaisesRegex(OSError, "simulated restore-copy failure"):
+                        manager.remove_installation(game)
+
+                self.assertEqual((game / "dxgi.dll").read_text(), "proxy-1")
+                self.assertEqual((game / "OptiScaler.ini").read_text(), "config-1")
+                self.assertTrue(state_file.is_file())
+
+    def test_archive_without_complete_size_metadata_is_refused_before_extraction(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            archive = Path(temporary) / "release.7z"
+            archive.write_bytes(b"archive")
+            listing = (
+                f"Path = {archive}\nType = 7z\n----------\n"
+                "Path = payload.dll\nPacked Size = 1\n"
+            )
+            completed = type("Completed", (), {"returncode": 0, "stdout": listing, "stderr": ""})()
+            with patch.object(manager, "find_7z", return_value="7z"), \
+                 patch.object(manager.subprocess, "run", return_value=completed), \
+                 patch.object(manager.tempfile, "TemporaryDirectory") as temporary_directory:
+                with self.assertRaisesRegex(manager.ManagerError, "omitted or duplicated uncompressed member sizes"):
+                    manager.extract_payload(archive, "dxgi.dll")
+                temporary_directory.assert_not_called()
+
+    def test_archive_size_limit_is_checked_before_extraction(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            archive = Path(temporary) / "release.7z"
+            archive.write_bytes(b"archive")
+            listing = (
+                f"Path = {archive}\nType = 7z\n----------\n"
+                "Path = payload.dll\nSize = 4294967297\nPacked Size = 1\n"
+            )
+            completed = type("Completed", (), {"returncode": 0, "stdout": listing, "stderr": ""})()
+            with patch.object(manager, "find_7z", return_value="7z"), \
+                 patch.object(manager.subprocess, "run", return_value=completed), \
+                 patch.object(manager.tempfile, "TemporaryDirectory") as temporary_directory:
+                with self.assertRaisesRegex(manager.ManagerError, "4 GiB extracted-size safety limit"):
+                    manager.extract_payload(archive, "dxgi.dll")
+                temporary_directory.assert_not_called()
+
     def test_game_directory_must_contain_an_executable(self):
         with tempfile.TemporaryDirectory() as temporary:
             folder = Path(temporary)

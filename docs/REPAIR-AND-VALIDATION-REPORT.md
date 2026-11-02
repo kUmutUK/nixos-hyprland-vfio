@@ -1,6 +1,14 @@
-# Repair and validation report — updated 2026-11-02
+# Repair and validation report — updated 2026-11-03
 
 > **Delivery-scope note:** This report is part of the tracked source tree. The dated “patch-only ZIP” notes below are historical. For a canonical full-source ZIP, use `scripts/package-source-zip.sh` or the CI-uploaded `nixos-hyprland-vfio-source` artifact for the exact commit. The helper verifies tracked-file completeness, excludes `.git/`, preserves executable bits, and makes the finished artifact readable from shared output directories.
+
+## Follow-up remediation — 2026-11-03 (verification pending)
+
+- The uploaded checkout ZIP was not modified. The tracked source package helper and its successful CI artifact remain the canonical distribution route; `.git/`, lost ZIP permission metadata, and a literal `SOURCE_REVISION` from a manually exported checkout are archive-generation properties, not defects in the tracked source packager.
+- **OptiScaler transaction safety:** rollback now validates its transaction map and all required backup files before touching game files; it replaces a current file atomically rather than unlinking first. Removal preflights all original backups and destinations before mutation, takes a temporary snapshot of the managed game-folder state, and restores that snapshot on a later I/O error. The final install/update state JSON is now inside the same rollback-protected transaction. A new rollback snapshot is staged separately and swapped into place only after it is complete.
+- **OptiScaler extraction bound:** the manager now totals the uncompressed `Size` values from the 7-Zip listing and rejects archives exceeding 4 GiB before starting extraction; the existing post-extraction actual-size check remains as a second guard.
+- **VFIO saved-state restore:** libvirt invokes the QEMU hook with `restore begin` and passes domain XML through standard input/output. The hook now buffers that XML, runs the same VFIO/desktop preparation used for `prepare begin`, and writes the unchanged XML only after preparation succeeds. A failed preparation aborts restore without emitting a partial XML document. The mocked filter test covers unchanged output and fail-closed behavior.
+- **Verification boundary:** the changes above are source edits and local regression results only until the new GitHub Actions run completes. The last known full-system build #6 was for `ca6edf2a381118fbd81aeccb82287f234f44a257` and predates the QEMU hook update. A new manual full-system build and a real saved-state restore on the target host are still required; the release workflow deliberately does not allow `nixos/hooks/qemu` as a post-build metadata-only change.
 
 ## Current source verification — 2026-11-02
 

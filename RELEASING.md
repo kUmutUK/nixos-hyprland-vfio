@@ -16,7 +16,7 @@ manual-dispatch input; ordinary pushes and pull requests never publish a release
    `DEGISIKLIK_GECMISI.md`, `INSTALLATION.md`, `CONTRIBUTING.md`, `CHANGELOG.md`, `docs/REPAIR-AND-VALIDATION-REPORT.md`,
    `docs/OPTISCALER.md`, `docs/OPTISCALER-MANAGER.md`,
    `scripts/optiscaler_manager.py`, `scripts/test-optiscaler-manager.py`,
-   `scripts/test-documentation-integrity.py`, `.github/workflows/check.yml`, or
+   `scripts/test-vfio-hook-driver-state.sh`, `scripts/test-documentation-integrity.py`, `.github/workflows/check.yml`, or
    `.github/workflows/release.yml`. Any later change to NixOS, VM, installer,
    runtime hooks, or other system-affecting source paths blocks publication and
    requires a new full-system build.

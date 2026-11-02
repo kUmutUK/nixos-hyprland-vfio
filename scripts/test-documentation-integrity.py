@@ -18,6 +18,8 @@ RELEASING = (ROOT / "RELEASING.md").read_text(encoding="utf-8")
 RELEASE_WORKFLOW = (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
 CLIFF_CONFIG = (ROOT / ".git-cliff.toml").read_text(encoding="utf-8")
 CHECK_WORKFLOW = (ROOT / ".github/workflows/check.yml").read_text(encoding="utf-8")
+VFIO_HOOK = (ROOT / "nixos/hooks/qemu").read_text(encoding="utf-8")
+VFIO_HOOK_TEST = (ROOT / "scripts/test-vfio-hook-driver-state.sh").read_text(encoding="utf-8")
 AUDIT = (ROOT / "docs/AUDIT-2026-10-28-VM-XML-VFIO.md").read_text(encoding="utf-8")
 ARCHIVE = (ROOT / "docs/archive/DEGISIKLIK_GECMISI.md").read_text(encoding="utf-8")
 ARCHIVE_INDEX = (ROOT / "docs/archive/README.md").read_text(encoding="utf-8")
@@ -137,6 +139,7 @@ verification_metadata_paths = {
     "docs/OPTISCALER-MANAGER.md",
     "scripts/optiscaler_manager.py",
     "scripts/test-optiscaler-manager.py",
+    "scripts/test-vfio-hook-driver-state.sh",
     "scripts/test-documentation-integrity.py",
 }
 for path in verification_metadata_paths:
@@ -152,17 +155,39 @@ if not current_head:
 require(current_head is not None and re.fullmatch(r"[0-9a-f]{40}", current_head or "") is not None,
         "documentation verification test must be run from a Git checkout with a resolvable HEAD")
 if current_head and repair_baseline_match:
-    verified_sha = repair_baseline_match.group(1)
-    ancestor = subprocess.run(["git", "merge-base", "--is-ancestor", verified_sha, current_head], cwd=ROOT, capture_output=True, text=True)
-    require(ancestor.returncode == 0, "documented verified baseline must be an ancestor of the current checkout HEAD")
-    if ancestor.returncode == 0:
-        changed = subprocess.run(["git", "diff", "--name-only", verified_sha, current_head], cwd=ROOT, check=True, capture_output=True, text=True).stdout.splitlines()
-        unexpected = sorted(set(changed) - verification_metadata_paths)
-        require(
-            not unexpected,
-            "changes after the last exact-HEAD verification must stay within the release/documentation/CI allowlist; unexpected: "
-            + ", ".join(unexpected),
-        )
+    shallow_result = subprocess.run(
+        ["git", "rev-parse", "--is-shallow-repository"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+    if shallow_result.returncode == 0 and shallow_result.stdout.strip() == "true":
+        # Source ZIPs intentionally do not carry full Git history. Static checks still
+        # run, while the ancestry/diff check is deferred to normal CI (fetch-depth: 0).
+        print("SKIP: verified-baseline ancestry/diff check requires full Git history; normal CI fetches it.")
+    else:
+        verified_sha = repair_baseline_match.group(1)
+        ancestor = subprocess.run(["git", "merge-base", "--is-ancestor", verified_sha, current_head], cwd=ROOT, capture_output=True, text=True)
+        require(ancestor.returncode == 0, "documented verified baseline must be an ancestor of the current checkout HEAD")
+        if ancestor.returncode == 0:
+            changed = subprocess.run(["git", "diff", "--name-only", verified_sha, current_head], cwd=ROOT, check=True, capture_output=True, text=True).stdout.splitlines()
+            full_build_pending_paths = {"nixos/hooks/qemu"}
+            unexpected = sorted(set(changed) - verification_metadata_paths - full_build_pending_paths)
+            require(
+                not unexpected,
+                "changes after the last exact-HEAD verification must stay within the release/documentation/CI allowlist or an explicitly documented pending-build path; unexpected: "
+                + ", ".join(unexpected),
+            )
+            pending = sorted(set(changed) & full_build_pending_paths)
+            if pending:
+                require(
+                    "A new manual full-system build and a real saved-state restore on the target host are still required" in REPAIR,
+                    "a QEMU hook change after the last full-system build must be documented as pending full-build/target-host verification",
+                )
+                require(
+                    "nixos/hooks/qemu" not in RELEASING and "nixos/hooks/qemu" not in RELEASE_WORKFLOW,
+                    "the changed QEMU hook must remain outside the ancestor-build release allowlist until a new full-system build passes",
+                )
 
 
 
@@ -265,7 +290,7 @@ if readme_bash_loop is not None and contrib_bash_loop is not None:
     readme_bash_files = {line.strip().removesuffix("\\").strip() for line in readme_bash_loop.group("body").splitlines() if line.strip()}
     contributing_bash_files = set(contrib_bash_loop.group("body").split())
     require(readme_bash_files == contributing_bash_files, "README and CONTRIBUTING Bash syntax-check file lists have drifted")
-require("Current configuration notes — 2026-11-02" in STATE_INDEX, "current-state index date is stale")
+require("Current configuration notes — 2026-11-03" in STATE_INDEX, "current-state index date is stale")
 require("2026-10-28 entry" in STATE_INDEX and "2026-10-27 entry" not in STATE_INDEX, "root index must point to the 2026-10-28 CHANGELOG section")
 require("copy all five required Nix/flake files" in README and "four flake files" not in README, "README must describe the five-file migration accurately")
 require(
@@ -351,12 +376,34 @@ require("docs/OPTISCALER-MANAGER.md" in INSTALLATION and "scripts/optiscaler_man
 require("scripts/optiscaler_manager.py" in OPTISCALER_MANAGER_DOC and "scripts/test-optiscaler-manager.py" in OPTISCALER_MANAGER_DOC, "manager guide must document the helper and its offline test")
 require("releases/latest" in OPTISCALER_MANAGER_SCRIPT and "prerelease" in OPTISCALER_MANAGER_SCRIPT.lower() and "draft" in OPTISCALER_MANAGER_SCRIPT.lower(), "OptiScaler manager must query only the official stable-release endpoint")
 require("PINNED_SHA256" in OPTISCALER_MANAGER_SCRIPT and "575cb4df866116093df75af607e37fd70e10f5163e0f23fd5c804142e80ef0ad" in OPTISCALER_MANAGER_SCRIPT, "OptiScaler manager must retain the pinned v0.9.4 SHA-256")
-require("validate_archive_member" in OPTISCALER_MANAGER_SCRIPT and "MAX_EXTRACTED_BYTES" in OPTISCALER_MANAGER_SCRIPT, "OptiScaler manager must validate archive paths and enforce extraction limits")
+require("validate_archive_member" in OPTISCALER_MANAGER_SCRIPT and "MAX_EXTRACTED_BYTES" in OPTISCALER_MANAGER_SCRIPT and "listed_extracted_size" in OPTISCALER_MANAGER_SCRIPT, "OptiScaler manager must validate archive paths and preflight the extracted-size limit")
+require("require_regular_backup" in OPTISCALER_MANAGER_SCRIPT and "safe_backup_path" in OPTISCALER_MANAGER_SCRIPT, "OptiScaler manager must validate backup files and reject unsafe backup paths before mutation")
+require("automatic restoration was " in OPTISCALER_MANAGER_SCRIPT and "incomplete" in OPTISCALER_MANAGER_SCRIPT and "remove-transaction-" in OPTISCALER_MANAGER_SCRIPT, "OptiScaler manager must retain recovery data and roll back partial install/removal failures")
 require("--confirm-offline-singleplayer" in OPTISCALER_MANAGER_SCRIPT and "Type INSTALL" in OPTISCALER_MANAGER_SCRIPT, "OptiScaler manager must require explicit offline-game and interactive install confirmation")
 require("--replace-existing" in OPTISCALER_MANAGER_SCRIPT and "rollback_available" in OPTISCALER_MANAGER_SCRIPT and "remove_installation" in OPTISCALER_MANAGER_SCRIPT, "OptiScaler manager must require explicit conflict replacement and provide rollback/removal")
 require("scripts/test-optiscaler-manager.py" in CONTRIBUTING and "scripts/test-optiscaler-manager.py" in CHECK_WORKFLOW, "OptiScaler manager regression tests must be documented and run in normal CI")
-require("test_update_rollback_and_remove_restore_expected_states" in OPTISCALER_MANAGER_TEST and "test_archive_paths_reject_traversal_and_absolute_paths" in OPTISCALER_MANAGER_TEST and "test_first_install_rollback_restores_original_and_cleans_backups" in OPTISCALER_MANAGER_TEST, "OptiScaler manager tests must cover rollback, unsafe archive paths, and first-install restoration")
+require('if [ "$ACTION" = "restore" ]; then' in VFIO_HOOK and 'restore_vfio_state || exit 1' in VFIO_HOOK and "prepare_vfio" in VFIO_HOOK, "VFIO hook must route libvirt saved-state restore through the same preparation path")
+require("RESTORE_XML_FILE" in VFIO_HOOK and 'cat -- "$RESTORE_XML_FILE"' in VFIO_HOOK, "VFIO restore hook must buffer and return the original XML only after successful preparation")
+require('restore_vfio_state < "$RESTORE_INPUT" > "$RESTORE_OUTPUT"' in VFIO_HOOK_TEST and 'cmp -s "$RESTORE_INPUT" "$RESTORE_OUTPUT"' in VFIO_HOOK_TEST and "MOCK_PREPARE_STATUS=1" in VFIO_HOOK_TEST, "VFIO hook regression must test unchanged restore XML and fail-closed behavior")
+require("scripts/test-vfio-hook-driver-state.sh" in CHECK_WORKFLOW and "scripts/test-vfio-hook-driver-state.sh" in CONTRIBUTING, "VFIO restore regression test must remain part of CI and contributor validation")
+require("restore begin" in README and "restore begin" in STATE_INDEX and "target host" in README, "README/current-state index must describe saved-state restore support and its hardware validation boundary")
+require(
+    all(name in OPTISCALER_MANAGER_TEST for name in (
+        "test_update_rollback_and_remove_restore_expected_states",
+        "test_archive_paths_reject_traversal_and_absolute_paths",
+        "test_first_install_rollback_restores_original_and_cleans_backups",
+        "test_missing_rollback_backup_is_refused_before_targets_are_changed",
+        "test_missing_original_backup_is_refused_before_removal_mutates_game",
+        "test_state_write_failure_rolls_back_the_payload_and_original_files",
+        "test_remove_io_failure_restores_the_pre_remove_game_state",
+        "test_archive_size_limit_is_checked_before_extraction",
+        "test_archive_without_complete_size_metadata_is_refused_before_extraction",
+    )),
+    "OptiScaler manager tests must cover missing backups, state-write rollback, partial removal recovery, and pre-extraction limits",
+)
+require("preflights every required backup" in OPTISCALER_MANAGER_DOC and "before extraction" in OPTISCALER_MANAGER_DOC, "OptiScaler manager guide must document backup preflight and pre-extraction size checks")
 require("docs/OPTISCALER-MANAGER.md" in RELEASING and "scripts/optiscaler_manager.py" in RELEASING and "scripts/test-optiscaler-manager.py" in RELEASING, "release guide must allowlist the standalone OptiScaler helper and its tests")
+require("scripts/test-vfio-hook-driver-state.sh" in RELEASING and "scripts/test-vfio-hook-driver-state.sh" in RELEASE_WORKFLOW, "release ancestor allowlist must include the hook test script but not the system-affecting hook itself")
 
 if errors:
     for error in errors:

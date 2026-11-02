@@ -8,12 +8,14 @@ It is not a NixOS package, Home Manager module, Vulkan layer, or background serv
 
 - Checks only the official OptiScaler GitHub stable-release endpoint. Nightly, rolling, draft, and prerelease builds are ignored.
 - Verifies the downloaded archive's byte count and SHA-256 before extraction. v0.9.4 uses the digest pinned in `docs/OPTISCALER.md`. A later release must expose a SHA-256 digest through GitHub release metadata or the operator must provide a checksum independently verified from the official release page. If neither is available, the helper fails closed.
-- Lists archive entries before extraction, rejects absolute/traversal paths and symbolic links, and enforces archive/extraction size limits.
+- Lists archive entries before extraction, rejects absolute/traversal paths and symbolic links, and requires a complete per-member uncompressed-size listing and checks the advertised total against the 4 GiB limit before extraction. It also checks the actual extracted size afterward.
 - Requires the exact game executable directory (`--game-dir`) and verifies that it contains a Windows `.exe`.
 - Requires an explicit offline/single-player confirmation and the interactive word `INSTALL`. Do not use OptiScaler with online or anti-cheat-protected games; upstream warns this can trigger anti-cheat and account penalties.
 - Refuses file conflicts by default. `--replace-existing` is an explicit opt-in and backs up pre-existing files before replacing them.
 - Records managed-file hashes and backs up original files under `$XDG_STATE_HOME/optiscaler-manager` (default `~/.local/state/optiscaler-manager`). Modified managed files are not silently deleted during rollback or removal.
-- `rollback` restores the game-folder state from immediately before the most recent install/update. `remove` removes manager-owned files and restores files backed up before the first manager installation.
+- `rollback` preflights every required backup and validates the complete rollback manifest before changing the game folder; existing targets are replaced atomically rather than deleted before their backup is read. A missing or unsafe backup therefore aborts without first deleting the installed file.
+- `remove` validates every original-file backup and destination before mutating any managed file. It snapshots the pre-remove state and attempts to restore it if a later removal/restore operation fails.
+- The final manager-state JSON write is part of the install/update transaction. If it fails after payload copying, the helper runs the rollback path instead of leaving untracked files in the game directory. If automatic restoration itself fails, the error names the backup directory to preserve for manual recovery.
 
 The helper copies the payload found beside `OptiScaler.dll` in the verified archive and renames that DLL to the selected proxy name. The default is `dxgi.dll`; use another supported proxy only when the game's upstream compatibility notes require it.
 
@@ -84,4 +86,4 @@ Run the offline regression tests:
 python3 scripts/test-optiscaler-manager.py
 ```
 
-The tests cover digest selection and fail-closed behavior, unsafe archive paths, explicit replacement, backup restoration, update rollback, and executable-directory validation. They do not download or execute OptiScaler.
+The tests cover digest selection and fail-closed behavior, unsafe archive paths, pre-extraction size limits and incomplete listing rejection, explicit replacement, missing-backup preflight, state-write rollback, partial-remove recovery, update rollback, and executable-directory validation. They do not download or execute OptiScaler.

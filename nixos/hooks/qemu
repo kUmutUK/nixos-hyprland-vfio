@@ -488,15 +488,16 @@ if [ "$GUEST" != "$TARGET_VM" ]; then
   exit 0
 fi
 
-if [ "$ACTION" = "prepare" ]; then
-  log "Starting VM $GUEST; stopping the desktop..."
-  # If TERM/INT/HUP arrives during prepare, attempt to restore the host driver and desktop.
+prepare_vfio() {
+  log "Starting VM $GUEST; stopping the desktop and preparing VFIO..."
+  # If TERM/INT/HUP arrives during preparation, attempt to restore the host driver and desktop.
   # SIGKILL, power loss, and kernel lockups cannot be trapped.
   handle_prepare_signal() {
     local signal_name="$1" exit_status="$2"
     trap - HUP INT TERM
-    log "ERROR: Received SIG${signal_name} during prepare; running rollback."
+    log "ERROR: Received SIG${signal_name} during VFIO preparation; running rollback."
     rollback_prepare
+    [ -z "${RESTORE_XML_FILE:-}" ] || rm -f -- "$RESTORE_XML_FILE"
     exit "$exit_status"
   }
   trap 'handle_prepare_signal HUP 129' HUP
@@ -507,42 +508,82 @@ if [ "$ACTION" = "prepare" ]; then
   # host stuck.
   if ! stop_hyprland; then
     rollback_prepare
-    exit 1
+    return 1
   fi
   PREPARE_DISPLAY_DETACH_ATTEMPTED=1
   echo 0 > /sys/class/vtconsole/vtcon0/bind 2>/dev/null || true
   echo 0 > /sys/class/vtconsole/vtcon1/bind 2>/dev/null || true
   echo efi-framebuffer.0 > /sys/bus/platform/drivers/efi-framebuffer/unbind 2>/dev/null || true
   sleep 1
-  # Before resetting the GPU (C2, 2026-10-09), detach its current PCI driver, especially
-  # `amdgpu`. `bind_vfio()` then binds `vfio-pci`; the state flag lets rollback restore the
-  # host driver if a signal arrives mid-operation.
+  # Before resetting the GPU, detach its current PCI driver, especially `amdgpu`.
+  # The touched-state flag lets rollback restore the host driver if preparation fails.
   PREPARE_GPU_PCI_TOUCHED=1
   if [ -e "/sys/bus/pci/devices/$GPU_PCI/driver" ]; then
     if ! echo "$GPU_PCI" > "/sys/bus/pci/devices/$GPU_PCI/driver/unbind" 2>/dev/null; then
       log "ERROR: Could not unbind $GPU_PCI from its current driver; skipping reset."
       rollback_prepare
-      exit 1
+      return 1
     fi
   fi
   if [ -e "/sys/bus/pci/devices/$GPU_PCI/driver" ]; then
     log "ERROR: $GPU_PCI is still bound to a driver after unbind; skipping reset."
     rollback_prepare
-    exit 1
+    return 1
   fi
   vendor_reset "$GPU_PCI"
   bind_vfio "$GPU_PCI" "$GPU_AUDIO"
 
-  # Previously, `bind_vfio()` errors were ignored and the hook logged success even when
-  # the host desktop had stopped but VFIO binding failed. Verify the actual driver now;
-  # otherwise roll back and return exit 1 so libvirt does not start the guest.
+  # Verify the actual driver now; otherwise roll back and abort the guest operation.
   if ! device_bound_to_vfio "$GPU_PCI" || ! device_bound_to_vfio "$GPU_AUDIO"; then
     rollback_prepare
-    exit 1
+    return 1
   fi
   log "GPU is bound to vfio-pci."
   # Preparation succeeded; disable the rollback traps.
   trap - HUP INT TERM
+  return 0
+}
+
+# A libvirt saved-state restore uses the `restore begin` filter hook rather than
+# the ordinary `prepare begin` event. Libvirt passes domain XML on stdin and expects
+# unchanged XML on stdout. Buffer it so a failed GPU handoff aborts restore without
+# emitting a partial document; on success, return the input byte-for-byte.
+restore_vfio_state() {
+  RESTORE_XML_FILE="$(mktemp "${TMPDIR:-/tmp}/vfio-restore-xml.XXXXXX")" || {
+    log "ERROR: Could not create a temporary buffer for the libvirt restore XML."
+    return 1
+  }
+  if ! cat > "$RESTORE_XML_FILE"; then
+    log "ERROR: Could not read the domain XML supplied to the libvirt restore hook."
+    rm -f -- "$RESTORE_XML_FILE"
+    RESTORE_XML_FILE=""
+    return 1
+  fi
+  # The restore hook is an XML filter: preparation diagnostics must never be
+  # mixed into its stdout document stream.
+  if ! prepare_vfio >/dev/null; then
+    rm -f -- "$RESTORE_XML_FILE"
+    RESTORE_XML_FILE=""
+    return 1
+  fi
+  if ! cat -- "$RESTORE_XML_FILE"; then
+    log "ERROR: Could not return the unchanged domain XML to libvirt after VFIO preparation."
+    rm -f -- "$RESTORE_XML_FILE"
+    RESTORE_XML_FILE=""
+    return 1
+  fi
+  rm -f -- "$RESTORE_XML_FILE"
+  RESTORE_XML_FILE=""
+  return 0
+}
+
+RESTORE_XML_FILE=""
+if [ "$ACTION" = "prepare" ]; then
+  prepare_vfio || exit 1
+fi
+
+if [ "$ACTION" = "restore" ]; then
+  restore_vfio_state || exit 1
 fi
 
 if [ "$ACTION" = "release" ]; then
