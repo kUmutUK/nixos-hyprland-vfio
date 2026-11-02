@@ -357,6 +357,17 @@ require("scripts/test-optiscaler-manager.py" in CONTRIBUTING and "scripts/test-o
 require("test_update_rollback_and_remove_restore_expected_states" in OPTISCALER_MANAGER_TEST and "test_archive_paths_reject_traversal_and_absolute_paths" in OPTISCALER_MANAGER_TEST, "OptiScaler manager tests must cover rollback and unsafe archive-path rejection")
 
 require("OptiScaler" not in CONFIG and "OptiScaler" not in HOME_NIX, "OptiScaler must remain an optional game-local tool, not a global NixOS/Home Manager injection")
+require("docs/OPTISCALER-MANAGER.md" in README and "OptiScaler Manager" in README, "README must link the optional OptiScaler manager guide")
+require("docs/OPTISCALER-MANAGER.md" in INSTALLATION and "scripts/optiscaler_manager.py" in OPTISCALER_MANAGER_DOC, "installation and manager guides must point to the optional helper")
+require("scripts/optiscaler_manager.py" in OPTISCALER_MANAGER_DOC and "scripts/test-optiscaler-manager.py" in OPTISCALER_MANAGER_DOC, "manager guide must document the helper and its offline test")
+require("releases/latest" in OPTISCALER_MANAGER_SCRIPT and "prerelease" in OPTISCALER_MANAGER_SCRIPT.lower() and "draft" in OPTISCALER_MANAGER_SCRIPT.lower(), "OptiScaler manager must query only the official stable-release endpoint")
+require("PINNED_SHA256" in OPTISCALER_MANAGER_SCRIPT and "575cb4df866116093df75af607e37fd70e10f5163e0f23fd5c804142e80ef0ad" in OPTISCALER_MANAGER_SCRIPT, "OptiScaler manager must retain the pinned v0.9.4 SHA-256")
+require("validate_archive_member" in OPTISCALER_MANAGER_SCRIPT and "MAX_EXTRACTED_BYTES" in OPTISCALER_MANAGER_SCRIPT, "OptiScaler manager must validate archive paths and enforce extraction limits")
+require("--confirm-offline-singleplayer" in OPTISCALER_MANAGER_SCRIPT and "Type INSTALL" in OPTISCALER_MANAGER_SCRIPT, "OptiScaler manager must require explicit offline-game and interactive install confirmation")
+require("--replace-existing" in OPTISCALER_MANAGER_SCRIPT and "rollback_available" in OPTISCALER_MANAGER_SCRIPT and "remove_installation" in OPTISCALER_MANAGER_SCRIPT, "OptiScaler manager must require explicit conflict replacement and provide rollback/removal")
+require("scripts/test-optiscaler-manager.py" in CONTRIBUTING and "scripts/test-optiscaler-manager.py" in CHECK_WORKFLOW, "OptiScaler manager regression tests must be documented and run in normal CI")
+require("test_update_rollback_and_remove_restore_expected_states" in OPTISCALER_MANAGER_TEST and "test_archive_paths_reject_traversal_and_absolute_paths" in OPTISCALER_MANAGER_TEST and "test_first_install_rollback_restores_original_and_cleans_backups" in OPTISCALER_MANAGER_TEST, "OptiScaler manager tests must cover rollback, unsafe archive paths, and first-install restoration")
+require("docs/OPTISCALER-MANAGER.md" in RELEASING and "scripts/optiscaler_manager.py" in RELEASING and "scripts/test-optiscaler-manager.py" in RELEASING, "release guide must allowlist the standalone OptiScaler helper and its tests")
 
 if errors:
     for error in errors:
