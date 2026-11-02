@@ -646,6 +646,8 @@ The OCR script now checks that the model is available before beginning; it repor
 | power-profiles-daemon | Power profile / CPU governor management |
 | Steam / Proton / Wine | Windows game compatibility tools |
 
+### OptiScaler for Proton games
+
 **OptiScaler for Proton games:** OptiScaler is an optional per-game DLL proxy, not a NixOS system package or a Vulkan layer. Keep it confined to compatible offline/single-player games, and follow the [RX 6700 XT / RADV setup notes](docs/OPTISCALER.md). Do not enable its frame generation at the same time as LSFG-VK for one game.
 
 **Lossless Scaling prerequisite:** Install Lossless Scaling through Steam on the host. The `lsfg-vk` Nix package provides the Vulkan frame-generation layer; it does not bundle the Lossless Scaling application. If Lossless Scaling is installed in a non-default Steam library, configure the corresponding path in the LSFG-VK configuration.
