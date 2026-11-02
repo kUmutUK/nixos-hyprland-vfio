@@ -98,6 +98,27 @@ class OptiScalerManagerTests(unittest.TestCase):
                 self.assertFalse((game / "OptiScaler.ini").exists())
                 self.assertFalse((game / "OptiScaler" / "upscaler.bin").exists())
 
+    def test_first_install_rollback_restores_original_and_cleans_backups(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            game = root / "Game"
+            game.mkdir()
+            (game / "game.exe").write_text("exe", encoding="utf-8")
+            (game / "dxgi.dll").write_text("pre-existing-proxy", encoding="utf-8")
+            payload = self.make_payload(root / "payload", "1")
+            with patch.object(manager, "state_root", lambda: root / "state"):
+                manager.apply_payload(game, payload, "v0.9.4", "asset.7z", "dxgi.dll", True)
+                state_file = manager.game_state_file(game)
+                backups = manager.backup_root(game)
+                self.assertTrue(state_file.exists())
+                self.assertTrue(backups.exists())
+
+                manager.restore_transaction(game, backups / "rollback", state_file)
+                self.assertFalse(state_file.exists())
+                self.assertFalse(backups.exists())
+                self.assertEqual((game / "dxgi.dll").read_text(), "pre-existing-proxy")
+                self.assertFalse((game / "OptiScaler.ini").exists())
+
     def test_update_rollback_and_remove_restore_expected_states(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
