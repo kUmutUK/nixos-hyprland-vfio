@@ -165,6 +165,9 @@ def download_release(sha256_override: str | None = None) -> tuple[Path, str, str
                     raise ManagerError("Download exceeded the 2 GiB safety limit.")
                 digest_builder.update(block)
                 output.write(block)
+    except ManagerError:
+        partial.unlink(missing_ok=True)
+        raise
     except (HTTPError, URLError, TimeoutError, OSError) as exc:
         partial.unlink(missing_ok=True)
         raise ManagerError(f"OptiScaler download failed: {exc}") from exc
@@ -459,6 +462,8 @@ def restore_transaction(game_dir: Path, rollback_dir: Path, state_file: Path) ->
         atomic_json(state_file, previous)
     else:
         state_file.unlink(missing_ok=True)
+        shutil.rmtree(rollback_dir.parent, ignore_errors=True)
+        return
     shutil.rmtree(rollback_dir, ignore_errors=True)
 
 
