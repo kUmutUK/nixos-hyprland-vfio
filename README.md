@@ -637,7 +637,7 @@ The OCR script now checks that the model is available before beginning; it repor
 |---|---|
 | RADV | AMD Vulkan driver; `AMD_VULKAN_ICD=RADV`, `RADV_PERFTEST=gpl` |
 | `lsfg-vk` | Pinned LSFG-VK v2 Vulkan layer, Qt6 UI, and CLI; per-game v2 profiles are declared in Home Manager `conf.toml` |
-| `OptiScaler` | Optional game-local DLL proxy for supported Proton games; upscaler substitution and selected frame-generation paths. It is not installed or enabled system-wide; see [OptiScaler for Proton games](docs/OPTISCALER.md). |
+| `OptiScaler` | Optional per-game DLL proxy for supported Proton games. The manually invoked manager checks and verifies stable releases, then installs only into a selected game directory; see the [setup guide](docs/OPTISCALER.md) and [manager guide](docs/OPTISCALER-MANAGER.md). No system-wide install or global DLL override. |
 | `low_latency_layer` | Vulkan latency layer enabled globally using `LOW_LATENCY_LAYER=1`; keeps the default AMD Anti-Lag interface for native Linux games such as CS2. Compatible Proton games can opt into Reflex with `LOW_LATENCY_LAYER_REFLEX=1 %command%`; incompatible games can use `DISABLE_LOW_LATENCY_LAYER=1 %command%`. |
 | GameMode | Applies the configured game-time priority and performance settings |
 | Gamescope | Fullscreen and window rules for games |
@@ -648,7 +648,7 @@ The OCR script now checks that the model is available before beginning; it repor
 
 ### OptiScaler for Proton games
 
-**OptiScaler for Proton games:** OptiScaler is an optional per-game DLL proxy, not a NixOS system package or a Vulkan layer. Keep it confined to compatible offline/single-player games, and follow the [RX 6700 XT / RADV setup notes](docs/OPTISCALER.md). Do not enable its frame generation at the same time as LSFG-VK for one game.
+**OptiScaler for Proton games:** OptiScaler is an optional per-game DLL proxy, not a NixOS system package or a Vulkan layer. Keep it confined to compatible offline/single-player games, and follow the [RX 6700 XT / RADV setup notes](docs/OPTISCALER.md). The optional [OptiScaler Manager](docs/OPTISCALER-MANAGER.md) can check/download/verify stable releases and perform a user-confirmed install in one selected game folder; it does not run in the background, change Steam settings, or modify NixOS/Home Manager. Do not enable its frame generation at the same time as LSFG-VK for one game.
 
 **Lossless Scaling prerequisite:** Install Lossless Scaling through Steam on the host. The `lsfg-vk` Nix package provides the Vulkan frame-generation layer; it does not bundle the Lossless Scaling application. If Lossless Scaling is installed in a non-default Steam library, configure the corresponding path in the LSFG-VK configuration.
 
