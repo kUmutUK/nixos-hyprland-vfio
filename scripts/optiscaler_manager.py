@@ -585,6 +585,7 @@ def apply_payload(
     originals = dict(previous.get("originals", {})) if previous else {}
     new_hashes = {relative: sha256_file(source) for relative, source in payload.items()}
     changed_paths = set(old_files) | set(payload)
+    obsolete_files = set(old_files) - set(payload)
 
     targets = {}
     for relative in sorted(changed_paths):
@@ -605,6 +606,19 @@ def apply_payload(
     backup_dir.mkdir(parents=True, exist_ok=True)
     if backup_dir.is_symlink():
         raise ManagerError(f"Refusing a symbolic-link backup directory: {backup_dir}")
+
+    # A newer release may stop shipping a file that an earlier release managed.
+    # Restore its pre-install original instead of deleting that original along with
+    # the obsolete managed file. Validate every required backup before rotating the
+    # previous one-step rollback or mutating the game directory.
+    obsolete_original_backups: dict[str, Path] = {}
+    for relative in sorted(obsolete_files):
+        backup_relative = originals.get(relative)
+        if backup_relative is not None:
+            backup_path = safe_backup_path(backup_dir, backup_relative)
+            require_regular_backup(backup_path, "Original-file backup")
+            obsolete_original_backups[relative] = backup_path
+
     rollback_dir = backup_dir / "rollback"
     transaction = {"paths": {}}
     # Build a complete rollback snapshot away from the active transaction. A failed
@@ -666,6 +680,14 @@ def apply_payload(
                     os.replace(old_rollback, rollback_dir)
                     raise
             shutil.rmtree(old_rollback, ignore_errors=True)
+    # Keep original-file mappings only while the corresponding path remains
+    # managed by the new payload. Obsolete paths are restored below and become
+    # ordinary game files again.
+    remaining_originals = {
+        relative: backup_relative
+        for relative, backup_relative in originals.items()
+        if relative in payload
+    }
     state = {
         "schema": 1,
         "game_dir": str(game_dir),
@@ -673,13 +695,16 @@ def apply_payload(
         "asset": asset_name,
         "proxy": proxy_name,
         "files": new_hashes,
-        "originals": originals,
+        "originals": remaining_originals,
         "rollback_available": True,
     }
     try:
-        for relative in sorted(set(old_files) - set(payload)):
+        for relative in sorted(obsolete_files):
             target = targets[relative]
-            if target.exists():
+            original_backup = obsolete_original_backups.get(relative)
+            if original_backup is not None:
+                copy_atomic(original_backup, target)
+            elif target.exists():
                 target.unlink()
         for relative, source in payload.items():
             copy_atomic(source, targets[relative])

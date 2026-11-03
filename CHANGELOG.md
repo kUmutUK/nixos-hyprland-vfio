@@ -4,6 +4,11 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+### OptiScaler update payload-removal recovery — 2026-11-03
+- Fixed updates where a newer OptiScaler archive no longer contains a file managed by the previous release: restore the pre-install original when one was backed up, and remove only obsolete files that were absent before manager installation.
+- Validate every required original-file backup before rotating the previous one-step rollback. A missing or unsafe backup now aborts before game-file mutation; obsolete original-file mappings are removed from the new manager state after restoration.
+- Added offline regressions for dropped payload files, original-file restoration, subsequent removal, update rollback, and a missing-backup failure that must preserve the previous installed state and rollback snapshot.
+
 ### Audit remediation and verification update — 2026-11-03
 - Fixed the OptiScaler shared-cache race: every download now owns a unique same-directory temporary file, hashes the bytes it writes, flushes them before publication, atomically replaces the cached archive, and removes only its own temporary file. A barrier-synchronized two-thread regression reproduces the former collision deterministically.
 - Closed the idle-display security gap: Hyprlock now starts at 300 seconds and DPMS powers the display off at 305 seconds, so the screen is locked before it goes dark.

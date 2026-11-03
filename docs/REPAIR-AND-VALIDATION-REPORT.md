@@ -2,6 +2,13 @@
 
 > **Delivery-scope note:** This report is part of the tracked source tree. The dated “patch-only ZIP” notes below are historical. For a canonical full-source ZIP, use `scripts/package-source-zip.sh` or the CI-uploaded `nixos-hyprland-vfio-source` artifact for the exact commit. The helper verifies tracked-file completeness, excludes `.git/`, preserves executable bits, and makes the finished artifact readable from shared output directories.
 
+## OptiScaler update payload-removal recovery — 2026-11-03
+
+- **Finding:** an update removed paths present in the previously managed payload by unlinking them unconditionally. If such a path had replaced a pre-existing game file, its preserved original backup was not restored into the game directory; the backup mapping also remained in manager state, which could make a later removal report a destination conflict.
+- **Fix:** preflight all original backups for obsolete paths before rotating the one-step rollback. During the update transaction, restore each available pre-install original atomically; remove obsolete manager-owned files only when no original existed. Drop mappings for paths no longer present in the new payload while retaining mappings for still-managed paths. A failed copy remains inside the existing transaction rollback path.
+- **Regression coverage:** added offline tests for a new payload dropping a previously overwritten file, deletion of obsolete manager-owned files that had no original, rollback to the previous payload, subsequent removal restoring the pre-install original, and fail-closed behavior when an obsolete path's required backup is missing. The missing-backup case asserts that game files, manager state, and the previous rollback snapshot remain unchanged.
+- **Scope:** only the optional OptiScaler manager, its offline tests, and related documentation changed. No NixOS module, flake input/lock, kernel selection, VM XML, QEMU/VFIO hook, LSFG-VK profile, latency-layer default, or desktop setting was modified.
+
 ## Pre-remediation main verification and target-host update — 2026-11-03
 
 **Pre-remediation main snapshot:** `d34c8c3545da92d5d9dae97afb4e627edd0c167f` (the source state reviewed immediately before this remediation).

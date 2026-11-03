@@ -196,6 +196,96 @@ class OptiScalerManagerTests(unittest.TestCase):
                 self.assertFalse((game / "OptiScaler.ini").exists())
 
 
+    def test_update_restores_original_when_new_payload_drops_file(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            game = root / "Game"
+            game.mkdir()
+            (game / "game.exe").write_text("exe", encoding="utf-8")
+            original_path = game / "OptiScaler" / "upscaler.bin"
+            original_path.parent.mkdir()
+            original_path.write_text("original-upscaler", encoding="utf-8")
+
+            first = self.make_payload(root / "first", "1")
+            second = self.make_payload(root / "second", "2")
+            second.pop("OptiScaler/upscaler.bin")
+            second.pop("OptiScaler.ini")
+
+            with patch.object(manager, "state_root", lambda: root / "state"):
+                manager.apply_payload(
+                    game, first, "v0.9.4", "first.7z", "dxgi.dll", True
+                )
+                self.assertEqual(original_path.read_text(), "upscaler-1")
+
+                manager.apply_payload(
+                    game, second, "v1.0.0", "second.7z", "dxgi.dll", False
+                )
+                updated = manager.load_state(manager.game_state_file(game))
+                self.assertEqual(original_path.read_text(), "original-upscaler")
+                self.assertFalse((game / "OptiScaler.ini").exists())
+                self.assertNotIn("OptiScaler/upscaler.bin", updated["files"])
+                self.assertNotIn("OptiScaler/upscaler.bin", updated["originals"])
+                self.assertEqual((game / "dxgi.dll").read_text(), "proxy-2")
+
+                # The one-step rollback must still recover the previous managed
+                # payload and its original-file mapping; a later remove must then
+                # restore the pre-manager game file.
+                manager.restore_transaction(
+                    game, manager.backup_root(game) / "rollback",
+                    manager.game_state_file(game),
+                )
+                restored = manager.load_state(manager.game_state_file(game))
+                self.assertEqual(restored["version"], "v0.9.4")
+                self.assertEqual(
+                    (game / "OptiScaler" / "upscaler.bin").read_text(),
+                    "upscaler-1",
+                )
+                manager.remove_installation(game)
+                self.assertEqual(original_path.read_text(), "original-upscaler")
+                self.assertFalse((game / "dxgi.dll").exists())
+
+    def test_missing_obsolete_original_backup_aborts_before_update_mutation(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            game = root / "Game"
+            game.mkdir()
+            (game / "game.exe").write_text("exe", encoding="utf-8")
+            original_path = game / "OptiScaler" / "upscaler.bin"
+            original_path.parent.mkdir()
+            original_path.write_text("original-upscaler", encoding="utf-8")
+
+            first = self.make_payload(root / "first", "1")
+            second = self.make_payload(root / "second", "2")
+            second.pop("OptiScaler/upscaler.bin")
+            with patch.object(manager, "state_root", lambda: root / "state"):
+                manager.apply_payload(
+                    game, first, "v0.9.4", "first.7z", "dxgi.dll", True
+                )
+                state_file = manager.game_state_file(game)
+                rollback_dir = manager.backup_root(game) / "rollback"
+                previous_state = state_file.read_text(encoding="utf-8")
+                previous_dll = (game / "dxgi.dll").read_text(encoding="utf-8")
+                backup = manager.backup_root(game) / "originals" / "OptiScaler" / "upscaler.bin"
+                backup.unlink()
+
+                with self.assertRaisesRegex(
+                    manager.ManagerError, "Original-file backup is unavailable"
+                ):
+                    manager.apply_payload(
+                        game, second, "v1.0.0", "second.7z", "dxgi.dll", False
+                    )
+
+                self.assertEqual(state_file.read_text(encoding="utf-8"), previous_state)
+                self.assertEqual(manager.load_state(state_file)["version"], "v0.9.4")
+                self.assertEqual((game / "dxgi.dll").read_text(), previous_dll)
+                self.assertEqual(
+                    (game / "OptiScaler" / "upscaler.bin").read_text(),
+                    "upscaler-1",
+                )
+                self.assertTrue(rollback_dir.is_dir())
+                self.assertTrue((rollback_dir / "transaction.json").is_file())
+
+
     def test_missing_rollback_backup_is_refused_before_targets_are_changed(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
