@@ -198,49 +198,58 @@ def download_release(sha256_override: str | None = None) -> tuple[Path, str, str
     destination = destination_dir / name
     if destination.is_file() and sha256_file(destination) == digest:
         return destination, tag, name
-    if destination.exists() or destination.is_symlink():
-        destination.unlink()
-    partial = destination.with_name(destination.name + ".part")
-    if partial.exists() or partial.is_symlink():
-        partial.unlink()
-
     request = Request(asset["browser_download_url"], headers={
         "User-Agent": USER_AGENT,
         "Accept": "application/octet-stream",
     })
     total = 0
     digest_builder = hashlib.sha256()
+    partial: Path | None = None
     try:
-        with urlopen(request, timeout=60) as response, partial.open("xb") as output:
-            while True:
-                block = response.read(1024 * 1024)
-                if not block:
-                    break
-                total += len(block)
-                if total > MAX_ARCHIVE_BYTES:
-                    raise ManagerError("Download exceeded the 2 GiB safety limit.")
-                digest_builder.update(block)
-                output.write(block)
+        # The cache is shared across games and CLI commands. A unique temporary
+        # file prevents another download from unlinking or replacing our bytes.
+        # Keep it in destination_dir so the final os.replace stays atomic.
+        with tempfile.NamedTemporaryFile(
+            mode="wb",
+            prefix=f".{name}.",
+            suffix=".part",
+            dir=destination_dir,
+            delete=False,
+        ) as output:
+            partial = Path(output.name)
+            with urlopen(request, timeout=60) as response:
+                while True:
+                    block = response.read(1024 * 1024)
+                    if not block:
+                        break
+                    total += len(block)
+                    if total > MAX_ARCHIVE_BYTES:
+                        raise ManagerError("Download exceeded the 2 GiB safety limit.")
+                    digest_builder.update(block)
+                    output.write(block)
+            output.flush()
+            os.fsync(output.fileno())
+
+        if total != asset["size"]:
+            raise ManagerError(
+                f"Downloaded size ({total}) does not match GitHub's advertised size "
+                f"({asset['size']})."
+            )
+        actual = digest_builder.hexdigest()
+        if actual != digest:
+            raise ManagerError(
+                f"SHA-256 mismatch for {name}: expected {digest}, received {actual}. "
+                "The archive was discarded."
+            )
+        os.replace(partial, destination)
+        partial = None
     except ManagerError:
-        partial.unlink(missing_ok=True)
         raise
     except (HTTPError, URLError, TimeoutError, OSError) as exc:
-        partial.unlink(missing_ok=True)
         raise ManagerError(f"OptiScaler download failed: {exc}") from exc
-    if total != asset["size"]:
-        partial.unlink(missing_ok=True)
-        raise ManagerError(
-            f"Downloaded size ({total}) does not match GitHub's advertised size "
-            f"({asset['size']})."
-        )
-    actual = digest_builder.hexdigest()
-    if actual != digest:
-        partial.unlink(missing_ok=True)
-        raise ManagerError(
-            f"SHA-256 mismatch for {name}: expected {digest}, received {actual}. "
-            "The archive was discarded."
-        )
-    os.replace(partial, destination)
+    finally:
+        if partial is not None:
+            partial.unlink(missing_ok=True)
     return destination, tag, name
 
 

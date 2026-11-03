@@ -1648,18 +1648,20 @@ in
       };
       listener = [
         {
-          timeout = 300;
-          on-timeout = "${pkgs.hyprland}/bin/hyprctl dispatch dpms off";
-          on-resume = "${pkgs.hyprland}/bin/hyprctl dispatch dpms on";
-        }
-        {
           timeout = 150;
           on-timeout = "${pkgs.brightnessctl}/bin/brightnessctl -s set 70%";
           on-resume = "${pkgs.brightnessctl}/bin/brightnessctl -r";
         }
         {
-          timeout = 600;
+          # Lock before DPMS powers the display down; waking a dark screen must not
+          # reveal an unlocked desktop.
+          timeout = 300;
           on-timeout = "${pkgs.hyprlock}/bin/hyprlock";
+        }
+        {
+          timeout = 305;
+          on-timeout = "${pkgs.hyprland}/bin/hyprctl dispatch dpms off";
+          on-resume = "${pkgs.hyprland}/bin/hyprctl dispatch dpms on";
         }
         {
           # Do not call hyprlock here: it blocks in the foreground until the password is entered,

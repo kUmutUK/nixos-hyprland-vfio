@@ -15,15 +15,23 @@ Thank you for helping improve this project. Because this is a hardware-specific 
 
 ## Validation
 
-Run these commands from the repository root:
+Run these commands from the repository root. Go is required for the pinned Actionlint invocation.
 
 ```bash
+go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/*.yml
 nix develop ./nixos --command bash -euo pipefail -c '
   for f in install.sh scripts/package-source-zip.sh scripts/verify-source-revision.sh scripts/test-source-revision.sh scripts/installer-lock.sh scripts/pci-address.sh scripts/test-installer-lock.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh; do
     bash -n "$f"
   done
   find ./nixos -type f -name "*.nix" -print0 | xargs -0 -r nixfmt --check
   shellcheck -S warning install.sh scripts/package-source-zip.sh scripts/verify-source-revision.sh scripts/test-source-revision.sh scripts/installer-lock.sh scripts/pci-address.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-lock.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh
+  hook_path="$(cd nixos && nix build --no-link --no-update-lock-file --print-out-paths .#nixosConfigurations.nixos.config.virtualisation.libvirtd.hooks.qemu.vfio)"
+  test -f "$hook_path"
+  shellcheck -S warning "$hook_path"
+  lua_file="$(mktemp)"
+  trap "rm -f $lua_file" EXIT
+  (cd nixos && nix eval --raw --no-update-lock-file ".#nixosConfigurations.nixos.config.home-manager.users.localhost.xdg.configFile.\"hypr/hyprland.lua\".text" > "$lua_file")
+  (cd nixos && nix develop . --no-update-lock-file --command luac -p "$lua_file")
   python3 -c "import xml.etree.ElementTree as ET; ET.parse(\"vm-xml/win10.xml\")"
   python3 scripts/test-lsfg-vk-v2.py
   python3 scripts/test-documentation-integrity.py
@@ -58,7 +66,24 @@ nix develop ./nixos --command bash -euo pipefail -c '
 '
 ```
 
-The `scripts/pci-address.sh` helper is included in ShellCheck because the installer sources it. `statix check .` and `deadnix .` are required CI gates; `statix.toml` disables only the style-only repeated-key lint, not actionable static-analysis findings.
+The `scripts/pci-address.sh` helper is included in ShellCheck because the installer sources it. The local checks also mirror CI's pinned Actionlint command, ShellCheck of the Nix-generated VFIO hook, and `luac -p` validation of the generated Hyprland Lua configuration. `statix check .` and `deadnix .` are required CI gates; `statix.toml` disables only the style-only repeated-key lint, not actionable static-analysis findings.
+
+## Target-host GameMode GPU index
+
+GameMode's `gpu_device` is the DRM card number (`cardN`), not a PCI BDF. The current configuration deliberately retains `gpu_device = 1`; do not change it based only on the GPU's PCI address. Before changing this host-specific value, verify the actual DRM mapping on the target machine:
+
+```bash
+for card in /sys/class/drm/card[0-9]*; do
+  test -e "$card/device/vendor" || continue
+  printf '%s vendor=%s device=%s path=%s\\n' \
+    "$card" \
+    "$(cat "$card/device/vendor")" \
+    "$(cat "$card/device/device")" \
+    "$(readlink -f "$card/device")"
+done
+```
+
+Confirm which `cardN` resolves to the RX 6700 XT before altering `gpu_device`. The PCI address `0000:0b:00.0` alone does not establish the DRM card number.
 
 Source provenance is part of the migration contract: clean installation, manual migration, and `install.sh` record the actual Git commit in `/etc/nixos/.source-revision`. VM preparation refuses a missing/malformed marker, a different commit, or a dirty checkout. Canonical source ZIPs embed their commit using Git's `export-subst`; arbitrary ZIP exports without that identity are not accepted by the migration helper.
 

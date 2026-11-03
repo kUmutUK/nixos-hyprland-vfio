@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Offline regression tests for scripts/optiscaler_manager.py."""
 
+from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import json
 import os
 from pathlib import Path
+import threading
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -50,6 +52,52 @@ class OptiScalerManagerTests(unittest.TestCase):
             manager.expected_digest(
                 "v1.0.0", {"name": "Optiscaler_1.0.0.7z", "digest": None}, "not-a-hash"
             )
+
+
+    def test_concurrent_release_downloads_use_distinct_temporary_files(self):
+        content = b"verified OptiScaler archive"
+        digest = hashlib.sha256(content).hexdigest()
+        barrier = threading.Barrier(2)
+
+        class BlockingResponse:
+            def __init__(self):
+                self.first_read = True
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def read(self, _size=-1):
+                if self.first_read:
+                    self.first_read = False
+                    barrier.wait(timeout=10)
+                    return content
+                return b""
+
+        with tempfile.TemporaryDirectory() as temporary:
+            cache = Path(temporary) / "cache"
+            asset = {
+                "name": "Optiscaler_1.0.0.7z",
+                "digest": f"sha256:{digest}",
+                "size": len(content),
+                "browser_download_url": "https://github.com/example/OptiScaler.7z",
+            }
+            with (
+                patch.object(manager, "cache_root", return_value=cache),
+                patch.object(manager, "stable_release", return_value=({"tag_name": "v1.0.0"}, asset)),
+                patch.object(manager, "urlopen", side_effect=lambda *_args, **_kwargs: BlockingResponse()),
+            ):
+                with ThreadPoolExecutor(max_workers=2) as executor:
+                    futures = [executor.submit(manager.download_release) for _ in range(2)]
+                    results = [future.result(timeout=15) for future in futures]
+
+            archive = cache / "v1.0.0" / asset["name"]
+            self.assertEqual(results[0], results[1])
+            self.assertEqual(archive.read_bytes(), content)
+            self.assertEqual(list(archive.parent.glob("*.part")), [])
+            self.assertEqual([path.name for path in archive.parent.iterdir()], [asset["name"]])
 
     def test_archive_paths_reject_traversal_and_absolute_paths(self):
         self.assertEqual(

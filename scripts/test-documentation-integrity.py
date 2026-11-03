@@ -103,6 +103,13 @@ for step_name in ("Find previous version tag", "Generate release notes with git-
     require(RELEASE_WORKFLOW.count(f"- name: {step_name}") == 1, f"release workflow must contain exactly one {step_name!r} step")
 require("actionlint" in CHECK_WORKFLOW and "go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7" in CHECK_WORKFLOW, "normal CI must run the pinned actionlint validator")
 require(
+    "go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7" in CONTRIBUTING
+    and "nixosConfigurations.nixos.config.virtualisation.libvirtd.hooks.qemu.vfio" in CONTRIBUTING
+    and 'shellcheck -S warning "$hook_path"' in CONTRIBUTING
+    and "luac -p" in CONTRIBUTING,
+    "CONTRIBUTING local validation must mirror Actionlint, generated-hook ShellCheck, and generated-Lua syntax CI gates",
+)
+require(
     "args: ${{ github.event_name == 'push' && '--current --strip header' || '--latest --strip header' }}" in RELEASE_WORKFLOW,
     "tag pushes must use git-cliff --current while manual main-branch releases use --latest",
 )
@@ -161,7 +168,22 @@ require("manual run #9" in REPAIR and "full-system build baseline" in REPAIR and
 require("run #9" in STATE_INDEX and "69 tracked file blobs" in STATE_INDEX and "ab89f350803d47eb16499c613b110da05a57673f" in STATE_INDEX,
         "current-state index must match the latest full-system build baseline")
 require("run #1120" in REPAIR and "run #1120" in STATE_INDEX and "8d1e4585c9cd3f690c1df80ee531008c7e9d30ef" in STATE_INDEX,
-        "current-state index must preserve the distinct last successful normal-CI snapshot")
+        "current-state index must preserve the distinct reviewed-snapshot normal-CI record")
+require(
+    "run #1127" in REPAIR and "13258097729" in REPAIR and "331,775 bytes" in REPAIR
+    and "d34c8c3545da92d5d9dae97afb4e627edd0c167f" in REPAIR,
+    "repair report must record pre-remediation main CI #1127 and its current-at-the-time artifact",
+)
+require(
+    "run #1127" in STATE_INDEX and "13258097729" in STATE_INDEX and "run #1120" in STATE_INDEX,
+    "current-state index must distinguish pre-remediation main CI from the historical reviewed-snapshot CI",
+)
+require(
+    "Maintainer-reported target-host verification" in REPAIR
+    and "normal Windows 10 VM launch and shutdown" in REPAIR
+    and "A libvirt saved-state restore remains unverified" in REPAIR,
+    "repair report must record the maintainer-reported normal VFIO lifecycle without claiming saved-state restore",
+)
 require("run #1124" in REPAIR and "stale" in REPAIR and "target-host" in REPAIR,
         "repair report must explain the stale-baseline CI failure and retain the physical validation boundary")
 
@@ -224,7 +246,7 @@ if current_head and repair_baseline_match:
                 reviewed_ancestor = subprocess.run(["git", "merge-base", "--is-ancestor", reviewed_sha, current_head], cwd=ROOT, capture_output=True, text=True)
                 require(reviewed_ancestor.returncode == 0, "reviewed normal-CI source snapshot must be an ancestor of the current checkout HEAD")
             changed = subprocess.run(["git", "diff", "--name-only", verified_sha, current_head], cwd=ROOT, check=True, capture_output=True, text=True).stdout.splitlines()
-            full_build_pending_paths = {"nixos/hooks/qemu", "install.sh"}
+            full_build_pending_paths = {"nixos/hooks/qemu", "install.sh", "nixos/home.nix"}
             unexpected = sorted(set(changed) - verification_metadata_paths - full_build_pending_paths)
             require(
                 not unexpected,
@@ -254,6 +276,11 @@ if current_head and repair_baseline_match:
                 require(
                     "install.sh" in RELEASING and "remain gated by a new full-system build" in RELEASING and "install.sh" not in RELEASE_WORKFLOW,
                     "install.sh must remain outside the ancestor-build release allowlist while the release guide documents its full-build gate",
+                )
+            if "nixos/home.nix" in pending:
+                require(
+                    "nixos/home.nix" in REPAIR and "fresh full-system build is required before release" in REPAIR,
+                    "Home Manager changes must be documented as requiring a fresh full-system build",
                 )
 
 
@@ -426,6 +453,28 @@ require("services.input-remapper.enable = true" in README and "input-remapper" i
 require("Inspect active layers with:" in README and README.find("VK_LOADER_DEBUG=layer vulkaninfo") > README.find("Inspect active layers with:") and README.find("**CS2 / Source 2 note:**") > README.find("VK_LOADER_DEBUG=layer vulkaninfo"), "README layer-inspection command must follow its introduction before the separate CS2 note")
 require("[0-9]+x[0-9]+(@[0-9.]+)?" in HOME_NIX, "WuWa monitor parser must accept resolutions with or without a refresh-rate suffix")
 require('Description = "Stop the live wallpaper while Brave windows or GameMode are active."' in HOME_NIX, "mpvpaper watchdog description must cover Brave and GameMode")
+hypridle_start = HOME_NIX.index("listener = [")
+hypridle_listeners = HOME_NIX[hypridle_start:HOME_NIX.index("\n      ];", hypridle_start)]
+lock_listener = re.search(
+    r'(?s)\{\s*timeout = 300;\s*on-timeout = "\$\{pkgs\.hyprlock\}/bin/hyprlock";\s*\}',
+    hypridle_listeners,
+)
+dpms_listener = re.search(
+    r'(?s)\{\s*timeout = 305;\s*on-timeout = "\$\{pkgs\.hyprland\}/bin/hyprctl dispatch dpms off";',
+    hypridle_listeners,
+)
+require(
+    lock_listener is not None and dpms_listener is not None
+    and lock_listener.start() < dpms_listener.start()
+    and not re.search(r"timeout\s*=\s*600\s*;", hypridle_listeners),
+    "Hypridle must lock at 300 seconds before DPMS powers the display off at 305 seconds",
+)
+require(
+    "gpu_device = 1;" in CONFIG and "gpu_device = 1" in CONTRIBUTING
+    and "/sys/class/drm/card[0-9]*" in CONTRIBUTING and "cardN" in CONTRIBUTING,
+    "GameMode's target-host DRM card index must stay documented and be verified on the target host before changing it",
+)
+
 package_start = CONFIG.find("environment.systemPackages = with pkgs; [")
 package_end = CONFIG.find("\n  ];", package_start)
 require(package_start >= 0 and package_end > package_start, "system package list must remain discoverable for the Steam ownership check")
@@ -465,6 +514,13 @@ require("python3 scripts/test-optiscaler-manager.py" in README, "README full val
 require("independent, nonofficial third-party helper" in OPTISCALER_DOC and "not developed by or affiliated with OptiScaler upstream" in OPTISCALER_DOC, "OptiScaler guide must identify the repository manager as independent and nonofficial")
 require("symbolic links, hard links, reparse points" in OPTISCALER_MANAGER_DOC and "Unix special files" in OPTISCALER_MANAGER_DOC and "state JSON root" in OPTISCALER_MANAGER_DOC, "manager guide must document pre-extraction member types and state validation")
 require("def parse_archive_listing" in OPTISCALER_MANAGER_SCRIPT and '"Symbolic Link"' in OPTISCALER_MANAGER_SCRIPT and '"Hard Link"' in OPTISCALER_MANAGER_SCRIPT and '"Reparse Point"' in OPTISCALER_MANAGER_SCRIPT and "def validate_state_document" in OPTISCALER_MANAGER_SCRIPT, "manager must preflight archive links and validate state")
+require(
+    "tempfile.NamedTemporaryFile" in OPTISCALER_MANAGER_SCRIPT
+    and "dir=destination_dir" in OPTISCALER_MANAGER_SCRIPT
+    and "os.replace(partial, destination)" in OPTISCALER_MANAGER_SCRIPT
+    and "test_concurrent_release_downloads_use_distinct_temporary_files" in OPTISCALER_MANAGER_TEST,
+    "OptiScaler downloads must use per-transfer cache temp files and a concurrent regression test",
+)
 require(all(name in OPTISCALER_MANAGER_TEST for name in ("test_archive_links_and_special_files_are_rejected_before_extraction", "test_load_state_rejects_non_object_json_roots", "test_load_state_validates_nested_schema_paths_hashes_and_flags")), "manager tests must cover archive entry types and malformed state JSON")
 require("def pci_class_code" in VM_XML_SYNC and "lspci" in VM_XML_SYNC and '"0300", "0302", "0380"' in VM_XML_SYNC and '"0401", "0403"' in VM_XML_SYNC and "same PCI domain:bus:slot" in VM_XML_SYNC, "manual VM XML sync must verify PCI classes and same-slot pairing")
 require('cat > "$MOCK_BIN/lspci"' in MANUAL_VM_BOOTSTRAP_TEST and "class=0300" in MANUAL_VM_BOOTSTRAP_TEST and "class=0403" in MANUAL_VM_BOOTSTRAP_TEST, "manual VM bootstrap regression must mock lspci after the sync helper gained PCI-class checks")

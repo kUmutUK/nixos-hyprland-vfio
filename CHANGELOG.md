@@ -4,6 +4,14 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+### Audit remediation and verification update — 2026-11-03
+- Fixed the OptiScaler shared-cache race: every download now owns a unique same-directory temporary file, hashes the bytes it writes, flushes them before publication, atomically replaces the cached archive, and removes only its own temporary file. A barrier-synchronized two-thread regression reproduces the former collision deterministically.
+- Closed the idle-display security gap: Hyprlock now starts at 300 seconds and DPMS powers the display off at 305 seconds, so the screen is locked before it goes dark.
+- Updated the contributor validation sequence to include the pinned Actionlint command, ShellCheck of the Nix-generated VFIO hook, and syntax validation of the generated Hyprland Lua file.
+- Updated current CI/artifact history: pre-remediation main snapshot `d34c8c3545da92d5d9dae97afb4e627edd0c167f` passed normal CI #1127; artifact `13258097729` (331,775 bytes) belongs to that snapshot. CI #1120 / artifact `13217103984` remain historical records for reviewed snapshot `8d1e4585`.
+- The maintainer reports a successful 3 November rebuild and normal Windows 10 VM/GPU passthrough shutdown-and-return test on the physical RX 6700 XT host. This report does not claim that libvirt saved-state restore was tested.
+- The `nixos/home.nix` idle-timer change is a system-configuration change. Full-system build #9 remains the previous verified baseline; a fresh full-system build is required before release. The current `gpu_device = 1` value was deliberately preserved because the target host's live DRM card mapping cannot be measured through this repository update.
+
 ### Exact-HEAD full-build baseline refresh — 2026-11-03
 - Promoted manual full-system build #9 (`ab89f350803d47eb16499c613b110da05a57673f`) to the verified baseline. The complete NixOS toplevel/selected-kernel build, flake evaluation, and unchanged-`flake.lock` check all passed on that exact commit (4 h 46 min 26 s).
 - Diagnosed normal CI #1124: its documentation-integrity regression still compared changes against the superseded `ca6edf2` baseline and incorrectly rejected `nixos/configuration.nix`, `nixos/flake.lock`, and `nixos/home.nix`, even though full-system build #9 covered that exact tree. Updated the test to track the newest verified full-build baseline while retaining its ancestry and changed-path gate.
