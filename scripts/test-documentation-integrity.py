@@ -219,8 +219,8 @@ if current_head and repair_baseline_match:
                     "installer changes must be documented as requiring a fresh full-system build",
                 )
                 require(
-                    "install.sh" not in RELEASING and "install.sh" not in RELEASE_WORKFLOW,
-                    "install.sh must remain outside the ancestor-build release allowlist",
+                    "install.sh" in RELEASING and "remain gated by a new full-system build" in RELEASING and "install.sh" not in RELEASE_WORKFLOW,
+                    "install.sh must remain outside the ancestor-build release allowlist while the release guide documents its full-build gate",
                 )
 
 
