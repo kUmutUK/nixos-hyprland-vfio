@@ -988,6 +988,7 @@ in
       version = 2
 
       [global]
+      dll = "/home/localhost/.local/share/Steam/steamapps/common/Lossless Scaling/lsfg-vk.dll"
       # FP16 acceleration improves frame-generation performance on supported AMD GPUs.
       allow_fp16 = true
 
