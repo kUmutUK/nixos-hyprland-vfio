@@ -885,6 +885,20 @@ root_pass_command = guide_text.index("sudo nixos-enter --root /mnt -c 'passwd ro
 if root_pass_command < install_command:
     raise SystemExit("FAIL: INSTALLATION.md must place root password setup after successful nixos-install.")
 
+
+config = Path(sys.argv[1]).parent / "nixos" / "configuration.nix"
+config_text = config.read_text(encoding="utf-8")
+service_start = config_text.index('systemd.services.libvirtd-qemu-ownership = {')
+service_end = config_text.index('\n  };', service_start) + len('\n  };')
+service_text = config_text[service_start:service_end]
+if 'requires = [ "libvirtd-config.service" ];' not in service_text or 'after = [ "libvirtd-config.service" ];' not in service_text:
+    raise SystemExit("FAIL: qemu ownership service must run after and require libvirtd-config.service.")
+if '/var/lib/libvirt/qemu/nvram' not in service_text:
+    raise SystemExit("FAIL: qemu ownership service must prepare the VM NVRAM directory.")
+if 'fix_qemu_data_tree /var/lib/libvirt/qemu\n' in service_text or 'for d in /var/lib/libvirt/images /var/lib/libvirt/qemu ' in service_text:
+    raise SystemExit("FAIL: ownership service must not chown the qemu config/network directory broadly.")
+PY
+
 # Exercise apply_var against temporary Home Manager files. Missing optional
 # assignments remain a no-op, a unique assignment is updated, and duplicates
 # must fail without touching either ambiguous line.
@@ -935,19 +949,6 @@ if ! cmp -s "$apply_var_test_dir/missing.nix" "$apply_var_test_dir/missing-befor
 fi
 rm -rf -- "$apply_var_test_dir"
 echo "OK: apply_var updates one assignment, skips a missing optional value, and rejects duplicate assignments without modifying the file."
-
-config = Path(sys.argv[1]).parent / "nixos" / "configuration.nix"
-config_text = config.read_text(encoding="utf-8")
-service_start = config_text.index('systemd.services.libvirtd-qemu-ownership = {')
-service_end = config_text.index('\n  };', service_start) + len('\n  };')
-service_text = config_text[service_start:service_end]
-if 'requires = [ "libvirtd-config.service" ];' not in service_text or 'after = [ "libvirtd-config.service" ];' not in service_text:
-    raise SystemExit("FAIL: qemu ownership service must run after and require libvirtd-config.service.")
-if '/var/lib/libvirt/qemu/nvram' not in service_text:
-    raise SystemExit("FAIL: qemu ownership service must prepare the VM NVRAM directory.")
-if 'fix_qemu_data_tree /var/lib/libvirt/qemu\n' in service_text or 'for d in /var/lib/libvirt/images /var/lib/libvirt/qemu ' in service_text:
-    raise SystemExit("FAIL: ownership service must not chown the qemu config/network directory broadly.")
-PY
 
 if grep -q 'tr_TR\.UTF-8' "$CONFIG" "$HOME_CONFIG"; then
   echo "FAIL: a Turkish locale override remains in the active system or desktop configuration." >&2
