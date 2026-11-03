@@ -35,6 +35,7 @@ OPTISCALER_MANAGER_SCRIPT = (ROOT / "scripts/optiscaler_manager.py").read_text(e
 OPTISCALER_MANAGER_TEST = (ROOT / "scripts/test-optiscaler-manager.py").read_text(encoding="utf-8")
 VM_XML_SYNC = (ROOT / "scripts/sync-vm-xml.py").read_text(encoding="utf-8")
 VM_XML_SYNC_TEST = (ROOT / "scripts/test-vm-xml-sync.py").read_text(encoding="utf-8")
+MANUAL_VM_BOOTSTRAP_TEST = (ROOT / "scripts/test-manual-vm-bootstrap.sh").read_text(encoding="utf-8")
 SOURCE_REVISION_PLACEHOLDER = "$" + "Format:%H" + "$"
 errors = []
 
@@ -143,6 +144,7 @@ verification_metadata_paths = {
     "scripts/test-optiscaler-manager.py",
     "scripts/sync-vm-xml.py",
     "scripts/test-vm-xml-sync.py",
+    "scripts/test-manual-vm-bootstrap.sh",
     "scripts/test-vfio-hook-driver-state.sh",
     "scripts/test-documentation-integrity.py",
 }
@@ -392,6 +394,7 @@ require("symbolic links, hard links, reparse points" in OPTISCALER_MANAGER_DOC a
 require("def parse_archive_listing" in OPTISCALER_MANAGER_SCRIPT and '"Symbolic Link"' in OPTISCALER_MANAGER_SCRIPT and '"Hard Link"' in OPTISCALER_MANAGER_SCRIPT and '"Reparse Point"' in OPTISCALER_MANAGER_SCRIPT and "def validate_state_document" in OPTISCALER_MANAGER_SCRIPT, "manager must preflight archive links and validate state")
 require(all(name in OPTISCALER_MANAGER_TEST for name in ("test_archive_links_and_special_files_are_rejected_before_extraction", "test_load_state_rejects_non_object_json_roots", "test_load_state_validates_nested_schema_paths_hashes_and_flags")), "manager tests must cover archive entry types and malformed state JSON")
 require("def pci_class_code" in VM_XML_SYNC and "lspci" in VM_XML_SYNC and '"0300", "0302", "0380"' in VM_XML_SYNC and '"0401", "0403"' in VM_XML_SYNC and "same PCI domain:bus:slot" in VM_XML_SYNC, "manual VM XML sync must verify PCI classes and same-slot pairing")
+require('cat > "$MOCK_BIN/lspci"' in MANUAL_VM_BOOTSTRAP_TEST and "class=0300" in MANUAL_VM_BOOTSTRAP_TEST and "class=0403" in MANUAL_VM_BOOTSTRAP_TEST, "manual VM bootstrap regression must mock lspci after the sync helper gained PCI-class checks")
 require("different physical slots" in VM_XML_SYNC_TEST and "gpu_class=gpu_class" in VM_XML_SYNC_TEST and "audio_class=audio_class" in VM_XML_SYNC_TEST, "VM XML sync tests must reject wrong PCI classes and different slots")
 require("scripts/sync-vm-xml.py" in RELEASING and "scripts/test-vm-xml-sync.py" in RELEASING and "scripts/sync-vm-xml.py" in RELEASE_WORKFLOW and "scripts/test-vm-xml-sync.py" in RELEASE_WORKFLOW, "release policy must document the out-of-flake VM XML sync helper and test allowlist")
 require("## Audit finding fixes — 2026-11-03" in REPAIR, "repair report must record the new audit findings")
