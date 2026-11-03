@@ -27,6 +27,11 @@
 >   emüle aygıt olarak açıklar. Eldeki geçmiş, aygıtın hangi commit/tarihte geri eklendiğini
 >   veya kaldırma kaydının hiç uygulanmadığını kanıtlamaz. `[1.3.8]` satırını tarihsel
 >   kayıt olarak değerlendirin; güncel VM tasarımı için mevcut XML ve README'yi esas alın.
+> - Aşağıdaki `[1.2.0]` kaydı, makineye özgü üç USB host aygıtının yorum satırına alındığını
+>   belirtir. Güncel `vm-xml/win10.xml` şablonunda `1532:0098` ve `05ac:024f` girdileri
+>   etkindir; `2a7a:8a47` girdisi bulunmaz. Eldeki geçmiş, bu iki güncel kimliğin hangi
+>   commit/tarihte yeniden etkinleştirildiğini kanıtlamaz. Bunlar yalnızca şablon varsayılanlarıdır;
+>   VM'i başlatmadan önce gerçek cihazları hedef makinede `lsusb` ile doğrulayın.
 > - `install.sh` artık risk ve GPU uyumluluğu istemlerini İngilizce gösterir. Onay ifadesi
 >   tam olarak `I ACCEPT THE RISKS` olmalıdır. Betik `/etc/nixos/nixos/hooks/qemu` kaynak dosyasını
 >   günceller; etkin libvirt hook ancak başarılı `nixos-rebuild switch` sonrasında yenilenir.
