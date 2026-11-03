@@ -669,6 +669,7 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 - `vm.swappiness = 180` is an intentional aggressive swap tendency, not a priority setting. It can increase major page faults and frametime spikes if disk swap is used.
 - `hypridle` requests suspend after 900 seconds; Hyprlock is invoked through the configured pre-sleep command.
 - `HYPRLAND_CONFIG` is passed through the greetd wrapper and points to the native Lua config generated from `nixos/home.nix` at `~/.config/hypr/hyprland.lua`.
+- The active `Plus-Cursor` theme maps every cursor name in its source set and common XCursor aliases to the same `+` glyph. It has no inherited cursor theme, so pointer, text, hand, wait, and resize states all use the plus shape; system, Home Manager, GTK/X11, and Hyprland select the same theme.
 - `input-remapper` is installed, but this configuration does not enable its background service. Installing the package alone does not apply mappings; enable `services.input-remapper.enable = true` only when you intentionally configure remapping rules.
 - `nowatchdog` and `nmi_watchdog=0` reduce watchdog-based lockup diagnostics in exchange for less diagnostic data.
 - `usbcore.autosuspend=-1` and `kvm.ignore_msrs=1` are **not enabled by default** in `nixos/configuration.nix`. The former disables USB autosuspend and may increase idle power consumption; the latter suppresses some unknown MSR access failures and can hide guest problems. Add either only when the target hardware/guest needs it and after considering the trade-offs.

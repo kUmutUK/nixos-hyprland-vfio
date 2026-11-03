@@ -546,6 +546,25 @@ require(
     and 'hl.exec_cmd("hyprctl setcursor Plus-Cursor 20")' in HOME_NIX,
     "system, Home Manager, and Hyprland startup cursor themes must agree",
 )
+plus_cursor_start = HOME_NIX.find('  plusCursorTheme = pkgs.runCommand "plus-cursor-theme"')
+plus_cursor_end = HOME_NIX.find("\\n\\n  pywal16Fixed", plus_cursor_start)
+plus_cursor_definition = (
+    HOME_NIX[plus_cursor_start:plus_cursor_end]
+    if plus_cursor_start >= 0 and plus_cursor_end > plus_cursor_start
+    else ""
+)
+require(
+    'for cursor in "$src"/cursors/*;' in plus_cursor_definition
+    and 'ln -sfn "$src/cursors/plus" "$theme/cursors/$(basename "$cursor")"' in plus_cursor_definition
+    and "Every cursor shape resolves to the plus glyph" in plus_cursor_definition
+    and "Inherits=" not in plus_cursor_definition
+    and "for alias in left_ptr default arrow top_left_arrow pointer hand hand1 hand2 text xterm wait watch progress busy help crosshair;" in plus_cursor_definition
+    and 'name = "Plus-Cursor";' in HOME_NIX
+    and "package = plusCursorTheme;" in HOME_NIX
+    and "gtk.enable = true;" in HOME_NIX
+    and "x11.enable = true;" in HOME_NIX,
+    "every cursor state must resolve to the plus glyph with no inherited theme or alternative cursor package",
+)
 require(
     "### Ninth-audit remediation — 2026-11-04" in CHANGELOG
     and "### Ninth-audit remediation — 2026-11-04" in STATE_INDEX
@@ -579,6 +598,7 @@ package_end = CONFIG.find("\n  ];", package_start)
 require(package_start >= 0 and package_end > package_start, "system package list must remain discoverable for the Steam ownership check")
 if package_start >= 0 and package_end > package_start:
     require("\n    steam\n" not in CONFIG[package_start:package_end], "Steam must not be redundantly listed in environment.systemPackages")
+    require("\n    bibata-cursors\n" not in CONFIG[package_start:package_end], "the original Bibata theme must not be separately exposed as a system cursor choice")
 require("programs.steam.enable = true;" in CONFIG, "Steam must remain enabled through programs.steam.enable")
 
 require("docs/OPTISCALER.md" in README and "OptiScaler" in README, "README must link the optional OptiScaler Proton guide")

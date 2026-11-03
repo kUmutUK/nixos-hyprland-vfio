@@ -9,7 +9,8 @@
 - INSTALLATION now distinguishes the NixOS 26.05 Live ISO from the installed flake's `nixos-unstable` package input and explains that `system.stateVersion = "26.05"` is not a channel pin.
 - The ninth supplied ZIP's reported metadata remains audit-supplied because its bytes were not attached for this recheck; use the canonical CI artifact for the exact commit or `scripts/package-source-zip.sh` from a clean checkout. GameMode `gpu_device = 1` remains unchanged pending the target host's live DRM `cardN` mapping.
 - The Pypr terminal floating rule now matches the configured `pypr-term` window class. The installer's secondary PCI updater rejects slots above `1f`, with explicit `20`/`ff` regression cases for GPU and audio functions.
-- System and Home Manager `XCURSOR_THEME` values now agree on `Plus-Cursor`, matching Hyprland's startup cursor command. A fresh full-system build is required before release; no new physical VFIO/VM test is claimed.
+- The `Plus-Cursor` theme now maps every shipped cursor name and common XCursor alias to the same `+` glyph; theme inheritance is disabled, and the standalone Bibata theme is no longer installed as an alternative. System, Home Manager, GTK/X11, and Hyprland select `Plus-Cursor`.
+- A fresh full-system build is required before release because the Home Manager and NixOS configuration changed; no new physical VFIO/VM test is claimed.
 
 This legacy filename now contains an English current-state summary so older links remain useful. The maintained and current change log is [`CHANGELOG.md`](CHANGELOG.md).
 

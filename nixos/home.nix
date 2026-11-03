@@ -14,8 +14,8 @@ let
   hyprlandMonitorMode = "preferred";
   wallpaperVideo = "${config.home.homeDirectory}/Downloads/arthur-leywin-the-beginning-after-the-end.3840x2160.mp4";
 
-  # Reuse Bibata's designed plus cursor as the default pointer while preserving
-  # its hand, text, resize, busy, and other context-specific cursors.
+  # Every cursor name resolves to the same plus glyph. There is no inherited theme,
+  # so hand, text, wait, resize, and other states cannot fall back to another shape.
   plusCursorTheme = pkgs.runCommand "plus-cursor-theme" { } ''
         src="${pkgs.bibata-cursors}/share/icons/Bibata-Modern-Ice"
         theme="$out/share/icons/Plus-Cursor"
@@ -23,19 +23,18 @@ let
         test -f "$src/cursors/plus"
 
         for cursor in "$src"/cursors/*; do
-          ln -s "$cursor" "$theme/cursors/$(basename "$cursor")"
+          ln -sfn "$src/cursors/plus" "$theme/cursors/$(basename "$cursor")"
         done
 
-        # These aliases are the usual default arrow names used by XCursor clients.
-        for alias in left_ptr default arrow top_left_arrow; do
+        # Also provide common cursor aliases that may not exist in the source theme.
+        for alias in left_ptr default arrow top_left_arrow pointer hand hand1 hand2 text xterm wait watch progress busy help crosshair; do
           ln -sfn "$src/cursors/plus" "$theme/cursors/$alias"
         done
 
         cat > "$theme/index.theme" <<'EOF'
     [Icon Theme]
     Name=Plus-Cursor
-    Comment=Plus-shaped default pointer based on Bibata-Modern-Ice
-    Inherits=Bibata-Modern-Ice
+    Comment=Every cursor shape resolves to the plus glyph
     EOF
   '';
 

@@ -468,7 +468,6 @@ in
     wine
     nodejs
     virt-manager
-    bibata-cursors
     btop
     nvtopPackages.amd
     fastfetch

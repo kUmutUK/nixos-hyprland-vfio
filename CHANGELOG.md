@@ -7,7 +7,8 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 ### Ninth-audit remediation — 2026-11-04
 - Corrected the Pyprland terminal scratchpad rule to match the configured Kitty window class `pypr-term`, rather than an unset `scratchterm` title; added a documentation-integrity regression for the class/command relationship.
 - Tightened the installer's QEMU-hook PCI updater to the same valid slot range (`00`–`1f`) as the shared PCI validator. Added regressions accepting slot `1f` and rejecting `20`/`ff` for both GPU and audio functions without modifying the hook.
-- Aligned the system-wide `XCURSOR_THEME` with Home Manager and Hyprland's explicit startup setting (`Plus-Cursor`).
+- Made `Plus-Cursor` a single-shape theme: every cursor filename and common XCursor alias resolves to the `+` glyph, with no inherited theme for hand, text, wait, or resize states. Removed the separately installed Bibata theme; it remains only the source asset for the generated plus-only theme.
+- Kept the system-wide and Home Manager `XCURSOR_THEME` values aligned with Hyprland's explicit startup setting (`Plus-Cursor`).
 - Preserved GameMode `gpu_device = 1`: the actual DRM `cardN` mapping still requires live output from the target host and was not guessed.
 - The Home Manager and NixOS configuration changes require a fresh full-system build before release. This audit update does not claim a new complete-system build or physical VFIO/VM validation.
 
