@@ -537,7 +537,7 @@ in
     enable = true;
     settings = {
       general = {
-        renice = -10;
+        renice = 10;
         ioprio = 0;
         inhibit_screensaver = 1;
         softrealtime = "off";
@@ -545,7 +545,7 @@ in
       };
       gpu = {
         apply_gpu_optimisations = "accept-responsibility";
-        gpu_device = 0;
+        gpu_device = 1;
         amd_performance_level = "high";
       };
       # Keep `mpvpaper-watchdog` as the single authority for this service. Defining the
@@ -658,7 +658,6 @@ in
 
   system.stateVersion = "26.05";
   services.dbus.implementation = "broker";
-  boot.initrd.systemd.enable = true;
 
   services.ollama = {
     enable = true;
