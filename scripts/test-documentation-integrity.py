@@ -201,7 +201,7 @@ if current_head and repair_baseline_match:
             pending = sorted(set(changed) & full_build_pending_paths)
             if pending:
                 require(
-                    "A new manual full-system build" in REPAIR,
+                    "fresh full-system build is required before release" in REPAIR,
                     "system-affecting pending paths must require a new manual full-system build before release",
                 )
             if "nixos/hooks/qemu" in pending:
