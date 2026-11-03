@@ -331,9 +331,9 @@ if current_head and repair_baseline_match:
             if "nixos/configuration.nix" in pending:
                 require(
                     "nixos/configuration.nix" in REPAIR
-                    and "comment-only" in REPAIR
+                    and "XCURSOR_THEME" in REPAIR
                     and "fresh full-system build is required before release" in REPAIR,
-                    "configuration.nix changes must document their build gate, including comment-only audit fixes",
+                    "configuration.nix runtime changes must document their full-system build gate",
                 )
                 require(
                     "nixos/configuration.nix" in RELEASING and "nixos/configuration.nix" not in RELEASE_WORKFLOW,
@@ -532,6 +532,26 @@ require(
     "gpu_device = 1;" in CONFIG and "gpu_device = 1" in CONTRIBUTING
     and "/sys/class/drm/card[0-9]*" in CONTRIBUTING and "cardN" in CONTRIBUTING,
     "GameMode's target-host DRM card index must stay documented and be verified on the target host before changing it",
+)
+require(
+    'name = "scratchterm-float"' in HOME_NIX
+    and 'match = { class = "^(pypr-term)$" }' in HOME_NIX
+    and 'command = "kitty --class pypr-term"' in HOME_NIX
+    and 'class = "pypr-term"' in HOME_NIX,
+    "Pypr terminal floating rule must match the configured scratchpad window class",
+)
+require(
+    'XCURSOR_THEME = "Plus-Cursor";' in CONFIG
+    and 'XCURSOR_THEME = "Plus-Cursor";' in HOME_NIX
+    and 'hl.exec_cmd("hyprctl setcursor Plus-Cursor 20")' in HOME_NIX,
+    "system, Home Manager, and Hyprland startup cursor themes must agree",
+)
+require(
+    "### Ninth-audit remediation — 2026-11-04" in CHANGELOG
+    and "### Ninth-audit remediation — 2026-11-04" in STATE_INDEX
+    and "pypr-term" in STATE_INDEX
+    and "fresh full-system build is required before release" in REPAIR,
+    "ninth-audit remediation and its build boundary must be recorded in current-state documents",
 )
 gamemode_renice_match = re.search(r"(?m)^\s*renice\s*=\s*(-?\d+);", CONFIG)
 gamemode_comment_start = CONFIG.find("# Three components can change CPU scheduling/priority")

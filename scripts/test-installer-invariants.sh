@@ -78,6 +78,41 @@ if ! bash "$hook_pci_test_dir/harness.sh" "$hook_pci_test_dir/update-hook-pci.sh
 fi
 grep -Fxq 'GPU_PCI="0000:0c:00.0"' "$hook_pci_test_dir/valid-hook"
 grep -Fxq 'GPU_AUDIO="0000:0c:00.1"' "$hook_pci_test_dir/valid-hook"
+# Accept the highest legal PCI slot (1f) for both GPU functions.
+cp "$HOOK" "$hook_pci_test_dir/slot-1f-hook"
+if ! bash "$hook_pci_test_dir/harness.sh" "$hook_pci_test_dir/update-hook-pci.sh" \
+  "$hook_pci_test_dir/slot-1f-hook" 0000:0c:1f.0 0000:0c:1f.1; then
+  echo "FAIL: the highest legal PCI slot (1f) was rejected." >&2
+  exit 1
+fi
+
+# Reject out-of-range slots for both GPU and audio assignments, without writes.
+for invalid_address in 0000:0c:20.0 0000:0c:ff.0; do
+  cp "$HOOK" "$hook_pci_test_dir/invalid-gpu-slot-hook"
+  cp "$hook_pci_test_dir/invalid-gpu-slot-hook" "$hook_pci_test_dir/invalid-gpu-slot-before"
+  if bash "$hook_pci_test_dir/harness.sh" "$hook_pci_test_dir/update-hook-pci.sh" \
+    "$hook_pci_test_dir/invalid-gpu-slot-hook" "$invalid_address" 0000:0c:00.1 >/dev/null 2>&1; then
+    echo "FAIL: out-of-range GPU PCI slot was accepted: $invalid_address" >&2
+    exit 1
+  fi
+  if ! cmp -s "$hook_pci_test_dir/invalid-gpu-slot-hook" "$hook_pci_test_dir/invalid-gpu-slot-before"; then
+    echo "FAIL: the hook changed after rejecting GPU PCI slot $invalid_address." >&2
+    exit 1
+  fi
+done
+for invalid_address in 0000:0c:20.1 0000:0c:ff.1; do
+  cp "$HOOK" "$hook_pci_test_dir/invalid-audio-slot-hook"
+  cp "$hook_pci_test_dir/invalid-audio-slot-hook" "$hook_pci_test_dir/invalid-audio-slot-before"
+  if bash "$hook_pci_test_dir/harness.sh" "$hook_pci_test_dir/update-hook-pci.sh" \
+    "$hook_pci_test_dir/invalid-audio-slot-hook" 0000:0c:00.0 "$invalid_address" >/dev/null 2>&1; then
+    echo "FAIL: out-of-range audio PCI slot was accepted: $invalid_address" >&2
+    exit 1
+  fi
+  if ! cmp -s "$hook_pci_test_dir/invalid-audio-slot-hook" "$hook_pci_test_dir/invalid-audio-slot-before"; then
+    echo "FAIL: the hook changed after rejecting audio PCI slot $invalid_address." >&2
+    exit 1
+  fi
+done
 cp "$HOOK" "$hook_pci_test_dir/sed-failure-hook"
 cp "$hook_pci_test_dir/sed-failure-hook" "$hook_pci_test_dir/sed-failure-before"
 export MOCK_SUDO_FAIL_COMMAND=sed
@@ -124,7 +159,7 @@ if ! cmp -s "$hook_pci_test_dir/duplicate-assignment-hook" "$hook_pci_test_dir/d
   echo "FAIL: a hook with duplicate assignments changed before preflight rejected it." >&2
   exit 1
 fi
-echo "OK: QEMU hook PCI updater rejects failed writes, malformed/duplicate assignments, and invalid addresses."
+echo "OK: QEMU hook PCI updater rejects failed writes, malformed/duplicate assignments, duplicate entries, and out-of-range PCI slots."
 
 
 # Regression-test the manual installation guide's exact partition-count guard.

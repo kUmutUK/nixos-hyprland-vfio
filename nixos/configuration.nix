@@ -274,7 +274,8 @@ in
     NIXOS_OZONE_WL = "1";
     MOZ_ENABLE_WAYLAND = "1";
     QT_QPA_PLATFORM = "wayland;xcb";
-    XCURSOR_THEME = "Bibata-Modern-Ice";
+    # Keep the system fallback aligned with Home Manager and Hyprland startup.
+    XCURSOR_THEME = "Plus-Cursor";
     XCURSOR_SIZE = "20";
   };
 

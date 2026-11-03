@@ -21,8 +21,8 @@ update_qemu_hook_pci() {
   local hook_path="${1:-}" gpu_pci="${2:-}" gpu_audio="${3:-}"
 
   [[ -n "$hook_path" && -f "$hook_path" ]] || return 1
-  [[ "$gpu_pci" =~ ^[[:xdigit:]]{4}:[[:xdigit:]]{2}:[[:xdigit:]]{2}\.[0-7]$ ]] || return 1
-  [[ "$gpu_audio" =~ ^[[:xdigit:]]{4}:[[:xdigit:]]{2}:[[:xdigit:]]{2}\.[0-7]$ ]] || return 1
+  [[ "$gpu_pci" =~ ^[[:xdigit:]]{4}:[[:xdigit:]]{2}:[01][[:xdigit:]]\.[0-7]$ ]] || return 1
+  [[ "$gpu_audio" =~ ^[[:xdigit:]]{4}:[[:xdigit:]]{2}:[01][[:xdigit:]]\.[0-7]$ ]] || return 1
 
   if ! sudo awk '
     /^[[:space:]]*GPU_PCI[[:space:]]*=/ { gpu_count++ }

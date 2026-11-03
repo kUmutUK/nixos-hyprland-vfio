@@ -4,6 +4,13 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+### Ninth-audit remediation — 2026-11-04
+- Corrected the Pyprland terminal scratchpad rule to match the configured Kitty window class `pypr-term`, rather than an unset `scratchterm` title; added a documentation-integrity regression for the class/command relationship.
+- Tightened the installer's QEMU-hook PCI updater to the same valid slot range (`00`–`1f`) as the shared PCI validator. Added regressions accepting slot `1f` and rejecting `20`/`ff` for both GPU and audio functions without modifying the hook.
+- Aligned the system-wide `XCURSOR_THEME` with Home Manager and Hyprland's explicit startup setting (`Plus-Cursor`).
+- Preserved GameMode `gpu_device = 1`: the actual DRM `cardN` mapping still requires live output from the target host and was not guessed.
+- The Home Manager and NixOS configuration changes require a fresh full-system build before release. This audit update does not claim a new complete-system build or physical VFIO/VM validation.
+
 ### Documentation audit reconciliation — 2026-11-03
 - Removed the stale copied CachyOS commit SHA from the current-state index; the resolved revision is now sourced only from `nixos/flake.lock`. The documentation-integrity regression reads the lock and rejects a copied 40-character revision in the kernel status line.
 - Reconciled the current-state index with the archived USB-hostdev note and the template's active `1532:0098` and `05ac:024f` IDs; the historical archive itself remains unchanged. Recorded that the available history does not prove when they were re-enabled. The historical IOMMU-parameter record is likewise qualified without inventing a removal commit or rationale.

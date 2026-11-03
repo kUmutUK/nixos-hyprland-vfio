@@ -2,10 +2,14 @@
 
 ## Latest audit follow-up — 2026-11-04
 
+### Ninth-audit remediation — 2026-11-04
+
 - GameMode's comment now matches the existing `renice = 10` setting: nice `+10` lowers CPU scheduling priority. The value itself and all runtime settings were preserved.
 - The normal CI count is 28 workflow-defined YAML steps. Run #1127 passed all 28 workflow-defined steps. GitHub numbers its generated `Set up job` entry as 1 and the YAML-defined steps as 2–29.
 - INSTALLATION now distinguishes the NixOS 26.05 Live ISO from the installed flake's `nixos-unstable` package input and explains that `system.stateVersion = "26.05"` is not a channel pin.
-- The ninth supplied ZIP's reported metadata remains audit-supplied because its bytes were not attached for this recheck. Use the canonical CI artifact for the exact commit or `scripts/package-source-zip.sh` from a clean checkout. GameMode `gpu_device = 1` and the Pypr scratchpad window rule were left unchanged pending target-host evidence.
+- The ninth supplied ZIP's reported metadata remains audit-supplied because its bytes were not attached for this recheck; use the canonical CI artifact for the exact commit or `scripts/package-source-zip.sh` from a clean checkout. GameMode `gpu_device = 1` remains unchanged pending the target host's live DRM `cardN` mapping.
+- The Pypr terminal floating rule now matches the configured `pypr-term` window class. The installer's secondary PCI updater rejects slots above `1f`, with explicit `20`/`ff` regression cases for GPU and audio functions.
+- System and Home Manager `XCURSOR_THEME` values now agree on `Plus-Cursor`, matching Hyprland's startup cursor command. A fresh full-system build is required before release; no new physical VFIO/VM test is claimed.
 
 This legacy filename now contains an English current-state summary so older links remain useful. The maintained and current change log is [`CHANGELOG.md`](CHANGELOG.md).
 
