@@ -64,6 +64,8 @@ require(all(name in OPTISCALER_MANAGER_TEST for name in (
     "test_rollback_state_write_failure_restores_current_install",
     "test_rollback_recovery_failure_keeps_manual_snapshot",
     "test_remove_recovery_failure_keeps_manual_snapshot",
+    "test_original_backup_failure_preserves_previous_rollback_and_game",
+    "test_per_game_operation_lock_rejects_concurrent_access_and_releases",
 )), "OptiScaler tests must cover rollback and removal recovery failures")
 require("scripts/test-vm-xml-structure.py" in CHECK_WORKFLOW, "CI must continue to run the VM XML structure regression test")
 require("DEGISIKLIK_GECMISI.md" in RELEASING and "DEGISIKLIK_GECMISI.md" in RELEASE_WORKFLOW and "CONTRIBUTING.md" in RELEASING and "CHANGELOG.md" in RELEASING and "docs/REPAIR-AND-VALIDATION-REPORT.md" in RELEASING and "docs/OPTISCALER.md" in RELEASING and "docs/OPTISCALER.md" in RELEASE_WORKFLOW and "INSTALLATION.md" in RELEASING and "INSTALLATION.md" in RELEASE_WORKFLOW and ".github/workflows/check.yml" in RELEASING and "scripts/test-documentation-integrity.py" in RELEASING, "RELEASING allowlist documentation must match release.yml")
@@ -415,6 +417,15 @@ require("releases/latest" in OPTISCALER_MANAGER_SCRIPT and "prerelease" in OPTIS
 require("PINNED_SHA256" in OPTISCALER_MANAGER_SCRIPT and "575cb4df866116093df75af607e37fd70e10f5163e0f23fd5c804142e80ef0ad" in OPTISCALER_MANAGER_SCRIPT, "OptiScaler manager must retain the pinned v0.9.4 SHA-256")
 require("validate_archive_member" in OPTISCALER_MANAGER_SCRIPT and "MAX_EXTRACTED_BYTES" in OPTISCALER_MANAGER_SCRIPT and "total_size" in OPTISCALER_MANAGER_SCRIPT, "OptiScaler manager must validate archive paths and preflight the extracted-size limit")
 require("require_regular_backup" in OPTISCALER_MANAGER_SCRIPT and "safe_backup_path" in OPTISCALER_MANAGER_SCRIPT, "OptiScaler manager must validate backup files and reject unsafe backup paths before mutation")
+require("def game_operation_lock" in OPTISCALER_MANAGER_SCRIPT and "fcntl.flock" in OPTISCALER_MANAGER_SCRIPT and "LOCK_EX | fcntl.LOCK_NB" in OPTISCALER_MANAGER_SCRIPT, "OptiScaler must use a fail-fast per-game file lock")
+for command_name in ("command_install", "command_status", "command_rollback", "command_remove"):
+    command_match = re.search(rf"(?ms)^def {command_name}\(.*?(?=^def |\Z)", OPTISCALER_MANAGER_SCRIPT)
+    require(command_match is not None and "with game_operation_lock(game_dir):" in command_match.group(0),
+            f"OptiScaler {command_name} must hold the per-game operation lock")
+require("Could not preserve original game-file backup" in OPTISCALER_MANAGER_SCRIPT and
+        OPTISCALER_MANAGER_SCRIPT.index("Could not preserve original game-file backup") <
+        OPTISCALER_MANAGER_SCRIPT.index('old_rollback = backup_dir / ".rollback-previous"'),
+        "OptiScaler must finish original-file backups before rotating the previous rollback")
 require("automatic restoration was " in OPTISCALER_MANAGER_SCRIPT and "incomplete" in OPTISCALER_MANAGER_SCRIPT and "remove-transaction-" in OPTISCALER_MANAGER_SCRIPT, "OptiScaler manager must retain recovery data and roll back partial install/removal failures")
 require("--confirm-offline-singleplayer" in OPTISCALER_MANAGER_SCRIPT and "Type INSTALL" in OPTISCALER_MANAGER_SCRIPT, "OptiScaler manager must require explicit offline-game and interactive install confirmation")
 require("--replace-existing" in OPTISCALER_MANAGER_SCRIPT and "rollback_available" in OPTISCALER_MANAGER_SCRIPT and "remove_installation" in OPTISCALER_MANAGER_SCRIPT, "OptiScaler manager must require explicit conflict replacement and provide rollback/removal")
@@ -429,6 +440,7 @@ require('cat > "$MOCK_BIN/lspci"' in MANUAL_VM_BOOTSTRAP_TEST and "class=0300" i
 require("different physical slots" in VM_XML_SYNC_TEST and "gpu_class=gpu_class" in VM_XML_SYNC_TEST and "audio_class=audio_class" in VM_XML_SYNC_TEST, "VM XML sync tests must reject wrong PCI classes and different slots")
 require("scripts/sync-vm-xml.py" in RELEASING and "scripts/test-vm-xml-sync.py" in RELEASING and "scripts/sync-vm-xml.py" in RELEASE_WORKFLOW and "scripts/test-vm-xml-sync.py" in RELEASE_WORKFLOW, "release policy must document the out-of-flake VM XML sync helper and test allowlist")
 require("## Audit finding fixes — 2026-11-03" in REPAIR, "repair report must record the new audit findings")
+require("run #41603404803" in REPAIR and "3105ea2c90a17584e11a9776d0767f1de5d59221" in REPAIR and "predates the original-backup ordering and per-game lock changes" in REPAIR, "repair report must identify the previous successful normal-CI baseline without claiming it tested later fixes")
 require('if [ "$ACTION" = "restore" ]; then' in VFIO_HOOK and 'restore_vfio_state || exit 1' in VFIO_HOOK and "prepare_vfio" in VFIO_HOOK, "VFIO hook must route libvirt saved-state restore through the same preparation path")
 require("RESTORE_XML_FILE" in VFIO_HOOK and 'cat -- "$RESTORE_XML_FILE"' in VFIO_HOOK, "VFIO restore hook must buffer and return the original XML only after successful preparation")
 require('restore_vfio_state < "$RESTORE_INPUT" > "$RESTORE_OUTPUT"' in VFIO_HOOK_TEST and 'cmp -s "$RESTORE_INPUT" "$RESTORE_OUTPUT"' in VFIO_HOOK_TEST and "MOCK_PREPARE_STATUS=1" in VFIO_HOOK_TEST, "VFIO hook regression must test unchanged restore XML and fail-closed behavior")
@@ -449,6 +461,7 @@ require(
     "OptiScaler manager tests must cover missing backups, state-write rollback, partial removal recovery, and pre-extraction limits",
 )
 require("preflights every required backup" in OPTISCALER_MANAGER_DOC and "before extraction" in OPTISCALER_MANAGER_DOC, "OptiScaler manager guide must document backup preflight and pre-extraction size checks")
+require("Before rotating an existing one-step rollback" in OPTISCALER_MANAGER_DOC and "per-game `flock` lock" in OPTISCALER_MANAGER_DOC, "OptiScaler manager guide must document atomic original backups and per-game command serialization")
 require("docs/OPTISCALER-MANAGER.md" in RELEASING and "scripts/optiscaler_manager.py" in RELEASING and "scripts/test-optiscaler-manager.py" in RELEASING, "release guide must allowlist the standalone OptiScaler helper and its tests")
 require("scripts/test-vfio-hook-driver-state.sh" in RELEASING and "scripts/test-vfio-hook-driver-state.sh" in RELEASE_WORKFLOW, "release ancestor allowlist must include the hook test script but not the system-affecting hook itself")
 

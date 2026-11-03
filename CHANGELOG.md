@@ -5,6 +5,8 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 ## [Unreleased]
 
 ### Post-audit regression hardening — 2026-11-03
+- Preserved the previous OptiScaler one-step rollback when an update cannot back up a newly encountered original game file: original backups are now atomically copied before rollback history is rotated, with a fault-injection regression for the failed-copy path.
+- Added fail-fast per-game `flock` serialization for install/update, status, rollback, and removal so concurrent commands cannot race over one game's files or manager state; separate game directories remain independent.
 - Made OptiScaler rollback and removal recoverable across injected mid-operation I/O failures: durable pre-operation snapshots restore the prior game state when possible and are retained with an explicit path if automatic recovery also fails. Added tests for rollback-copy failure, final state-file write failure, and second-stage recovery failure.
 - Made VM XML synchronization reject a `--domain` value that does not match the template domain, before querying libvirt or touching deployed XML; added a no-write regression.
 - Made installer `apply_var` reject duplicate Home Manager assignments instead of rewriting every match; added unique/missing/duplicate assignment regression cases.

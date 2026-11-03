@@ -190,6 +190,79 @@ class OptiScalerManagerTests(unittest.TestCase):
                 self.assertEqual((game / "OptiScaler.ini").read_text(), "config-1")
                 self.assertTrue(state_file.is_file())
 
+    def test_original_backup_failure_preserves_previous_rollback_and_game(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            game = root / "Game"
+            game.mkdir()
+            (game / "game.exe").write_text("exe", encoding="utf-8")
+            (game / "dxgi.dll").write_text("original-proxy", encoding="utf-8")
+            (game / "custom.dll").write_text("original-custom", encoding="utf-8")
+            with patch.object(manager, "state_root", lambda: root / "state"):
+                first = self.make_payload(root / "first", "1")
+                manager.apply_payload(game, first, "v1", "first.7z", "dxgi.dll", True)
+                state_file = manager.game_state_file(game)
+                rollback_dir = manager.backup_root(game) / "rollback"
+                previous_rollback = (rollback_dir / "files" / "dxgi.dll").read_text()
+
+                second = self.make_payload(root / "second", "2")
+                custom_payload = root / "second" / "custom.dll"
+                custom_payload.write_text("managed-custom", encoding="utf-8")
+                second["custom.dll"] = custom_payload
+                original_copy_atomic = manager.copy_atomic
+
+                def fail_original_backup(source, destination):
+                    if source == game / "custom.dll":
+                        raise OSError("simulated original-file backup failure")
+                    return original_copy_atomic(source, destination)
+
+                with patch.object(manager, "copy_atomic", side_effect=fail_original_backup):
+                    with self.assertRaisesRegex(
+                        manager.ManagerError, "Could not preserve original game-file backup"
+                    ):
+                        manager.apply_payload(
+                            game, second, "v2", "second.7z", "dxgi.dll", True
+                        )
+
+                current = manager.load_state(state_file)
+                self.assertEqual(current["version"], "v1")
+                self.assertTrue(current["rollback_available"])
+                self.assertEqual((game / "dxgi.dll").read_text(), "proxy-1")
+                self.assertEqual((game / "OptiScaler.ini").read_text(), "config-1")
+                self.assertEqual((game / "custom.dll").read_text(), "original-custom")
+                self.assertTrue(rollback_dir.is_dir())
+                self.assertEqual(
+                    (rollback_dir / "files" / "dxgi.dll").read_text(),
+                    previous_rollback,
+                )
+
+    def test_per_game_operation_lock_rejects_concurrent_access_and_releases(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            game = root / "Game"
+            other_game = root / "OtherGame"
+            game.mkdir()
+            other_game.mkdir()
+            with patch.object(manager, "state_root", lambda: root / "state"):
+                lock_path = (
+                    root / "state" / "locks" /
+                    f"{manager.game_identity(game)}.lock"
+                )
+                with manager.game_operation_lock(game):
+                    self.assertTrue(lock_path.is_file())
+                    self.assertEqual(lock_path.stat().st_mode & 0o777, 0o600)
+                    with self.assertRaisesRegex(
+                        manager.ManagerError, "already running for"
+                    ):
+                        with manager.game_operation_lock(game):
+                            self.fail("a concurrent operation unexpectedly acquired the same game lock")
+                    # Locks are per-game: an unrelated game can still be managed.
+                    with manager.game_operation_lock(other_game):
+                        pass
+                # The lock is released when the command exits its context.
+                with manager.game_operation_lock(game):
+                    pass
+
     def test_state_write_failure_rolls_back_the_payload_and_original_files(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

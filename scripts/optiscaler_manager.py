@@ -8,6 +8,8 @@ Only official stable releases are considered. Archives are verified before extra
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
+import fcntl
 import hashlib
 import json
 import os
@@ -49,6 +51,59 @@ def cache_root() -> Path:
 def state_root() -> Path:
     base = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state"))
     return base / "optiscaler-manager"
+
+
+@contextmanager
+def game_operation_lock(game_dir: Path):
+    """Serialize manager operations for one game directory without blocking indefinitely."""
+    lock_root = state_root() / "locks"
+    descriptor: int | None = None
+    locked = False
+    try:
+        try:
+            lock_root.mkdir(parents=True, exist_ok=True, mode=0o700)
+            root_info = lock_root.lstat()
+            if not stat.S_ISDIR(root_info.st_mode) or root_info.st_uid != os.getuid():
+                raise ManagerError(f"Per-game lock directory is not a user-owned directory: {lock_root}")
+            os.chmod(lock_root, 0o700)
+
+            lock_path = lock_root / f"{game_identity(game_dir)}.lock"
+            flags = os.O_CREAT | os.O_RDWR
+            flags |= getattr(os, "O_CLOEXEC", 0)
+            flags |= getattr(os, "O_NOFOLLOW", 0)
+            descriptor = os.open(lock_path, flags, 0o600)
+            lock_info = os.fstat(descriptor)
+            if (
+                not stat.S_ISREG(lock_info.st_mode)
+                or lock_info.st_uid != os.getuid()
+                or lock_info.st_nlink != 1
+            ):
+                raise ManagerError(f"Per-game lock file is not a private regular file: {lock_path}")
+            os.fchmod(descriptor, 0o600)
+        except OSError as exc:
+            raise ManagerError(f"Could not prepare the per-game operation lock: {exc}") from exc
+
+        try:
+            fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise ManagerError(
+                f"Another OptiScaler Manager operation is already running for {game_dir}. "
+                "Let it finish before retrying."
+            ) from exc
+        except OSError as exc:
+            raise ManagerError(f"Could not acquire the per-game operation lock: {exc}") from exc
+        locked = True
+        yield
+    finally:
+        if descriptor is not None:
+            try:
+                if locked:
+                    fcntl.flock(descriptor, fcntl.LOCK_UN)
+            except OSError:
+                # Closing the descriptor below also releases the advisory lock.
+                pass
+            finally:
+                os.close(descriptor)
 
 
 def request_json(url: str) -> dict:
@@ -557,6 +612,21 @@ def apply_payload(
             atomic_json(staged_rollback / "previous-state.json", previous)
         atomic_json(staged_rollback / "transaction.json", transaction)
 
+        # Preserve newly encountered game files before replacing the previous
+        # one-step rollback. copy_atomic publishes each backup only after the full
+        # copy succeeds, so a failed backup leaves the current rollback untouched.
+        for relative, target in targets.items():
+            if target.is_file() and relative not in old_files and relative not in originals:
+                backup_relative = f"originals/{relative}"
+                backup_path = safe_backup_path(backup_dir, backup_relative)
+                try:
+                    copy_atomic(target, backup_path)
+                except OSError as exc:
+                    raise ManagerError(
+                        f"Could not preserve original game-file backup for {target}: {exc}"
+                    ) from exc
+                originals[relative] = backup_relative
+
         old_rollback = backup_dir / ".rollback-previous"
         if rollback_dir.is_symlink() or old_rollback.is_symlink():
             raise ManagerError("Refusing a symbolic link in the rollback directory.")
@@ -587,12 +657,6 @@ def apply_payload(
                     os.replace(old_rollback, rollback_dir)
                     raise
             shutil.rmtree(old_rollback, ignore_errors=True)
-    for relative, target in targets.items():
-        if target.is_file() and relative not in old_files and relative not in originals:
-            backup_relative = f"originals/{relative}"
-            snapshot_file(target, backup_dir / backup_relative)
-            originals[relative] = backup_relative
-
     state = {
         "schema": 1,
         "game_dir": str(game_dir),
@@ -857,64 +921,68 @@ def command_install(args: argparse.Namespace) -> None:
     print(f"Target directory: {game_dir}")
     if input("Type INSTALL to confirm this per-game change: ").strip() != "INSTALL":
         raise ManagerError("Installation cancelled.")
-    archive, version, asset = download_release(args.sha256)
-    temporary, payload = extract_payload(archive, args.proxy)
-    try:
-        state = apply_payload(
-            game_dir, payload, version, asset, args.proxy, args.replace_existing
-        )
-    finally:
-        temporary.cleanup()
-    print(f"Installed OptiScaler {version} into {game_dir}")
-    print(f"Managed files: {len(state['files'])}")
-    print("A one-step rollback is available with the rollback command.")
-    print_launch_override(args.proxy)
+    with game_operation_lock(game_dir):
+        archive, version, asset = download_release(args.sha256)
+        temporary, payload = extract_payload(archive, args.proxy)
+        try:
+            state = apply_payload(
+                game_dir, payload, version, asset, args.proxy, args.replace_existing
+            )
+        finally:
+            temporary.cleanup()
+        print(f"Installed OptiScaler {version} into {game_dir}")
+        print(f"Managed files: {len(state['files'])}")
+        print("A one-step rollback is available with the rollback command.")
+        print_launch_override(args.proxy)
 
 
 def command_status(args: argparse.Namespace) -> None:
     game_dir = select_game_dir(args.game_dir)
-    state = load_state(game_state_file(game_dir))
-    if state is None:
-        print(f"No manager-owned OptiScaler installation in {game_dir}")
-        return
-    mismatches = []
-    missing = []
-    for relative, expected in state["files"].items():
-        target = target_path(game_dir, relative)
-        if not target.is_file():
-            missing.append(relative)
-        elif sha256_file(target) != expected:
-            mismatches.append(relative)
-    print(f"OptiScaler: {state['version']}")
-    print(f"Game directory: {game_dir}")
-    print(f"Proxy: {state['proxy']}")
-    print(f"Tracked files: {len(state['files'])}")
-    print(f"Integrity: {'OK' if not mismatches and not missing else 'needs review'}")
-    if mismatches:
-        print("Modified: " + ", ".join(mismatches))
-    if missing:
-        print("Missing: " + ", ".join(missing))
-    print(f"Rollback available: {'yes' if state.get('rollback_available') else 'no'}")
+    with game_operation_lock(game_dir):
+        state = load_state(game_state_file(game_dir))
+        if state is None:
+            print(f"No manager-owned OptiScaler installation in {game_dir}")
+            return
+        mismatches = []
+        missing = []
+        for relative, expected in state["files"].items():
+            target = target_path(game_dir, relative)
+            if not target.is_file():
+                missing.append(relative)
+            elif sha256_file(target) != expected:
+                mismatches.append(relative)
+        print(f"OptiScaler: {state['version']}")
+        print(f"Game directory: {game_dir}")
+        print(f"Proxy: {state['proxy']}")
+        print(f"Tracked files: {len(state['files'])}")
+        print(f"Integrity: {'OK' if not mismatches and not missing else 'needs review'}")
+        if mismatches:
+            print("Modified: " + ", ".join(mismatches))
+        if missing:
+            print("Missing: " + ", ".join(missing))
+        print(f"Rollback available: {'yes' if state.get('rollback_available') else 'no'}")
 
 
 def command_rollback(args: argparse.Namespace) -> None:
     game_dir = select_game_dir(args.game_dir)
-    state_file = game_state_file(game_dir)
-    state = load_state(state_file)
-    if state is None or not state.get("rollback_available"):
-        raise ManagerError("No one-step rollback is available for this game directory.")
-    for relative, expected in state["files"].items():
-        target = target_path(game_dir, relative)
-        if target.exists() and sha256_file(target) != expected:
-            raise ManagerError(f"Managed file was modified; refusing rollback: {target}")
-    restore_transaction(game_dir, backup_root(game_dir) / "rollback", state_file)
-    print(f"Restored the previous game-folder state for {game_dir}")
+    with game_operation_lock(game_dir):
+        state_file = game_state_file(game_dir)
+        state = load_state(state_file)
+        if state is None or not state.get("rollback_available"):
+            raise ManagerError("No one-step rollback is available for this game directory.")
+        for relative, expected in state["files"].items():
+            target = target_path(game_dir, relative)
+            if target.exists() and sha256_file(target) != expected:
+                raise ManagerError(f"Managed file was modified; refusing rollback: {target}")
+        restore_transaction(game_dir, backup_root(game_dir) / "rollback", state_file)
+        print(f"Restored the previous game-folder state for {game_dir}")
 
 
 def command_remove(args: argparse.Namespace) -> None:
     game_dir = select_game_dir(args.game_dir)
-    remove_installation(game_dir)
-    print(f"Removed manager-owned OptiScaler files and restored originals in {game_dir}")
+    with game_operation_lock(game_dir):
+        remove_installation(game_dir)
+        print(f"Removed manager-owned OptiScaler files and restored originals in {game_dir}")
 
 
 def build_parser() -> argparse.ArgumentParser:
