@@ -4,6 +4,11 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+### Verification-record correction — 2026-11-03
+- Corrected the repair report and current-state index to distinguish the reviewed source snapshot (`8d1e4585c9cd3f690c1df80ee531008c7e9d30ef`, normal CI #1120 passed) from the older last successful full-system build baseline (`ca6edf2a381118fbd81aeccb82287f234f44a257`, manual build #6 passed).
+- Recorded the canonical run #1120 artifact identity and clarified that the full-system build has not yet been repeated after the QEMU hook and installer changes; those paths remain blocked by the release workflow until a new manual full build passes.
+- Clarified that the OptiScaler audit scope is separate from the VFIO saved-state hook change. Updated the documentation-integrity regression to validate separate CI/build snapshots, their ancestry, and the existing pending-build gate.
+
 ### Post-audit regression hardening — 2026-11-03
 - Preserved the previous OptiScaler one-step rollback when an update cannot back up a newly encountered original game file: original backups are now atomically copied before rollback history is rotated, with a fault-injection regression for the failed-copy path.
 - Added fail-fast per-game `flock` serialization for install/update, status, rollback, and removal so concurrent commands cannot race over one game's files or manager state; separate game directories remain independent.

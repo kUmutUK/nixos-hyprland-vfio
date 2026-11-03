@@ -111,37 +111,60 @@ require(
     "repair report must label the last completed full-system build baseline and avoid a duplicated heading",
 )
 repair_baseline_match = re.search(
-    r"(?m)^\*\*Verified source baseline:\*\* GitHub `main` at `([0-9a-f]{40})`",
+    r"(?m)^\*\*Verified full-system build baseline:\*\* GitHub `main` at `([0-9a-f]{40})`",
     REPAIR,
 )
 index_baseline_match = re.search(
-    r"(?m)^- Last completed exact-HEAD verification \(2026-11-02\): GitHub `main` is at `([0-9a-f]{40})`",
+    r"(?m)^- Last completed full-system build baseline \(2026-11-02\): GitHub `main` at `([0-9a-f]{40})`",
+    STATE_INDEX,
+)
+reviewed_snapshot_match = re.search(
+    r"(?m)^\*\*Reviewed source snapshot:\*\* GitHub `main` at `([0-9a-f]{40})`",
+    REPAIR,
+)
+index_reviewed_snapshot_match = re.search(
+    r"(?m)^- Reviewed source snapshot \(2026-11-03\): GitHub `main` at `([0-9a-f]{40})`",
     STATE_INDEX,
 )
 ci_run_match = re.search(
-    r"(?m)^- \*\*Normal CI:\*\* \[run #(\d+)\]\(https://github\.com/kUmutUK/nixos-hyprland-vfio/actions/runs/(\d+)\) completed successfully for that exact HEAD",
+    r"(?m)^- \*\*Normal CI for the reviewed snapshot:\*\* \[run #(\d+)\]\(https://github\.com/kUmutUK/nixos-hyprland-vfio/actions/runs/(\d+)\) completed successfully for the exact reviewed snapshot `([0-9a-f]{40})`",
     REPAIR,
 )
 build_run_match = re.search(
-    r"\[manual run #([0-9]+)\]\(https://github\.com/kUmutUK/nixos-hyprland-vfio/actions/runs/([0-9]+)\) completed successfully for the \*\*same exact commit\*\* `([0-9a-f]{40})`",
+    r"\[manual run #(\d+)\]\(https://github\.com/kUmutUK/nixos-hyprland-vfio/actions/runs/(\d+)\) completed successfully for the \*\*same exact commit\*\* `([0-9a-f]{40})`",
     REPAIR,
 )
-require(repair_baseline_match is not None, "repair report must contain a full 40-character verified source SHA")
-require(index_baseline_match is not None, "current-state index must contain a full 40-character verified source SHA")
+require(repair_baseline_match is not None, "repair report must contain the full SHA of the last successful full-system build")
+require(index_baseline_match is not None, "current-state index must contain the full SHA of the last successful full-system build")
+require(reviewed_snapshot_match is not None, "repair report must identify the separately reviewed source snapshot")
+require(index_reviewed_snapshot_match is not None, "current-state index must identify the separately reviewed source snapshot")
+require(ci_run_match is not None, "repair report must link successful normal CI for the reviewed source snapshot")
+require(build_run_match is not None, "repair report must link the last successful full-system build")
 if repair_baseline_match and index_baseline_match:
-    verified_sha = repair_baseline_match.group(1)
-    require(index_baseline_match.group(1) == verified_sha,
-            "current-state index and repair report must identify the same verified source commit")
-    require(build_run_match is not None and build_run_match.group(3) == verified_sha,
-            "normal CI and full-system build records must both cover the documented exact HEAD")
-require(ci_run_match is not None, "repair report must link a successful normal CI run for the exact documented HEAD")
-require(build_run_match is not None, "repair report must link a successful full-system build for the exact documented HEAD")
-require("[#" + (ci_run_match.group(1) if ci_run_match else "") + "]" in STATE_INDEX, "current-state index must reference the same normal-CI run as the repair report")
-require("run #" + (build_run_match.group(1) if build_run_match else "") in STATE_INDEX, "current-state index must reference the same full-system build as the repair report")
+    build_sha = repair_baseline_match.group(1)
+    require(index_baseline_match.group(1) == build_sha,
+            "current-state index and repair report must identify the same full-system build baseline")
+    require(build_run_match is not None and build_run_match.group(3) == build_sha,
+            "the documented manual full-system build must match the full-system build baseline SHA")
+if reviewed_snapshot_match and index_reviewed_snapshot_match and ci_run_match:
+    reviewed_sha = reviewed_snapshot_match.group(1)
+    require(index_reviewed_snapshot_match.group(1) == reviewed_sha,
+            "current-state index and repair report must identify the same reviewed source snapshot")
+    require(ci_run_match.group(3) == reviewed_sha,
+            "the normal-CI run must cover the exact reviewed source snapshot")
+require("[#" + (ci_run_match.group(1) if ci_run_match else "") + "]" in STATE_INDEX,
+        "current-state index must reference the same normal-CI run as the repair report")
+require("run #" + (build_run_match.group(1) if build_run_match else "") in STATE_INDEX,
+        "current-state index must reference the same full-system build as the repair report")
+require("these are historical baseline results, not verification of the later reviewed snapshot" in STATE_INDEX,
+        "current-state index must distinguish historical full-build verification from the later reviewed snapshot")
+require("the reviewed snapshot" in REPAIR and "fresh full-system build is required before release" in REPAIR,
+        "repair report must state that later system-affecting changes still require a full build")
 
-# The baseline commit is intentionally the last commit for which exact-HEAD
-# normal CI and a full system build are documented. Later commits may update
-# release/documentation metadata, but must not silently change runtime inputs.
+# The full-system baseline is the last source snapshot for which a complete
+# NixOS toplevel/selected-kernel build is documented. A later normal-CI run
+# does not silently upgrade that build record. Subsequent changes must stay
+# within the explicit release allowlist or documented pending-build paths.
 verification_metadata_paths = {
     ".git-cliff.toml",
     ".github/workflows/check.yml",
@@ -192,12 +215,16 @@ if current_head and repair_baseline_match:
         ancestor = subprocess.run(["git", "merge-base", "--is-ancestor", verified_sha, current_head], cwd=ROOT, capture_output=True, text=True)
         require(ancestor.returncode == 0, "documented verified baseline must be an ancestor of the current checkout HEAD")
         if ancestor.returncode == 0:
+            if reviewed_snapshot_match:
+                reviewed_sha = reviewed_snapshot_match.group(1)
+                reviewed_ancestor = subprocess.run(["git", "merge-base", "--is-ancestor", reviewed_sha, current_head], cwd=ROOT, capture_output=True, text=True)
+                require(reviewed_ancestor.returncode == 0, "reviewed normal-CI source snapshot must be an ancestor of the current checkout HEAD")
             changed = subprocess.run(["git", "diff", "--name-only", verified_sha, current_head], cwd=ROOT, check=True, capture_output=True, text=True).stdout.splitlines()
             full_build_pending_paths = {"nixos/hooks/qemu", "install.sh"}
             unexpected = sorted(set(changed) - verification_metadata_paths - full_build_pending_paths)
             require(
                 not unexpected,
-                "changes after the last exact-HEAD verification must stay within the release/documentation/CI allowlist or an explicitly documented pending-build path; unexpected: "
+                "changes after the last successful full-system build must stay within the release/documentation/CI allowlist or an explicitly documented pending-build path; unexpected: "
                 + ", ".join(unexpected),
             )
             pending = sorted(set(changed) & full_build_pending_paths)
@@ -440,7 +467,9 @@ require('cat > "$MOCK_BIN/lspci"' in MANUAL_VM_BOOTSTRAP_TEST and "class=0300" i
 require("different physical slots" in VM_XML_SYNC_TEST and "gpu_class=gpu_class" in VM_XML_SYNC_TEST and "audio_class=audio_class" in VM_XML_SYNC_TEST, "VM XML sync tests must reject wrong PCI classes and different slots")
 require("scripts/sync-vm-xml.py" in RELEASING and "scripts/test-vm-xml-sync.py" in RELEASING and "scripts/sync-vm-xml.py" in RELEASE_WORKFLOW and "scripts/test-vm-xml-sync.py" in RELEASE_WORKFLOW, "release policy must document the out-of-flake VM XML sync helper and test allowlist")
 require("## Audit finding fixes — 2026-11-03" in REPAIR, "repair report must record the new audit findings")
-require("run #41603404803" in REPAIR and "3105ea2c90a17584e11a9776d0767f1de5d59221" in REPAIR and "predates the original-backup ordering and per-game lock changes" in REPAIR, "repair report must identify the previous successful normal-CI baseline without claiming it tested later fixes")
+require("run #41603404803" in REPAIR and "3105ea2c90a17584e11a9776d0767f1de5d59221" in REPAIR and "Previous normal-CI reference (superseded)" in REPAIR and "current normal-CI verification for the reviewed snapshot is run #1120" in REPAIR, "repair report must distinguish the superseded parent CI from the reviewed-snapshot CI")
+require("run #41608022759" in REPAIR and "8d1e4585c9cd3f690c1df80ee531008c7e9d30ef" in REPAIR and "artifact ID `13217103984`" in REPAIR, "repair report must record the reviewed-snapshot CI and canonical artifact")
+require("OptiScaler-specific scope" in REPAIR and "Separately, the VFIO saved-state hook change" in REPAIR, "repair report must distinguish OptiScaler-only changes from the separate VFIO hook change")
 require('if [ "$ACTION" = "restore" ]; then' in VFIO_HOOK and 'restore_vfio_state || exit 1' in VFIO_HOOK and "prepare_vfio" in VFIO_HOOK, "VFIO hook must route libvirt saved-state restore through the same preparation path")
 require("RESTORE_XML_FILE" in VFIO_HOOK and 'cat -- "$RESTORE_XML_FILE"' in VFIO_HOOK, "VFIO restore hook must buffer and return the original XML only after successful preparation")
 require('restore_vfio_state < "$RESTORE_INPUT" > "$RESTORE_OUTPUT"' in VFIO_HOOK_TEST and 'cmp -s "$RESTORE_INPUT" "$RESTORE_OUTPUT"' in VFIO_HOOK_TEST and "MOCK_PREPARE_STATUS=1" in VFIO_HOOK_TEST, "VFIO hook regression must test unchanged restore XML and fail-closed behavior")
