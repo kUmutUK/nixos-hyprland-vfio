@@ -547,7 +547,7 @@ require(
     "system, Home Manager, and Hyprland startup cursor themes must agree",
 )
 plus_cursor_start = HOME_NIX.find('  plusCursorTheme = pkgs.runCommand "plus-cursor-theme"')
-plus_cursor_end = HOME_NIX.find("\\n\\n  pywal16Fixed", plus_cursor_start)
+plus_cursor_end = HOME_NIX.find("\n\n  pywal16Fixed", plus_cursor_start)
 plus_cursor_definition = (
     HOME_NIX[plus_cursor_start:plus_cursor_end]
     if plus_cursor_start >= 0 and plus_cursor_end > plus_cursor_start
