@@ -265,7 +265,7 @@ def parse_archive_listing(stdout: str, archive: Path) -> tuple[list[str], int]:
             )
         size_text = record.get("Size")
         if size_text is None or not re.fullmatch(r"[0-9]+", size_text):
-            raise ManagerError("7-Zip listing omitted or returned an invalid uncompressed member size; refusing extraction.")
+            raise ManagerError("7-Zip listing omitted or duplicated uncompressed member sizes; refusing extraction.")
         total_size += int(size_text)
         if total_size > MAX_EXTRACTED_BYTES:
             raise ManagerError("Archive advertises more than the 4 GiB extracted-size safety limit; refusing to extract it.")
