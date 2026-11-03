@@ -4,10 +4,10 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
-### Verification-record correction — 2026-11-03
-- Corrected the repair report and current-state index to distinguish the reviewed source snapshot (`8d1e4585c9cd3f690c1df80ee531008c7e9d30ef`, normal CI #1120 passed) from the older last successful full-system build baseline (`ca6edf2a381118fbd81aeccb82287f234f44a257`, manual build #6 passed).
-- Recorded the canonical run #1120 artifact identity and clarified that the full-system build has not yet been repeated after the QEMU hook and installer changes; those paths remain blocked by the release workflow until a new manual full build passes.
-- Clarified that the OptiScaler audit scope is separate from the VFIO saved-state hook change. Updated the documentation-integrity regression to validate separate CI/build snapshots, their ancestry, and the existing pending-build gate.
+### Exact-HEAD full-build baseline refresh — 2026-11-03
+- Promoted manual full-system build #9 (`ab89f350803d47eb16499c613b110da05a57673f`) to the verified baseline. The complete NixOS toplevel/selected-kernel build, flake evaluation, and unchanged-`flake.lock` check all passed on that exact commit (4 h 46 min 26 s).
+- Diagnosed normal CI #1124: its documentation-integrity regression still compared changes against the superseded `ca6edf2` baseline and incorrectly rejected `nixos/configuration.nix`, `nixos/flake.lock`, and `nixos/home.nix`, even though full-system build #9 covered that exact tree. Updated the test to track the newest verified full-build baseline while retaining its ancestry and changed-path gate.
+- Kept the verification records distinct: normal CI #1120 passed on ancestor snapshot `8d1e4585c9cd3f690c1df80ee531008c7e9d30ef`; its canonical artifact (ID `13217103984`) belongs to that snapshot and is not represented as an artifact for build baseline #9. Physical saved-state restore and GPU/display lifecycle validation remain target-host tasks.
 
 ### Post-audit regression hardening — 2026-11-03
 - Preserved the previous OptiScaler one-step rollback when an update cannot back up a newly encountered original game file: original backups are now atomically copied before rollback history is rotated, with a fault-injection regression for the failed-copy path.
@@ -16,13 +16,13 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 - Made VM XML synchronization reject a `--domain` value that does not match the template domain, before querying libvirt or touching deployed XML; added a no-write regression.
 - Made installer `apply_var` reject duplicate Home Manager assignments instead of rewriting every match; added unique/missing/duplicate assignment regression cases.
 - Fixed the repair report's duplicate 2 November heading and completed the README repository map with the OptiScaler Manager guide, implementation, and tests.
-- Kept `install.sh` outside the release ancestor-build allowlist: this installer source change requires a fresh full NixOS system build before release. The mock-only `scripts/test-installer-invariants.sh` regression harness is allowlisted as CI test code.
+- Kept `install.sh` outside the release ancestor-build allowlist. At the time of this audit entry, its source change still required a new full build; that requirement was subsequently satisfied by exact-HEAD manual build #9. The mock-only `scripts/test-installer-invariants.sh` regression harness remains allowlisted as CI test code.
 
 ### Safety and recovery follow-up — 2026-11-03
 - Closed the latest audit gaps: OptiScaler now rejects symbolic links, hard links, reparse points, and special files from 7-Zip metadata before extraction, and validates the complete state JSON shape, safe paths, proxy names, backup mappings, and SHA-256 values. Manual VM XML synchronization now verifies `lspci` classes and requires the GPU/audio functions to share the same PCI slot; mock-backed regressions cover wrong classes and unrelated devices.
 - Added the OptiScaler manager regression command to the README validation sequence and clarified that this repository's optional manager is an independent, nonofficial third-party helper, not an upstream component.
 - Hardened the optional OptiScaler manager: rollback and removal preflight every required backup, install/update state writes now participate in rollback, failed removal attempts restore the pre-remove file state, the 4 GiB extracted-size limit is enforced from a complete 7-Zip listing before extraction, while incomplete size metadata is rejected. Added regression tests for missing backups and injected I/O failures.
-- Added support for libvirt saved-state restore through the QEMU `restore begin` XML-filter hook. The hook shares the cold-start VFIO preparation path and returns the original domain XML unchanged only after successful preparation. Mock tests cover the filter contract; target-hardware saved-state restore and a fresh full-system build remain pending.
+- Added support for libvirt saved-state restore through the QEMU `restore begin` XML-filter hook. The hook shares the cold-start VFIO preparation path and returns the original domain XML unchanged only after successful preparation. Mock tests cover the filter contract; the later exact-HEAD full-system build #9 includes this hook, while target-hardware saved-state restore remains pending.
 
 ### Optional Proton gaming integration
 - Added an optional OptiScaler Manager for stable-release checks, verified downloads, explicit per-game Proton installation, status, one-step rollback, and removal with original-file restoration. It fails closed without a trusted SHA-256, rejects unsafe archive paths, requires an offline/single-player confirmation, and never edits global Steam/NixOS settings. Added offline regression coverage; no NixOS derivation, LSFG-VK profile, or latency-layer default changed.

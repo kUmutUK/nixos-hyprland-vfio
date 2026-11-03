@@ -107,7 +107,7 @@ require(
     "tag pushes must use git-cliff --current while manual main-branch releases use --latest",
 )
 require(
-    "Last completed full-system build baseline — 2026-11-02" in REPAIR,
+    "Last completed full-system build baseline — 2026-11-03" in REPAIR,
     "repair report must label the last completed full-system build baseline and avoid a duplicated heading",
 )
 repair_baseline_match = re.search(
@@ -115,7 +115,7 @@ repair_baseline_match = re.search(
     REPAIR,
 )
 index_baseline_match = re.search(
-    r"(?m)^- Last completed full-system build baseline \(2026-11-02\): GitHub `main` at `([0-9a-f]{40})`",
+    r"(?m)^- Last completed full-system build baseline \(2026-11-03\): GitHub `main` at `([0-9a-f]{40})`",
     STATE_INDEX,
 )
 reviewed_snapshot_match = re.search(
@@ -156,15 +156,19 @@ require("[#" + (ci_run_match.group(1) if ci_run_match else "") + "]" in STATE_IN
         "current-state index must reference the same normal-CI run as the repair report")
 require("run #" + (build_run_match.group(1) if build_run_match else "") in STATE_INDEX,
         "current-state index must reference the same full-system build as the repair report")
-require("these are historical baseline results, not verification of the later reviewed snapshot" in STATE_INDEX,
-        "current-state index must distinguish historical full-build verification from the later reviewed snapshot")
-require("the reviewed snapshot" in REPAIR and "fresh full-system build is required before release" in REPAIR,
-        "repair report must state that later system-affecting changes still require a full build")
+require("manual run #9" in REPAIR and "full-system build baseline" in REPAIR and "ab89f350803d47eb16499c613b110da05a57673f" in REPAIR,
+        "repair report must identify the successful exact-HEAD full-system build baseline")
+require("run [#9]" in STATE_INDEX and "69 tracked file blobs" in STATE_INDEX and "ab89f350803d47eb16499c613b110da05a57673f" in STATE_INDEX,
+        "current-state index must match the latest full-system build baseline")
+require("run #1120" in REPAIR and "run #1120" in STATE_INDEX and "8d1e4585c9cd3f690c1df80ee531008c7e9d30ef" in STATE_INDEX,
+        "current-state index must preserve the distinct last successful normal-CI snapshot")
+require("run #1124" in REPAIR and "stale" in REPAIR and "target-host" in REPAIR,
+        "repair report must explain the stale-baseline CI failure and retain the physical validation boundary")
 
 # The full-system baseline is the last source snapshot for which a complete
-# NixOS toplevel/selected-kernel build is documented. A later normal-CI run
-# does not silently upgrade that build record. Subsequent changes must stay
-# within the explicit release allowlist or documented pending-build paths.
+# NixOS toplevel/selected-kernel build is documented. Normal CI does not
+# silently upgrade that build record. Subsequent changes must stay within the
+# explicit release allowlist or documented pending-build paths.
 verification_metadata_paths = {
     ".git-cliff.toml",
     ".github/workflows/check.yml",
