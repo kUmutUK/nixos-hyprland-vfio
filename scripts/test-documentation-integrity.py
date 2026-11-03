@@ -10,6 +10,7 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 INSTALLER = (ROOT / "install.sh").read_text(encoding="utf-8")
+INSTALLER_TEST = (ROOT / "scripts/test-installer-invariants.sh").read_text(encoding="utf-8")
 README = (ROOT / "README.md").read_text(encoding="utf-8")
 DISCLAIMER = (ROOT / "DISCLAIMER.md").read_text(encoding="utf-8")
 INSTALLATION = (ROOT / "INSTALLATION.md").read_text(encoding="utf-8")
@@ -52,6 +53,18 @@ require(".git-cliff.toml" in README and "RELEASING.md" in README and ".github/wo
 require("Normal CI must pass for the exact tagged commit" in README, "README must require successful CI for the exact tagged commit")
 require("successful full NixOS system build must exist for that commit or an ancestor" in README, "README must describe the permitted ancestor full-system build")
 require("scripts/test-vm-xml-structure.py" in CONTRIBUTING, "CONTRIBUTING validation commands must include the CI VM XML structure test")
+require("Expected exactly one assignment for" in INSTALLER and "n != 1" in INSTALLER, "installer apply_var must reject ambiguous assignments inside its atomic writer")
+require("apply_var updates one assignment" in INSTALLER_TEST and "duplicate assignments" in INSTALLER_TEST, "installer invariants must test unique, missing, and duplicate Home Manager assignments")
+require("domain is not None and domain != template_domain" in VM_XML_SYNC, "VM XML sync must reject a --domain name that differs from the template domain")
+require("VM domain/template mismatch" in VM_XML_SYNC_TEST, "VM XML sync regressions must prove mismatched domain names fail without writing")
+require("def snapshot_file_set" in OPTISCALER_MANAGER_SCRIPT and "def restore_file_set" in OPTISCALER_MANAGER_SCRIPT, "OptiScaler must share snapshot/restore helpers for multi-file recovery")
+require(".rollback-recovery-" in OPTISCALER_MANAGER_SCRIPT and ".remove-transaction-" in OPTISCALER_MANAGER_SCRIPT and "Preserve the recovery snapshot at" in OPTISCALER_MANAGER_SCRIPT, "OptiScaler must retain named recovery snapshots when automatic restoration also fails")
+require(all(name in OPTISCALER_MANAGER_TEST for name in (
+    "test_rollback_copy_failure_restores_current_install",
+    "test_rollback_state_write_failure_restores_current_install",
+    "test_rollback_recovery_failure_keeps_manual_snapshot",
+    "test_remove_recovery_failure_keeps_manual_snapshot",
+)), "OptiScaler tests must cover rollback and removal recovery failures")
 require("scripts/test-vm-xml-structure.py" in CHECK_WORKFLOW, "CI must continue to run the VM XML structure regression test")
 require("DEGISIKLIK_GECMISI.md" in RELEASING and "DEGISIKLIK_GECMISI.md" in RELEASE_WORKFLOW and "CONTRIBUTING.md" in RELEASING and "CHANGELOG.md" in RELEASING and "docs/REPAIR-AND-VALIDATION-REPORT.md" in RELEASING and "docs/OPTISCALER.md" in RELEASING and "docs/OPTISCALER.md" in RELEASE_WORKFLOW and "INSTALLATION.md" in RELEASING and "INSTALLATION.md" in RELEASE_WORKFLOW and ".github/workflows/check.yml" in RELEASING and "scripts/test-documentation-integrity.py" in RELEASING, "RELEASING allowlist documentation must match release.yml")
 require("grep -E '^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$' |" in RELEASE_WORKFLOW, "release workflow must use a closed stable-semver regex when finding previous tags")
@@ -92,8 +105,8 @@ require(
     "tag pushes must use git-cliff --current while manual main-branch releases use --latest",
 )
 require(
-    "Current source verification — 2026-11-02" in REPAIR,
-    "repair report must label the current exact-HEAD verification section with its update date",
+    "Last completed full-system build baseline — 2026-11-02" in REPAIR,
+    "repair report must label the last completed full-system build baseline and avoid a duplicated heading",
 )
 repair_baseline_match = re.search(
     r"(?m)^\*\*Verified source baseline:\*\* GitHub `main` at `([0-9a-f]{40})`",
@@ -229,6 +242,9 @@ if map_start >= 0 and map_end > map_start:
     repo_map = README[map_start:map_end]
     for required_path in (
         "AUDIT-2026-10-28-VM-XML-VFIO.md",
+        "OPTISCALER-MANAGER.md",
+        "optiscaler_manager.py",
+        "test-optiscaler-manager.py",
         "test-vm-xml-paths.py",
         "test-documentation-integrity.py",
         "lsfg-vk-v2.nix",

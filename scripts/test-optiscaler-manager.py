@@ -243,6 +243,141 @@ class OptiScalerManagerTests(unittest.TestCase):
                 self.assertEqual((game / "OptiScaler.ini").read_text(), "config-1")
                 self.assertTrue(state_file.is_file())
 
+    def test_rollback_copy_failure_restores_current_install(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            game = root / "Game"
+            game.mkdir()
+            (game / "game.exe").write_text("exe", encoding="utf-8")
+            with patch.object(manager, "state_root", lambda: root / "state"):
+                first = self.make_payload(root / "first", "1")
+                second = self.make_payload(root / "second", "2")
+                manager.apply_payload(game, first, "v1", "first.7z", "dxgi.dll", False)
+                manager.apply_payload(game, second, "v2", "second.7z", "dxgi.dll", False)
+                state_file = manager.game_state_file(game)
+                rollback_dir = manager.backup_root(game) / "rollback"
+                original_copy_atomic = manager.copy_atomic
+                calls = 0
+
+                def fail_second_rollback_copy(source, destination):
+                    nonlocal calls
+                    if ".rollback-recovery-" not in str(source):
+                        calls += 1
+                        if calls == 2:
+                            raise OSError("simulated second rollback copy failure")
+                    return original_copy_atomic(source, destination)
+
+                with patch.object(manager, "copy_atomic", side_effect=fail_second_rollback_copy):
+                    with self.assertRaisesRegex(OSError, "second rollback copy failure"):
+                        manager.restore_transaction(game, rollback_dir, state_file)
+
+                self.assertEqual((game / "dxgi.dll").read_text(), "proxy-2")
+                self.assertEqual((game / "OptiScaler.ini").read_text(), "config-2")
+                self.assertEqual(manager.load_state(state_file)["version"], "v2")
+                self.assertTrue(rollback_dir.is_dir())
+                self.assertFalse(list(rollback_dir.parent.glob(".rollback-recovery-*")))
+
+    def test_rollback_state_write_failure_restores_current_install(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            game = root / "Game"
+            game.mkdir()
+            (game / "game.exe").write_text("exe", encoding="utf-8")
+            with patch.object(manager, "state_root", lambda: root / "state"):
+                first = self.make_payload(root / "first", "1")
+                second = self.make_payload(root / "second", "2")
+                manager.apply_payload(game, first, "v1", "first.7z", "dxgi.dll", False)
+                manager.apply_payload(game, second, "v2", "second.7z", "dxgi.dll", False)
+                state_file = manager.game_state_file(game)
+                rollback_dir = manager.backup_root(game) / "rollback"
+                original_atomic_json = manager.atomic_json
+
+                def fail_rollback_state(path, value):
+                    if path == state_file:
+                        raise OSError("simulated rollback state-file write failure")
+                    return original_atomic_json(path, value)
+
+                with patch.object(manager, "atomic_json", side_effect=fail_rollback_state):
+                    with self.assertRaisesRegex(OSError, "rollback state-file write failure"):
+                        manager.restore_transaction(game, rollback_dir, state_file)
+
+                self.assertEqual((game / "dxgi.dll").read_text(), "proxy-2")
+                self.assertEqual((game / "OptiScaler.ini").read_text(), "config-2")
+                self.assertEqual(manager.load_state(state_file)["version"], "v2")
+                self.assertTrue(rollback_dir.is_dir())
+
+    def test_rollback_recovery_failure_keeps_manual_snapshot(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            game = root / "Game"
+            game.mkdir()
+            (game / "game.exe").write_text("exe", encoding="utf-8")
+            with patch.object(manager, "state_root", lambda: root / "state"):
+                first = self.make_payload(root / "first", "1")
+                second = self.make_payload(root / "second", "2")
+                manager.apply_payload(game, first, "v1", "first.7z", "dxgi.dll", False)
+                manager.apply_payload(game, second, "v2", "second.7z", "dxgi.dll", False)
+                state_file = manager.game_state_file(game)
+                rollback_dir = manager.backup_root(game) / "rollback"
+                original_copy_atomic = manager.copy_atomic
+                calls = 0
+
+                def fail_rollback_and_recovery(source, destination):
+                    nonlocal calls
+                    if ".rollback-recovery-" in str(source):
+                        if source.name == "dxgi.dll":
+                            raise OSError("simulated recovery snapshot copy failure")
+                    else:
+                        calls += 1
+                        if calls == 2:
+                            raise OSError("simulated rollback application failure")
+                    return original_copy_atomic(source, destination)
+
+                with patch.object(manager, "copy_atomic", side_effect=fail_rollback_and_recovery):
+                    with self.assertRaisesRegex(manager.ManagerError, "Preserve the recovery snapshot") as caught:
+                        manager.restore_transaction(game, rollback_dir, state_file)
+
+                snapshots = list(rollback_dir.parent.glob(".rollback-recovery-*"))
+                self.assertEqual(len(snapshots), 1)
+                self.assertTrue((snapshots[0] / "files" / "dxgi.dll").is_file())
+                self.assertTrue((snapshots[0] / "files" / "OptiScaler.ini").is_file())
+                self.assertIn(str(snapshots[0]), str(caught.exception))
+                self.assertTrue(rollback_dir.is_dir())
+
+    def test_remove_recovery_failure_keeps_manual_snapshot(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            game = root / "Game"
+            game.mkdir()
+            (game / "game.exe").write_text("exe", encoding="utf-8")
+            (game / "dxgi.dll").write_text("original-dxgi", encoding="utf-8")
+            (game / "OptiScaler.ini").write_text("original-ini", encoding="utf-8")
+            payload = self.make_payload(root / "payload", "1")
+            with patch.object(manager, "state_root", lambda: root / "state"):
+                manager.apply_payload(game, payload, "v1", "asset.7z", "dxgi.dll", True)
+                state_file = manager.game_state_file(game)
+                recovery_root = manager.backup_root(game)
+                original_copy_atomic = manager.copy_atomic
+
+                def fail_remove_and_recovery(source, destination):
+                    source_text = str(source)
+                    if ".remove-transaction-" in source_text and source.name == "OptiScaler.ini":
+                        raise OSError("simulated removal snapshot restore failure")
+                    if "originals" in source.parts and source.name == "OptiScaler.ini":
+                        raise OSError("simulated original-file restore failure")
+                    return original_copy_atomic(source, destination)
+
+                with patch.object(manager, "copy_atomic", side_effect=fail_remove_and_recovery):
+                    with self.assertRaisesRegex(manager.ManagerError, "Preserve the recovery snapshot") as caught:
+                        manager.remove_installation(game)
+
+                snapshots = list(recovery_root.glob(".remove-transaction-*"))
+                self.assertEqual(len(snapshots), 1)
+                self.assertTrue((snapshots[0] / "files" / "dxgi.dll").is_file())
+                self.assertTrue((snapshots[0] / "files" / "OptiScaler.ini").is_file())
+                self.assertIn(str(snapshots[0]), str(caught.exception))
+                self.assertTrue(state_file.is_file())
+
     def test_load_state_rejects_non_object_json_roots(self):
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "state.json"

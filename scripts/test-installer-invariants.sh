@@ -885,6 +885,57 @@ root_pass_command = guide_text.index("sudo nixos-enter --root /mnt -c 'passwd ro
 if root_pass_command < install_command:
     raise SystemExit("FAIL: INSTALLATION.md must place root password setup after successful nixos-install.")
 
+# Exercise apply_var against temporary Home Manager files. Missing optional
+# assignments remain a no-op, a unique assignment is updated, and duplicates
+# must fail without touching either ambiguous line.
+apply_var_test_dir="$(mktemp -d)"
+awk '/^apply_var\(\) \{/ { capture=1 } capture { print } capture && /^}/ { exit }' "$INSTALLER" \
+  > "$apply_var_test_dir/apply-var.sh"
+if ! grep -q '^apply_var() {' "$apply_var_test_dir/apply-var.sh"; then
+  echo "FAIL: could not extract apply_var() for its regression tests." >&2
+  exit 1
+fi
+cat > "$apply_var_test_dir/harness.sh" <<'BASH'
+set -Eeuo pipefail
+PYTHON3="$(command -v python3)"
+HOME_NIX="$2"
+warn() { printf 'WARN: %s\n' "$*" >&2; }
+sudo() { "$@"; }
+source "$1"
+apply_var "$3" "$4"
+BASH
+printf 'monitorOutput = "";\n' > "$apply_var_test_dir/unique.nix"
+if ! bash "$apply_var_test_dir/harness.sh" "$apply_var_test_dir/apply-var.sh" \
+  "$apply_var_test_dir/unique.nix" monitorOutput DP-3; then
+  echo "FAIL: apply_var rejected a unique variable assignment." >&2
+  exit 1
+fi
+grep -Fxq 'monitorOutput = "DP-3";' "$apply_var_test_dir/unique.nix"
+printf 'monitorOutput = "";\nmonitorOutput = "DP-2";\n' > "$apply_var_test_dir/duplicate.nix"
+cp "$apply_var_test_dir/duplicate.nix" "$apply_var_test_dir/duplicate-before.nix"
+if bash "$apply_var_test_dir/harness.sh" "$apply_var_test_dir/apply-var.sh" \
+  "$apply_var_test_dir/duplicate.nix" monitorOutput DP-3 >/dev/null 2>&1; then
+  echo "FAIL: apply_var accepted duplicate variable assignments." >&2
+  exit 1
+fi
+if ! cmp -s "$apply_var_test_dir/duplicate.nix" "$apply_var_test_dir/duplicate-before.nix"; then
+  echo "FAIL: apply_var modified an ambiguous file containing duplicate assignments." >&2
+  exit 1
+fi
+printf 'otherSetting = true;\n' > "$apply_var_test_dir/missing.nix"
+cp "$apply_var_test_dir/missing.nix" "$apply_var_test_dir/missing-before.nix"
+if ! bash "$apply_var_test_dir/harness.sh" "$apply_var_test_dir/apply-var.sh" \
+  "$apply_var_test_dir/missing.nix" monitorOutput DP-3 >/dev/null 2>&1; then
+  echo "FAIL: apply_var should preserve its no-op behavior when an optional assignment is absent." >&2
+  exit 1
+fi
+if ! cmp -s "$apply_var_test_dir/missing.nix" "$apply_var_test_dir/missing-before.nix"; then
+  echo "FAIL: apply_var changed a file when the requested assignment was absent." >&2
+  exit 1
+fi
+rm -rf -- "$apply_var_test_dir"
+echo "OK: apply_var updates one assignment, skips a missing optional value, and rejects duplicate assignments without modifying the file."
+
 config = Path(sys.argv[1]).parent / "nixos" / "configuration.nix"
 config_text = config.read_text(encoding="utf-8")
 service_start = config_text.index('systemd.services.libvirtd-qemu-ownership = {')

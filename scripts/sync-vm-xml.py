@@ -331,6 +331,11 @@ def main() -> int:
     template_domain = template_root.findtext("name")
     if not template_domain:
         fail("VM XML template has no domain name; no file was written.")
+    if domain is not None and domain != template_domain:
+        fail(
+            f"--domain {domain!r} does not match the VM XML template domain "
+            f"{template_domain!r}; no file was written."
+        )
     template_disk_path = primary_disk_path(template_root, "the VM XML template")
     template_hostdevs = template_root.findall(".//hostdev[@type='pci']")
     if len(template_hostdevs) != 2:

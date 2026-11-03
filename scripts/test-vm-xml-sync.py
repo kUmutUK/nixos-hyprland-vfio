@@ -173,6 +173,24 @@ def main() -> int:
 
     template_data = TEMPLATE.read_text(encoding="utf-8")
 
+    # An explicit libvirt domain must match the XML template before libvirt
+    # is queried or any deployed XML/recovery file can be changed.
+    with tempfile.TemporaryDirectory(prefix="vm-xml-sync-domain-mismatch-") as temp:
+        temp_path = Path(temp)
+        template = temp_path / "template.xml"
+        deployed = temp_path / "win10.xml"
+        template.write_text(template_data, encoding="utf-8")
+        deployed.write_text(template_data, encoding="utf-8")
+        original = deployed.read_text(encoding="utf-8")
+        env = fake_virsh_env(temp_path, "another-domain\n", template_data)
+        result = run_sync(template, deployed, domain="another-domain", env=env)
+        if result.returncode == 0 or "does not match the VM XML template domain" not in result.stderr:
+            return fail(f"VM domain/template mismatch was not rejected clearly: {result.stdout}{result.stderr}")
+        if deployed.read_text(encoding="utf-8") != original:
+            return fail("VM domain/template mismatch changed the deployed XML")
+        if list(temp_path.glob("win10.xml.bak-*")) or list(temp_path.glob("win10.xml.libvirt-*.xml")):
+            return fail("VM domain/template mismatch created a recovery backup before refusing")
+
     # A new VM starts from the template but must receive a fresh UUID/MAC.
     with tempfile.TemporaryDirectory(prefix="vm-xml-sync-new-") as temp:
         temp_path = Path(temp)

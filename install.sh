@@ -1086,7 +1086,11 @@ new_text, n = pattern.subn(
     lambda m: '{0}{1} = "{2}";'.format(m.group("indent"), var, escaped), text
 )
 
-if n == 0:
+if n != 1:
+    print(
+        f"Expected exactly one assignment for {var!r} in {path}, found {n}; refusing an ambiguous update.",
+        file=sys.stderr,
+    )
     sys.exit(1)
 
 directory = os.path.dirname(path) or "."

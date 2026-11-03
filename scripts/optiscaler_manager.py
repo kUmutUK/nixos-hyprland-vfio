@@ -471,6 +471,41 @@ def safe_backup_path(root: Path, relative: str) -> Path:
     return candidate
 
 
+def snapshot_file_set(
+    targets: dict[str, Path],
+    snapshot_root: Path,
+) -> dict[str, bool]:
+    """Persist the current regular-file state before a multi-file transaction."""
+    existed: dict[str, bool] = {}
+    for relative in sorted(targets):
+        target = targets[relative]
+        if target.is_symlink() or (target.exists() and not target.is_file()):
+            raise ManagerError(f"Refusing to snapshot a non-regular target: {target}")
+        existed[relative] = target.is_file()
+        if existed[relative]:
+            snapshot_file(target, snapshot_root / relative)
+    return existed
+
+
+def restore_file_set(
+    targets: dict[str, Path],
+    snapshot_root: Path,
+    existed: dict[str, bool],
+    description: str,
+) -> None:
+    """Restore a captured file set without following or deleting symlink targets."""
+    for relative in sorted(targets):
+        target = targets[relative]
+        if target.is_symlink() or (target.exists() and not target.is_file()):
+            raise ManagerError(f"Refusing to restore through a non-regular target: {target}")
+        if existed[relative]:
+            saved = snapshot_root / relative
+            require_regular_backup(saved, description)
+            copy_atomic(saved, target)
+        elif target.exists():
+            target.unlink()
+
+
 def apply_payload(
     game_dir: Path,
     payload: dict[str, Path],
@@ -641,24 +676,56 @@ def restore_transaction(
             require_regular_backup(saved, "Rollback backup")
             backups[relative] = saved
 
-    # Existing targets are replaced atomically from their snapshots; they are never
-    # unlinked first. Missing/corrupt backups therefore cannot destroy installed files.
-    for relative, target in targets.items():
-        if relative in backups:
-            copy_atomic(backups[relative], target)
-        elif target.exists():
-            target.unlink()
+    # Keep a persistent copy of the currently installed game state until every
+    # rollback file and the final manager-state JSON have been committed. A failed
+    # rollback can restore the pre-rollback state and leave the original one-step
+    # rollback transaction available for a retry.
+    recovery_dir = Path(
+        tempfile.mkdtemp(prefix=".rollback-recovery-", dir=rollback_dir.parent)
+    )
+    recovery_files = recovery_dir / "files"
+    try:
+        existed_before = snapshot_file_set(targets, recovery_files)
+        state_existed = state_file.is_file()
+        if state_existed:
+            snapshot_file(state_file, recovery_dir / "manager-state.json")
+    except Exception:
+        shutil.rmtree(recovery_dir, ignore_errors=True)
+        raise
 
-    if previous is not None:
-        # The rollback transaction has just been consumed. The restored state is
-        # current again, so it no longer has a distinct one-step rollback target.
-        previous["rollback_available"] = False
-        atomic_json(state_file, previous)
-    else:
-        state_file.unlink(missing_ok=True)
-        shutil.rmtree(rollback_dir.parent, ignore_errors=True)
-        return
+    try:
+        rollback_existed = {relative: relative in backups for relative in targets}
+        restore_file_set(
+            targets, rollback_dir / "files", rollback_existed, "Rollback backup"
+        )
+        if previous is not None:
+            previous["rollback_available"] = False
+            atomic_json(state_file, previous)
+        else:
+            state_file.unlink(missing_ok=True)
+    except Exception as rollback_error:
+        try:
+            restore_file_set(
+                targets, recovery_files, existed_before, "Pre-rollback recovery snapshot"
+            )
+            if state_existed:
+                copy_atomic(recovery_dir / "manager-state.json", state_file)
+            elif state_file.exists():
+                state_file.unlink()
+        except Exception as recovery_error:
+            raise ManagerError(
+                "OptiScaler rollback failed and restoration of the pre-rollback "
+                f"state was incomplete ({recovery_error}). Preserve the recovery "
+                f"snapshot at {recovery_dir}; inspect it before retrying. "
+                f"Original rollback error: {rollback_error}"
+            ) from recovery_error
+        shutil.rmtree(recovery_dir, ignore_errors=True)
+        raise
+
+    shutil.rmtree(recovery_dir, ignore_errors=True)
     shutil.rmtree(rollback_dir, ignore_errors=True)
+    if previous is None:
+        shutil.rmtree(rollback_dir.parent, ignore_errors=True)
 
 
 def remove_installation(game_dir: Path) -> None:
@@ -697,42 +764,43 @@ def remove_installation(game_dir: Path) -> None:
         original_backups[relative] = saved
         targets[relative] = target
 
-    # Stage a snapshot of the current state so an I/O error during removal can be
-    # rolled back. The staging directory lives inside the backup root and is removed
-    # only after the state record has been safely deleted.
+    # Stage the pre-remove file set persistently. Delete it only after removal
+    # succeeds or after automatic restoration fully recovers the game. If that
+    # recovery also fails, report and retain the exact snapshot path.
     root.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix=".remove-transaction-", dir=root) as temporary:
-        snapshot_root = Path(temporary)
-        existed_before: dict[str, bool] = {}
-        for relative, target in targets.items():
-            existed_before[relative] = target.is_file()
-            if existed_before[relative]:
-                snapshot_file(target, snapshot_root / relative)
+    recovery_dir = Path(tempfile.mkdtemp(prefix=".remove-transaction-", dir=root))
+    snapshot_root = recovery_dir / "files"
+    try:
+        existed_before = snapshot_file_set(targets, snapshot_root)
+    except Exception:
+        shutil.rmtree(recovery_dir, ignore_errors=True)
+        raise
 
+    try:
+        for relative in managed_files:
+            if relative not in original_backups:
+                target = targets[relative]
+                if target.exists():
+                    target.unlink()
+        for relative, saved in original_backups.items():
+            copy_atomic(saved, targets[relative])
+        state_file.unlink()
+    except Exception as remove_error:
         try:
-            for relative in managed_files:
-                if relative not in original_backups:
-                    target = targets[relative]
-                    if target.exists():
-                        target.unlink()
-            for relative, saved in original_backups.items():
-                copy_atomic(saved, targets[relative])
-            state_file.unlink()
-        except Exception as remove_error:
-            try:
-                for relative, target in targets.items():
-                    if existed_before[relative]:
-                        copy_atomic(snapshot_root / relative, target)
-                    elif target.exists():
-                        target.unlink()
-            except Exception as rollback_error:
-                raise ManagerError(
-                    "OptiScaler removal failed and automatic restoration was "
-                    f"incomplete ({rollback_error}). Preserve {root} and inspect "
-                    f"{game_dir}; original error: {remove_error}"
-                ) from rollback_error
-            raise
+            restore_file_set(
+                targets, snapshot_root, existed_before, "Pre-remove recovery snapshot"
+            )
+        except Exception as rollback_error:
+            raise ManagerError(
+                "OptiScaler removal failed and automatic restoration was "
+                f"incomplete ({rollback_error}). Preserve the recovery snapshot "
+                f"at {recovery_dir}; inspect it before retrying. "
+                f"Original removal error: {remove_error}"
+            ) from rollback_error
+        shutil.rmtree(recovery_dir, ignore_errors=True)
+        raise
 
+    shutil.rmtree(recovery_dir, ignore_errors=True)
     shutil.rmtree(root, ignore_errors=True)
 
 
