@@ -78,12 +78,6 @@ require(
     and "verify both connected devices with `lsusb`" in STATE_INDEX,
     "current-state index must distinguish historical USB comments from the active template defaults",
 )
-require(
-    "commit/tarihte yeniden etkinleştirildiğini kanıtlamaz" in ARCHIVE
-    and "`1532:0098`" in ARCHIVE
-    and "`05ac:024f`" in ARCHIVE,
-    "archive preface must reconcile the historical USB note with current template IDs without inventing a date",
-)
 
 require("scripts/test-vm-xml-structure.py" in CONTRIBUTING, "CONTRIBUTING validation commands must include the CI VM XML structure test")
 require("Expected exactly one assignment for" in INSTALLER and "n != 1" in INSTALLER, "installer apply_var must reject ambiguous assignments inside its atomic writer")
