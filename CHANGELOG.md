@@ -9,6 +9,7 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 - Made VM XML synchronization reject a `--domain` value that does not match the template domain, before querying libvirt or touching deployed XML; added a no-write regression.
 - Made installer `apply_var` reject duplicate Home Manager assignments instead of rewriting every match; added unique/missing/duplicate assignment regression cases.
 - Fixed the repair report's duplicate 2 November heading and completed the README repository map with the OptiScaler Manager guide, implementation, and tests.
+- Kept `install.sh` outside the release ancestor-build allowlist: this installer source change requires a fresh full NixOS system build before release. The mock-only `scripts/test-installer-invariants.sh` regression harness is allowlisted as CI test code.
 
 ### Safety and recovery follow-up — 2026-11-03
 - Closed the latest audit gaps: OptiScaler now rejects symbolic links, hard links, reparse points, and special files from 7-Zip metadata before extraction, and validates the complete state JSON shape, safe paths, proxy names, backup mappings, and SHA-256 values. Manual VM XML synchronization now verifies `lspci` classes and requires the GPU/audio functions to share the same PCI slot; mock-backed regressions cover wrong classes and unrelated devices.

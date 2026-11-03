@@ -158,6 +158,7 @@ verification_metadata_paths = {
     "scripts/sync-vm-xml.py",
     "scripts/test-vm-xml-sync.py",
     "scripts/test-manual-vm-bootstrap.sh",
+    "scripts/test-installer-invariants.sh",
     "scripts/test-vfio-hook-driver-state.sh",
     "scripts/test-documentation-integrity.py",
 }
@@ -190,7 +191,7 @@ if current_head and repair_baseline_match:
         require(ancestor.returncode == 0, "documented verified baseline must be an ancestor of the current checkout HEAD")
         if ancestor.returncode == 0:
             changed = subprocess.run(["git", "diff", "--name-only", verified_sha, current_head], cwd=ROOT, check=True, capture_output=True, text=True).stdout.splitlines()
-            full_build_pending_paths = {"nixos/hooks/qemu"}
+            full_build_pending_paths = {"nixos/hooks/qemu", "install.sh"}
             unexpected = sorted(set(changed) - verification_metadata_paths - full_build_pending_paths)
             require(
                 not unexpected,
@@ -200,12 +201,26 @@ if current_head and repair_baseline_match:
             pending = sorted(set(changed) & full_build_pending_paths)
             if pending:
                 require(
-                    "A new manual full-system build and a real saved-state restore on the target host are still required" in REPAIR,
-                    "a QEMU hook change after the last full-system build must be documented as pending full-build/target-host verification",
+                    "A new manual full-system build" in REPAIR,
+                    "system-affecting pending paths must require a new manual full-system build before release",
+                )
+            if "nixos/hooks/qemu" in pending:
+                require(
+                    "A real saved-state restore and complete graphics lifecycle test on the target host are also still required" in REPAIR,
+                    "a QEMU hook change must document target-host saved-state verification",
                 )
                 require(
                     "nixos/hooks/qemu" not in RELEASING and "nixos/hooks/qemu" not in RELEASE_WORKFLOW,
                     "the changed QEMU hook must remain outside the ancestor-build release allowlist until a new full-system build passes",
+                )
+            if "install.sh" in pending:
+                require(
+                    "install.sh" in REPAIR and "fresh full-system build is required before release" in REPAIR,
+                    "installer changes must be documented as requiring a fresh full-system build",
+                )
+                require(
+                    "install.sh" not in RELEASING and "install.sh" not in RELEASE_WORKFLOW,
+                    "install.sh must remain outside the ancestor-build release allowlist",
                 )
 
 

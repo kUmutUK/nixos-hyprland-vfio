@@ -715,8 +715,8 @@ def restore_transaction(
         except Exception as recovery_error:
             raise ManagerError(
                 "OptiScaler rollback failed and restoration of the pre-rollback "
-                f"state was incomplete ({recovery_error}). Preserve the recovery "
-                f"snapshot at {recovery_dir}; inspect it before retrying. "
+                f"state was incomplete ({recovery_error}). "
+                f"Preserve the recovery snapshot at {recovery_dir}; inspect it before retrying. "
                 f"Original rollback error: {rollback_error}"
             ) from recovery_error
         shutil.rmtree(recovery_dir, ignore_errors=True)
@@ -793,8 +793,8 @@ def remove_installation(game_dir: Path) -> None:
         except Exception as rollback_error:
             raise ManagerError(
                 "OptiScaler removal failed and automatic restoration was "
-                f"incomplete ({rollback_error}). Preserve the recovery snapshot "
-                f"at {recovery_dir}; inspect it before retrying. "
+                f"incomplete ({rollback_error}). "
+                f"Preserve the recovery snapshot at {recovery_dir}; inspect it before retrying. "
                 f"Original removal error: {remove_error}"
             ) from rollback_error
         shutil.rmtree(recovery_dir, ignore_errors=True)
