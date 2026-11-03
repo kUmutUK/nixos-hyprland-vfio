@@ -95,6 +95,25 @@ require(all(name in OPTISCALER_MANAGER_TEST for name in (
     "test_per_game_operation_lock_rejects_concurrent_access_and_releases",
 )), "OptiScaler tests must cover rollback and removal recovery failures")
 require("scripts/test-vm-xml-structure.py" in CHECK_WORKFLOW, "CI must continue to run the VM XML structure regression test")
+workflow_defined_step_count = len(re.findall(r"(?m)^      - (?:name|uses|run):", CHECK_WORKFLOW))
+workflow_step_note = f"all {workflow_defined_step_count} workflow-defined steps"
+require(
+    workflow_defined_step_count == 28
+    and workflow_step_note in CHANGELOG
+    and workflow_step_note in STATE_INDEX
+    and workflow_step_note in REPAIR
+    and "runner-generated `Set up job` entry" in CHANGELOG
+    and "runner-generated `Set up job` entry" in STATE_INDEX
+    and "runner-generated `Set up job` entry" in REPAIR,
+    "CI documentation must match the YAML-defined step count and distinguish GitHub's generated setup entry",
+)
+require(
+    "`nixos-unstable`" in INSTALLATION
+    and "`nixos/flake.lock`" in INSTALLATION
+    and '`system.stateVersion = "26.05"`' in INSTALLATION
+    and "does not pin the installed packages to the 26.05 channel" in INSTALLATION,
+    "installation guide must distinguish the Live ISO release, flake package channel, and stateVersion",
+)
 require("DEGISIKLIK_GECMISI.md" in RELEASING and "DEGISIKLIK_GECMISI.md" in RELEASE_WORKFLOW and "CONTRIBUTING.md" in RELEASING and "CHANGELOG.md" in RELEASING and "docs/REPAIR-AND-VALIDATION-REPORT.md" in RELEASING and "docs/OPTISCALER.md" in RELEASING and "docs/OPTISCALER.md" in RELEASE_WORKFLOW and "INSTALLATION.md" in RELEASING and "INSTALLATION.md" in RELEASE_WORKFLOW and ".github/workflows/check.yml" in RELEASING and "scripts/test-documentation-integrity.py" in RELEASING, "RELEASING allowlist documentation must match release.yml")
 require("grep -E '^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$' |" in RELEASE_WORKFLOW, "release workflow must use a closed stable-semver regex when finding previous tags")
 require("stable `vMAJOR.MINOR.PATCH` form" in RELEASING and "numeric components must not contain" in RELEASING, "release guide must document the strict stable tag format")
@@ -273,7 +292,7 @@ if current_head and repair_baseline_match:
                 reviewed_ancestor = subprocess.run(["git", "merge-base", "--is-ancestor", reviewed_sha, current_head], cwd=ROOT, capture_output=True, text=True)
                 require(reviewed_ancestor.returncode == 0, "reviewed normal-CI source snapshot must be an ancestor of the current checkout HEAD")
             changed = subprocess.run(["git", "diff", "--name-only", verified_sha, current_head], cwd=ROOT, check=True, capture_output=True, text=True).stdout.splitlines()
-            full_build_pending_paths = {"nixos/hooks/qemu", "install.sh", "nixos/home.nix"}
+            full_build_pending_paths = {"nixos/configuration.nix", "nixos/hooks/qemu", "install.sh", "nixos/home.nix"}
             unexpected = sorted(set(changed) - verification_metadata_paths - full_build_pending_paths)
             require(
                 not unexpected,
@@ -308,6 +327,17 @@ if current_head and repair_baseline_match:
                 require(
                     "nixos/home.nix" in REPAIR and "fresh full-system build is required before release" in REPAIR,
                     "Home Manager changes must be documented as requiring a fresh full-system build",
+                )
+            if "nixos/configuration.nix" in pending:
+                require(
+                    "nixos/configuration.nix" in REPAIR
+                    and "comment-only" in REPAIR
+                    and "fresh full-system build is required before release" in REPAIR,
+                    "configuration.nix changes must document their build gate, including comment-only audit fixes",
+                )
+                require(
+                    "nixos/configuration.nix" in RELEASING and "nixos/configuration.nix" not in RELEASE_WORKFLOW,
+                    "configuration.nix must remain outside the ancestor-build release allowlist",
                 )
 
 
@@ -502,6 +532,26 @@ require(
     "gpu_device = 1;" in CONFIG and "gpu_device = 1" in CONTRIBUTING
     and "/sys/class/drm/card[0-9]*" in CONTRIBUTING and "cardN" in CONTRIBUTING,
     "GameMode's target-host DRM card index must stay documented and be verified on the target host before changing it",
+)
+gamemode_renice_match = re.search(r"(?m)^\s*renice\s*=\s*(-?\d+);", CONFIG)
+gamemode_comment_start = CONFIG.find("# Three components can change CPU scheduling/priority")
+gamemode_comment_end = CONFIG.find("networking.hostName", gamemode_comment_start)
+gamemode_comment = CONFIG[gamemode_comment_start:gamemode_comment_end] if gamemode_comment_start >= 0 and gamemode_comment_end > gamemode_comment_start else ""
+if gamemode_renice_match:
+    gamemode_renice = int(gamemode_renice_match.group(1))
+    nice_direction = (
+        "lowering CPU scheduling priority" if gamemode_renice > 0
+        else "raising CPU scheduling priority" if gamemode_renice < 0
+        else "leaving CPU scheduling priority unchanged"
+    )
+    expected_nice = f"nice value ({gamemode_renice:+d})"
+else:
+    nice_direction = expected_nice = ""
+require(
+    gamemode_renice_match is not None
+    and expected_nice in gamemode_comment
+    and nice_direction in gamemode_comment,
+    "GameMode comment must match the configured renice value and its CPU-priority direction",
 )
 
 package_start = CONFIG.find("environment.systemPackages = with pkgs; [")

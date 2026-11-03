@@ -1,10 +1,17 @@
 # Historical Change Log Index (English)
 
+## Latest audit follow-up — 2026-11-04
+
+- GameMode's comment now matches the existing `renice = 10` setting: nice `+10` lowers CPU scheduling priority. The value itself and all runtime settings were preserved.
+- The normal CI count is 28 workflow-defined YAML steps. Run #1127 numbers GitHub's generated `Set up job` entry as 1 and the 28 declared steps as 2–29; all 28 declared steps passed.
+- INSTALLATION now distinguishes the NixOS 26.05 Live ISO from the installed flake's `nixos-unstable` package input and explains that `system.stateVersion = "26.05"` is not a channel pin.
+- The ninth supplied ZIP's reported metadata remains audit-supplied because its bytes were not attached for this recheck. Use the canonical CI artifact for the exact commit or `scripts/package-source-zip.sh` from a clean checkout. GameMode `gpu_device = 1` and the Pypr scratchpad window rule were left unchanged pending target-host evidence.
+
 This legacy filename now contains an English current-state summary so older links remain useful. The maintained and current change log is [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Current configuration notes — 2026-11-03
 
-- Pre-remediation main snapshot (2026-11-03): GitHub `main` at `d34c8c3545da92d5d9dae97afb4e627edd0c167f`; normal CI [#1127](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/41693786038) passed all 29 steps. Its current-at-the-time canonical source artifact was ID `13258097729`, 331,775 bytes. This record predates the fixes in the next update.
+- Pre-remediation main snapshot (2026-11-03): GitHub `main` at `d34c8c3545da92d5d9dae97afb4e627edd0c167f`; normal CI [#1127](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/41693786038) passed all 28 workflow-defined steps. GitHub's runner-generated `Set up job` entry is numbered 1, so the YAML-defined steps appear as 2–29. Its current-at-the-time canonical source artifact was ID `13258097729`, 331,775 bytes. This record predates the fixes in the next update.
 - The maintainer reported a successful 3 November NixOS rebuild, normal Windows 10 VM launch/shutdown, RX 6700 XT VFIO handback to the host driver, and return to Hyprland. This is a user-reported physical test; saved-state restore remains unverified.
 - Audit remediation in this update: OptiScaler cache downloads now use per-download unique temporary files with atomic publication and a deterministic concurrent regression; Hypridle locks at 300 seconds and powers DPMS off at 305 seconds; CONTRIBUTING now lists Actionlint, generated-hook ShellCheck, and generated-Lua syntax checks.
 - The Hypridle change touches `nixos/home.nix`; build #9 remains the prior verified full-system baseline and a fresh full-system build is required before release. GameMode `gpu_device = 1` is retained until the target host's actual DRM card mapping is inspected.
