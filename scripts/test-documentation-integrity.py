@@ -175,7 +175,7 @@ require(
     "repair report must record pre-remediation main CI #1127 and its current-at-the-time artifact",
 )
 require(
-    "run #1127" in STATE_INDEX and "13258097729" in STATE_INDEX and "run #1120" in STATE_INDEX,
+    "[#1127]" in STATE_INDEX and "13258097729" in STATE_INDEX and "run #1120" in STATE_INDEX,
     "current-state index must distinguish pre-remediation main CI from the historical reviewed-snapshot CI",
 )
 require(
@@ -455,18 +455,20 @@ require("[0-9]+x[0-9]+(@[0-9.]+)?" in HOME_NIX, "WuWa monitor parser must accept
 require('Description = "Stop the live wallpaper while Brave windows or GameMode are active."' in HOME_NIX, "mpvpaper watchdog description must cover Brave and GameMode")
 hypridle_start = HOME_NIX.index("listener = [")
 hypridle_listeners = HOME_NIX[hypridle_start:HOME_NIX.index("\n      ];", hypridle_start)]
-lock_listener = re.search(
-    r'(?s)\{\s*timeout = 300;\s*on-timeout = "\$\{pkgs\.hyprlock\}/bin/hyprlock";\s*\}',
-    hypridle_listeners,
+lock_timeout_pos = hypridle_listeners.find("timeout = 300;")
+lock_command_pos = hypridle_listeners.find(
+    'on-timeout = "${pkgs.hyprlock}/bin/hyprlock";',
+    lock_timeout_pos,
 )
-dpms_listener = re.search(
-    r'(?s)\{\s*timeout = 305;\s*on-timeout = "\$\{pkgs\.hyprland\}/bin/hyprctl dispatch dpms off";',
-    hypridle_listeners,
+dpms_timeout_pos = hypridle_listeners.find("timeout = 305;")
+dpms_command_pos = hypridle_listeners.find(
+    'on-timeout = "${pkgs.hyprland}/bin/hyprctl dispatch dpms off";',
+    dpms_timeout_pos,
 )
 require(
-    lock_listener is not None and dpms_listener is not None
-    and lock_listener.start() < dpms_listener.start()
-    and not re.search(r"timeout\s*=\s*600\s*;", hypridle_listeners),
+    lock_timeout_pos >= 0 and lock_command_pos > lock_timeout_pos
+    and dpms_timeout_pos > lock_command_pos and dpms_command_pos > dpms_timeout_pos
+    and "timeout = 600;" not in hypridle_listeners,
     "Hypridle must lock at 300 seconds before DPMS powers the display off at 305 seconds",
 )
 require(
