@@ -66,7 +66,7 @@ kernel_state_note = next(
 )
 require(
     "the exact resolved source revision is recorded only in `nixos/flake.lock`" in kernel_state_note
-    and re.search(r"\\b[0-9a-f]{40}\\b", kernel_state_note) is None,
+    and re.search(r"\b[0-9a-f]{40}\b", kernel_state_note) is None,
     "current-state kernel note must use flake.lock as the sole revision source instead of copying a SHA",
 )
 require(
@@ -79,7 +79,7 @@ require(
     "current-state index must distinguish historical USB comments from the active template defaults",
 )
 require(
-    "hangi commit/tarihte yeniden etkinleştirildiğini kanıtlamaz" in ARCHIVE
+    "commit/tarihte yeniden etkinleştirildiğini kanıtlamaz" in ARCHIVE
     and "`1532:0098`" in ARCHIVE
     and "`05ac:024f`" in ARCHIVE,
     "archive preface must reconcile the historical USB note with current template IDs without inventing a date",
