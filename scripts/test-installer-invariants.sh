@@ -914,6 +914,7 @@ set -Eeuo pipefail
 PYTHON3="$(command -v python3)"
 HOME_NIX="$2"
 warn() { printf 'WARN: %s\n' "$*" >&2; }
+log() { :; }
 sudo() { "$@"; }
 source "$1"
 apply_var "$3" "$4"
