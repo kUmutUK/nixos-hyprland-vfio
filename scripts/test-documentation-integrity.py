@@ -2,6 +2,7 @@
 """Regression checks for current documentation, archive notes, and VM requirements."""
 
 from pathlib import Path
+import json
 import os
 import re
 import subprocess
@@ -28,6 +29,7 @@ CHANGELOG = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
 STATE_INDEX = (ROOT / "DEGISIKLIK_GECMISI.md").read_text(encoding="utf-8")
 CONFIG = (ROOT / "nixos/configuration.nix").read_text(encoding="utf-8")
 FLAKE = (ROOT / "nixos/flake.nix").read_text(encoding="utf-8")
+FLAKE_LOCK = json.loads((ROOT / "nixos/flake.lock").read_text(encoding="utf-8"))
 HOME_NIX = (ROOT / "nixos/home.nix").read_text(encoding="utf-8")
 REPAIR = (ROOT / "docs/REPAIR-AND-VALIDATION-REPORT.md").read_text(encoding="utf-8")
 OPTISCALER_DOC = (ROOT / "docs/OPTISCALER.md").read_text(encoding="utf-8")
@@ -47,11 +49,42 @@ def require(condition: bool, message: str) -> None:
 
 
 readme_top = "\n".join(README.splitlines()[:8])
-require("docs/REPAIR-AND-VALIDATION-REPORT.md" in readme_top and "docs/AUDIT-2026-10-28-VM-XML-VFIO.md" not in readme_top, "README must point to the latest 2026-10-30 repair report, not the older audit")
+require("docs/REPAIR-AND-VALIDATION-REPORT.md" in readme_top and "docs/AUDIT-2026-10-28-VM-XML-VFIO.md" not in readme_top, "README must point to the current repair report, not the older audit")
 require("- [License](#license)" in README and "## License" in README, "README contents must link to the License section")
 require(".git-cliff.toml" in README and "RELEASING.md" in README and ".github/workflows/release.yml" in README, "README repository map must include the release configuration, guide, and workflow")
 require("Normal CI must pass for the exact tagged commit" in README, "README must require successful CI for the exact tagged commit")
 require("successful full NixOS system build must exist for that commit or an ancestor" in README, "README must describe the permitted ancestor full-system build")
+cachyos_locked = FLAKE_LOCK.get("nodes", {}).get("cachyos-kernel", {}).get("locked", {})
+cachyos_revision = cachyos_locked.get("rev")
+require(
+    isinstance(cachyos_revision, str) and re.fullmatch(r"[0-9a-f]{40}", cachyos_revision) is not None,
+    "flake.lock must contain a full resolved CachyOS kernel revision",
+)
+kernel_state_note = next(
+    (line for line in STATE_INDEX.splitlines() if line.startswith("- The active kernel package")),
+    "",
+)
+require(
+    "the exact resolved source revision is recorded only in `nixos/flake.lock`" in kernel_state_note
+    and re.search(r"\\b[0-9a-f]{40}\\b", kernel_state_note) is None,
+    "current-state kernel note must use flake.lock as the sole revision source instead of copying a SHA",
+)
+require(
+    "available history does not identify a later removal commit or its rationale" in STATE_INDEX,
+    "current-state index must qualify the undocumented historical IOMMU-parameter removal",
+)
+require(
+    "available history does not identify when or in which commit the two current entries were re-enabled" in STATE_INDEX
+    and "verify both connected devices with `lsusb`" in STATE_INDEX,
+    "current-state index must distinguish historical USB comments from the active template defaults",
+)
+require(
+    "hangi commit/tarihte yeniden etkinleştirildiğini kanıtlamaz" in ARCHIVE
+    and "`1532:0098`" in ARCHIVE
+    and "`05ac:024f`" in ARCHIVE,
+    "archive preface must reconcile the historical USB note with current template IDs without inventing a date",
+)
+
 require("scripts/test-vm-xml-structure.py" in CONTRIBUTING, "CONTRIBUTING validation commands must include the CI VM XML structure test")
 require("Expected exactly one assignment for" in INSTALLER and "n != 1" in INSTALLER, "installer apply_var must reject ambiguous assignments inside its atomic writer")
 require("apply_var updates one assignment" in INSTALLER_TEST and "duplicate assignments" in INSTALLER_TEST, "installer invariants must test unique, missing, and duplicate Home Manager assignments")
