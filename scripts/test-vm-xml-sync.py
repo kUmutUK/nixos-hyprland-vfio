@@ -31,7 +31,33 @@ def run_sync(
     audio: str = AUDIO,
     domain: str | None = None,
     env: dict[str, str] | None = None,
+    gpu_class: str = "0300",
+    audio_class: str = "0403",
 ) -> subprocess.CompletedProcess[str]:
+    # PCI class validation is mocked so the suite does not depend on host hardware.
+    mock_bin = template.parent / "mock-bin"
+    mock_bin.mkdir(exist_ok=True)
+    lspci = mock_bin / "lspci"
+    lspci.write_text(
+        "#!/usr/bin/env bash\n"
+        "set -euo pipefail\n"
+        '[[ "${1:-}" == "-Dn" && "${2:-}" == "-s" ]] || exit 2\n'
+        'address="${3:-}"\n'
+        'case "${address##*.}" in\n'
+        '  0) class="${FAKE_LSPCI_GPU_CLASS:-0300}" ;;\n'
+        '  1) class="${FAKE_LSPCI_AUDIO_CLASS:-0403}" ;;\n'
+        '  *) exit 1 ;;\n'
+        'esac\n'
+        'printf "%s %s: 1002:0000 Mock device\\n" "$address" "$class"\n',
+        encoding="utf-8",
+    )
+    lspci.chmod(0o755)
+    child_env = os.environ.copy()
+    if env is not None:
+        child_env.update(env)
+    child_env["PATH"] = f"{mock_bin}{os.pathsep}{child_env.get('PATH', '')}"
+    child_env["FAKE_LSPCI_GPU_CLASS"] = gpu_class
+    child_env["FAKE_LSPCI_AUDIO_CLASS"] = audio_class
     command = [sys.executable, str(HELPER), gpu, audio, str(template), str(destination)]
     if domain is not None:
         command.extend(["--domain", domain])
@@ -41,7 +67,7 @@ def run_sync(
             text=True,
             capture_output=True,
             check=False,
-            env=env,
+            env=child_env,
             timeout=SUBPROCESS_TIMEOUT_SECONDS,
         )
     except subprocess.TimeoutExpired as exc:
@@ -374,6 +400,20 @@ def main() -> int:
             if result.returncode == 0 or deployed.exists():
                 return fail(f"invalid PCI function number was accepted: {invalid}")
 
+
+    # Reject valid-looking PCI addresses that do not match the expected hardware roles.
+    with tempfile.TemporaryDirectory(prefix="vm-xml-sync-pci-class-") as temp:
+        temp_path = Path(temp)
+        template = temp_path / "template.xml"
+        deployed = temp_path / "win10.xml"
+        template.write_text(template_data, encoding="utf-8")
+        for gpu_class, audio_class, label in (("0200", "0403", "a non-display GPU class"), ("0300", "0200", "a non-audio class")):
+            result = run_sync(template, deployed, gpu_class=gpu_class, audio_class=audio_class)
+            if result.returncode == 0 or deployed.exists():
+                return fail(f"manual PCI sync accepted {label}: {result.stdout}{result.stderr}")
+        result = run_sync(template, deployed, gpu="0000:0b:03.0", audio="0000:0b:02.1")
+        if result.returncode == 0 or deployed.exists():
+            return fail("manual PCI sync accepted GPU/audio functions from different physical slots")
 
     # The registered libvirt definition must win over an on-disk XML that is stale.
     with tempfile.TemporaryDirectory(prefix="vm-xml-sync-live-stale-") as temp:

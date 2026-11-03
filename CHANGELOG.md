@@ -5,6 +5,8 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 ## [Unreleased]
 
 ### Safety and recovery follow-up — 2026-11-03
+- Closed the latest audit gaps: OptiScaler now rejects symbolic links, hard links, reparse points, and special files from 7-Zip metadata before extraction, and validates the complete state JSON shape, safe paths, proxy names, backup mappings, and SHA-256 values. Manual VM XML synchronization now verifies `lspci` classes and requires the GPU/audio functions to share the same PCI slot; mock-backed regressions cover wrong classes and unrelated devices.
+- Added the OptiScaler manager regression command to the README validation sequence and clarified that this repository's optional manager is an independent, nonofficial third-party helper, not an upstream component.
 - Hardened the optional OptiScaler manager: rollback and removal preflight every required backup, install/update state writes now participate in rollback, failed removal attempts restore the pre-remove file state, the 4 GiB extracted-size limit is enforced from a complete 7-Zip listing before extraction, while incomplete size metadata is rejected. Added regression tests for missing backups and injected I/O failures.
 - Added support for libvirt saved-state restore through the QEMU `restore begin` XML-filter hook. The hook shares the cold-start VFIO preparation path and returns the original domain XML unchanged only after successful preparation. Mock tests cover the filter contract; target-hardware saved-state restore and a fresh full-system build remain pending.
 

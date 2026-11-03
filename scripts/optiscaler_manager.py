@@ -218,6 +218,62 @@ def find_7z() -> str:
     )
 
 
+def parse_archive_listing(stdout: str, archive: Path) -> tuple[list[str], int]:
+    """Validate archive member paths/types/sizes before starting extraction."""
+    records: list[dict[str, str]] = []
+    current: dict[str, str] = {}
+    for line in stdout.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped == "----------":
+            if current:
+                records.append(current)
+                current = {}
+            continue
+        if " = " not in line:
+            continue
+        key, value = line.split(" = ", 1)
+        if key in current:
+            raise ManagerError(f"7-Zip returned duplicate {key!r} metadata for one archive entry.")
+        current[key] = value
+    if current:
+        records.append(current)
+    members: list[str] = []
+    seen_paths: set[str] = set()
+    total_size = 0
+    for record in records:
+        name = record.get("Path")
+        if name is None:
+            if "Size" in record:
+                raise ManagerError("7-Zip returned a member without a path; refusing extraction.")
+            continue
+        if name == str(archive) and "Size" not in record:
+            continue
+        normalized = validate_archive_member(name)
+        if normalized in seen_paths:
+            raise ManagerError(f"Archive contains duplicate normalized path {normalized!r}.")
+        seen_paths.add(normalized)
+        attributes = record.get("Attributes", "")
+        unix_modes = re.findall(r"(?<!\S)([bcdlps-][rwxstST-]{9})(?!\S)", attributes)
+        metadata_link = any(key in record for key in ("Symbolic Link", "Hard Link", "Reparse Point"))
+        type_name = record.get("Type", "").strip().lower()
+        link_type = type_name in {"symbolic link", "hard link", "junction", "reparse point"}
+        special_type = any(mode[0] not in {"-", "d"} for mode in unix_modes)
+        if metadata_link or link_type or special_type:
+            raise ManagerError(
+                f"Archive member {name!r} is a symbolic link, hard link, reparse point, "
+                "or special file; refusing extraction."
+            )
+        size_text = record.get("Size")
+        if size_text is None or not re.fullmatch(r"[0-9]+", size_text):
+            raise ManagerError("7-Zip listing omitted or returned an invalid uncompressed member size; refusing extraction.")
+        total_size += int(size_text)
+        if total_size > MAX_EXTRACTED_BYTES:
+            raise ManagerError("Archive advertises more than the 4 GiB extracted-size safety limit; refusing to extract it.")
+        members.append(normalized)
+    if not members or len(members) > MAX_ARCHIVE_FILES:
+        raise ManagerError("Archive file count is empty or exceeds the safety limit.")
+    return members, total_size
+
 def extract_payload(archive: Path, proxy_name: str) -> tuple[tempfile.TemporaryDirectory, dict[str, Path]]:
     extractor = find_7z()
     listing = subprocess.run(
@@ -226,35 +282,8 @@ def extract_payload(archive: Path, proxy_name: str) -> tuple[tempfile.TemporaryD
     )
     if listing.returncode != 0:
         raise ManagerError("7-Zip could not list the verified OptiScaler archive.")
-    members = []
-    listed_member_sizes = 0
-    listed_extracted_size = 0
-    for line in listing.stdout.splitlines():
-        if line.startswith("Path = "):
-            name = line[7:]
-            if name == str(archive):
-                continue
-            members.append(validate_archive_member(name))
-        elif line.startswith("Size = "):
-            listed_member_sizes += 1
-            try:
-                member_size = int(line[7:])
-            except ValueError as exc:
-                raise ManagerError("7-Zip returned an invalid uncompressed member size.") from exc
-            if member_size < 0:
-                raise ManagerError("7-Zip returned a negative uncompressed member size.")
-            listed_extracted_size += member_size
-            if listed_extracted_size > MAX_EXTRACTED_BYTES:
-                raise ManagerError(
-                    "Archive advertises more than the 4 GiB extracted-size safety limit; "
-                    "refusing to extract it."
-                )
-    if not members or len(members) > MAX_ARCHIVE_FILES:
-        raise ManagerError("Archive file count is empty or exceeds the safety limit.")
-    if listed_member_sizes != len(members):
-        raise ManagerError(
-            "7-Zip listing omitted or duplicated uncompressed member sizes; refusing extraction."
-        )
+    members, _ = parse_archive_listing(listing.stdout, archive)
+
 
     temporary = tempfile.TemporaryDirectory(prefix="optiscaler-manager-")
     stage = Path(temporary.name)
@@ -321,18 +350,49 @@ def backup_root(game_dir: Path) -> Path:
     return state_root() / "backups" / game_identity(game_dir)
 
 
+def validate_state_document(value: object, description: str) -> dict:
+    """Validate the complete state shape before trusting its paths or hashes."""
+    if not isinstance(value, dict):
+        raise ManagerError(f"{description} must be a JSON object.")
+    if type(value.get("schema")) is not int or value["schema"] != 1:
+        raise ManagerError(f"{description} has an unsupported or invalid schema.")
+    for field in ("game_dir", "version", "asset"):
+        if not isinstance(value.get(field), str) or not value[field].strip():
+            raise ManagerError(f"{description} has an invalid {field!r} field.")
+    proxy = value.get("proxy")
+    if not isinstance(proxy, str) or proxy not in SUPPORTED_PROXIES:
+        raise ManagerError(f"{description} has an unsupported proxy name.")
+    files = value.get("files")
+    if not isinstance(files, dict):
+        raise ManagerError(f"{description} has an invalid managed-files map.")
+    for relative, digest in files.items():
+        if not isinstance(relative, str) or validate_archive_member(relative) != relative:
+            raise ManagerError(f"{description} contains an invalid managed-file path.")
+        if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-fA-F]{64}", digest):
+            raise ManagerError(f"{description} contains an invalid SHA-256 for {relative!r}.")
+    originals = value.get("originals", {})
+    if not isinstance(originals, dict):
+        raise ManagerError(f"{description} has an invalid original-files map.")
+    for relative, backup_relative in originals.items():
+        if not isinstance(relative, str) or validate_archive_member(relative) != relative:
+            raise ManagerError(f"{description} contains an invalid original-file path.")
+        if backup_relative != f"originals/{relative}":
+            raise ManagerError(f"{description} has an invalid backup mapping for {relative!r}.")
+    if "rollback_available" in value and not isinstance(value["rollback_available"], bool):
+        raise ManagerError(f"{description} has an invalid rollback_available flag.")
+    return value
+
+
 def load_state(path: Path) -> dict | None:
-    if not path.exists():
-        return None
     if path.is_symlink():
         raise ManagerError("The manager state file is a symbolic link; inspect it manually.")
+    if not path.exists():
+        return None
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise ManagerError(f"Could not read manager state {path}: {exc}") from exc
-    if value.get("schema") != 1 or not isinstance(value.get("files"), dict):
-        raise ManagerError("The manager state file has an unsupported or invalid schema.")
-    return value
+    return validate_state_document(value, "Manager state")
 
 
 def atomic_json(path: Path, value: dict) -> None:
@@ -541,7 +601,7 @@ def restore_transaction(
         raise ManagerError("No valid rollback transaction is available.")
     try:
         transaction = json.loads(transaction_file.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise ManagerError(f"Could not read rollback transaction: {exc}") from exc
     if not isinstance(transaction, dict) or not isinstance(transaction.get("paths"), dict):
         raise ManagerError("Rollback transaction has an invalid paths map.")
@@ -552,10 +612,9 @@ def restore_transaction(
             raise ManagerError(f"Previous manager state is not a regular file: {previous_file}")
         try:
             previous = json.loads(previous_file.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError) as exc:
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
             raise ManagerError(f"Could not read previous manager state: {exc}") from exc
-        if not isinstance(previous, dict) or not isinstance(previous.get("files"), dict):
-            raise ManagerError("Previous manager state is invalid; refusing rollback.")
+        previous = validate_state_document(previous, "Previous manager state")
     else:
         previous = None
 

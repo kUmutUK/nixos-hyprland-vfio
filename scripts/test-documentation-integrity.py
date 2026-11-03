@@ -33,6 +33,8 @@ OPTISCALER_DOC = (ROOT / "docs/OPTISCALER.md").read_text(encoding="utf-8")
 OPTISCALER_MANAGER_DOC = (ROOT / "docs/OPTISCALER-MANAGER.md").read_text(encoding="utf-8")
 OPTISCALER_MANAGER_SCRIPT = (ROOT / "scripts/optiscaler_manager.py").read_text(encoding="utf-8")
 OPTISCALER_MANAGER_TEST = (ROOT / "scripts/test-optiscaler-manager.py").read_text(encoding="utf-8")
+VM_XML_SYNC = (ROOT / "scripts/sync-vm-xml.py").read_text(encoding="utf-8")
+VM_XML_SYNC_TEST = (ROOT / "scripts/test-vm-xml-sync.py").read_text(encoding="utf-8")
 SOURCE_REVISION_PLACEHOLDER = "$" + "Format:%H" + "$"
 errors = []
 
@@ -139,6 +141,8 @@ verification_metadata_paths = {
     "docs/OPTISCALER-MANAGER.md",
     "scripts/optiscaler_manager.py",
     "scripts/test-optiscaler-manager.py",
+    "scripts/sync-vm-xml.py",
+    "scripts/test-vm-xml-sync.py",
     "scripts/test-vfio-hook-driver-state.sh",
     "scripts/test-documentation-integrity.py",
 }
@@ -382,6 +386,15 @@ require("automatic restoration was " in OPTISCALER_MANAGER_SCRIPT and "incomplet
 require("--confirm-offline-singleplayer" in OPTISCALER_MANAGER_SCRIPT and "Type INSTALL" in OPTISCALER_MANAGER_SCRIPT, "OptiScaler manager must require explicit offline-game and interactive install confirmation")
 require("--replace-existing" in OPTISCALER_MANAGER_SCRIPT and "rollback_available" in OPTISCALER_MANAGER_SCRIPT and "remove_installation" in OPTISCALER_MANAGER_SCRIPT, "OptiScaler manager must require explicit conflict replacement and provide rollback/removal")
 require("scripts/test-optiscaler-manager.py" in CONTRIBUTING and "scripts/test-optiscaler-manager.py" in CHECK_WORKFLOW, "OptiScaler manager regression tests must be documented and run in normal CI")
+require("python3 scripts/test-optiscaler-manager.py" in README, "README full validation sequence must run the OptiScaler manager regression suite")
+require("independent, nonofficial third-party helper" in OPTISCALER_DOC and "not developed by or affiliated with OptiScaler upstream" in OPTISCALER_DOC, "OptiScaler guide must identify the repository manager as independent and nonofficial")
+require("symbolic links, hard links, reparse points" in OPTISCALER_MANAGER_DOC and "Unix special files" in OPTISCALER_MANAGER_DOC and "state JSON root" in OPTISCALER_MANAGER_DOC, "manager guide must document pre-extraction member types and state validation")
+require("def parse_archive_listing" in OPTISCALER_MANAGER_SCRIPT and '"Symbolic Link"' in OPTISCALER_MANAGER_SCRIPT and '"Hard Link"' in OPTISCALER_MANAGER_SCRIPT and '"Reparse Point"' in OPTISCALER_MANAGER_SCRIPT and "def validate_state_document" in OPTISCALER_MANAGER_SCRIPT, "manager must preflight archive links and validate state")
+require(all(name in OPTISCALER_MANAGER_TEST for name in ("test_archive_links_and_special_files_are_rejected_before_extraction", "test_load_state_rejects_non_object_json_roots", "test_load_state_validates_nested_schema_paths_hashes_and_flags")), "manager tests must cover archive entry types and malformed state JSON")
+require("def pci_class_code" in VM_XML_SYNC and "lspci" in VM_XML_SYNC and '"0300", "0302", "0380"' in VM_XML_SYNC and '"0401", "0403"' in VM_XML_SYNC and "same PCI domain:bus:slot" in VM_XML_SYNC, "manual VM XML sync must verify PCI classes and same-slot pairing")
+require("different physical slots" in VM_XML_SYNC_TEST and "gpu_class=gpu_class" in VM_XML_SYNC_TEST and "audio_class=audio_class" in VM_XML_SYNC_TEST, "VM XML sync tests must reject wrong PCI classes and different slots")
+require("scripts/sync-vm-xml.py" in RELEASING and "scripts/test-vm-xml-sync.py" in RELEASING and "scripts/sync-vm-xml.py" in RELEASE_WORKFLOW and "scripts/test-vm-xml-sync.py" in RELEASE_WORKFLOW, "release policy must document the out-of-flake VM XML sync helper and test allowlist")
+require("## Audit finding fixes — 2026-11-03" in REPAIR, "repair report must record the new audit findings")
 require('if [ "$ACTION" = "restore" ]; then' in VFIO_HOOK and 'restore_vfio_state || exit 1' in VFIO_HOOK and "prepare_vfio" in VFIO_HOOK, "VFIO hook must route libvirt saved-state restore through the same preparation path")
 require("RESTORE_XML_FILE" in VFIO_HOOK and 'cat -- "$RESTORE_XML_FILE"' in VFIO_HOOK, "VFIO restore hook must buffer and return the original XML only after successful preparation")
 require('restore_vfio_state < "$RESTORE_INPUT" > "$RESTORE_OUTPUT"' in VFIO_HOOK_TEST and 'cmp -s "$RESTORE_INPUT" "$RESTORE_OUTPUT"' in VFIO_HOOK_TEST and "MOCK_PREPARE_STATUS=1" in VFIO_HOOK_TEST, "VFIO hook regression must test unchanged restore XML and fail-closed behavior")

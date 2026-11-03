@@ -122,7 +122,7 @@ jobs:
           while IFS= read -r path; do
             [[ -z "$path" ]] && continue
             case "$path" in
-              .git-cliff.toml|RELEASING.md|README.md|INSTALLATION.md|DEGISIKLIK_GECMISI.md|CONTRIBUTING.md|CHANGELOG.md|docs/REPAIR-AND-VALIDATION-REPORT.md|docs/OPTISCALER.md|docs/OPTISCALER-MANAGER.md|scripts/optiscaler_manager.py|scripts/test-optiscaler-manager.py|scripts/test-vfio-hook-driver-state.sh|scripts/test-documentation-integrity.py|.github/workflows/check.yml|.github/workflows/release.yml)
+              .git-cliff.toml|RELEASING.md|README.md|INSTALLATION.md|DEGISIKLIK_GECMISI.md|CONTRIBUTING.md|CHANGELOG.md|docs/REPAIR-AND-VALIDATION-REPORT.md|docs/OPTISCALER.md|docs/OPTISCALER-MANAGER.md|scripts/optiscaler_manager.py|scripts/test-optiscaler-manager.py|scripts/sync-vm-xml.py|scripts/test-vm-xml-sync.py|scripts/test-vfio-hook-driver-state.sh|scripts/test-documentation-integrity.py|.github/workflows/check.yml|.github/workflows/release.yml)
                 ;;
               *)
                 echo "::error::Full-system build is older and $path changed afterwards."

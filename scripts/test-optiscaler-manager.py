@@ -2,6 +2,7 @@
 """Offline regression tests for scripts/optiscaler_manager.py."""
 
 import hashlib
+import json
 import os
 from pathlib import Path
 import tempfile
@@ -242,6 +243,63 @@ class OptiScalerManagerTests(unittest.TestCase):
                 self.assertEqual((game / "OptiScaler.ini").read_text(), "config-1")
                 self.assertTrue(state_file.is_file())
 
+    def test_load_state_rejects_non_object_json_roots(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "state.json"
+            for encoded in ("[]", "null", "1", "true", '"not-an-object"'):
+                with self.subTest(json_root=encoded):
+                    path.write_text(encoded, encoding="utf-8")
+                    with self.assertRaisesRegex(manager.ManagerError, "JSON object"):
+                        manager.load_state(path)
+
+    def test_load_state_validates_nested_schema_paths_hashes_and_flags(self):
+        valid = {"schema": 1, "game_dir": "/games/example", "version": "v1", "asset": "OptiScaler.7z",
+                 "proxy": "dxgi.dll", "files": {"dxgi.dll": "a" * 64},
+                 "originals": {"dxgi.dll": "originals/dxgi.dll"}, "rollback_available": True}
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "state.json"
+            path.write_text(json.dumps(valid), encoding="utf-8")
+            self.assertEqual(manager.load_state(path), valid)
+            invalid_documents = []
+            for field, value in (("files", []), ("proxy", "steam_api64.dll"), ("rollback_available", "yes"), ("schema", True)):
+                bad = dict(valid)
+                bad[field] = value
+                invalid_documents.append((field, bad))
+            bad = dict(valid)
+            bad["files"] = {"../outside.dll": "a" * 64}
+            invalid_documents.append(("unsafe managed path", bad))
+            bad = dict(valid)
+            bad["files"] = {"dxgi.dll": "not-a-sha256"}
+            invalid_documents.append(("invalid digest", bad))
+            bad = dict(valid)
+            bad["originals"] = {"dxgi.dll": "../outside.dll"}
+            invalid_documents.append(("unsafe backup mapping", bad))
+            for label, document in invalid_documents:
+                with self.subTest(document=label):
+                    path.write_text(json.dumps(document), encoding="utf-8")
+                    with self.assertRaises(manager.ManagerError):
+                        manager.load_state(path)
+
+    def test_archive_links_and_special_files_are_rejected_before_extraction(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            archive = Path(temporary) / "release.7z"
+            archive.write_bytes(b"archive")
+            entries = (("symbolic-link mode", "Attributes = A_ lrwxrwxrwx"),
+                       ("hard-link metadata", "Hard Link = target.dll"),
+                       ("special-file mode", "Attributes = A_ prwxr-xr-x"),
+                       ("reparse point", "Reparse Point = target"))
+            for label, metadata in entries:
+                listing = (f"Path = {archive}\nType = 7z\n----------\n"
+                           f"Path = payload/{label.replace(' ', '_')}.dll\nSize = 1\n{metadata}\n")
+                completed = type("Completed", (), {"returncode": 0, "stdout": listing, "stderr": ""})()
+                with self.subTest(member_type=label), \
+                     patch.object(manager, "find_7z", return_value="7z"), \
+                     patch.object(manager.subprocess, "run", return_value=completed) as run, \
+                     patch.object(manager.tempfile, "TemporaryDirectory") as temp_directory:
+                    with self.assertRaisesRegex(manager.ManagerError, "refusing extraction"):
+                        manager.extract_payload(archive, "dxgi.dll")
+                    run.assert_called_once()
+                    temp_directory.assert_not_called()
     def test_archive_without_complete_size_metadata_is_refused_before_extraction(self):
         with tempfile.TemporaryDirectory() as temporary:
             archive = Path(temporary) / "release.7z"

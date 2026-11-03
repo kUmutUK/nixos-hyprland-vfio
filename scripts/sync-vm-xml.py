@@ -40,6 +40,40 @@ def pci_address_components(address: str) -> tuple[str, str, str, str]:
     )
 
 
+
+def pci_class_code(address: str) -> str:
+    """Return the PCI class from lspci, failing closed if it cannot be verified."""
+    try:
+        result = subprocess.run(["lspci", "-Dn", "-s", address.lower()], capture_output=True, text=True, check=False, timeout=10)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        fail(f"could not query PCI class for {address}: {exc}")
+    if result.returncode != 0 or not result.stdout.strip():
+        detail = result.stderr.strip() or f"exit status {result.returncode}"
+        fail(f"could not verify PCI class for {address}: {detail}")
+    fields = result.stdout.splitlines()[0].split()
+    if len(fields) < 2 or fields[0].lower() != address.lower():
+        fail(f"lspci returned an unexpected device record for {address}.")
+    class_code = fields[1].removesuffix(":").lower()
+    if not re.fullmatch(r"[0-9a-f]{4}", class_code):
+        fail(f"lspci returned an invalid PCI class for {address}.")
+    return class_code
+
+
+def validate_passthrough_pair(gpu: str, audio: str) -> None:
+    """Require a display controller and audio function on the same PCI slot."""
+    gpu_parts = pci_address_components(gpu)
+    audio_parts = pci_address_components(audio)
+    if gpu_parts == audio_parts:
+        fail("GPU and GPU audio PCI addresses must be different.")
+    if gpu_parts[:3] != audio_parts[:3]:
+        fail("GPU and GPU audio functions must share the same PCI domain:bus:slot; " f"GPU={gpu}, Audio={audio}.")
+    gpu_class = pci_class_code(gpu)
+    if gpu_class not in {"0300", "0302", "0380"}:
+        fail(f"selected GPU address is not a display controller (PCI class {gpu_class}): {gpu}.")
+    audio_class = pci_class_code(audio)
+    if audio_class not in {"0401", "0403"}:
+        fail(f"selected audio address is not an audio controller (PCI class {audio_class}): {audio}.")
+
 def parse_xml(data: str, description: str) -> ET.Element:
     try:
         root = ET.fromstring(data)
@@ -283,10 +317,9 @@ def main() -> int:
     else:
         fail("usage: sync-vm-xml.py GPU_PCI GPU_AUDIO TEMPLATE_XML DEPLOYED_XML [--domain DOMAIN]")
 
-    gpu_components = pci_address_components(gpu)
-    audio_components = pci_address_components(audio)
-    if gpu_components == audio_components:
-        fail("GPU and GPU audio PCI addresses must be different.")
+    gpu = gpu.lower()
+    audio = audio.lower()
+    validate_passthrough_pair(gpu, audio)
 
     template_path = Path(template_name)
     destination = Path(destination_name)

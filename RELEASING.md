@@ -16,10 +16,13 @@ manual-dispatch input; ordinary pushes and pull requests never publish a release
    `DEGISIKLIK_GECMISI.md`, `INSTALLATION.md`, `CONTRIBUTING.md`, `CHANGELOG.md`, `docs/REPAIR-AND-VALIDATION-REPORT.md`,
    `docs/OPTISCALER.md`, `docs/OPTISCALER-MANAGER.md`,
    `scripts/optiscaler_manager.py`, `scripts/test-optiscaler-manager.py`,
+   `scripts/sync-vm-xml.py`, `scripts/test-vm-xml-sync.py`,
    `scripts/test-vfio-hook-driver-state.sh`, `scripts/test-documentation-integrity.py`, `.github/workflows/check.yml`, or
    `.github/workflows/release.yml`. Any later change to NixOS, VM, installer,
    runtime hooks, or other system-affecting source paths blocks publication and
    requires a new full-system build.
+The two VM XML sync Python paths above are a narrowly scoped exception: they are migration-time helpers outside the NixOS flake/derivation graph and their behavior is covered by the dedicated mock-backed VM XML sync suite in normal CI. Changes to NixOS modules/inputs, `vm-xml/win10.xml`, `install.sh`, runtime hooks, or other system-closure-affecting paths still require a new full-system build.
+
 5. Review the release version and changelog before publishing.
 
 This is intentional: documentation and release automation do not alter the

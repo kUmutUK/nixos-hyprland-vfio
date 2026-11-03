@@ -796,6 +796,7 @@ nix develop ./nixos --command bash -euo pipefail -c '
   python3 scripts/test-home-snapper-layout.py
   python3 scripts/test-extract-embedded-scripts.py
   python3 scripts/test-documentation-integrity.py
+  python3 scripts/test-optiscaler-manager.py
   python3 scripts/test-vm-iso-paths.py
   bash -n scripts/test-manual-vm-bootstrap.sh
   bash scripts/test-manual-vm-bootstrap.sh

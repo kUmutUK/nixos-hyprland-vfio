@@ -1,6 +1,6 @@
 # OptiScaler Manager
 
-The repository includes an optional Python helper for checking, downloading, verifying, installing, updating, rolling back, and removing OptiScaler in a **single explicitly selected game directory**.
+The repository includes an optional, independent **third-party/nonofficial** Python helper for checking, downloading, verifying, installing, updating, rolling back, and removing OptiScaler in a **single explicitly selected game directory**. It is maintained by this repository and is not developed, affiliated with, or endorsed by OptiScaler upstream; the manual installation path remains available.
 
 It is not a NixOS package, Home Manager module, Vulkan layer, or background service. It does not edit Steam launch options, global environment variables, the flake, or the system configuration. The helper uses Python's standard library; 7-Zip is required only for archive extraction.
 
@@ -8,10 +8,11 @@ It is not a NixOS package, Home Manager module, Vulkan layer, or background serv
 
 - Checks only the official OptiScaler GitHub stable-release endpoint. Nightly, rolling, draft, and prerelease builds are ignored.
 - Verifies the downloaded archive's byte count and SHA-256 before extraction. v0.9.4 uses the digest pinned in `docs/OPTISCALER.md`. A later release must expose a SHA-256 digest through GitHub release metadata or the operator must provide a checksum independently verified from the official release page. If neither is available, the helper fails closed.
-- Lists archive entries before extraction, rejects absolute/traversal paths and symbolic links, and requires a complete per-member uncompressed-size listing and checks the advertised total against the 4 GiB limit before extraction. It also checks the actual extracted size afterward.
+- Parses each 7-Zip member record before extraction, rejects absolute/traversal paths, symbolic links, hard links, reparse points, and Unix special files, and requires a complete per-member uncompressed-size listing under the 4 GiB limit. A second post-extraction scan still rejects any symlink that appears in the staged tree.
 - Requires the exact game executable directory (`--game-dir`) and verifies that it contains a Windows `.exe`.
 - Requires an explicit offline/single-player confirmation and the interactive word `INSTALL`. Do not use OptiScaler with online or anti-cheat-protected games; upstream warns this can trigger anti-cheat and account penalties.
 - Refuses file conflicts by default. `--replace-existing` is an explicit opt-in and backs up pre-existing files before replacing them.
+- Validates the state JSON root, schema, proxy name, relative paths, SHA-256 values, backup mappings, and rollback flag before trusting the record. Malformed state is reported as a controlled manager error rather than an uncaught attribute/type error.
 - Records managed-file hashes and backs up original files under `$XDG_STATE_HOME/optiscaler-manager` (default `~/.local/state/optiscaler-manager`). Modified managed files are not silently deleted during rollback or removal.
 - `rollback` preflights every required backup and validates the complete rollback manifest before changing the game folder; existing targets are replaced atomically rather than deleted before their backup is read. A missing or unsafe backup therefore aborts without first deleting the installed file.
 - `remove` validates every original-file backup and destination before mutating any managed file. It snapshots the pre-remove state and attempts to restore it if a later removal/restore operation fails.
@@ -86,4 +87,4 @@ Run the offline regression tests:
 python3 scripts/test-optiscaler-manager.py
 ```
 
-The tests cover digest selection and fail-closed behavior, unsafe archive paths, pre-extraction size limits and incomplete listing rejection, explicit replacement, missing-backup preflight, state-write rollback, partial-remove recovery, update rollback, and executable-directory validation. They do not download or execute OptiScaler.
+The tests cover digest selection and fail-closed behavior, unsafe paths, pre-extraction link/special-file and size checks, incomplete listing rejection, malformed state documents, explicit replacement, missing-backup preflight, state-write rollback, partial-remove recovery, update rollback, and executable-directory validation. They do not download or execute OptiScaler.

@@ -25,7 +25,7 @@ Download only from the official GitHub release above. Verify the archive before 
 sha256sum Optiscaler_0.9.4-final.20260718._MM.7z
 ```
 
-Compare the output with the SHA-256 value shown above. Do not continue if it differs. Avoid unofficial repacks or third-party manager applications; the upstream project explicitly warns about impersonation sites and unofficial managers.
+Compare the output with the SHA-256 value shown above. Do not continue if it differs. Avoid unofficial repacks and untrusted third-party installers/managers; the upstream project explicitly warns about impersonation sites and unofficial managers. **The OptiScaler Manager included in this repository is itself an independent, nonofficial third-party helper**: it is maintained here, is not developed by or affiliated with OptiScaler upstream, and is not endorsed by upstream. Use the manual procedure below when you prefer not to use a third-party manager. The helper's source, checksum policy, safeguards, and offline tests are documented in [OptiScaler Manager](OPTISCALER-MANAGER.md).
 
 ## Per-game installation
 
