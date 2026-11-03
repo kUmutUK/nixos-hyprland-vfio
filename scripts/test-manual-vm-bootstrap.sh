@@ -41,6 +41,18 @@ case "${1:-}" in
   *) printf 'unexpected virsh command: %s\n' "$*" >&2; exit 2 ;;
 esac
 SH
+cat > "$MOCK_BIN/lspci" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+[[ "${1:-}" == "-Dn" && "${2:-}" == "-s" ]] || exit 2
+address="${3:-}"
+case "${address##*.}" in
+  0) class=0300 ;;
+  1) class=0403 ;;
+  *) exit 1 ;;
+esac
+printf '%s %s: 1002:0000 Mock device\n' "$address" "$class"
+SH
 cat > "$MOCK_BIN/qemu-img" <<'SH'
 #!/usr/bin/env bash
 set -e
