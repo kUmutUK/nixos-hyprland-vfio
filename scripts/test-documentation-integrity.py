@@ -158,7 +158,7 @@ require("run #" + (build_run_match.group(1) if build_run_match else "") in STATE
         "current-state index must reference the same full-system build as the repair report")
 require("manual run #9" in REPAIR and "full-system build baseline" in REPAIR and "ab89f350803d47eb16499c613b110da05a57673f" in REPAIR,
         "repair report must identify the successful exact-HEAD full-system build baseline")
-require("run [#9]" in STATE_INDEX and "69 tracked file blobs" in STATE_INDEX and "ab89f350803d47eb16499c613b110da05a57673f" in STATE_INDEX,
+require("run #9" in STATE_INDEX and "69 tracked file blobs" in STATE_INDEX and "ab89f350803d47eb16499c613b110da05a57673f" in STATE_INDEX,
         "current-state index must match the latest full-system build baseline")
 require("run #1120" in REPAIR and "run #1120" in STATE_INDEX and "8d1e4585c9cd3f690c1df80ee531008c7e9d30ef" in STATE_INDEX,
         "current-state index must preserve the distinct last successful normal-CI snapshot")
