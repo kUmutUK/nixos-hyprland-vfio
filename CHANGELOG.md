@@ -4,6 +4,12 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+### Documentation audit reconciliation — 2026-11-03
+- Removed the stale copied CachyOS commit SHA from the current-state index; the resolved revision is now sourced only from `nixos/flake.lock`. The documentation-integrity regression reads the lock and rejects a copied 40-character revision in the kernel status line.
+- Reconciled the archived USB-hostdev note with the current template's active `1532:0098` and `05ac:024f` IDs, and recorded that the available history does not prove when they were re-enabled. The historical IOMMU-parameter record is likewise qualified without inventing a removal commit or rationale.
+- Corrected the stale date in the documentation-integrity test's README diagnostic. Confirmed that normal CI run #1127 completed its 29 declared workflow steps successfully; `#1127` is the workflow run number and `41693786038` is the distinct run ID used in the URL.
+- No runtime NixOS settings, kernel selection, GameMode GPU index, QEMU/VFIO hook, VM XML, latency-layer defaults, LSFG-VK profile, or desktop theme were changed.
+
 ### OptiScaler update payload-removal recovery — 2026-11-03
 - Fixed updates where a newer OptiScaler archive no longer contains a file managed by the previous release: restore the pre-install original when one was backed up, and remove only obsolete files that were absent before manager installation.
 - Validate every required original-file backup before rotating the previous one-step rollback. A missing or unsafe backup now aborts before game-file mutation; obsolete original-file mappings are removed from the new manager state after restoration.
