@@ -4,7 +4,7 @@
 
 ## Ninth supplied audit cross-check — 2026-11-04
 
-**Reviewed source snapshot:** GitHub `main` at `7addd412e06181239ccab0422cc175768df7a3fd`, matching the revision named by the supplied ninth audit.
+**Audit target snapshot:** GitHub `main` at `7addd412e06181239ccab0422cc175768df7a3fd`, matching the revision named by the supplied ninth audit.
 
 - **GameMode nice-value comment — confirmed and corrected.** `nixos/configuration.nix` sets `programs.gamemode.settings.general.renice = 10`. The nearby comment incorrectly said `-10`. The comment now describes nice `+10` as lowering CPU scheduling priority. The actual setting remains `10`; no GameMode, GPU, or scheduling value was changed. The documentation-integrity test now derives the expected sign and priority direction from the configured value.
 - **Normal-CI step arithmetic — clarified.** `.github/workflows/check.yml` contains 28 workflow-defined YAML steps. The GitHub job record for run #1127 numbers its runner-generated `Set up job` entry as step 1, followed by the 28 workflow-defined steps numbered 2–29. All 28 workflow-defined steps completed successfully. The previous phrase “29 declared workflow steps” incorrectly counted the generated setup entry as a YAML step; the changelog, current-state index, and this report now use the corrected distinction.
