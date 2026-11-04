@@ -589,7 +589,7 @@ require(
     "Turkish historical preface must reconcile IOMMU, ICH9, and USB commit chronology",
 )
 require("historical note under release `[1.3.6]` about `amd_iommu=on`" not in STATE_INDEX, "root history index retains the wrong amd_iommu section reference")
-require("Aşağıdaki `[1.3.5]` bölümünde `amd_iommu=on`" in ARCHIVE and "Aşağıdaki `[1.3.6]` bölümünde `amd_iommu=on`" not in ARCHIVE, "archive header must point to the section that actually records amd_iommu=on")
+require("Aşağıdaki `[1.3.5]` kaydındaki IOMMU değişimi Git geçmişiyle eşleştirildi" in ARCHIVE and "Aşağıdaki `[1.3.6]`" not in ARCHIVE, "archive preface must point to the section that actually records amd_iommu=on")
 require("### Earlier unreleased work (2026-10-28)" not in CHANGELOG, "CHANGELOG still has an empty same-level group heading")
 require("### Eighth audit follow-up — 2026-10-30" in CHANGELOG, "CHANGELOG must record the eighth audit follow-up")
 require("### Ninth audit follow-up — 2026-10-30" in CHANGELOG, "CHANGELOG must record the ninth audit follow-up")
