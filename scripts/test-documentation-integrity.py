@@ -931,6 +931,27 @@ require("docs/OPTISCALER-MANAGER.md" in RELEASING and "scripts/optiscaler_manage
 require("docs/MAKO.md" in RELEASING and "scripts/test-mako-renderer.py" in RELEASING and "docs/MAKO.md" in RELEASE_WORKFLOW and "scripts/test-mako-renderer.py" in RELEASE_WORKFLOW, "release policy must allowlist MAKO documentation/tests while keeping the Nix package source build-gated")
 require("scripts/test-vfio-hook-driver-state.sh" in RELEASING and "scripts/test-vfio-hook-driver-state.sh" in RELEASE_WORKFLOW, "release ancestor allowlist must include the hook test script but not the system-affecting hook itself")
 
+dispatch_input_match = re.search(
+    r"(?ms)^  workflow_dispatch:\\s*\\n    inputs:\\s*\\n      version:\\s*\\n(.*?)(?=^permissions:)",
+    RELEASE_WORKFLOW,
+)
+dispatch_input = dispatch_input_match.group(1) if dispatch_input_match else ""
+require(
+    dispatch_input_match is not None
+    and "required: true" in dispatch_input
+    and "unused" in dispatch_input.lower()
+    and re.search(r"(?m)^\\s*default\\s*:", dispatch_input) is None
+    and 'refs/tags/$release_tag' in RELEASE_WORKFLOW
+    and 'Tag $release_tag already exists.' in RELEASE_WORKFLOW,
+    "manual release must request an explicit, unused version and reject tags that already exist",
+)
+require(
+    "new, unused" in RELEASING
+    and "preselected default" in RELEASING
+    and 'VERSION="vMAJOR.MINOR.PATCH"' in RELEASING,
+    "release guide must direct maintainers to choose a new unused version rather than a stale published tag",
+)
+
 if errors:
     for error in errors:
         print(f"FAIL: {error}", file=sys.stderr)
