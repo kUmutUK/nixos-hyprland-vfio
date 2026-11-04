@@ -2,15 +2,12 @@
 
 ## Latest audit follow-up — 2026-11-04
 
-### Ninth-audit remediation — 2026-11-04
+### Source-tree audit hardening — 2026-11-04
 
-- GameMode's comment now matches the existing `renice = 10` setting: nice `+10` lowers CPU scheduling priority. The value itself and all runtime settings were preserved.
-- The normal CI count is 28 workflow-defined YAML steps. Run #1127 passed all 28 workflow-defined steps. GitHub numbers its generated `Set up job` entry as 1 and the YAML-defined steps as 2–29.
-- INSTALLATION now distinguishes the NixOS 26.05 Live ISO from the installed flake's `nixos-unstable` package input and explains that `system.stateVersion = "26.05"` is not a channel pin.
-- The ninth supplied ZIP's reported metadata remains audit-supplied because its bytes were not attached for this recheck; use the canonical CI artifact for the exact commit or `scripts/package-source-zip.sh` from a clean checkout. GameMode `gpu_device = 1` remains unchanged pending the target host's live DRM `cardN` mapping.
-- The Pypr terminal floating rule now matches the configured `pypr-term` window class. The installer's secondary PCI updater rejects slots above `1f`, with explicit `20`/`ff` regression cases for GPU and audio functions.
-- The `Plus-Cursor` theme now maps every shipped cursor name and common XCursor alias to the same `+` glyph; theme inheritance is disabled, and the standalone Bibata theme is no longer installed as an alternative. System, Home Manager, GTK/X11, and Hyprland select `Plus-Cursor`.
-- The fresh full-system build requirement was satisfied by exact-HEAD manual run #10 on 4 November; that build does not validate a real saved-state restore or replace later target-host testing.
+- Fixed the VM XML sync regression test's repository-local mock-binary side effect by using an automatically cleaned temporary directory; normal CI now checks that every validation step leaves the checkout clean.
+- Reconciled the audit-section order with CHANGELOG, corrected the historical Nix source count (four at introduction, five after LSFG-VK v2, six after MAKO), and corrected INSTALLATION's Home Manager edit range.
+- The supplied audit's ZIP size/hash measurements were not independently reproduced here because the archive bytes were not attached. Use the canonical package from `scripts/package-source-zip.sh` or its CI/release artifact.
+- The 4 November CS2 change modifies `nixos/home.nix`; build #10 predates it, so a new full-system build covering this change is required before release.
 
 ### Tenth-audit reconciliation — 2026-11-04
 
@@ -20,6 +17,16 @@
 - The supplied ZIP measurements (725,451 bytes, 124 entries, 54 `.git/` entries, and 60 reported mode changes) remain unverified because the ZIP bytes were not attached; only the SHA-256 prefix `fd21ac4e…` was supplied. The matching canonical CI artifact is the supported distribution.
 - README/INSTALLATION now explain that the XML's PS/2 keyboard/mouse definitions are separate from USB hostdev entries and document the NixOS QEMU/OVMF runtime paths. No VM XML or runtime setting was changed in this documentation update.
 - A genuine saved-state restore remains outside the verified hardware boundary.
+
+### Ninth-audit remediation — 2026-11-04
+
+- GameMode's comment now matches the existing `renice = 10` setting: nice `+10` lowers CPU scheduling priority. The value itself and all runtime settings were preserved.
+- The normal CI count is 28 workflow-defined YAML steps. Run #1127 passed all 28 workflow-defined steps. GitHub numbers its generated `Set up job` entry as 1 and the YAML-defined steps as 2–29.
+- INSTALLATION now distinguishes the NixOS 26.05 Live ISO from the installed flake's `nixos-unstable` package input and explains that `system.stateVersion = "26.05"` is not a channel pin.
+- The ninth supplied ZIP's reported metadata remains audit-supplied because its bytes were not attached for this recheck; use the canonical CI artifact for the exact commit or `scripts/package-source-zip.sh` from a clean checkout. GameMode `gpu_device = 1` remains unchanged pending the target host's live DRM `cardN` mapping.
+- The Pypr terminal floating rule now matches the configured `pypr-term` window class. The installer's secondary PCI updater rejects slots above `1f`, with explicit `20`/`ff` regression cases for GPU and audio functions.
+- The `Plus-Cursor` theme now maps every shipped cursor name and common XCursor alias to the same `+` glyph; theme inheritance is disabled, and the standalone Bibata theme is no longer installed as an alternative. System, Home Manager, GTK/X11, and Hyprland select `Plus-Cursor`.
+- The fresh full-system build requirement was satisfied by exact-HEAD manual run #10 on 4 November; that build does not validate a real saved-state restore or replace later target-host testing.
 
 This legacy filename now contains an English current-state summary so older links remain useful. The maintained and current change log is [`CHANGELOG.md`](CHANGELOG.md).
 
