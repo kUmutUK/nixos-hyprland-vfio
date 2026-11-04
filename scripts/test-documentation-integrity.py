@@ -383,6 +383,25 @@ require("587,335 bytes" in REPAIR and "6b0111ca7cfb442d84bdbc22c516efbde2e90c6ea
 require("Tenth audit cross-check" in REPAIR and "45 entries (29 files and 16 directories)" in REPAIR and "create_system=0" in REPAIR, "latest upload report must preserve the independently measured ZIP metadata")
 require("DEGISIKLIK_GECMISI.md" in CHANGELOG and "DEGISIKLIK_GECISI_GECMISI.md" not in CHANGELOG, "CHANGELOG must use the correct root current-state filename")
 require("### Tenth audit follow-up — 2026-10-30" in CHANGELOG, "CHANGELOG must record the tenth audit follow-up")
+tenth_heading = "### Tenth-audit reconciliation — 2026-11-04"
+ninth_heading = "### Ninth-audit remediation — 2026-11-04"
+require(
+    CHANGELOG.find(tenth_heading) >= 0
+    and CHANGELOG.find(ninth_heading) > CHANGELOG.find(tenth_heading),
+    "CHANGELOG audit sections must use the same newest-to-oldest order as the current-state index",
+)
+require(
+    STATE_INDEX.find(tenth_heading) >= 0
+    and STATE_INDEX.find(ninth_heading) > STATE_INDEX.find(tenth_heading),
+    "current-state index audit sections must match CHANGELOG order",
+)
+cs2_start = CHANGELOG.find("### CS2 frame-generation profile — 2026-11-04")
+mako_start = CHANGELOG.find("### MAKO Renderer integration — 2026-11-04", cs2_start)
+cs2_entry = CHANGELOG[cs2_start:mako_start] if cs2_start >= 0 and mako_start > cs2_start else ""
+require(
+    "new full-system build gate" in cs2_entry and "Build #10" in cs2_entry and "before release" in cs2_entry,
+    "CS2's home.nix change must explicitly reopen the full-system build gate",
+)
 require("$Format:%H# Changelog" not in CHANGELOG and "placeholder. Its embedded" not in CHANGELOG, "CHANGELOG must not contain the malformed heading/source-revision splice")
 require("6b0111ca7cfb442d84bdbc22c516efbde2e90c6ea5a1f88bf9076317d99b4b11" in CHANGELOG and "587,335-byte ZIP" in CHANGELOG, "CHANGELOG must identify the most recently inspected supplied ZIP")
 require("583,569 bytes" in REPAIR and "98d5b073a12488f604dfc9f434f3f741d52defce055d30f22db44102ed1be25d" in REPAIR and "65b0028cd76352daea9e5a01e4d7d9afb954b10b" in REPAIR, "repair report must record the independently measured current ZIP identity")
@@ -434,6 +453,21 @@ require("passed-through GPU HDMI/DP audio function" in README, "README must iden
 audio = vm.find("./devices/audio")
 require(audio is not None and audio.get("type") == "none", "VM XML audio backend changed; update the README and review the intended guest audio path")
 require("nix build .#lsfg-vk-v2" in README and "nix build .#lsfg-vk` command" not in README, "README must use the current LSFG-VK v2 flake output")
+require(
+    'with tempfile.TemporaryDirectory(prefix="vm-xml-sync-mock-") as mock_root:' in VM_XML_SYNC_TEST
+    and 'template.parent / "mock-bin"' not in VM_XML_SYNC_TEST,
+    "VM XML sync test mocks must be isolated in an automatically cleaned temporary directory",
+)
+require(
+    'repo_mock_bin = ROOT / "vm-xml" / "mock-bin"' in VM_XML_SYNC_TEST
+    and "run_sync left a repository-local mock directory behind" in VM_XML_SYNC_TEST,
+    "VM XML sync regression must detect repository-local test artifacts",
+)
+require(
+    'git -C .. status --porcelain --untracked-files=all' in CHECK_WORKFLOW
+    and "source checkout clean" in CHECK_WORKFLOW,
+    "normal CI must reject untracked or modified files left by validation",
+)
 require("packages.${system} = {" in FLAKE and "lsfg-vk-v2 = lsfgVkV2Package;" in FLAKE and "packages.${system}.lsfg-vk =" not in FLAKE, "README package command must match the declared grouped flake output")
 require(watchdog is not None and watchdog.get("model", "").lower() == "itco" and watchdog.get("action") == "reset", "VM XML watchdog no longer matches the README")
 require(network_model is not None and network_model.get("type") == "e1000e", "VM XML network model no longer matches the README")
@@ -476,6 +510,7 @@ if readme_bash_loop is not None and contrib_bash_loop is not None:
 require("Current configuration notes — 2026-11-04" in STATE_INDEX, "current-state index date is stale")
 require("2026-10-28 entry" in STATE_INDEX and "2026-10-27 entry" not in STATE_INDEX, "root index must point to the 2026-10-28 CHANGELOG section")
 require("copy all six required Nix/flake files" in README and "copy all five required Nix/flake files" not in README and "four flake files" not in README, "README must describe the six-file migration accurately")
+require("approximately lines 8–16" in INSTALLATION, "INSTALLATION must point to the actual Home Manager customization block")
 require(
     "The helper synchronizes `/var/lib/libvirt/win10.xml` only when `win10` is registered" in README
     and "if neither condition is met, it writes no VM XML" in README
@@ -497,7 +532,14 @@ require(
     'assertion = lib.versionAtLeast config.programs.hyprland.package.version "0.55.0";' in CONFIG,
     "configuration must enforce the Hyprland Lua API minimum during evaluation",
 )
-require("four Nix source files required at the time" in CHANGELOG and "fifth required source file" in CHANGELOG, "CHANGELOG must distinguish the historical four-file preflight from the current five-file source tree")
+require(
+    "four Nix source files required at the time" in CHANGELOG
+    and "fifth required source file" in CHANGELOG
+    and "sixth" in CHANGELOG
+    and "current preflight and regression coverage require all six" in CHANGELOG
+    and "current preflight and regression coverage require all five" not in CHANGELOG,
+    "CHANGELOG must distinguish the historical four/five-file preflight from the current six-file source tree",
+)
 
 require("ilk snapshot: 2026-10-19" in ARCHIVE and "önsöz son güncelleme: 2026-10-30" in ARCHIVE, "archive note must distinguish its snapshot date from the preface update date")
 require("Bu 19 Ekim snapshot'ındaki XML yazma açıklaması güncel değildir" in ARCHIVE, "archive preface must mark the old installer XML-writing statement as superseded")
