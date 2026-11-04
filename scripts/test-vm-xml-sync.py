@@ -40,16 +40,16 @@ def run_sync(
         mock_bin = Path(mock_root)
         lspci = mock_bin / "lspci"
         lspci.write_text(
-            "#!/usr/bin/env bash\\n"
-            "set -euo pipefail\\n"
-            '[[ "${1:-}" == "-Dn" && "${2:-}" == "-s" ]] || exit 2\\n'
-            'address="${3:-}"\\n'
-            'case "${address##*.}" in\\n'
-            '  0) class="${FAKE_LSPCI_GPU_CLASS:-0300}" ;;\\n'
-            '  1) class="${FAKE_LSPCI_AUDIO_CLASS:-0403}" ;;\\n'
-            '  *) exit 1 ;;\\n'
-            'esac\\n'
-            'printf "%s %s: 1002:0000 Mock device\\\\n" "$address" "$class"\\n',
+            "#!/usr/bin/env bash\n"
+            "set -euo pipefail\n"
+            '[[ "${1:-}" == "-Dn" && "${2:-}" == "-s" ]] || exit 2\n'
+            'address="${3:-}"\n'
+            'case "${address##*.}" in\n'
+            '  0) class="${FAKE_LSPCI_GPU_CLASS:-0300}" ;;\n'
+            '  1) class="${FAKE_LSPCI_AUDIO_CLASS:-0403}" ;;\n'
+            '  *) exit 1 ;;\n'
+            'esac\n'
+            'printf "%s %s: 1002:0000 Mock device\\n" "$address" "$class"\n',
             encoding="utf-8",
         )
         lspci.chmod(0o755)
@@ -79,7 +79,7 @@ def run_sync(
             if isinstance(stderr, bytes):
                 stderr = stderr.decode("utf-8", errors="replace")
             stderr = (
-                f"{stderr.rstrip()}\\n"
+                f"{stderr.rstrip()}\n"
                 "TIMEOUT: sync-vm-xml.py did not finish within "
                 f"{SUBPROCESS_TIMEOUT_SECONDS} seconds"
             ).lstrip()
