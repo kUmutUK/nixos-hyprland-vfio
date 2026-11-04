@@ -775,6 +775,8 @@ Hyprland's native Lua configuration, Hyprlock, Waybar, Pyprland, MangoHud, lsfg-
 
 ## Validation
 
+> **Reviewed pre-update main HEAD:** GitHub `main` at `b2d2691b98764705edd8a689924b0ae16024bde6`; **last successful full-system build:** #10 at `480972a235655f6d1e9ec6137f85ad3f30b8655a`; **build gate: OPEN** — `nixos/home.nix`, `nixos/flake.nix`, `nixos/mako-renderer.nix`, and `install.sh` changed after that build. Run a new full-system build before release.
+
 To distribute a source ZIP, first commit the source you intend to ship, then run
 `./scripts/package-source-zip.sh ./dist/nixos-hyprland-vfio-source.zip`.
 This packages committed `HEAD` (uncommitted edits are deliberately excluded), expands
