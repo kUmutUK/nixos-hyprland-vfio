@@ -2,6 +2,18 @@
 
 ## Latest audit follow-up — 2026-11-04
 
+**Reviewed pre-update main HEAD:** GitHub `main` at `ce2cd55ffbc8bc6859f746445ad533212f1aec25`; **last successful full-system build:** #10 at `480972a235655f6d1e9ec6137f85ad3f30b8655a`; **build gate: OPEN** — `nixos/home.nix` changed after that build. Run a new full-system build before release.
+
+### Fourteenth supplied audit cross-check — 2026-11-04
+
+- Reconciled the internally contradictory Hyprland version tables attributed to nixpkgs revision `7a0f122`; the historical Turkish archive preface now flags the conflict without claiming an exact upstream package version that has not been verified.
+- Removed the redundant `eza` item from `home.packages`; `programs.eza.enable` remains its sole Home Manager package owner. The system-profile `fzf`, `git`, and `kitty` entries and per-user Home Manager modules are preserved intentionally.
+- Marked the 3 November build #9 record as a historical snapshot superseded by successful full-system build #10 on 4 November.
+- Explained that retained external audit records begin at audit five and that the broad 3 November review is intentionally unnumbered.
+- The supplied report says 5 November 2026, which is future-dated relative to this 4 November update. Its 770,684-byte ZIP metadata and hash remain unverified because the archive bytes were not attached.
+
+## Previous audit follow-up — 2026-11-04 (historical, superseded)
+
 **Reviewed pre-update main HEAD:** GitHub `main` at `b2d2691b98764705edd8a689924b0ae16024bde6`; **last successful full-system build:** #10 at `480972a235655f6d1e9ec6137f85ad3f30b8655a`; **build gate: OPEN** — `nixos/home.nix`, `nixos/flake.nix`, `nixos/mako-renderer.nix`, and `install.sh` changed after that build. Run a new full-system build before release.
 
 ### Thirteenth supplied audit cross-check — 2026-11-04
