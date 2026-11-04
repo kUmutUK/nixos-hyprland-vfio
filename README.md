@@ -17,6 +17,7 @@ The latest follow-up review covers canonical ZIP provenance, deployed VM XML val
 - [Keyboard shortcuts](#keyboard-shortcuts)
 - [Gaming stack](#gaming-stack)
 - [OptiScaler for Proton games](#optiscaler-for-proton-games)
+- [MAKO Renderer for Proton games](#mako-renderer-for-proton-games)
 - [Important configuration decisions](#important-configuration-decisions)
 - [Known limitations](#known-limitations)
 - [Repository map](#repository-map)
@@ -143,7 +144,7 @@ printf 'Backup saved to %s\n' "$BACKUP"
 
 ```bash
 REPO="$HOME/nixos-hyprland-vfio"   # same checkout path as above
-for file in configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix; do
+for file in configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix; do
   target="/etc/nixos/nixos/$file"
   if [ -f "$target" ]; then
     diff -u "$target" "$REPO/nixos/$file" || test "$?" -eq 1
@@ -158,7 +159,7 @@ grep -nE 'system\.stateVersion|home\.stateVersion' \
   /home/localhost/.config/home-manager/home.nix 2>/dev/null || true
 ```
 
-5. After reviewing that diff and the values above, copy all five required Nix/flake files. This overwrites their corresponding target files, so do not run it before making and checking the backup:
+5. After reviewing that diff and the values above, copy all six required Nix/flake files. This overwrites their corresponding target files, so do not run it before making and checking the backup:
 
 ```bash
 set -Eeuo pipefail
@@ -173,7 +174,7 @@ if [ -n "$(git -C "$REPO" status --porcelain --untracked-files=all)" ]; then
   exit 1
 fi
 sudo install -d -m 0755 /etc/nixos/nixos
-for file in configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix; do
+for file in configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix; do
   sudo install -m 0644 "$REPO/nixos/$file" /etc/nixos/nixos/
 done
 sudo install -d -m 0755 /etc/nixos/nixos/hooks
@@ -641,6 +642,7 @@ The OCR script now checks that the model is available before beginning; it repor
 |---|---|
 | RADV | AMD Vulkan driver; `AMD_VULKAN_ICD=RADV`, `RADV_PERFTEST=gpl` |
 | `lsfg-vk` | Pinned LSFG-VK v2 Vulkan layer, Qt6 UI, and CLI; per-game v2 profiles are declared in Home Manager `conf.toml` |
+| `MAKO Renderer` | Optional pinned x86_64 Vulkan renderer with per-game launch opt-in; see the [NixOS integration guide](docs/MAKO.md). It does not replace LSFG-VK or edit existing game profiles. |
 | `OptiScaler` | Optional per-game DLL proxy for supported Proton games. The manually invoked manager checks and verifies stable releases, then installs only into a selected game directory; see the [setup guide](docs/OPTISCALER.md) and [manager guide](docs/OPTISCALER-MANAGER.md). No system-wide install or global DLL override. |
 | `low_latency_layer` | Vulkan latency layer enabled globally using `LOW_LATENCY_LAYER=1`; keeps the default AMD Anti-Lag interface for native Linux games such as CS2. Compatible Proton games can opt into Reflex with `LOW_LATENCY_LAYER_REFLEX=1 %command%`; incompatible games can use `DISABLE_LOW_LATENCY_LAYER=1 %command%`. |
 | GameMode | Applies the configured game-time priority and performance settings |
@@ -649,6 +651,10 @@ The OCR script now checks that the model is available before beginning; it repor
 | Ananicy-cpp | Process priority rules |
 | power-profiles-daemon | Power profile / CPU governor management |
 | Steam / Proton / Wine | Windows game compatibility tools |
+
+### MAKO Renderer for Proton games
+
+MAKO Renderer is an optional Vulkan layer for frame generation, spatial scaling, and bundled shader effects. The pinned v4.6.0 Linux archive is packaged through Nix and added to Home Manager; the upstream mutable user-local installer is intentionally not used. Open its configuration UI with `mako-ui`, create a profile for the game process, and add `mako-launch %command%` only to that game's Steam launch options. Package installation alone does not inject MAKO into any game. See the [MAKO NixOS guide](docs/MAKO.md) for its Lossless Scaling prerequisite, Vulkan-layer isolation behavior, Flatpak boundary, and build notes. Do not stack MAKO Frame Generation with LSFG-VK or OptiScaler Frame Generation. The global latency-layer setting and existing game preferences remain unchanged.
 
 ### OptiScaler for Proton games
 
@@ -721,6 +727,7 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 │   ├── REPAIR-AND-VALIDATION-REPORT.md
 │   ├── OPTISCALER.md                 # optional per-game Proton DLL proxy guide
 │   ├── OPTISCALER-MANAGER.md          # independent per-game manager and recovery guide
+│   ├── MAKO.md                         # optional pinned MAKO Renderer Nix integration
 │   ├── AUDIT-2026-10-28-VM-XML-VFIO.md
 │   └── archive/                    # Historical audits and original Turkish release history
 ├── scripts/
@@ -739,6 +746,7 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 │   ├── test-extract-embedded-scripts.py
 │   ├── test-documentation-integrity.py
 │   ├── test-lsfg-vk-v2.py
+│   ├── test-mako-renderer.py
 │   ├── test-installer-invariants.sh
 │   ├── test-installer-lock.sh
 │   ├── test-installer-rollback.sh
@@ -758,6 +766,7 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
     ├── configuration.nix
     ├── home.nix
     ├── lsfg-vk-v2.nix
+    ├── mako-renderer.nix
     ├── hardware-configuration.nix   # machine-specific: replace for another host
     └── hooks/qemu
 ```
@@ -801,6 +810,7 @@ nix develop ./nixos --command bash -euo pipefail -c '
   shellcheck -S warning install.sh scripts/package-source-zip.sh scripts/verify-source-revision.sh scripts/test-source-revision.sh scripts/installer-lock.sh scripts/pci-address.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-lock.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh
   python3 -c "import xml.etree.ElementTree as ET; ET.parse(\"vm-xml/win10.xml\")"
   python3 scripts/test-lsfg-vk-v2.py
+  python3 scripts/test-mako-renderer.py
   python3 scripts/test-home-snapper-layout.py
   python3 scripts/test-extract-embedded-scripts.py
   python3 scripts/test-documentation-integrity.py
@@ -829,11 +839,12 @@ nix develop ./nixos --command bash -euo pipefail -c '
   shellcheck -S warning "${embedded_scripts[@]}"
   (cd nixos && nix flake check --no-build --show-trace --no-update-lock-file --option warn-dirty false)
   (cd nixos && nix build --no-link --no-update-lock-file .#lsfg-vk-v2)
+  (cd nixos && nix build --no-link --no-update-lock-file .#mako-renderer)
   statix check .
   deadnix .
 '
 ```
-`nix flake check --no-build` evaluates the flake but does not build the complete system or kernel. The separate `nix build .#lsfg-vk-v2` command builds only the selected LSFG-VK v2 package. Neither command replaces a full system/kernel build, libvirt domain validation, or a physical GPU lifecycle test. To intentionally rewrite formatting, run `nixfmt` without `--check` as a separate reviewed edit.
+`nix flake check --no-build` evaluates the flake but does not build the complete system or kernel. The separate package builds verify only the selected LSFG-VK v2 and MAKO Renderer derivations. Neither command replaces a full system/kernel build, libvirt domain validation, or a physical GPU lifecycle test. To intentionally rewrite formatting, run `nixfmt` without `--check` as a separate reviewed edit.
 
 The manual sequence also runs `statix check .` and `deadnix .`, both required CI gates. `statix.toml` disables only the style-only repeated-key lint used by the repository's intentionally flat option assignments; actionable Statix and Deadnix findings still fail validation.
 

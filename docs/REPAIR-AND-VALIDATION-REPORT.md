@@ -2,6 +2,13 @@
 
 > **Delivery-scope note:** This report is part of the tracked source tree. The dated “patch-only ZIP” notes below are historical. For a canonical full-source ZIP, use `scripts/package-source-zip.sh` or the CI-uploaded `nixos-hyprland-vfio-source` artifact for the exact commit. The helper verifies tracked-file completeness, excludes `.git/`, preserves executable bits, and makes the finished artifact readable from shared output directories.
 
+## MAKO Renderer integration — 2026-11-04
+
+- Added the official MAKO Renderer v4.6.0 x86_64 Linux archive as a fixed-hash Nix package (`nixos/mako-renderer.nix`) and exposed it to Home Manager through `nixos/home.nix`. The Home Manager package is optional at game level: it does not edit Steam launch options, add a global Vulkan layer manifest, replace LSFG-VK, change OptiScaler files, or alter the global AMD Anti-Lag/latency-layer defaults.
+- Added the new Nix expression to `install.sh` source preflight, deployment, backup, and rollback handling; added a static integration test and a normal-CI package build target. The new paths are covered by the current full-build pending-path guard.
+- **Build gate:** `nixos/home.nix`, `nixos/mako-renderer.nix`, and `install.sh` changed after the last successful full-system build baseline. A fresh full-system build is required before release. The normal-CI/package checks and upstream archive checksum do not replace that build.
+- **Hardware boundary:** no target-host MAKO runtime test, RDNA2/RX 6700 XT compatibility result, per-game frametime comparison, or Gamescope/VRR qualification is claimed. No MAKO frame generation should be stacked with LSFG-VK or OptiScaler frame generation in one game. The upstream launcher uses a private Vulkan implicit-layer path, so the globally registered latency layer must be checked separately for any MAKO-launched game.
+
 ## Tenth supplied audit cross-check and exact-HEAD verification — 2026-11-04
 
 **Reviewed Git snapshot before this documentation-only reconciliation:** GitHub `main` at `480972a235655f6d1e9ec6137f85ad3f30b8655a`. GitHub's recursive tree response was not truncated: **69 tracked file blobs**, with **9 tracked executable files** stored as `100755`.

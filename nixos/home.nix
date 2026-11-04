@@ -8,6 +8,7 @@
 let
   gitName = "changeme";
   gitEmail = "you@example.com";
+  makoRenderer = pkgs.callPackage ./mako-renderer.nix { };
   monitorOutput = "";
   # Hyprland 0.55+ uses Lua configuration. The monitor output is set by the installer;
   # an empty value remains a catch-all for manual setups.
@@ -1764,6 +1765,8 @@ in
     # installed in either package list; mpvpaper's private PATH did not make it available
     # to the scratchpad. `mpv` is now included in the Home Manager package list.
     mpv
+    # Optional per-game Vulkan renderer; it does not inject into games by default.
+    makoRenderer
     # Optional tools for the adapted dotfile theme; Pywal is user-invoked (wal -i).
     eza
     ranger

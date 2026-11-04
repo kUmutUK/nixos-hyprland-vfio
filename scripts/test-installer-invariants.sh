@@ -267,19 +267,19 @@ if ! grep -q '^validate_nixos_source_files() {' "$preflight_function"; then
   echo "FAIL: could not locate validate_nixos_source_files() for its regression test." >&2
   exit 1
 fi
-if ! grep -Fq 'REQUIRED_NIXOS_SOURCE_FILES=(configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix)' "$INSTALLER"; then
-  echo "FAIL: installer source preflight must declare all five required Nix source files." >&2
+if ! grep -Fq 'REQUIRED_NIXOS_SOURCE_FILES=(configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix)' "$INSTALLER"; then
+  echo "FAIL: installer source preflight must declare all six required Nix source files." >&2
   exit 1
 fi
 cat > "$preflight_dir/harness.sh" <<'BASH'
 set -euo pipefail
 REPO_DIR="$1"
-REQUIRED_NIXOS_SOURCE_FILES=(configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix)
+REQUIRED_NIXOS_SOURCE_FILES=(configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix)
 error() { printf '%s\\n' "$*" >&2; return 1; }
 source "$2"
 validate_nixos_source_files
 BASH
-for file in configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix; do
+for file in configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix; do
   printf 'valid %s\\n' "$file" > "$preflight_dir/repo/nixos/$file"
 done
 if ! bash "$preflight_dir/harness.sh" "$preflight_dir/repo" "$preflight_function"; then
@@ -288,7 +288,7 @@ if ! bash "$preflight_dir/harness.sh" "$preflight_dir/repo" "$preflight_function
 fi
 
 # Every required source must fail closed when missing or empty.
-for file in configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix; do
+for file in configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix; do
   source_file="$preflight_dir/repo/nixos/$file"
   mv "$source_file" "$source_file.saved"
   if bash "$preflight_dir/harness.sh" "$preflight_dir/repo" "$preflight_function" >/dev/null 2>&1; then
@@ -428,7 +428,11 @@ if [ ! -s "$ROOT/nixos/lsfg-vk-v2.nix" ]; then
   echo "FAIL: required LSFG-VK v2 package expression is missing or empty." >&2
   exit 1
 fi
-if ! grep -Fq 'REQUIRED_NIXOS_SOURCE_FILES=(configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix)' "$INSTALLER" \
+if [ ! -s "$ROOT/nixos/mako-renderer.nix" ]; then
+  echo "FAIL: required MAKO Renderer package expression is missing or empty." >&2
+  exit 1
+fi
+if ! grep -Fq 'REQUIRED_NIXOS_SOURCE_FILES=(configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix)' "$INSTALLER" \
   || ! grep -Fq 'for file in "${REQUIRED_NIXOS_SOURCE_FILES[@]}"; do' "$INSTALLER" \
   || ! grep -Fq 'for f in "${REQUIRED_NIXOS_SOURCE_FILES[@]}"; do' "$INSTALLER"; then
   echo "FAIL: installer preflight and deployment must require/copy the v2 package expression." >&2
@@ -444,7 +448,12 @@ if ! grep -Fq '"$NIXOS_FLAKE_DIR/lsfg-vk-v2.nix"' <<< "$backup_block"; then
   echo "FAIL: installer backup list must include lsfg-vk-v2.nix." >&2
   exit 1
 fi
-if [ "$(grep -Fc 'for file in configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix; do' "$README")" -lt 2 ]; then
+if ! grep -Fq '"$NIXOS_FLAKE_DIR/mako-renderer.nix"' <<< "$transaction_block" \
+  || ! grep -Fq '"$NIXOS_FLAKE_DIR/mako-renderer.nix"' <<< "$backup_block"; then
+  echo "FAIL: installer rollback transaction and backup list must include mako-renderer.nix." >&2
+  exit 1
+fi
+if [ "$(grep -Fc 'for file in configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix; do' "$README")" -lt 2 ]; then
   echo "FAIL: README manual migration loops must include lsfg-vk-v2.nix." >&2
   exit 1
 fi

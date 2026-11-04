@@ -113,7 +113,7 @@ PATCHED_XML="/var/lib/libvirt/win10.xml"
 SNAPSHOT_SUBVOL="/home/.snapshots"
 SNAPSHOT_SUBVOL_CREATED=0
 
-REQUIRED_NIXOS_SOURCE_FILES=(configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix)
+REQUIRED_NIXOS_SOURCE_FILES=(configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix)
 
 # Reject an incomplete checkout before prompting or touching system state. A skipped
 # source file can leave a mixed old/new deployment even when individual copies work.
@@ -587,6 +587,7 @@ TRANSACTION_PATHS=(
   "$NIXOS_FLAKE_DIR/flake.nix"
   "$NIXOS_FLAKE_DIR/flake.lock"
   "$NIXOS_FLAKE_DIR/lsfg-vk-v2.nix"
+  "$NIXOS_FLAKE_DIR/mako-renderer.nix"
   "$NIXOS_FLAKE_DIR/hooks"
   "$NIXOS_FLAKE_DIR/hardware-configuration.nix"
   "$SOURCE_REVISION_FILE"
@@ -631,6 +632,7 @@ for src in "$TARGET_HOME/.config/hypr" "$TARGET_HOME/.config/waybar" "$TARGET_HO
             "$NIXOS_FLAKE_DIR/configuration.nix" "$NIXOS_FLAKE_DIR/home.nix" \
             "$NIXOS_FLAKE_DIR/flake.nix" "$NIXOS_FLAKE_DIR/flake.lock" \
            "$NIXOS_FLAKE_DIR/lsfg-vk-v2.nix" \
+            "$NIXOS_FLAKE_DIR/mako-renderer.nix" \
             "$NIXOS_FLAKE_DIR/hooks" \
             "$NIXOS_DIR/hardware-configuration.nix" \
             "$NIXOS_FLAKE_DIR/hardware-configuration.nix" \

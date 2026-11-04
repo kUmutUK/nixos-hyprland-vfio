@@ -34,6 +34,7 @@ nix develop ./nixos --command bash -euo pipefail -c '
   (cd nixos && nix develop . --no-update-lock-file --command luac -p "$lua_file")
   python3 -c "import xml.etree.ElementTree as ET; ET.parse(\"vm-xml/win10.xml\")"
   python3 scripts/test-lsfg-vk-v2.py
+  python3 scripts/test-mako-renderer.py
   python3 scripts/test-documentation-integrity.py
   python3 scripts/test-optiscaler-manager.py
   python3 scripts/test-home-snapper-layout.py
@@ -61,6 +62,7 @@ nix develop ./nixos --command bash -euo pipefail -c '
   shellcheck -S warning "${embedded_scripts[@]}"
   (cd nixos && nix flake check --no-build --show-trace --no-update-lock-file --option warn-dirty false)
   (cd nixos && nix build --no-link --no-update-lock-file .#lsfg-vk-v2)
+  (cd nixos && nix build --no-link --no-update-lock-file .#mako-renderer)
   statix check .
   deadnix .
 '

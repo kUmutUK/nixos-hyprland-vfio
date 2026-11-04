@@ -43,6 +43,7 @@
         config.allowUnfree = true;
       };
       lsfgVkV2Package = pkgsUnfree.callPackage ./lsfg-vk-v2.nix { };
+      makoRendererPackage = pkgs.callPackage ./mako-renderer.nix { };
     in
     {
       nixosConfigurations.nixos = nixpkgs.lib.nixosSystem {
@@ -67,8 +68,9 @@
         ];
       };
 
-      # Expose the pinned LSFG-VK v2 package so CI and contributors can build it directly.
+      # Expose the pinned LSFG-VK v2 and optional MAKO Renderer packages for CI/contributors.
       packages.${system}.lsfg-vk-v2 = lsfgVkV2Package;
+      packages.${system}.mako-renderer = makoRendererPackage;
 
       # The README uses `nix develop`; expose one flake dev shell rather than a
       # separate legacy channel-based shell.

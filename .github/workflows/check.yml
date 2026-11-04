@@ -69,7 +69,9 @@ jobs:
           python3 scripts/test-vm-iso-paths.py
 
       - name: Documentation integrity regression tests
-        run: python3 scripts/test-documentation-integrity.py
+        run: |
+          python3 scripts/test-documentation-integrity.py
+          python3 scripts/test-mako-renderer.py
 
       - name: OptiScaler manager safety and rollback tests
         run: python3 scripts/test-optiscaler-manager.py
@@ -210,7 +212,10 @@ jobs:
 
       - name: Build the pinned LSFG-VK v2 package
         working-directory: nixos
-        run: nix build --no-link --no-update-lock-file .#lsfg-vk-v2
+        run: |
+          nix build --no-link --no-update-lock-file .#lsfg-vk-v2
+          # Build the pinned MAKO Renderer package.
+          nix build --no-link --no-update-lock-file .#mako-renderer
 
       # These are required gates. statix.toml disables only the style-only
       # repeated_keys lint because this repository intentionally uses flat dotted

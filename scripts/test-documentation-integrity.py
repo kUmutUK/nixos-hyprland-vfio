@@ -251,7 +251,11 @@ verification_metadata_paths = {
     "docs/REPAIR-AND-VALIDATION-REPORT.md",
     "docs/OPTISCALER.md",
     "docs/OPTISCALER-MANAGER.md",
+    "docs/MAKO.md",
+    "scripts/test-mako-renderer.py",
+    "docs/MAKO.md",
     "scripts/optiscaler_manager.py",
+    "scripts/test-mako-renderer.py",
     "scripts/test-optiscaler-manager.py",
     "scripts/sync-vm-xml.py",
     "scripts/test-vm-xml-sync.py",
@@ -293,7 +297,7 @@ if current_head and repair_baseline_match:
                 reviewed_ancestor = subprocess.run(["git", "merge-base", "--is-ancestor", reviewed_sha, current_head], cwd=ROOT, capture_output=True, text=True)
                 require(reviewed_ancestor.returncode == 0, "reviewed normal-CI source snapshot must be an ancestor of the current checkout HEAD")
             changed = subprocess.run(["git", "diff", "--name-only", verified_sha, current_head], cwd=ROOT, check=True, capture_output=True, text=True).stdout.splitlines()
-            full_build_pending_paths = {"nixos/configuration.nix", "nixos/hooks/qemu", "install.sh", "nixos/home.nix"}
+            full_build_pending_paths = {"nixos/configuration.nix", "nixos/hooks/qemu", "install.sh", "nixos/home.nix", "nixos/mako-renderer.nix"}
             unexpected = sorted(set(changed) - verification_metadata_paths - full_build_pending_paths)
             require(
                 not unexpected,
@@ -339,6 +343,17 @@ if current_head and repair_baseline_match:
                 require(
                     "nixos/configuration.nix" in RELEASING and "nixos/configuration.nix" not in RELEASE_WORKFLOW,
                     "configuration.nix must remain outside the ancestor-build release allowlist",
+                )
+            if "nixos/mako-renderer.nix" in pending:
+                require(
+                    "nixos/mako-renderer.nix" in REPAIR
+                    and "fresh full-system build is required before release" in REPAIR,
+                    "the MAKO package source must be documented as requiring a fresh full-system build",
+                )
+                require(
+                    "nixos/mako-renderer.nix" in RELEASING
+                    and "nixos/mako-renderer.nix" not in RELEASE_WORKFLOW,
+                    "the MAKO Nix derivation must remain outside the ancestor-build release allowlist",
                 )
 
 
@@ -676,6 +691,7 @@ require(
 require("preflights every required backup" in OPTISCALER_MANAGER_DOC and "before extraction" in OPTISCALER_MANAGER_DOC, "OptiScaler manager guide must document backup preflight and pre-extraction size checks")
 require("Before rotating an existing one-step rollback" in OPTISCALER_MANAGER_DOC and "per-game `flock` lock" in OPTISCALER_MANAGER_DOC, "OptiScaler manager guide must document atomic original backups and per-game command serialization")
 require("docs/OPTISCALER-MANAGER.md" in RELEASING and "scripts/optiscaler_manager.py" in RELEASING and "scripts/test-optiscaler-manager.py" in RELEASING, "release guide must allowlist the standalone OptiScaler helper and its tests")
+require("docs/MAKO.md" in RELEASING and "scripts/test-mako-renderer.py" in RELEASING and "docs/MAKO.md" in RELEASE_WORKFLOW and "scripts/test-mako-renderer.py" in RELEASE_WORKFLOW, "release policy must allowlist MAKO documentation/tests while keeping the Nix package source build-gated")
 require("scripts/test-vfio-hook-driver-state.sh" in RELEASING and "scripts/test-vfio-hook-driver-state.sh" in RELEASE_WORKFLOW, "release ancestor allowlist must include the hook test script but not the system-affecting hook itself")
 
 if errors:
