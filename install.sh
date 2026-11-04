@@ -532,7 +532,7 @@ if [[ -n "$input_mon" ]]; then
 fi
 while [[ -z "${monitor_output//[[:space:]]/}" ]]; do
   warn "Monitor output name cannot be empty. Find the exact name with: hyprctl monitors"
-  read -rp "Enter a non-empty monitor output name (e.g. DP-3): " input_mon
+  read -rp "Enter a non-empty monitor output name (e.g. DP-1): " input_mon
   input_mon="$(trim_whitespace "$input_mon")"
   if [[ -n "$input_mon" ]]; then
     monitor_output="$input_mon"
