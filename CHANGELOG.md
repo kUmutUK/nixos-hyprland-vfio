@@ -4,6 +4,12 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+### Game graphics profile guidance — 2026-11-04
+- Added a per-game baseline for the RX 6700 XT / 170 Hz setup: native CS2, conservative MAKO Adaptive profiles for single-player games, and the existing LSFG-VK profiles as alternatives.
+- Documented the actual MAKO v4.6.0 controls, Gamescope refresh-feedback condition, FP16/quality-first defaults, and when to test GPU Headroom or a higher adaptive ceiling.
+- Clarified that MAKO profiles are saved by `mako-ui` and are not generated or overwritten by the Nix package. The system-wide AMD low-latency default, Reflex choice, Home Manager settings, and current LSFG-VK profiles were not changed.
+- Updated OptiScaler guidance so MAKO, LSFG-VK, and OptiScaler Frame Generation are explicitly mutually exclusive per game. This documentation/test update does not close the already documented full-system build gate, and it makes no new RX 6700 XT runtime-performance claim.
+
 ### CS2 frame-generation profile — 2026-11-04
 - Removed the CS2 process match from the LSFG-VK v2 profile set to keep competitive CS2 on native rendering. Genshin Impact, Wuthering Waves, Benchmark, and vkcube profiles remain unchanged; the global AMD Anti-Lag/low-latency defaults, MAKO integration, and OptiScaler manager are untouched.
 - Updated the LSFG-VK regression test to reject any CS2 process alias in the generated frame-generation profiles.

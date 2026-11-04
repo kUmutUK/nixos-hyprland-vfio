@@ -56,10 +56,10 @@ Do not copy FSR4 settings from RDNA3/RDNA4 guides to this RX 6700 XT. Check the 
 
 ## Frame Generation and this repository's gaming stack
 
-OptiScaler's game-level Frame Generation route and LSFG-VK are separate mechanisms. **Do not enable both Frame Generation methods simultaneously in the same game.** Choose one path, test it alone, and compare frame pacing rather than assuming that stacking them increases smoothness.
+OptiScaler's game-level Frame Generation route, MAKO Frame Generation, and LSFG-VK are separate mechanisms. **Do not enable these Frame Generation methods simultaneously in the same game.** Choose exactly one provider, test it alone, and compare frame pacing rather than assuming that stacking them increases smoothness.
 
 - Keep the repository's LSFG-VK v2 package and per-game profiles unchanged.
-- If testing OptiScaler Frame Generation in a particular game, disable that game's LSFG-VK profile through the normal LSFG-VK configuration before comparing results.
+- If testing OptiScaler Frame Generation in a particular game, disable both MAKO Frame Generation and that game's LSFG-VK profile before comparing results.
 - The global `LOW_LATENCY_LAYER=1` and unset-by-default `LOW_LATENCY_LAYER_REFLEX` choices remain unchanged. Do not add Reflex or OptiScaler-specific variables globally for this optional tool.
 - This guide does not alter the CS2 launch command or recommend injecting OptiScaler into CS2.
 

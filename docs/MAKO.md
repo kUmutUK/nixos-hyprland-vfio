@@ -23,6 +23,58 @@ The open MAKO Scaler and bundled shaders do not require Lossless Scaling. MAKO F
 
 The release targets x86_64 Linux. That describes the package architecture, not a guarantee that every GPU/API/game combination works. The repository's RX 6700 XT (Navi 22 / RADV) has not been independently runtime-qualified with MAKO by this integration. Validate each selected game and compare frametimes, latency, and image quality.
 
+## Recommended per-game baseline for this RX 6700 XT
+
+These are conservative starting values for the repository's RX 6700 XT (RDNA2), RADV, and 170 Hz display. They are **not measured performance results**: this integration has not been independently runtime-qualified on that GPU. Judge each game with its real FPS, frametimes, responsiveness, and image quality rather than output FPS alone.
+
+MAKO profiles are saved by `mako-ui` in the user's configuration. The Nix package does not currently declare or overwrite those user profiles. Apply these values in the UI; do not copy guessed profile JSON into `home.nix`.
+
+### System-wide policy
+
+- Keep the current NixOS `LOW_LATENCY_LAYER=1` default and its AMD Anti-Lag interface. Leave `LOW_LATENCY_LAYER_REFLEX` unset globally; do not force Reflex on an AMD system.
+- Keep frame generation opt-in per game. Installing MAKO or registering LSFG-VK's manifest must not mean that every game uses frame generation.
+- MAKO uses a private Vulkan implicit-layer path. Do not assume the global `low_latency_layer` is loaded inside a game started through `mako-launch`; inspect the game's actually loaded layers before attributing latency behavior to it.
+
+### Per-game starting choice
+
+| Game / use | Preferred starting path | Initial choice |
+| --- | --- | --- |
+| Counter-Strike 2 | Native rendering | No MAKO, LSFG-VK, or OptiScaler Frame Generation. Keep the existing AMD low-latency default. |
+| Genshin Impact | MAKO Adaptive, after per-game validation | Target 170 FPS; maximum adaptive multiplier 2x initially. Try a 3x ceiling only if the measured real FPS and image quality justify it. |
+| Wuthering Waves | MAKO Adaptive, after per-game validation | Target 170 FPS; maximum adaptive multiplier 2x initially. Consider 3x only after comparing responsiveness and interpolation artifacts. |
+| Other single-player games | MAKO Adaptive, game by game | Start at a 2x ceiling and change one setting at a time. Keep frame generation off when native performance is already preferable. |
+| MAKO fallback | Existing LSFG-VK v2 profiles | Keep the current Genshin 3x and Wuthering Waves 2x profiles as alternatives; use LSFG-VK only when MAKO Frame Generation is not active for that game. |
+| OptiScaler | Optional game-local upscaling / compatibility path | Use only for a compatible offline single-player title. It is not a global setting; do not combine its Frame Generation with MAKO or LSFG-VK Frame Generation. |
+
+The 170 FPS value is an **Adaptive target**, not a promise that the game will output 170 FPS. At a 60 FPS real-frame rate, a 2x ceiling can produce about 120 output FPS; a 3x ceiling permits more generated frames but can increase latency or visible interpolation artifacts. Adaptive chooses within the selected ceiling; it is not the same as forcing a fixed multiplier.
+
+### MAKO v4.6.0 profile values
+
+For Genshin Impact and Wuthering Waves, use this as the first comparison profile:
+
+| MAKO control | Starting value |
+| --- | --- |
+| Enable Frame-gen | On (Restart), then select Adaptive |
+| Target FPS | 170 |
+| Match Display Refresh Rate | Off unless the game is launched through Gamescope and MAKO is receiving valid Gamescope refresh feedback. Otherwise set Target FPS manually to 170. |
+| Maximum Adaptive Multiplier | 2x initially; test 3x separately if required |
+| Steady Base Cap | Off |
+| Fractional Adaptive | Off initially |
+| Real Frame Priority | Automatic |
+| Base FPS Cap | Off initially |
+| Smooth Cadence | Off initially; compare separately only if cadence needs work |
+| Allow FP16 | On (Restart); keep the lighter model disabled for the first quality comparison |
+| Lighter FG Model / Ultra Performance | Off |
+| Flow Scale | 100% initially |
+| GPU Headroom | Off initially. If supported AMD telemetry confirms sustained GPU saturation and unstable pacing, test a 10% reserve as a separate comparison. |
+| MAKO Scaling / Shaders / HDR | Off for the first FG comparison; add them one at a time only when needed |
+
+Use the exact executable detected by **Detect Running Game…** or saved under **Matched Processes**. For a basic profile, `mako-launch %command%` is the launch prefix; when the UI shows a complete profile-specific launch option (for example, with shaders), copy the full command shown by the UI. Compare V-Sync on/off and Fullscreen/Borderless per game; neither choice is universal.
+
+### Choosing between MAKO, LSFG-VK, and OptiScaler
+
+Use one Frame Generation provider per game. For an LSFG-VK comparison, remove the MAKO launch prefix and use the existing LSFG-VK profile; do not leave MAKO Frame Generation active. For an OptiScaler Frame Generation comparison, disable both MAKO Frame Generation and the matching LSFG-VK profile first. OptiScaler remains subject to the upstream anti-cheat warning and is not for online or anti-cheat-protected games.
+
 ## Install and launch
 
 The package is added to the existing Home Manager `home.packages` list. After deploying the repository's updated NixOS files and successfully rebuilding the system, open **MAKO Renderer Configuration** from the application menu or run:

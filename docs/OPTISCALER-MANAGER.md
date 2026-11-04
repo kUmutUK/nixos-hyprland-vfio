@@ -80,7 +80,7 @@ Preserve existing launch options. The helper deliberately does not edit Steam's 
 
 ## RX 6700 XT and LSFG-VK
 
-See [OptiScaler on NixOS with Steam/Proton](OPTISCALER.md) for the pinned v0.9.4 asset, RX 6700 XT/RDNA2 FSR 4.1.1 limitations, RADV notes, and the frame-generation warning. Do not run OptiScaler Frame Generation and LSFG-VK simultaneously in the same game.
+See [OptiScaler on NixOS with Steam/Proton](OPTISCALER.md) for the pinned v0.9.4 asset, RX 6700 XT/RDNA2 FSR 4.1.1 limitations, RADV notes, and the frame-generation warning. Do not run OptiScaler Frame Generation together with MAKO or LSFG-VK Frame Generation in the same game.
 
 ## Validation
 

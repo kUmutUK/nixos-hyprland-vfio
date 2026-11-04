@@ -63,6 +63,23 @@ require("### MAKO Renderer for Proton games" in README and "docs/MAKO.md" in REA
         "README must describe and link the optional MAKO integration")
 require("mako-launch %command%" in DOC and "mako-ui" in DOC,
         "MAKO guide must document the UI and per-game launch command")
+require("## Recommended per-game baseline for this RX 6700 XT" in DOC,
+        "MAKO guide must include a system-specific per-game profile baseline")
+require(all(item in DOC for item in (
+    "LOW_LATENCY_LAYER=1",
+    "LOW_LATENCY_LAYER_REFLEX",
+    "Counter-Strike 2",
+    "Genshin Impact",
+    "Wuthering Waves",
+    "Target FPS",
+    "Maximum Adaptive Multiplier",
+    "Allow FP16",
+    "GPU Headroom",
+    "170 FPS",
+    "not measured performance results",
+)), "MAKO guide must document conservative AMD/170 Hz settings and distinguish them from hardware-tested results")
+require("MAKO Frame Generation" in DOC and "LSFG-VK Frame Generation" in DOC and "OptiScaler Frame Generation" in DOC,
+        "MAKO guide must keep the three frame-generation providers mutually exclusive")
 require("Do not stack MAKO Frame Generation with LSFG-VK Frame Generation or OptiScaler Frame Generation" in DOC,
         "MAKO guide must prevent competing frame-generation paths")
 require("LOW_LATENCY_LAYER=1" in DOC and "private Vulkan implicit-layer path" in DOC,
