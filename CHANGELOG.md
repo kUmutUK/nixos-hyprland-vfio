@@ -4,6 +4,12 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+### Thirteenth supplied audit cross-check — 2026-11-04
+- Reconciled the latest supplied review against GitHub `main` at `b2d2691b98764705edd8a689924b0ae16024bde6`; the last successful full-system build remains #10 on `480972a235655f6d1e9ec6137f85ad3f30b8655a`.
+- Kept the manual full-system build gate open for the later Home Manager, flake, MAKO derivation, and installer changes. Normal CI and package checks do not substitute for a complete NixOS/selected-kernel build.
+- Marked the supplied ZIP measurements as unverified without the archive bytes and documented why the tracked `SOURCE_REVISION` placeholder is expected to expand via `.gitattributes` during canonical `git archive` packaging.
+- Aligned the installer's example monitor output with INSTALLATION without changing monitor detection or runtime display settings; left the VFIO hook and all other runtime preferences untouched.
+
 ### Game graphics profile guidance — 2026-11-04
 - Added a per-game baseline for the RX 6700 XT / 170 Hz setup: native CS2, conservative MAKO Adaptive profiles for single-player games, and the existing LSFG-VK profiles as alternatives.
 - Documented the actual MAKO v4.6.0 controls, Gamescope refresh-feedback condition, FP16/quality-first defaults, and when to test GPU Headroom or a higher adaptive ceiling.
