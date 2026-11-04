@@ -560,7 +560,7 @@ require("### Eighth audit follow-up — 2026-10-30" in CHANGELOG, "CHANGELOG mus
 require("### Ninth audit follow-up — 2026-10-30" in CHANGELOG, "CHANGELOG must record the ninth audit follow-up")
 require("Historical pre-v2 design note (superseded 2026-10-29)" in CHANGELOG and "That statement no longer describes the current configuration" in CHANGELOG, "CHANGELOG must clearly supersede the old LSFG-VK v1 decision")
 require("byte-for-byte unchanged copy" in CHANGELOG and "preserved unchanged in" not in CHANGELOG, "CHANGELOG must describe the archive preface accurately")
-require("approximately lines 9–15" in INSTALLATION and "approximately lines 4–12" not in INSTALLATION, "INSTALLATION must point to the current home.nix let-block line range")
+require("approximately lines 8–16" in INSTALLATION and "approximately lines 9–15" not in INSTALLATION and "approximately lines 4–12" not in INSTALLATION, "INSTALLATION must point to the current home.nix let-block line range")
 wallpaper = re.search(r'(?m)^\s*wallpaperVideo\s*=\s*"\$\{config\.home\.homeDirectory\}/Downloads/([^"]+)"\s*;', HOME_NIX)
 require(wallpaper is not None and f"~/Downloads/{wallpaper.group(1)}" in INSTALLATION, "INSTALLATION wallpaper default must match the exact home.nix filename")
 require("installer backups are not automatically pruned" in CHANGELOG, "CHANGELOG must describe current backup retention rather than the historical five-backup policy")
