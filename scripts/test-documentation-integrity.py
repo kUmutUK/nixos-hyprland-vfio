@@ -512,11 +512,11 @@ require("2026-10-28 entry" in STATE_INDEX and "2026-10-27 entry" not in STATE_IN
 require("copy all six required Nix/flake files" in README and "copy all five required Nix/flake files" not in README and "four flake files" not in README, "README must describe the six-file migration accurately")
 require("approximately lines 8–16" in INSTALLATION, "INSTALLATION must point to the actual Home Manager customization block")
 require(
-    not re.search(r"(?m)^ {8}<sound model=\\"ich9\\">", (ROOT / "vm-xml/win10.xml").read_text(encoding="utf-8")),
+    not re.search(r'(?m)^ {8}<sound model="ich9">', (ROOT / "vm-xml/win10.xml").read_text(encoding="utf-8")),
     "VM XML ICH9 sound element must align with its sibling device elements",
 )
 require(
-    "text = ;" in HOME_NIX and re.search(r"(?m)^\\s*text\\s*=\\s*;", HOME_NIX) is None,
+    "text = ;" in HOME_NIX and re.search(r'(?m)^\s*text\s*=\s*;', HOME_NIX) is None,
     "Hyprlock lock label must retain its nonempty lock glyph",
 )
 require(
