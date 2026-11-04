@@ -581,6 +581,10 @@ sudo reboot
 > If `/var/lib/libvirt/win10.xml` already exists, edit the deployed file instead; editing only
 > the source template does not update an existing VM definition. Then re-define the active file
 > with `sudo virsh define /var/lib/libvirt/win10.xml`.
+>
+> **Emulated input devices:** `vm-xml/win10.xml` also declares an emulated PS/2 keyboard and mouse. These are separate from the USB host devices above. Removing USB `<hostdev>` blocks leaves the PS/2 definitions in the XML, but does not by itself prove that host input events reach the guest.
+>
+> **NixOS QEMU runtime path:** the template uses `/run/libvirt/nix-emulators/qemu-system-x86_64` for QEMU and `/run/libvirt/nix-ovmf/` for OVMF firmware. NixOS's [libvirtd module](https://github.com/NixOS/nixpkgs/blob/master/nixos/modules/virtualisation/libvirtd.nix) creates stable runtime symlinks for these files. Before defining or starting the VM, verify `test -x /run/libvirt/nix-emulators/qemu-system-x86_64` on the installed host. Adapt the XML if those runtime paths are not present in the target environment.
 
 > **Check ISO prerequisites before defining or starting the VM.** The default XML expects
 > `Win10_22H2_English_x64v1.iso` and `virtio-win-0.1.285.iso` under

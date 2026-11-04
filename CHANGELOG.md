@@ -4,6 +4,13 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+### Tenth-audit reconciliation — 2026-11-04
+- Reconciled the README's review date with the 4 November audit and documented the XML's separate emulated PS/2 inputs alongside the machine-specific USB passthrough devices.
+- Documented the NixOS runtime QEMU/OVMF paths used by the VM template, including a host-side check for the configured QEMU emulator.
+- Recorded exact-HEAD verification for `480972a235655f6d1e9ec6137f85ad3f30b8655a`: normal CI #1145 passed all 28 workflow-defined steps and uploaded canonical source artifact 13277885590; full NixOS system build #10 passed on the same commit.
+- Confirmed the Git tree has 69 tracked files and nine tracked executable modes. The supplied hand-compressed ZIP's reported size, entry counts, metadata, and 60 mode changes remain unverified because its bytes were not attached; use the matching CI artifact or canonical packager.
+- Kept the old eight-executable count as a dated 2026-10-28 snapshot, and retained the already-qualified ICH9/backup-retention history. No VM XML, installer, NixOS runtime setting, flake input, kernel, or desktop preference was changed.
+
 ### Ninth-audit remediation — 2026-11-04
 - Corrected the Pyprland terminal scratchpad rule to match the configured Kitty window class `pypr-term`, rather than an unset `scratchterm` title; added a documentation-integrity regression for the class/command relationship.
 - Tightened the installer's QEMU-hook PCI updater to the same valid slot range (`00`–`1f`) as the shared PCI validator. Added regressions accepting slot `1f` and rejecting `20`/`ff` for both GPU and audio functions without modifying the hook.

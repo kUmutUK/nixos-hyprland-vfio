@@ -2,7 +2,7 @@
 
 A flake-based NixOS gaming desktop that passes its single AMD Radeon GPU through to a Windows 10 virtual machine, while using Hyprland for the host desktop.
 
-The latest follow-up review covers canonical ZIP provenance, deployed VM XML validation, durable OptiScaler rollback/recovery, installer assignment validation, VFIO host-driver handoff and saved-state restore, and the 2026-11-03 source-tree checks. It is recorded in the [repair and validation report](docs/REPAIR-AND-VALIDATION-REPORT.md). The 2026-10-28 audit remains a dated historical review.
+The latest follow-up review covers canonical ZIP provenance, deployed VM XML validation, durable OptiScaler rollback/recovery, installer assignment validation, VFIO host-driver handoff and saved-state restore, and the 2026-11-04 source-tree cross-checks. It is recorded in the [repair and validation report](docs/REPAIR-AND-VALIDATION-REPORT.md). The 2026-10-28 audit remains a dated historical review.
 
 > **Windows guest lifecycle warning:** The default template targets Windows 10 22H2. Standard support for Windows 10 Home/Pro ended on 14 October 2025. This repository does not enroll the guest in Extended Security Updates (ESU), confirm license eligibility, or verify that guest updates are installed. Before using the VM for network-connected or sensitive activity, check the installed edition and license, verify current ESU or other supported-lifecycle coverage, and install all available security updates. See [Microsoft's end-of-support guidance](https://support.microsoft.com/en-us/windows/windows-10-support-has-ended-on-october-14-2025) and [ESU FAQ](https://learn.microsoft.com/en-us/lifecycle/faq/extended-security-updates). Windows 11 migration is not automated by this repository; do not assume the existing VM XML meets Windows 11 requirements.
 
@@ -396,6 +396,10 @@ The VM domain is named `win10`. The default `vm-xml/win10.xml` expects these fil
 > ```
 >
 > Both commands must identify the intended connected devices. If either ID is absent or identifies the wrong device, edit or remove its matching USB `<hostdev>` block in `vm-xml/win10.xml`; do not assume these IDs exist on another computer.
+>
+> **Emulated input devices:** The XML also declares an emulated PS/2 keyboard and mouse. These are separate from the USB `<hostdev>` entries. Removing USB passthrough entries leaves the PS/2 device definitions in the XML; that alone does not prove that host keyboard/mouse events are routed to the guest at runtime.
+>
+> **NixOS QEMU runtime path:** The template pins QEMU to `/run/libvirt/nix-emulators/qemu-system-x86_64` and its OVMF firmware files under `/run/libvirt/nix-ovmf/`. NixOS's [libvirtd module](https://github.com/NixOS/nixpkgs/blob/master/nixos/modules/virtualisation/libvirtd.nix) creates stable runtime symlinks for QEMU executables in `nix-emulators`. Before defining or starting the VM, verify `test -x /run/libvirt/nix-emulators/qemu-system-x86_64` on the installed host. Adapt the XML paths if the expected runtime files are absent or the host uses a different QEMU/libvirt setup.
 
 After the first system activation and reboot, prepare the VM disk and define the domain. The `/tmp/repo` checkout used in Path A exists only in the Live ISO and is not available after reboot. The block below creates a persistent checkout at `~/nixos-hyprland-vfio` if one does not already exist; change `REPO` if your checkout lives elsewhere. Run it after reviewing the XML disk/ISO paths and USB passthrough IDs. Enter the exact `GPU_PCI` and `GPU_AUDIO` values from the deployed hook at `/etc/nixos/nixos/hooks/qemu`:
 

@@ -50,6 +50,7 @@ def require(condition: bool, message: str) -> None:
 
 readme_top = "\n".join(README.splitlines()[:8])
 require("docs/REPAIR-AND-VALIDATION-REPORT.md" in readme_top and "docs/AUDIT-2026-10-28-VM-XML-VFIO.md" not in readme_top, "README must point to the current repair report, not the older audit")
+require("2026-11-04 source-tree cross-checks" in readme_top, "README must identify the current 2026-11-04 source-tree cross-check")
 require("- [License](#license)" in README and "## License" in README, "README contents must link to the License section")
 require(".git-cliff.toml" in README and "RELEASING.md" in README and ".github/workflows/release.yml" in README, "README repository map must include the release configuration, guide, and workflow")
 require("Normal CI must pass for the exact tagged commit" in README, "README must require successful CI for the exact tagged commit")
@@ -160,7 +161,7 @@ require(
     "tag pushes must use git-cliff --current while manual main-branch releases use --latest",
 )
 require(
-    "Last completed full-system build baseline — 2026-11-03" in REPAIR,
+    "Last completed full-system build baseline — 2026-11-04" in REPAIR,
     "repair report must label the last completed full-system build baseline and avoid a duplicated heading",
 )
 repair_baseline_match = re.search(
@@ -168,7 +169,7 @@ repair_baseline_match = re.search(
     REPAIR,
 )
 index_baseline_match = re.search(
-    r"(?m)^- Last completed full-system build baseline \(2026-11-03\): GitHub `main` at `([0-9a-f]{40})`",
+    r"(?m)^- Last completed full-system build baseline \(2026-11-04\): GitHub `main` at `([0-9a-f]{40})`",
     STATE_INDEX,
 )
 reviewed_snapshot_match = re.search(
@@ -423,6 +424,10 @@ for hostdev in vm.findall("./devices/hostdev"):
             usb_ids.add((vendor, product))
 require(usb_ids == {("1532", "0098"), ("05ac", "024f")}, "VM XML must contain only the two documented active USB passthrough IDs")
 require("lsusb -d 1532:0098" in README and "lsusb -d 05ac:024f" in README and "intended connected devices" in README, "README must require verification of both machine-specific USB passthrough IDs")
+input_buses = {(node.get("type"), node.get("bus")) for node in vm.findall("./devices/input")}
+require({("mouse", "ps2"), ("keyboard", "ps2")}.issubset(input_buses), "VM XML must retain its separate emulated PS/2 mouse and keyboard inputs")
+require("emulated PS/2 keyboard and mouse" in README and "emulated PS/2 keyboard and mouse" in INSTALLATION, "README and INSTALLATION must distinguish emulated PS/2 inputs from USB passthrough")
+require("/run/libvirt/nix-emulators/qemu-system-x86_64" in README and "/run/libvirt/nix-ovmf/" in README and "NixOS's [libvirtd module]" in README, "README must document the NixOS QEMU and OVMF runtime paths")
 
 require("## [Unreleased]" in CHANGELOG, "CHANGELOG must use the undated [Unreleased] heading")
 require("update_qemu_hook_pci()" in INSTALLER and "if ! update_qemu_hook_pci" in INSTALLER, "installer must use the checked QEMU hook PCI updater and fail closed on error")
@@ -444,7 +449,7 @@ if readme_bash_loop is not None and contrib_bash_loop is not None:
     readme_bash_files = {line.strip().removesuffix("\\").strip() for line in readme_bash_loop.group("body").splitlines() if line.strip()}
     contributing_bash_files = set(contrib_bash_loop.group("body").split())
     require(readme_bash_files == contributing_bash_files, "README and CONTRIBUTING Bash syntax-check file lists have drifted")
-require("Current configuration notes — 2026-11-03" in STATE_INDEX, "current-state index date is stale")
+require("Current configuration notes — 2026-11-04" in STATE_INDEX, "current-state index date is stale")
 require("2026-10-28 entry" in STATE_INDEX and "2026-10-27 entry" not in STATE_INDEX, "root index must point to the 2026-10-28 CHANGELOG section")
 require("copy all five required Nix/flake files" in README and "four flake files" not in README, "README must describe the five-file migration accurately")
 require(
