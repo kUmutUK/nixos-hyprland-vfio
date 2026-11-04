@@ -553,6 +553,35 @@ require("Supplied ZIP provenance and canonical packaging — 2026-10-30" in REPA
 require("565,429 bytes" in REPAIR and "89fab35d7ecd18bb2b39bb74cbf7b799f8d76bc4c9d59970e7e94060f82dc374" in REPAIR and "b413e6df50f64ab16d1694d9b19dae97a078f56c" in REPAIR, "repair report must record the third supplied ZIP without conflating it with the earlier archive")
 require("Y-1 reassessment" in REPAIR and "post-restoration" in REPAIR and "nine-file" in REPAIR, "repair report must qualify the executable-mode chronology rather than call it a proven contradiction")
 require("historical note under release `[1.3.5]` about `amd_iommu=on`" in STATE_INDEX, "root history index must point to the correct historical section")
+require(
+    all(sha in STATE_INDEX for sha in (
+        "ed6ca666cb3c34ea13abca0de874ff74a3eba686",
+        "0c035b2cec37192444a8d587520a4a1d8b64ae88",
+        "91c4d58e8ece033af76e628b8bdf80c857fb9d9b",
+    ))
+    and "removed both from `boot.kernelParams`" in STATE_INDEX,
+    "current-state index must identify the IOMMU parameter addition, removal, and clarification commits",
+)
+require(
+    all(sha in STATE_INDEX for sha in (
+        "6e8d6cfed6d160c6bbd40939d22e742b1842f2a8",
+        "46bf9015721515b123628a7c67cf43980c425e77",
+    ))
+    and "followed by a later restoration" in STATE_INDEX,
+    "current-state index must trace the ICH9 removal and restoration commits",
+)
+require(
+    all(sha in STATE_INDEX for sha in (
+        "f46b8ac865366165111e6b939a65ba5a9670ddbb",
+        "fbd105c869a856ca561a31692215aa17363a274a",
+    ))
+    and "replaced that old block" in STATE_INDEX,
+    "current-state index must trace the old USB hostdev disablement and new active IDs",
+)
+require(
+    all(sha in ARCHIVE for sha in ("ed6ca666", "0c035b2c", "91c4d58e", "6e8d6cfe", "46bf9015", "f46b8ac8", "fbd105c8")),
+    "Turkish historical preface must reconcile IOMMU, ICH9, and USB commit chronology",
+)
 require("historical note under release `[1.3.6]` about `amd_iommu=on`" not in STATE_INDEX, "root history index retains the wrong amd_iommu section reference")
 require("Aşağıdaki `[1.3.5]` bölümünde `amd_iommu=on`" in ARCHIVE and "Aşağıdaki `[1.3.6]` bölümünde `amd_iommu=on`" not in ARCHIVE, "archive header must point to the section that actually records amd_iommu=on")
 require("### Earlier unreleased work (2026-10-28)" not in CHANGELOG, "CHANGELOG still has an empty same-level group heading")
