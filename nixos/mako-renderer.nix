@@ -24,7 +24,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
   version = "4.6.0";
 
   src = fetchurl {
-    url = "https://github.com/eugeniosegala/MAKO/releases/download/render-v${finalAttrs.version}/MAKO-Renderer-v${finalAttrs.version}-linux.tar.xz";
+    url = "https://github.com/eugeniosegala/MAKO/releases/download/render-v4.6.0/MAKO-Renderer-v4.6.0-linux.tar.xz";
     hash = "sha256-ZiJEFOLZT3ywGSJnNbO20mub5xA8UzQlBSL3JgITvlY=";
   };
 
