@@ -7,7 +7,7 @@
 The detailed sections remain grouped by subject and source snapshot; this index supplies their date order without rewriting the historical record.
 
 - **2026-11-04:** thirteenth supplied audit cross-check; MAKO Renderer integration; supplied VM XML/exact-HEAD cross-check; current supplied archive-report reconciliation; supplied configuration/installer cross-check; Pyprland, PCI, and cursor remediation.
-- **2026-11-04 build/navigation records:** last completed full-system build baseline (#10); related CHANGELOG-only entries for game graphics profile guidance, CS2 frame-generation profile, and source-tree audit hardening.
+- **2026-11-04 build/navigation records:** Last completed full-system build baseline (#10); related CHANGELOG-only entries for Game graphics profile guidance, CS2 frame-generation profile, and Source-tree audit hardening.
 - **2026-11-03:** post-audit remediation; supplied comprehensive audit cross-check (unnumbered).
 - **2026-11-01:** ShellCheck follow-up; eleventh audit/release-workflow repair; twelfth audit update.
 - **2026-10-30:** ninth and tenth audit cross-checks.
