@@ -2,6 +2,16 @@
 
 ## Latest audit follow-up — 2026-11-04
 
+**Reviewed pre-update main HEAD:** GitHub `main` at `b2d2691b98764705edd8a689924b0ae16024bde6`; **last successful full-system build:** #10 at `480972a235655f6d1e9ec6137f85ad3f30b8655a`; **build gate: OPEN** — `nixos/home.nix`, `nixos/flake.nix`, `nixos/mako-renderer.nix`, and `install.sh` changed after that build. Run a new full-system build before release.
+
+### Thirteenth supplied audit cross-check — 2026-11-04
+
+- Reconciled the supplied 13th review with live GitHub `main` at `b2d2691b98764705edd8a689924b0ae16024bde6`; the previous successful full-system build remains #10 on `480972a235655f6d1e9ec6137f85ad3f30b8655a`.
+- The 46-commit difference includes system-affecting changes to `nixos/home.nix`, `nixos/flake.nix`, `nixos/mako-renderer.nix`, and `install.sh`. The release build gate remains open until a new manual full-system build covers them.
+- The submitted ZIP's 765,259-byte size and metadata are not independently confirmed because its bytes were not attached. The checked-in `SOURCE_REVISION` placeholder is intentionally expanded through `.gitattributes`'s `export-subst` rule by the canonical `git archive` packager.
+- Aligned the installer's illustrative monitor name with INSTALLATION's `DP-1` example; actual monitor detection remains dynamic. No monitor setting or other runtime preference was changed.
+- Added the missing build-baseline and related CHANGELOG event references to the repair report's chronological navigation. No VFIO hook behavior was changed.
+
 ### Source-tree audit hardening — 2026-11-04
 
 - Fixed the VM XML sync regression test's repository-local mock-binary side effect by using an automatically cleaned temporary directory; normal CI now checks that every validation step leaves the checkout clean.
