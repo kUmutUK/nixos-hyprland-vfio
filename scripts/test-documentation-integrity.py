@@ -164,6 +164,37 @@ require(
     "Last completed full-system build baseline — 2026-11-04" in REPAIR,
     "repair report must label the last completed full-system build baseline and avoid a duplicated heading",
 )
+audit_gate_line = (
+    "**Reviewed pre-update main HEAD:** GitHub `main` at `b2d2691b98764705edd8a689924b0ae16024bde6`; "
+    "**last successful full-system build:** #10 at `480972a235655f6d1e9ec6137f85ad3f30b8655a`; "
+    "**build gate: OPEN** — `nixos/home.nix`, `nixos/flake.nix`, `nixos/mako-renderer.nix`, "
+    "and `install.sh` changed after that build. Run a new full-system build before release."
+)
+require(
+    audit_gate_line in REPAIR and audit_gate_line in STATE_INDEX and audit_gate_line in README,
+    "the repair report, root status index, and README must show the same explicit reviewed-HEAD/full-build gate",
+)
+require(
+    "Thirteenth supplied audit cross-check — 2026-11-04" in REPAIR
+    and "46 commits ahead" in REPAIR
+    and "765,259-byte" in REPAIR
+    and "SOURCE_REVISION export-subst" in REPAIR
+    and "54-entry" not in REPAIR.split("## Thirteenth supplied audit cross-check", 1)[1].split("\n## ", 1)[0],
+    "the thirteenth audit reconciliation must distinguish confirmed Git facts from unverified ZIP measurements",
+)
+nav_section = REPAIR.split("## MAKO Renderer integration", 1)[0]
+require(
+    "Last completed full-system build baseline" in nav_section
+    and "Game graphics profile guidance" in nav_section
+    and "CS2 frame-generation profile" in nav_section
+    and "Source-tree audit hardening" in nav_section,
+    "the repair report navigation must include the build baseline and related 4 November changelog updates",
+)
+require(
+    'read -rp "Enter a non-empty monitor output name (e.g. DP-1): " input_mon' in INSTALLER
+    and 'monitorOutput      = "DP-1"' in INSTALLATION,
+    "installer and installation guide must use the same illustrative DP-1 monitor-output example",
+)
 repair_baseline_match = re.search(
     r"(?m)^\*\*Verified full-system build baseline:\*\* GitHub `main` at `([0-9a-f]{40})`",
     REPAIR,
