@@ -61,6 +61,17 @@
 >   incelenen `948a561` sabitlenmiş revizyonunu anlatır; güncel yapılandırma
 >   bu eski kaynak incelemesini genellemez ve Reflex'i sistem genelinde açmaz.
 
+> - Hyprland ABI sürüm kayıtlarında tarihsel bir çelişki bulundu: [1.2.2] aynı
+>   nixpkgs 7a0f122 revizyonundan Hyprland 0.54.3 / hyprlock 0.9.5
+>   geldiğini yazarken [1.3.0] ve [1.3.3] aynı revizyondan
+>   0.56.2 / 0.9.6 bildiriyor; [1.3.2] de kök nixpkgs girdisini
+>   7a0f122f5090 olarak kaydediyor. Aynı immutable revizyon için bu tablolar
+>   birlikte doğru olamaz. Hyprland [v0.56.0 sürüm duyurusu](https://hypr.land/news/update56/)
+>   20 Temmuz 2026 tarihini verir; ancak sürüm duyurusu tek başına bu nixpkgs
+>   commit'indeki paket ifadesinin sürümünü kanıtlamaz. Bu nedenle [1.2.2]'deki
+>   sürüm/ABI anlatısı, tam upstream paket dosyası ilgili commit'te doğrulanana
+>   kadar teyit edilmiş gerçek değil, çelişkili tarihsel iddia olarak ele alınmalıdır.
+
 # [1.3.8] - 2026-10-12
 
 ## VM kurulum güvenliği ve statik bakım
