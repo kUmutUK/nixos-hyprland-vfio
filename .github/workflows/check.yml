@@ -247,6 +247,12 @@ jobs:
             exit 1
           fi
           echo "  flake.lock clean"
+          if [ -n "$(git -C .. status --porcelain --untracked-files=all)" ]; then
+            echo "::error::The validation suite modified the source checkout."
+            git -C .. status --short
+            exit 1
+          fi
+          echo "  source checkout clean"
 
       # Create a relative-path manifest so consumers can verify the downloaded ZIP.
       - name: create source ZIP SHA-256 manifest
