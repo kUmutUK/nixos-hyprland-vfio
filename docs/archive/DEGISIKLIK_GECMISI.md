@@ -61,16 +61,15 @@
 >   incelenen `948a561` sabitlenmiş revizyonunu anlatır; güncel yapılandırma
 >   bu eski kaynak incelemesini genellemez ve Reflex'i sistem genelinde açmaz.
 
-> - Hyprland ABI sürüm kayıtlarında tarihsel bir çelişki bulundu: [1.2.2] aynı
->   nixpkgs 7a0f122 revizyonundan Hyprland 0.54.3 / hyprlock 0.9.5
->   geldiğini yazarken [1.3.0] ve [1.3.3] aynı revizyondan
->   0.56.2 / 0.9.6 bildiriyor; [1.3.2] de kök nixpkgs girdisini
->   7a0f122f5090 olarak kaydediyor. Aynı immutable revizyon için bu tablolar
->   birlikte doğru olamaz. Hyprland [v0.56.0 sürüm duyurusu](https://hypr.land/news/update56/)
->   20 Temmuz 2026 tarihini verir; ancak sürüm duyurusu tek başına bu nixpkgs
->   commit'indeki paket ifadesinin sürümünü kanıtlamaz. Bu nedenle [1.2.2]'deki
->   sürüm/ABI anlatısı, tam upstream paket dosyası ilgili commit'te doğrulanana
->   kadar teyit edilmiş gerçek değil, çelişkili tarihsel iddia olarak ele alınmalıdır.
+> - Hyprland sürüm kaydı upstream Nixpkgs kaynaklarıyla düzeltildi. Tam
+>   `7a0f122f5090cf4c2ade2a13a0e229d4e19ba71f` revizyonunda
+>   [Hyprland paket tanımı](https://github.com/NixOS/nixpkgs/blob/7a0f122f5090cf4c2ade2a13a0e229d4e19ba71f/pkgs/by-name/hy/hyprland/package.nix)
+>   `0.56.2`, [hyprlock paket tanımı](https://github.com/NixOS/nixpkgs/blob/7a0f122f5090cf4c2ade2a13a0e229d4e19ba71f/pkgs/by-name/hy/hyprlock/package.nix)
+>   ise `0.9.6` sürümünü tanımlar. Dolayısıyla [1.2.2]'deki
+>   `0.54.3 / 0.9.5` değerleri bu sabit revizyon için yanlıştı;
+>   [1.3.0] ve [1.3.3] kayıtlarındaki `0.56.2 / 0.9.6` değerleri doğrudur.
+>   Bu kaynak doğrulaması Nixpkgs'in tanımladığı paket sürümlerini kanıtlar;
+>   tek başına çalışma zamanı ABI uyumluluğunu kanıtlamaz.
 
 # [1.3.8] - 2026-10-12
 
@@ -1045,18 +1044,18 @@ duruyordu. Kulaklık/Spotify ikonu hiç çizilmiyordu. Dolduruldu.
   (`before = [ "libvirtd.service" ]`), her boot'ta
   `/var/lib/libvirt/{images,qemu}` sahipliğini düzeltir.
 
-## 🟠 Fixed — Hyprland ABI karışıklığı (yön ters kaydedilmişti)
+## 🟠 Fixed — Hyprland sürüm/ABI kaydı (önceki sürüm okuması yanlıştı)
 
-- **CHANGELOG "Hyprland 0.55.0 nixpkgs'tan ~4.5 ay geride" diyordu;
-  gerçek tablo ters.** Nixpkgs (nixos-unstable, `7a0f122`) Hyprland
-  **0.54.3** veriyor; overlay ile compositor 0.55.0'a zorlanıyordu.
-  Gerçek risk: `hyprlock 0.9.5`, `hypridle 0.1.7`, `hyprpicker 0.4.6`,
-  `hyprpolkitagent 0.1.3`, `xdg-desktop-portal-hyprland 1.3.12` hepsi
-  0.54.3'e derlenmiş — 0.54-ABI'lı istemciler 0.55 compositor'a
-  konuşuyordu. Portal sessizce hiçbir şey sunmazsa hiçbir hata da
-  görünmez.
-  → `hyprland` flake input'u ve overlay kaldırıldı; tüm Hyprland ailesi
-  tek nixpkgs rev'inden geliyor. Geri almak için flake.nix'deki not.
+- Önceki kayıt, nixpkgs `7a0f122` revizyonunun Hyprland `0.54.3` /
+  hyprlock `0.9.5` sağladığını yazmıştı. Upstream Nixpkgs kaynaklarını tam
+  `7a0f122f5090cf4c2ade2a13a0e229d4e19ba71f` commit'inde yeniden kontrol ettim:
+  `pkgs/by-name/hy/hyprland/package.nix` `0.56.2`,
+  `pkgs/by-name/hy/hyprlock/package.nix` `0.9.6` tanımlıyor. Önceki
+  `0.54.3 / 0.9.5` değerleri bu sabit revizyon için yanlıştı.
+- Bu nedenle eski ABI-risk yönlendirmesi geri çekildi; yalnızca paket sürüm
+  numaralarından runtime ABI uyumluluğu sonucu çıkarılamaz. Hyprland ailesini
+  tek nixpkgs revizyonundan çözme değişikliği, bağımlılık kaynağını tutarlı
+  tutma amacıyla korunuyor.
 
 ## 🟡 Fixed — eval uyarıları ve küçük yanlışlar
 
