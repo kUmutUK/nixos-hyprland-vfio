@@ -836,7 +836,7 @@ require(
     and "not independently verified" in REPAIR,
     "latest supplied ZIP identity conflict and unresolved .git-count outlier must remain explicitly unverified",
 )
-require("run #41603404803" in REPAIR and "3105ea2c90a17584e11a9776d0767f1de5d59221" in REPAIR and "Previous normal-CI reference (superseded)" in REPAIR and "current normal-CI verification for the reviewed snapshot is run #1120" in REPAIR, "repair report must distinguish the superseded parent CI from the reviewed-snapshot CI")
+require("run ID 41603404803" in REPAIR and "run #41603404803" not in REPAIR and "3105ea2c90a17584e11a9776d0767f1de5d59221" in REPAIR and "Previous normal-CI reference (superseded)" in REPAIR and "current normal-CI verification for the reviewed snapshot is run #1120" in REPAIR, "repair report must distinguish the superseded parent CI run ID from the reviewed-snapshot workflow run number")
 require("actions/runs/41608022759" in REPAIR and "8d1e4585c9cd3f690c1df80ee531008c7e9d30ef" in REPAIR and "artifact ID `13217103984`" in REPAIR, "repair report must record the reviewed-snapshot CI and canonical artifact")
 require("OptiScaler-specific scope" in REPAIR and "Separately, the VFIO saved-state hook change" in REPAIR, "repair report must distinguish OptiScaler-only changes from the separate VFIO hook change")
 require('if [ "$ACTION" = "restore" ]; then' in VFIO_HOOK and 'restore_vfio_state || exit 1' in VFIO_HOOK and "prepare_vfio" in VFIO_HOOK, "VFIO hook must route libvirt saved-state restore through the same preparation path")
