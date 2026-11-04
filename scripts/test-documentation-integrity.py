@@ -466,7 +466,7 @@ require("583,569 bytes" in REPAIR and "98d5b073a12488f604dfc9f434f3f741d52defce0
 require("283,401 bytes" in REPAIR and "7abee4ca2a29e02cc3eea810c308f029603070c427a4758b3ceb399574b10a47" in REPAIR and "nine executable files" in REPAIR, "repair report must distinguish the verified canonical reproduction from the uploaded ZIP")
 require("45 entries (29 files and 16 directories)" in REPAIR and "create_system=0" in REPAIR and "external_attr=0x00000000" in REPAIR, "repair report must record the uploaded ZIP metadata and embedded Git subtree")
 require(REPAIR.count("## Supplied ZIP provenance and canonical packaging — 2026-10-30") == 1, "repair report must contain exactly one supplied-ZIP provenance section")
-require("| ZIP described in the supplied seventh audit" in REPAIR and SOURCE_REVISION_PLACEHOLDER in REPAIR, "seventh ZIP provenance row must include the complete archive identity record")
+require("| ZIP described in the supplied seventh audit" in REPAIR and "Git export-substitution placeholder" in REPAIR, "seventh ZIP provenance row must include the complete archive identity record")
 require(not re.search(r"(?m)^; all 116 entries", REPAIR), "repair report contains an orphaned ZIP metadata continuation")
 
 map_start = README.find("## Repository map")
