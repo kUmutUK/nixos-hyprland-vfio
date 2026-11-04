@@ -410,7 +410,8 @@ if ! grep -Fq 'python3' "$FLAKE"; then
   echo "FAIL: the Nix development shell must include Python for repository tests." >&2
   exit 1
 fi
-if ! grep -Fq 'packages.${system}.lsfg-vk-v2' "$FLAKE"; then
+if ! grep -Fq 'packages.${system} = {' "$FLAKE" \
+  || ! grep -Fq 'lsfg-vk-v2 = lsfgVkV2Package;' "$FLAKE"; then
   echo "FAIL: the selected LSFG-VK package must be exposed for an explicit build check." >&2
   exit 1
 fi
