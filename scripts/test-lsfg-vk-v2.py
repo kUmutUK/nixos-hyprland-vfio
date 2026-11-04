@@ -66,14 +66,17 @@ except tomllib.TOMLDecodeError as exc:
 if data.get("version") != 2:
     raise SystemExit("FAIL: generated LSFG-VK config must target schema version 2.")
 profiles = {entry.get("name"): entry for entry in data.get("profile", [])}
-expected = {"Genshin Impact", "Benchmark", "Counter-Strike 2", "vkcube", "Wuthering Waves"}
+expected = {"Genshin Impact", "Benchmark", "vkcube", "Wuthering Waves"}
 if set(profiles) != expected:
     raise SystemExit(f"FAIL: expected LSFG-VK profiles {sorted(expected)}, got {sorted(profiles)}.")
 if not {"GenshinImpact.exe", "GenshinImpact"}.issubset(set(profiles["Genshin Impact"].get("active_in", []))):
     raise SystemExit("FAIL: Genshin profile must include its executable/process aliases.")
 if not {"Client-Win64-Shipping.exe", "Client-Win64-Shipping"}.issubset(set(profiles["Wuthering Waves"].get("active_in", []))):
     raise SystemExit("FAIL: Wuthering Waves profile must include its executable/process aliases.")
-if profiles["Counter-Strike 2"].get("active_in") != ["cs2", "cs2.exe"]:
-    raise SystemExit("FAIL: the CS2 profile no longer has the reviewed Linux/Windows process aliases.")
+for profile in profiles.values():
+    active_in = profile.get("active_in", [])
+    aliases = set(active_in if isinstance(active_in, list) else [active_in])
+    if aliases & {"cs2", "cs2.exe"}:
+        raise SystemExit("FAIL: CS2 must remain outside LSFG-VK frame-generation profiles.")
 
 print("OK: LSFG-VK package, pinned v2 source, Vulkan manifest, and generated TOML are consistent.")

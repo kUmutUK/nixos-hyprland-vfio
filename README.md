@@ -641,7 +641,7 @@ The OCR script now checks that the model is available before beginning; it repor
 | Component | Role |
 |---|---|
 | RADV | AMD Vulkan driver; `AMD_VULKAN_ICD=RADV`, `RADV_PERFTEST=gpl` |
-| `lsfg-vk` | Pinned LSFG-VK v2 Vulkan layer, Qt6 UI, and CLI; per-game v2 profiles are declared in Home Manager `conf.toml` |
+| `lsfg-vk` | Pinned LSFG-VK v2 Vulkan layer, Qt6 UI, and CLI; per-game v2 profiles are declared in Home Manager `conf.toml`. CS2 is intentionally excluded from LSFG-VK frame generation. |
 | `MAKO Renderer` | Optional pinned x86_64 Vulkan renderer with per-game launch opt-in; see the [NixOS integration guide](docs/MAKO.md). It does not replace LSFG-VK or edit existing game profiles. |
 | `OptiScaler` | Optional per-game DLL proxy for supported Proton games. The manually invoked manager checks and verifies stable releases, then installs only into a selected game directory; see the [setup guide](docs/OPTISCALER.md) and [manager guide](docs/OPTISCALER-MANAGER.md). No system-wide install or global DLL override. |
 | `low_latency_layer` | Vulkan latency layer enabled globally using `LOW_LATENCY_LAYER=1`; keeps the default AMD Anti-Lag interface for native Linux games such as CS2. Compatible Proton games can opt into Reflex with `LOW_LATENCY_LAYER_REFLEX=1 %command%`; incompatible games can use `DISABLE_LOW_LATENCY_LAYER=1 %command%`. |

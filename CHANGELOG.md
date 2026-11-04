@@ -4,6 +4,10 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+### CS2 frame-generation profile — 2026-11-04
+- Removed the CS2 process match from the LSFG-VK v2 profile set to keep competitive CS2 on native rendering. Genshin Impact, Wuthering Waves, Benchmark, and vkcube profiles remain unchanged; the global AMD Anti-Lag/low-latency defaults, MAKO integration, and OptiScaler manager are untouched.
+- Updated the LSFG-VK regression test to reject any CS2 process alias in the generated frame-generation profiles.
+
 ### MAKO Renderer integration — 2026-11-04
 - Added an optional Nix-packaged MAKO Renderer v4.6.0 from the official x86_64 Linux archive, pinned by its published SHA-256 and exposed as `.#mako-renderer`.
 - Added the package to Home Manager without global Vulkan injection, Steam launch-option edits, LSFG-VK profile changes, OptiScaler changes, or latency-layer default changes; each game opts in with `mako-launch %command%`.

@@ -1012,15 +1012,6 @@ in
       override_present_mode = true
 
       [[profile]]
-      name = "Counter-Strike 2"
-      active_in = [ "cs2", "cs2.exe" ]
-      multiplier = 2
-      flow_scale = 0.75
-      performance_mode = false
-      pacing_mode = "vsync"
-      override_present_mode = true
-
-      [[profile]]
       name = "vkcube"
       active_in = "vkcube"
       multiplier = 4
