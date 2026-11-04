@@ -431,7 +431,7 @@ for c in /sys/class/drm/card*-*; do
 done
 ```
 Before installation, while the target system is mounted under `/mnt`, edit the `let` block
-near the top of `/mnt/etc/nixos/nixos/home.nix` (approximately lines 9–15):
+near the top of `/mnt/etc/nixos/nixos/home.nix` (approximately lines 8–16):
 
 ```nix
   gitName            = "Your Name";
