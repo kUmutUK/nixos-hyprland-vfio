@@ -5,7 +5,7 @@
 ## MAKO Renderer integration — 2026-11-04
 
 - Added the official MAKO Renderer v4.6.0 x86_64 Linux archive as a fixed-hash Nix package (`nixos/mako-renderer.nix`) and exposed it to Home Manager through `nixos/home.nix`. The Home Manager package is optional at game level: it does not edit Steam launch options, add a global Vulkan layer manifest, replace LSFG-VK, change OptiScaler files, or alter the global AMD Anti-Lag/latency-layer defaults.
-- Added the new Nix expression to `install.sh` source preflight, deployment, backup, and rollback handling; added a static integration test and a normal-CI package build target. The new paths are covered by the current full-build pending-path guard.
+- Added the package output to `nixos/flake.nix`, the new Nix expression to `install.sh` source preflight, deployment, backup, and rollback handling, and a static integration test plus normal-CI package build target. The changes to `nixos/home.nix`, `nixos/flake.nix`, `nixos/mako-renderer.nix`, and `install.sh` are covered by the full-build pending-path guard.
 - **Build gate:** `nixos/home.nix`, `nixos/mako-renderer.nix`, and `install.sh` changed after the last successful full-system build baseline. A fresh full-system build is required before release. The normal-CI/package checks and upstream archive checksum do not replace that build.
 - **Hardware boundary:** no target-host MAKO runtime test, RDNA2/RX 6700 XT compatibility result, per-game frametime comparison, or Gamescope/VRR qualification is claimed. No MAKO frame generation should be stacked with LSFG-VK or OptiScaler frame generation in one game. The upstream launcher uses a private Vulkan implicit-layer path, so the globally registered latency layer must be checked separately for any MAKO-launched game.
 

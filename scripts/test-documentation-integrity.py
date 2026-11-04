@@ -297,7 +297,7 @@ if current_head and repair_baseline_match:
                 reviewed_ancestor = subprocess.run(["git", "merge-base", "--is-ancestor", reviewed_sha, current_head], cwd=ROOT, capture_output=True, text=True)
                 require(reviewed_ancestor.returncode == 0, "reviewed normal-CI source snapshot must be an ancestor of the current checkout HEAD")
             changed = subprocess.run(["git", "diff", "--name-only", verified_sha, current_head], cwd=ROOT, check=True, capture_output=True, text=True).stdout.splitlines()
-            full_build_pending_paths = {"nixos/configuration.nix", "nixos/hooks/qemu", "install.sh", "nixos/home.nix", "nixos/mako-renderer.nix"}
+            full_build_pending_paths = {"nixos/configuration.nix", "nixos/hooks/qemu", "install.sh", "nixos/home.nix", "nixos/flake.nix", "nixos/mako-renderer.nix"}
             unexpected = sorted(set(changed) - verification_metadata_paths - full_build_pending_paths)
             require(
                 not unexpected,
@@ -343,6 +343,16 @@ if current_head and repair_baseline_match:
                 require(
                     "nixos/configuration.nix" in RELEASING and "nixos/configuration.nix" not in RELEASE_WORKFLOW,
                     "configuration.nix must remain outside the ancestor-build release allowlist",
+                )
+            if "nixos/flake.nix" in pending:
+                require(
+                    "nixos/flake.nix" in REPAIR
+                    and "fresh full-system build is required before release" in REPAIR,
+                    "flake output changes must be documented as requiring a fresh full-system build",
+                )
+                require(
+                    "nixos/flake.nix" in RELEASING and "nixos/flake.nix" not in RELEASE_WORKFLOW,
+                    "nixos/flake.nix must remain outside the ancestor-build release allowlist",
                 )
             if "nixos/mako-renderer.nix" in pending:
                 require(
