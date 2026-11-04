@@ -788,10 +788,14 @@ require(
     "the system-profile fzf/git/Kitty entries must remain explicitly intentional",
 )
 require(
-    "Hyprland ABI sürüm kayıtlarında tarihsel bir çelişki bulundu" in ARCHIVE
-    and "7a0f122f5090" in ARCHIVE
-    and "sürüm/ABI anlatısı" in ARCHIVE,
-    "the Turkish archive preface must disclose the conflicting same-revision Hyprland tables",
+    "Hyprland sürüm kaydı upstream Nixpkgs kaynaklarıyla düzeltildi" in ARCHIVE
+    and "7a0f122f5090cf4c2ade2a13a0e229d4e19ba71f" in ARCHIVE
+    and "pkgs/by-name/hy/hyprland/package.nix" in ARCHIVE
+    and "pkgs/by-name/hy/hyprlock/package.nix" in ARCHIVE
+    and "0.56.2" in ARCHIVE
+    and "0.9.6" in ARCHIVE
+    and "tek başına çalışma zamanı ABI uyumluluğunu kanıtlamaz" in ARCHIVE,
+    "the Turkish archive must source-link the corrected Hyprland/hyprlock versions and retain the ABI verification boundary",
 )
 require(
     "Fourteenth supplied audit cross-check — 2026-11-04" in REPAIR
