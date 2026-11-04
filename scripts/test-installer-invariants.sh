@@ -418,7 +418,7 @@ fi
 if ! grep -Fq 'LSFG-VK schema' "$README" \
   || ! grep -Fq 'v2 `[[profile]]` profile format' "$README" \
   || ! grep -Fq 'python3 scripts/test-lsfg-vk-v2.py' "$ROOT/.github/workflows/check.yml" \
-  || ! grep -Fq 'Build the pinned LSFG-VK v2 package' "$ROOT/.github/workflows/check.yml"; then
+  || ! grep -Fq 'Build the pinned LSFG-VK v2 and MAKO packages' "$ROOT/.github/workflows/check.yml"; then
   echo "FAIL: the documented LSFG-VK v2 schema decision must match the CI test/build contract." >&2
   exit 1
 fi
