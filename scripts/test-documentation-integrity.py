@@ -71,13 +71,13 @@ require(
     "current-state kernel note must use flake.lock as the sole revision source instead of copying a SHA",
 )
 require(
-    "available history does not identify a later removal commit or its rationale" in STATE_INDEX,
-    "current-state index must qualify the undocumented historical IOMMU-parameter removal",
+    "0c035b2cec37192444a8d587520a4a1d8b64ae88" in STATE_INDEX and "removed both from `boot.kernelParams`" in STATE_INDEX,
+    "current-state index must identify the historical IOMMU-parameter removal",
 )
 require(
-    "available history does not identify when or in which commit the two current entries were re-enabled" in STATE_INDEX
+    "fbd105c869a856ca561a31692215aa17363a274a" in STATE_INDEX and "replaced that old block" in STATE_INDEX
     and "verify both connected devices with `lsusb`" in STATE_INDEX,
-    "current-state index must distinguish historical USB comments from the active template defaults",
+    "current-state index must trace the historical USB block replacement",
 )
 
 require("scripts/test-vm-xml-structure.py" in CONTRIBUTING, "CONTRIBUTING validation commands must include the CI VM XML structure test")
@@ -252,6 +252,8 @@ verification_metadata_paths = {
     "docs/OPTISCALER.md",
     "docs/OPTISCALER-MANAGER.md",
     "docs/MAKO.md",
+    "docs/archive/DEGISIKLIK_GECMISI.md",
+    "docs/archive/README.md",
     "scripts/optiscaler_manager.py",
     "scripts/test-mako-renderer.py",
     "scripts/test-optiscaler-manager.py",
@@ -512,10 +514,6 @@ require("2026-10-28 entry" in STATE_INDEX and "2026-10-27 entry" not in STATE_IN
 require("copy all six required Nix/flake files" in README and "copy all five required Nix/flake files" not in README and "four flake files" not in README, "README must describe the six-file migration accurately")
 require("approximately lines 8–16" in INSTALLATION, "INSTALLATION must point to the actual Home Manager customization block")
 require(
-    not re.search(r'(?m)^ {8}<sound model="ich9">', (ROOT / "vm-xml/win10.xml").read_text(encoding="utf-8")),
-    "VM XML ICH9 sound element must align with its sibling device elements",
-)
-require(
     "text = ;" in HOME_NIX and re.search(r'(?m)^\s*text\s*=\s*;', HOME_NIX) is None,
     "Hyprlock lock label must retain its nonempty lock glyph",
 )
@@ -549,9 +547,9 @@ require(
     "CHANGELOG must distinguish the historical four/five-file preflight from the current six-file source tree",
 )
 
-require("ilk snapshot: 2026-10-19" in ARCHIVE and "önsöz son güncelleme: 2026-10-30" in ARCHIVE, "archive note must distinguish its snapshot date from the preface update date")
+require("ilk snapshot: 2026-10-19" in ARCHIVE and "önsöz son güncelleme: 2026-11-04" in ARCHIVE, "archive note must distinguish its snapshot date from the preface update date")
 require("Bu 19 Ekim snapshot'ındaki XML yazma açıklaması güncel değildir" in ARCHIVE, "archive preface must mark the old installer XML-writing statement as superseded")
-require("Aşağıdaki `[1.3.8]` kaydı" in ARCHIVE and "hangi commit/tarihte geri eklendiğini" in ARCHIVE, "archive preface must qualify the unresolved ICH9 history")
+require("Aşağıdaki `[1.3.8]` ICH9 kaldırma kaydı" in ARCHIVE and "6e8d6cfe" in ARCHIVE and "46bf9015" in ARCHIVE, "archive preface must trace the ICH9 removal and restoration")
 require("not byte-for-byte identical to the original changelog" in ARCHIVE_INDEX and "historical Turkish release entries" in ARCHIVE_INDEX, "archive index must distinguish preserved release entries from the added preface")
 require("geçersiz kılındı" in ARCHIVE and "Bu ayar güncel değildir" in ARCHIVE, "archive note must mark old Reflex and SSH policies as superseded")
 require("ile etkinleştirilmiştir. Uyumsuz" not in ARCHIVE, "archive must not present the old Reflex setting as current")
@@ -560,7 +558,7 @@ require(not re.search(r"parola girişi yalnız.*kullanıcısına izin verir", AR
 require("Supplied ZIP provenance and canonical packaging — 2026-10-30" in REPAIR, "repair report must identify the supplied ZIP measurements as noncanonical provenance")
 require("565,429 bytes" in REPAIR and "89fab35d7ecd18bb2b39bb74cbf7b799f8d76bc4c9d59970e7e94060f82dc374" in REPAIR and "b413e6df50f64ab16d1694d9b19dae97a078f56c" in REPAIR, "repair report must record the third supplied ZIP without conflating it with the earlier archive")
 require("Y-1 reassessment" in REPAIR and "post-restoration" in REPAIR and "nine-file" in REPAIR, "repair report must qualify the executable-mode chronology rather than call it a proven contradiction")
-require("historical note under release `[1.3.5]` about `amd_iommu=on`" in STATE_INDEX, "root history index must point to the correct historical section")
+require("IOMMU history is traced:" in STATE_INDEX, "root history index must point to the correct historical section")
 require(
     all(sha in STATE_INDEX for sha in (
         "ed6ca666cb3c34ea13abca0de874ff74a3eba686",
@@ -601,9 +599,9 @@ require("approximately lines 8–16" in INSTALLATION and "approximately lines 9�
 wallpaper = re.search(r'(?m)^\s*wallpaperVideo\s*=\s*"\$\{config\.home\.homeDirectory\}/Downloads/([^"]+)"\s*;', HOME_NIX)
 require(wallpaper is not None and f"~/Downloads/{wallpaper.group(1)}" in INSTALLATION, "INSTALLATION wallpaper default must match the exact home.nix filename")
 require("installer backups are not automatically pruned" in CHANGELOG, "CHANGELOG must describe current backup retention rather than the historical five-backup policy")
-require("verified current kernel defaults" in CHANGELOG and "does not establish a single removal commit" in CHANGELOG, "CHANGELOG must distinguish current kernel parameters from historical notes without inventing a removal history")
+require("verified current kernel defaults" in CHANGELOG and "0c035b2c" in CHANGELOG and "91c4d58e" in CHANGELOG, "CHANGELOG must distinguish current kernel parameters and record the historical IOMMU transition")
 require("amdgpu.ppfeaturemask" in CHANGELOG and "amdgpu.featuremask" not in CHANGELOG, "CHANGELOG must use the documented amdgpu.ppfeaturemask parameter name")
-require("older `[1.2.0]` archive entry" in CHANGELOG and "`2a7a:8a47` is absent" in CHANGELOG and "does not establish the exact commit or date" in CHANGELOG, "CHANGELOG must state current USB passthrough IDs and qualify the missing reactivation history")
+require("older `[1.2.0]` archive entry" in CHANGELOG and "`2a7a:8a47` is absent" in CHANGELOG and "f46b8ac8" in CHANGELOG and "fbd105c8" in CHANGELOG, "CHANGELOG must state current USB passthrough IDs and trace their history")
 require("561,513 bytes" in REPAIR and "c905b5036d04bf1e" in REPAIR and "116 entries" in REPAIR, "repair report must record the supplied ZIP measurements")
 require("570,101 bytes" in REPAIR and "dee424e555ca173773388101d407a6699d668eda6fe348a5aa75962ebae4c2be" in REPAIR and "8b8cf29a1d21f2100234814b80fc4f5671e2b74a" in REPAIR, "repair report must record the fifth audit as supplied, unverified provenance")
 require("install.sh` resolves the source revision from `git rev-parse HEAD`" in REPAIR and "too absolute" in REPAIR, "repair report must distinguish the Git-worktree and SOURCE_REVISION provenance paths")
