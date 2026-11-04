@@ -19,7 +19,7 @@
   zlib,
 }:
 
-stdenvNoCC.mkDerivation (finalAttrs: {
+stdenvNoCC.mkDerivation {
   pname = "mako-renderer";
   version = "4.6.0";
 
@@ -118,4 +118,4 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     platforms = [ "x86_64-linux" ];
     mainProgram = "mako-ui";
   };
-})
+}
