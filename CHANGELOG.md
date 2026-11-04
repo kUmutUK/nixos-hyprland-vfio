@@ -13,6 +13,8 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 - Fixed the VM XML sync regression test so its mocked `lspci` executable is created in a `TemporaryDirectory` and cleaned up on every exit; normal CI now rejects a dirty or untracked checkout after validation.
 - Aligned the current-state audit section order, qualified the historical four/five-file preflight wording, and corrected the Home Manager customization line range in INSTALLATION.
 - The archive measurements quoted in the supplied audit remain report-supplied in this source-only pass because the ZIP bytes were not attached. The supported distribution remains the canonical output of `scripts/package-source-zip.sh`, published by CI/release automation.
+- Reconciled the historical gaps against Git: the IOMMU parameters were added on 9 October and removed on 13 October; ICH9 audio was removed on 12 October and restored on 23 October; the old `2a7a:8a47` USB hostdev was disabled on 9 October and replaced by the active `1532:0098` / `05ac:024f` entries on 16 October. Exact commits and the documented rationale are recorded in the current-state index and Turkish archive preface.
+- Corrected the ICH9 XML indentation. The supplied report's claimed empty Hyprlock label did not reproduce: the current lock label contains the lock glyph (`text = ;`), so no Home Manager runtime setting was changed.
 
 ### MAKO Renderer integration — 2026-11-04
 - Added an optional Nix-packaged MAKO Renderer v4.6.0 from the official x86_64 Linux archive, pinned by its published SHA-256 and exposed as `.#mako-renderer`.
