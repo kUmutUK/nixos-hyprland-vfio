@@ -252,8 +252,6 @@ verification_metadata_paths = {
     "docs/OPTISCALER.md",
     "docs/OPTISCALER-MANAGER.md",
     "docs/MAKO.md",
-    "scripts/test-mako-renderer.py",
-    "docs/MAKO.md",
     "scripts/optiscaler_manager.py",
     "scripts/test-mako-renderer.py",
     "scripts/test-optiscaler-manager.py",
