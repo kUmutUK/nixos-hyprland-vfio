@@ -7,7 +7,6 @@ The reports in this directory describe older ZIP files or commits and may contai
 ## Contents
 
 - [`DEGISIKLIK_GECMISI.md`](DEGISIKLIK_GECMISI.md): historical Turkish release entries, preceded by a dated status preface.
-
 - [`HISTORICAL-AUDITS.md`](HISTORICAL-AUDITS.md): provenance, retractions, and live-only checks.
 - [`ANALYSIS-2026-10-05-ZIP3-SUPERSEDED.md`](ANALYSIS-2026-10-05-ZIP3-SUPERSEDED.md): early ZIP3 snapshot.
 - [`nixos-hyprland-vfio-analysis-v2-SUPERSEDED.md`](nixos-hyprland-vfio-analysis-v2-SUPERSEDED.md): ZIP2 snapshot.
