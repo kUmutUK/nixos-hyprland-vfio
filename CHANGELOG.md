@@ -9,6 +9,7 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 - Removed the redundant eza item from home.packages; programs.eza.enable remains responsible for the Home Manager package and integration. System-profile fzf, git, and kitty remain intentionally available alongside their per-user Home Manager configuration.
 - Marked manual full-system build #9 as a historical 3 November baseline superseded by build #10 on 4 November.
 - The supplied report is dated 5 November, one day after this repository update. Its ZIP size/hash/entry/mode claims remain unverified because the archive bytes were not attached.
+
 ### Thirteenth supplied audit cross-check — 2026-11-04
 - Reconciled the latest supplied review against GitHub `main` at `b2d2691b98764705edd8a689924b0ae16024bde6`; the last successful full-system build remains #10 on `480972a235655f6d1e9ec6137f85ad3f30b8655a`.
 - Kept the manual full-system build gate open for the later Home Manager, flake, MAKO derivation, and installer changes. Normal CI and package checks do not substitute for a complete NixOS/selected-kernel build.
