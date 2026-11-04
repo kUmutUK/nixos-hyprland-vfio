@@ -6,11 +6,44 @@
 
 The detailed sections remain grouped by subject and source snapshot; this index supplies their date order without rewriting the historical record.
 
-- **2026-11-04:** MAKO Renderer integration; supplied VM XML/exact-HEAD cross-check; current supplied archive-report reconciliation; supplied configuration/installer cross-check; Pyprland, PCI, and cursor remediation.
+- **2026-11-04:** thirteenth supplied audit cross-check; MAKO Renderer integration; supplied VM XML/exact-HEAD cross-check; current supplied archive-report reconciliation; supplied configuration/installer cross-check; Pyprland, PCI, and cursor remediation.
+- **2026-11-04 build/navigation records:** last completed full-system build baseline (#10); related CHANGELOG-only entries for game graphics profile guidance, CS2 frame-generation profile, and source-tree audit hardening.
 - **2026-11-03:** post-audit remediation; supplied comprehensive audit cross-check (unnumbered).
 - **2026-11-01:** ShellCheck follow-up; eleventh audit/release-workflow repair; twelfth audit update.
 - **2026-10-30:** ninth and tenth audit cross-checks.
 - **2026-10-28 and earlier:** historical source-ZIP, packaging, installer, and configuration follow-ups.
+
+## Thirteenth supplied audit cross-check — 2026-11-04
+
+**Reviewed pre-update main HEAD:** GitHub `main` at `b2d2691b98764705edd8a689924b0ae16024bde6`; **last successful full-system build:** #10 at `480972a235655f6d1e9ec6137f85ad3f30b8655a`; **build gate: OPEN** — `nixos/home.nix`, `nixos/flake.nix`, `nixos/mako-renderer.nix`, and `install.sh` changed after that build. Run a new full-system build before release.
+
+**Scope and date qualification:** The supplied review describes its report date as 5 November 2026, which is one day after this 4 November 2026 repository cross-check. The supplied report date is therefore retained as input metadata, not adopted as the date of this verification.
+
+- **HEAD and build ancestry — confirmed.** GitHub `main` was at `b2d2691b98764705edd8a689924b0ae16024bde6` when checked. Comparing it with the last successful full-system build commit `480972a235655f6d1e9ec6137f85ad3f30b8655a` shows 46 commits ahead, with the build commit as the merge base. The current HEAD includes later changes to `nixos/home.nix`, `nixos/flake.nix`, `nixos/mako-renderer.nix`, and `install.sh`; these are outside the release workflow's ancestor-build allowlist. A new manual full-system build is required before release. Normal CI, package builds, and static regressions do not replace it.
+- **Exact-HEAD CI — not independently confirmed here.** The tracked `.github/workflows/check.yml` defines 28 workflow steps, including flake evaluation, generated Lua validation, and LSFG-VK v2 / MAKO package builds. The current commit-status lookup returned no status contexts; that response is not evidence of failure or success. Do not describe the supplied report's 19-package pass as independently reproduced by this repository cross-check.
+- **B1 / archive provenance — supplied measurements remain unverified.** The ZIP bytes were not attached to this repository-editing session. Its reported 765,259-byte size, 126 entries, 45 `.git/` records, ZIP external attributes, and embedded content were therefore not recalculated. The literal `$Format:%H# Repair and validation report — updated 2026-11-04
+
+> **Delivery-scope note:** This report is part of the tracked source tree. The dated “patch-only ZIP” notes below are historical. For a canonical full-source ZIP, use `scripts/package-source-zip.sh` or the CI-uploaded `nixos-hyprland-vfio-source` artifact for the exact commit. The helper verifies tracked-file completeness, excludes `.git/`, preserves executable bits, and makes the finished artifact readable from shared output directories.
+
+## Chronological navigation (newest first)
+
+The detailed sections remain grouped by subject and source snapshot; this index supplies their date order without rewriting the historical record.
+
+- **2026-11-04:** thirteenth supplied audit cross-check; MAKO Renderer integration; supplied VM XML/exact-HEAD cross-check; current supplied archive-report reconciliation; supplied configuration/installer cross-check; Pyprland, PCI, and cursor remediation.
+- **2026-11-04 build/navigation records:** last completed full-system build baseline (#10); related CHANGELOG-only entries for game graphics profile guidance, CS2 frame-generation profile, and source-tree audit hardening.
+- **2026-11-03:** post-audit remediation; supplied comprehensive audit cross-check (unnumbered).
+- **2026-11-01:** ShellCheck follow-up; eleventh audit/release-workflow repair; twelfth audit update.
+- **2026-10-30:** ninth and tenth audit cross-checks.
+- **2026-10-28 and earlier:** historical source-ZIP, packaging, installer, and configuration follow-ups.
+
+ in the tracked `SOURCE_REVISION` file is expected: `.gitattributes` declares `SOURCE_REVISION export-subst`, and `git archive` expands it. The canonical packager checks that the archived revision equals the packaged commit, rejects `.git/`, compares the tracked-file inventory, and verifies all nine executable paths. Use that helper or the exact-commit CI artifact, not a manually compressed checkout.
+- **B3 / build-gate readability — consolidated.** The same snapshot-specific gate line is now placed in this report, the root status index, and the README validation section. It names the reviewed HEAD, exact build #10 baseline, affected paths, and required next action. Re-evaluate it after every new main commit or successful full-system build.
+- **B4 / monitor example — aligned.** The installer prompt's illustrative output name is now `DP-1`, matching the installation guide. The script still detects the actual output with `hyprctl monitors`; this example does not hard-code a monitor or alter the target machine's monitor configuration. The explanatory comment warning against hard-coding `DP-3` is intentionally retained.
+- **B5 / navigation — completed.** The chronological navigation now lists the 4 November full-system-build baseline section and the related CHANGELOG-only entries for game graphics guidance, the CS2 profile, and source-tree audit hardening.
+- **B6 / VFIO release sub-actions — unchanged.** The `end` / `failed` release behavior remains an informational hardening opportunity, not a documented code/documentation contradiction. No QEMU hook behavior was changed in this cross-check; any future hook change remains subject to a new full-system build and target-host testing.
+- **B7 / remaining notes — preserved as non-blocking observations.** The `builtins.fetchGit` network dependency, asynchronous Btrfs discard plus disabled periodic fstrim service, and early log-directory creation are not changed without a separate design decision. No kernel, VFIO, VM XML, GameMode, GPU, LSFG-VK, MAKO, OptiScaler, latency-layer, or desktop preference was changed.
+
+**Verification boundary:** This cross-check verifies the public GitHub source snapshot, selected file contents, commit ancestry, workflow definitions, and release-gate configuration. It does not independently reproduce the supplied ZIP measurements, run the target machine's NixOS build, execute physical VFIO/VM tests, or establish a saved-state restore result.
 
 ## MAKO Renderer integration — 2026-11-04
 
