@@ -1,15 +1,18 @@
 # 📜 Changelog
 
-> **Tarihsel anlık görüntü notu — ilk snapshot: 2026-10-19; önsöz son güncelleme: 2026-10-30 (güncel yapılandırma kaynağı değildir)**
+> **Tarihsel anlık görüntü notu — ilk snapshot: 2026-10-19; önsöz son güncelleme: 2026-11-04 (güncel yapılandırma kaynağı değildir)**
 >
 > Bu blok 19 Ekim 2026 tarihindeki yapılandırma durumunu kaydeder. Bu tarihsel önsöz, sonraki değişikliklerle geçersiz kalan tercihleri işaretlemek amacıyla 30 Ekim 2026'da güncellenmiştir. Başlıktaki ilk tarih snapshot'ın kapsadığı yapılandırmayı, son güncelleme tarihi ise önsözdeki durum açıklamalarını belirtir; güncel ayarlar için kök `README.md` ve `nixos/configuration.nix` esas alınmalıdır.
 >
-> - Aşağıdaki `[1.3.5]` bölümünde `amd_iommu=on` parametresinin eklendiği
->   yazıyor. Bu, tarihsel bir değişiklik kaydıdır ve mevcut yapılandırmanın
->   durumunu anlatmaz. Güncel `nixos/configuration.nix` içinde ne
->   `amd_iommu=on` ne de `iommu=pt` etkinleştirilmiştir; `README.md` de bunu
->   açıkça belirtir. IOMMU/AMD-Vi BIOS/UEFI'de etkinleştirilmeli ve çalışma
->   zamanı `dmesg` ile `/sys/kernel/iommu_groups/` üzerinden doğrulanmalıdır.
+> - Aşağıdaki `[1.3.5]` kaydındaki IOMMU değişimi Git geçmişiyle eşleştirildi:
+>   `ed6ca666` (9 Ekim 2026) `amd_iommu=on` ve `iommu=pt` parametrelerini ekledi;
+>   `0c035b2c` (13 Ekim 2026) ikisini de kaldırdı. Kaldırma commit'i,
+>   `amd_iommu=on` parametresinin tüm kernel sürümlerinde belgelenmemiş
+>   olmasını ve `iommu=pt` seçeneğinin firmware IOMMU etkinliğini kanıtlamamasını
+>   gerekçe gösteriyor. `91c4d58e` (15 Ekim) mevcut parametresiz durumu açıkça
+>   belgeliyor. Güncel yapılandırma da ikisini etkinleştirmez; IOMMU/AMD-Vi
+>   BIOS/UEFI'de açılmalı ve çalışma zamanı `dmesg` ile
+>   `/sys/kernel/iommu_groups/` üzerinden doğrulanmalıdır.
 > - Kernel seçimi, upstream `master` kanalındaki `linuxPackages-cachyos-rt-bore-lto` paketini
 >   kullanır; `flake.nix` içine sabit kernel sürümü yazılmaz. `flake.lock`, tekrar üretilebilir
 >   kurulum için o checkout'ta çözümlenen kaynak revizyonunu kaydeder; upstream'deki yeni sürüme
@@ -21,12 +24,15 @@
 > - `install.sh` ön kontrolü `/etc/nixos/hashedPassword` dosyasının varlığını, boş olmadığını
 >   ve `root:root`/`0600` izinlerini denetler. Eksik/uygunsuzsa uyarı verir; kullanıcıya
 >   kurulumu tamamlamadan önce dosyayı düzeltmesi gerektiğini söyler.
-> - Aşağıdaki `[1.3.8]` kaydı, emüle ICH9 ses aygıtının kaldırıldığını söyler; ancak güncel
->   `vm-xml/win10.xml` içinde `<sound model="ich9">` aygıtı, `audio type="none"` arka ucu
->   ile birlikte hâlâ tanımlıdır. Güncel README bu aygıtı host ses arka ucu olmayan bir
->   emüle aygıt olarak açıklar. Eldeki geçmiş, aygıtın hangi commit/tarihte geri eklendiğini
->   veya kaldırma kaydının hiç uygulanmadığını kanıtlamaz. `[1.3.8]` satırını tarihsel
->   kayıt olarak değerlendirin; güncel VM tasarımı için mevcut XML ve README'yi esas alın.
+> - Aşağıdaki `[1.3.8]` ICH9 kaldırma kaydı Git geçmişiyle doğrulandı ve tamamlandı:
+>   `6e8d6cfe` (12 Ekim 2026) `<sound model="ich9">` ile `audio type="none"`
+>   tanımlarını kaldırdı; `46bf9015` (23 Ekim 2026) ikisini yeniden ekledi.
+>   Güncel `vm-xml/win10.xml` ve README bu sonraki tasarımı yansıtır.
+> - USB passthrough tarihçesi kaynak commit'lerle eşleştirildi: `f46b8ac8`
+>   (9 Ekim 2026) makineye özel `2a7a:8a47` klavye hostdev'ini yorum içine aldı;
+>   `fbd105c8` (16 Ekim 2026) bu eski bloğu kaldırıp `1532:0098` ve
+>   `05ac:024f` kimliklerini etkin hostdev kayıtları olarak ekledi. Güncel iki
+>   kimlik hedef makinede `lsusb` ile doğrulanmalıdır.
 > - `install.sh` artık risk ve GPU uyumluluğu istemlerini İngilizce gösterir. Onay ifadesi
 >   tam olarak `I ACCEPT THE RISKS` olmalıdır. Betik `/etc/nixos/nixos/hooks/qemu` kaynak dosyasını
 >   günceller; etkin libvirt hook ancak başarılı `nixos-rebuild switch` sonrasında yenilenir.
