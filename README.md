@@ -844,7 +844,7 @@ nix develop ./nixos --command bash -euo pipefail -c '
   deadnix .
 '
 ```
-`nix flake check --no-build` evaluates the flake but does not build the complete system or kernel. The separate package builds verify only the selected LSFG-VK v2 and MAKO Renderer derivations. Neither command replaces a full system/kernel build, libvirt domain validation, or a physical GPU lifecycle test. To intentionally rewrite formatting, run `nixfmt` without `--check` as a separate reviewed edit.
+`nix flake check --no-build` evaluates the flake but does not build the complete system or kernel. The separate `nix build .#lsfg-vk-v2` and `nix build .#mako-renderer` commands verify only their selected package derivations. Neither command replaces a full system/kernel build, libvirt domain validation, or a physical GPU lifecycle test. To intentionally rewrite formatting, run `nixfmt` without `--check` as a separate reviewed edit.
 
 The manual sequence also runs `statix check .` and `deadnix .`, both required CI gates. `statix.toml` disables only the style-only repeated-key lint used by the repository's intentionally flat option assignments; actionable Statix and Deadnix findings still fail validation.
 
