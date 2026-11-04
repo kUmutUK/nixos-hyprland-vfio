@@ -53,7 +53,9 @@ GPU/VFIO/VM lifecycle test.
 ## Publish a release
 
 Open **Actions → Release → Run workflow**, select the `main` branch, and enter
-a stable semantic version such as `v1.4.0`. The workflow validates the version,
+a **new, unused** stable semantic version. The input intentionally has no
+preselected default; check the existing releases/tags before choosing a version.
+The workflow rejects a tag that already exists, then validates the version,
 checks the CI/build prerequisites, generates the notes, creates and pushes an
 annotated tag, builds the canonical source ZIP, creates its SHA-256 manifest,
 and publishes the GitHub Release.
@@ -61,7 +63,7 @@ and publishes the GitHub Release.
 Alternatively, a maintainer can create and push the annotated tag locally:
 
 ```bash
-VERSION="v1.4.0"  # replace with the reviewed release version
+VERSION="vMAJOR.MINOR.PATCH"  # replace with a new, unused stable version
 git status --short
 git tag -a "$VERSION" -m "Release $VERSION"
 git push origin "$VERSION"
