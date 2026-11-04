@@ -7,6 +7,12 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 ### CS2 frame-generation profile — 2026-11-04
 - Removed the CS2 process match from the LSFG-VK v2 profile set to keep competitive CS2 on native rendering. Genshin Impact, Wuthering Waves, Benchmark, and vkcube profiles remain unchanged; the global AMD Anti-Lag/low-latency defaults, MAKO integration, and OptiScaler manager are untouched.
 - Updated the LSFG-VK regression test to reject any CS2 process alias in the generated frame-generation profiles.
+- Because this change modifies `nixos/home.nix`, it starts a new full-system build gate. Build #10 on `480972a` predates this change; a build covering the updated Home Manager source is required before release.
+
+### Source-tree audit hardening — 2026-11-04
+- Fixed the VM XML sync regression test so its mocked `lspci` executable is created in a `TemporaryDirectory` and cleaned up on every exit; normal CI now rejects a dirty or untracked checkout after validation.
+- Aligned the current-state audit section order, qualified the historical four/five-file preflight wording, and corrected the Home Manager customization line range in INSTALLATION.
+- The archive measurements quoted in the supplied audit remain report-supplied in this source-only pass because the ZIP bytes were not attached. The supported distribution remains the canonical output of `scripts/package-source-zip.sh`, published by CI/release automation.
 
 ### MAKO Renderer integration — 2026-11-04
 - Added an optional Nix-packaged MAKO Renderer v4.6.0 from the official x86_64 Linux archive, pinned by its published SHA-256 and exposed as `.#mako-renderer`.
@@ -181,7 +187,7 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 - Removed unused `self` and `pkgs` function parameters, configured Statix to ignore only the style-only `repeated_keys` warning for the repository's flat NixOS option style, and promoted Statix/Deadnix from informational steps to required CI gates.
 - Restricted PCI slot/device numbers to the hardware-valid range `00`–`1f` in installer-side and VM XML address validation; regression tests cover acceptance of `1f` and rejection of `20`/`ff`.
 - Clarified the firewall documentation: KDE Connect's NixOS module opens TCP/UDP ports 1714–1764 automatically, while separate P2P/seed services should receive only their explicitly required ports.
-- Added an early preflight for the four Nix source files required at the time in `install.sh`. The 2026-10-29 LSFG-VK v2 migration added a fifth required source file (`nixos/lsfg-vk-v2.nix`); the current preflight and regression coverage require all five. Missing or empty sources now abort before the user prompt, and the deployment phase rechecks them so a disappearing source triggers rollback instead of mixing configuration trees.
+- Added an early preflight for the four Nix source files required at the time in `install.sh`. The 2026-10-29 LSFG-VK v2 migration added a fifth required source file (`nixos/lsfg-vk-v2.nix`), and the 2026-11-04 MAKO integration added the sixth (`nixos/mako-renderer.nix`). The current preflight and regression coverage require all six. Missing or empty sources now abort before the user prompt, and the deployment phase rechecks them so a disappearing source triggers rollback instead of mixing configuration trees.
 - Hardened the VM diagnostic helper against dangling output symlinks and destination races. It rejects output symlinks and publishes the temporary file atomically without overwriting an existing destination; a regression test covers dangling links.
 - Included `waydroid-container.service` in VFIO handoff state capture, stop, and restore because Waydroid is enabled in the reference configuration and may retain GPU resources. A real target-machine VM lifecycle test is still required.
 - Added common Proton/Wine Wuthering Waves LSFG-VK process aliases and a TOML regression test. The actual process matched at runtime must still be confirmed from target-machine logs.
