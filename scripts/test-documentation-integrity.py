@@ -263,6 +263,7 @@ verification_metadata_paths = {
     "scripts/test-installer-invariants.sh",
     "scripts/test-vfio-hook-driver-state.sh",
     "scripts/test-documentation-integrity.py",
+    "scripts/test-lsfg-vk-v2.py",
 }
 for path in verification_metadata_paths:
     require(path in RELEASE_WORKFLOW, f"release workflow must keep {path!r} in the full-build ancestor allowlist")
