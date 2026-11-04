@@ -1434,6 +1434,8 @@ in
   #  files = [ ".config/lsfg-vk/conf.toml" ];
   #};
 
+  # fzf, git, and Kitty intentionally remain available in the system profile too;
+  # Home Manager owns their per-user settings and shell/application integration.
   programs = {
     # `programs.home-manager.enable = true` applies to standalone Home Manager usage.
     # This configuration imports Home Manager as a NixOS module, where that option is
@@ -1758,8 +1760,8 @@ in
     mpv
     # Optional per-game Vulkan renderer; it does not inject into games by default.
     makoRenderer
+    # eza is provided by programs.eza.enable above; keep one Home Manager package entry.
     # Optional tools for the adapted dotfile theme; Pywal is user-invoked (wal -i).
-    eza
     ranger
     pywal16Fixed
     fd
