@@ -76,7 +76,7 @@ require(
 )
 require(
     "fbd105c869a856ca561a31692215aa17363a274a" in STATE_INDEX and "replaced that old block" in STATE_INDEX
-    and "verify both connected devices with `lsusb`" in STATE_INDEX,
+    and "verify both devices with `lsusb`" in STATE_INDEX,
     "current-state index must trace the historical USB block replacement",
 )
 
