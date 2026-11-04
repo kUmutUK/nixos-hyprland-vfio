@@ -435,7 +435,7 @@ require("passed-through GPU HDMI/DP audio function" in README, "README must iden
 audio = vm.find("./devices/audio")
 require(audio is not None and audio.get("type") == "none", "VM XML audio backend changed; update the README and review the intended guest audio path")
 require("nix build .#lsfg-vk-v2" in README and "nix build .#lsfg-vk` command" not in README, "README must use the current LSFG-VK v2 flake output")
-require("packages.${system}.lsfg-vk-v2 =" in FLAKE and "packages.${system}.lsfg-vk =" not in FLAKE, "README package command must match the declared flake output")
+require("packages.${system} = {" in FLAKE and "lsfg-vk-v2 = lsfgVkV2Package;" in FLAKE and "packages.${system}.lsfg-vk =" not in FLAKE, "README package command must match the declared grouped flake output")
 require(watchdog is not None and watchdog.get("model", "").lower() == "itco" and watchdog.get("action") == "reset", "VM XML watchdog no longer matches the README")
 require(network_model is not None and network_model.get("type") == "e1000e", "VM XML network model no longer matches the README")
 usb_ids = set()
@@ -476,7 +476,7 @@ if readme_bash_loop is not None and contrib_bash_loop is not None:
     require(readme_bash_files == contributing_bash_files, "README and CONTRIBUTING Bash syntax-check file lists have drifted")
 require("Current configuration notes — 2026-11-04" in STATE_INDEX, "current-state index date is stale")
 require("2026-10-28 entry" in STATE_INDEX and "2026-10-27 entry" not in STATE_INDEX, "root index must point to the 2026-10-28 CHANGELOG section")
-require("copy all five required Nix/flake files" in README and "four flake files" not in README, "README must describe the five-file migration accurately")
+require("copy all six required Nix/flake files" in README and "copy all five required Nix/flake files" not in README and "four flake files" not in README, "README must describe the six-file migration accurately")
 require(
     "The helper synchronizes `/var/lib/libvirt/win10.xml` only when `win10` is registered" in README
     and "if neither condition is met, it writes no VM XML" in README
