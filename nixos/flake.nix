@@ -69,8 +69,10 @@
       };
 
       # Expose the pinned LSFG-VK v2 and optional MAKO Renderer packages for CI/contributors.
-      packages.${system}.lsfg-vk-v2 = lsfgVkV2Package;
-      packages.${system}.mako-renderer = makoRendererPackage;
+      packages.${system} = {
+        lsfg-vk-v2 = lsfgVkV2Package;
+        mako-renderer = makoRendererPackage;
+      };
 
       # The README uses `nix develop`; expose one flake dev shell rather than a
       # separate legacy channel-based shell.

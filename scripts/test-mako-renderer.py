@@ -47,7 +47,8 @@ require("makoRenderer = pkgs.callPackage ./mako-renderer.nix { };" in HOME,
 require("home.packages = with pkgs; [" in HOME and "    makoRenderer" in HOME,
         "MAKO must be available through the existing Home Manager package set")
 require('makoRendererPackage = pkgs.callPackage ./mako-renderer.nix { };' in FLAKE
-        and 'packages.${system}.mako-renderer = makoRendererPackage;' in FLAKE,
+        and 'packages.${system} = {' in FLAKE
+        and 'mako-renderer = makoRendererPackage;' in FLAKE,
         "flake must expose a direct build target for the MAKO package")
 
 required_sources = "configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix"
