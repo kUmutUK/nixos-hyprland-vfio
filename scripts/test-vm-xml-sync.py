@@ -35,55 +35,55 @@ def run_sync(
     audio_class: str = "0403",
 ) -> subprocess.CompletedProcess[str]:
     # PCI class validation is mocked so the suite does not depend on host hardware.
-    mock_bin = template.parent / "mock-bin"
-    mock_bin.mkdir(exist_ok=True)
-    lspci = mock_bin / "lspci"
-    lspci.write_text(
-        "#!/usr/bin/env bash\n"
-        "set -euo pipefail\n"
-        '[[ "${1:-}" == "-Dn" && "${2:-}" == "-s" ]] || exit 2\n'
-        'address="${3:-}"\n'
-        'case "${address##*.}" in\n'
-        '  0) class="${FAKE_LSPCI_GPU_CLASS:-0300}" ;;\n'
-        '  1) class="${FAKE_LSPCI_AUDIO_CLASS:-0403}" ;;\n'
-        '  *) exit 1 ;;\n'
-        'esac\n'
-        'printf "%s %s: 1002:0000 Mock device\\n" "$address" "$class"\n',
-        encoding="utf-8",
-    )
-    lspci.chmod(0o755)
-    child_env = os.environ.copy()
-    if env is not None:
-        child_env.update(env)
-    child_env["PATH"] = f"{mock_bin}{os.pathsep}{child_env.get('PATH', '')}"
-    child_env["FAKE_LSPCI_GPU_CLASS"] = gpu_class
-    child_env["FAKE_LSPCI_AUDIO_CLASS"] = audio_class
-    command = [sys.executable, str(HELPER), gpu, audio, str(template), str(destination)]
-    if domain is not None:
-        command.extend(["--domain", domain])
-    try:
-        return subprocess.run(
-            command,
-            text=True,
-            capture_output=True,
-            check=False,
-            env=child_env,
-            timeout=SUBPROCESS_TIMEOUT_SECONDS,
+    # Keep the executable outside the checkout and remove it even on timeout/failure.
+    with tempfile.TemporaryDirectory(prefix="vm-xml-sync-mock-") as mock_root:
+        mock_bin = Path(mock_root)
+        lspci = mock_bin / "lspci"
+        lspci.write_text(
+            "#!/usr/bin/env bash\\n"
+            "set -euo pipefail\\n"
+            '[[ "${1:-}" == "-Dn" && "${2:-}" == "-s" ]] || exit 2\\n'
+            'address="${3:-}"\\n'
+            'case "${address##*.}" in\\n'
+            '  0) class="${FAKE_LSPCI_GPU_CLASS:-0300}" ;;\\n'
+            '  1) class="${FAKE_LSPCI_AUDIO_CLASS:-0403}" ;;\\n'
+            '  *) exit 1 ;;\\n'
+            'esac\\n'
+            'printf "%s %s: 1002:0000 Mock device\\\\n" "$address" "$class"\\n',
+            encoding="utf-8",
         )
-    except subprocess.TimeoutExpired as exc:
-        stdout = exc.stdout or ""
-        stderr = exc.stderr or ""
-        if isinstance(stdout, bytes):
-            stdout = stdout.decode("utf-8", errors="replace")
-        if isinstance(stderr, bytes):
-            stderr = stderr.decode("utf-8", errors="replace")
-        stderr = (
-            f"{stderr.rstrip()}\n"
-            "TIMEOUT: sync-vm-xml.py did not finish within "
-            f"{SUBPROCESS_TIMEOUT_SECONDS} seconds"
-        ).lstrip()
-        return subprocess.CompletedProcess(command, 124, stdout, stderr)
-
+        lspci.chmod(0o755)
+        child_env = os.environ.copy()
+        if env is not None:
+            child_env.update(env)
+        child_env["PATH"] = f"{mock_bin}{os.pathsep}{child_env.get('PATH', '')}"
+        child_env["FAKE_LSPCI_GPU_CLASS"] = gpu_class
+        child_env["FAKE_LSPCI_AUDIO_CLASS"] = audio_class
+        command = [sys.executable, str(HELPER), gpu, audio, str(template), str(destination)]
+        if domain is not None:
+            command.extend(["--domain", domain])
+        try:
+            return subprocess.run(
+                command,
+                text=True,
+                capture_output=True,
+                check=False,
+                env=child_env,
+                timeout=SUBPROCESS_TIMEOUT_SECONDS,
+            )
+        except subprocess.TimeoutExpired as exc:
+            stdout = exc.stdout or ""
+            stderr = exc.stderr or ""
+            if isinstance(stdout, bytes):
+                stdout = stdout.decode("utf-8", errors="replace")
+            if isinstance(stderr, bytes):
+                stderr = stderr.decode("utf-8", errors="replace")
+            stderr = (
+                f"{stderr.rstrip()}\\n"
+                "TIMEOUT: sync-vm-xml.py did not finish within "
+                f"{SUBPROCESS_TIMEOUT_SECONDS} seconds"
+            ).lstrip()
+            return subprocess.CompletedProcess(command, 124, stdout, stderr)
 
 def fake_virsh_env(
     root: Path,
@@ -158,12 +158,18 @@ def source_bdf(hostdev: ET.Element) -> str | None:
 
 
 def main() -> int:
+    repo_mock_bin = ROOT / "vm-xml" / "mock-bin"
+    if repo_mock_bin.exists():
+        return fail("stale vm-xml/mock-bin/ exists; remove the old test artifact before rerunning")
+
     # Ensure a stuck helper is converted to a clear test failure, not an unbounded wait.
     with patch(
         "subprocess.run",
         side_effect=subprocess.TimeoutExpired("sync-vm-xml.py", SUBPROCESS_TIMEOUT_SECONDS),
     ):
         timed_out = run_sync(TEMPLATE, TEMPLATE)
+    if repo_mock_bin.exists():
+        return fail("run_sync left a repository-local mock directory behind")
     if (
         timed_out.returncode != 124
         or "TIMEOUT" not in timed_out.stderr
