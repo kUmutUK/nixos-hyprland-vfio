@@ -774,6 +774,43 @@ if package_start >= 0 and package_end > package_start:
     require("\n    bibata-cursors\n" not in CONFIG[package_start:package_end], "the original Bibata theme must not be separately exposed as a system cursor choice")
 require("programs.steam.enable = true;" in CONFIG, "Steam must remain enabled through programs.steam.enable")
 
+home_packages_match = re.search(
+    r"(?ms)^  home\.packages = with pkgs; \[(.*?)^  \];",
+    HOME_NIX,
+)
+require(
+    home_packages_match is not None
+    and re.search(r"(?m)^\s*eza\s*$", home_packages_match.group(1)) is None
+    and re.search(r"(?m)^    eza = \{\s*\n      enable = true;", HOME_NIX) is not None,
+    "eza must be owned by programs.eza.enable and must not be repeated in home.packages",
+)
+require(
+    "fzf, git, and Kitty intentionally remain available in the system profile too" in HOME_NIX,
+    "the system-profile fzf/git/Kitty entries must remain explicitly intentional",
+)
+require(
+    "Hyprland ABI sürüm kayıtlarında tarihsel bir çelişki bulundu" in ARCHIVE
+    and "7a0f122f5090" in ARCHIVE
+    and "sürüm/ABI anlatısı" in ARCHIVE,
+    "the Turkish archive preface must disclose the conflicting same-revision Hyprland tables",
+)
+require(
+    "Fourteenth supplied audit cross-check — 2026-11-04" in REPAIR
+    and "770,684-byte" in REPAIR
+    and "not independently measured" in REPAIR,
+    "the fourteenth audit reconciliation must preserve the supplied-ZIP verification boundary",
+)
+require(
+    "historical; superseded by #10 on 2026-11-04" in REPAIR
+    and "Latest full-system build — complete" not in REPAIR,
+    "the 3 November build #9 section must not describe itself as the latest build after #10",
+)
+require(
+    "records for audits 1–4 are not retained" in CHANGELOG
+    and "intentionally unnumbered" in CHANGELOG,
+    "CHANGELOG must explain the retained audit-numbering gap and unnumbered 3 November cross-check",
+)
+
 require("docs/OPTISCALER.md" in README and "OptiScaler" in README, "README must link the optional OptiScaler Proton guide")
 require("docs/OPTISCALER.md" in INSTALLATION, "installation guide must point to the optional per-game OptiScaler instructions")
 require("OptiScaler v0.9.4" in OPTISCALER_DOC and "575cb4df866116093df75af607e37fd70e10f5163e0f23fd5c804142e80ef0ad" in OPTISCALER_DOC, "OptiScaler guide must pin the official stable release asset and SHA-256")
