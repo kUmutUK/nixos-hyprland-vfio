@@ -117,7 +117,7 @@ jobs:
           fi
 
           # A previous full-system build remains valid only when every later
-          # commit changes release metadata/docs, not NixOS or runtime inputs.
+          # changed path matches the exact literal allowlist documented in RELEASING.md.
           unexpected=0
           while IFS= read -r path; do
             [[ -z "$path" ]] && continue

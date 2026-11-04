@@ -384,18 +384,43 @@ require(REPAIR.count("## Tenth audit cross-check — 2026-10-30") == 1, "repair 
 require("587,335 bytes" in REPAIR and "6b0111ca7cfb442d84bdbc22c516efbde2e90c6ea5a1f88bf9076317d99b4b11" in REPAIR and "a627fcb13b15e71e90983a3a2ff391d38eb743e5" in REPAIR, "repair report must record the latest attached ZIP identity")
 require("Tenth audit cross-check" in REPAIR and "45 entries (29 files and 16 directories)" in REPAIR and "create_system=0" in REPAIR, "latest upload report must preserve the independently measured ZIP metadata")
 require("DEGISIKLIK_GECMISI.md" in CHANGELOG and "DEGISIKLIK_GECISI_GECMISI.md" not in CHANGELOG, "CHANGELOG must use the correct root current-state filename")
+require("### Fifth audit follow-up — 2026-10-30" in CHANGELOG, "CHANGELOG must number the inferred fifth audit follow-up")
 require("### Tenth audit follow-up — 2026-10-30" in CHANGELOG, "CHANGELOG must record the tenth audit follow-up")
-tenth_heading = "### Tenth-audit reconciliation — 2026-11-04"
-ninth_heading = "### Ninth-audit remediation — 2026-11-04"
 require(
-    CHANGELOG.find(tenth_heading) >= 0
-    and CHANGELOG.find(ninth_heading) > CHANGELOG.find(tenth_heading),
-    "CHANGELOG audit sections must use the same newest-to-oldest order as the current-state index",
+    all(item in STATE_INDEX for item in (
+        "Fifth audit follow-up",
+        "Sixth and seventh audit follow-ups",
+        "Eighth, ninth, and tenth audit follow-ups",
+        "Eleventh audit and release-workflow repair / twelfth audit update",
+        "Supplied comprehensive audit cross-check — 2026-11-03",
+    )),
+    "root index must preserve traceability for the fifth through twelfth audits and the unnumbered comprehensive cross-check",
+)
+vm_xml_heading = "### VM XML and exact-HEAD audit reconciliation — 2026-11-04"
+pypr_heading = "### Pyprland, PCI and cursor audit remediation — 2026-11-04"
+require(
+    CHANGELOG.find(vm_xml_heading) >= 0
+    and CHANGELOG.find(pypr_heading) > CHANGELOG.find(vm_xml_heading),
+    "CHANGELOG audit follow-ups must have unique descriptive names and a stable newest-first order",
 )
 require(
-    STATE_INDEX.find(tenth_heading) >= 0
-    and STATE_INDEX.find(ninth_heading) > STATE_INDEX.find(tenth_heading),
-    "current-state index audit sections must match CHANGELOG order",
+    STATE_INDEX.find(vm_xml_heading) >= 0
+    and STATE_INDEX.find(pypr_heading) > STATE_INDEX.find(vm_xml_heading),
+    "current-state index audit follow-ups must match CHANGELOG order",
+)
+require(
+    "Ninth-audit remediation — 2026-11-04" not in CHANGELOG
+    and "Tenth-audit reconciliation — 2026-11-04" not in CHANGELOG
+    and "Ninth supplied audit cross-check — 2026-11-04" not in REPAIR
+    and "Tenth supplied audit cross-check and exact-HEAD verification — 2026-11-04" not in REPAIR,
+    "4 November audit records must not reuse the 30 October ninth/tenth audit labels",
+)
+require(
+    "run ID 41603404803" in REPAIR
+    and "run #41603404803" not in REPAIR
+    and "run ID 41603404803" in STATE_INDEX
+    and "run #41603404803" not in STATE_INDEX,
+    "the 41603404803 value must be identified as a workflow run ID, not a run number",
 )
 cs2_start = CHANGELOG.find("### CS2 frame-generation profile — 2026-11-04")
 mako_start = CHANGELOG.find("### MAKO Renderer integration — 2026-11-04", cs2_start)
@@ -490,8 +515,19 @@ require("emulated PS/2 keyboard and mouse" in README and "emulated PS/2 keyboard
 require("/run/libvirt/nix-emulators/qemu-system-x86_64" in README and "/run/libvirt/nix-ovmf/" in README and "NixOS's [libvirtd module]" in README, "README must document the NixOS QEMU and OVMF runtime paths")
 
 require("## [Unreleased]" in CHANGELOG, "CHANGELOG must use the undated [Unreleased] heading")
+require(
+    "Dated third-level headings under `[Unreleased]` are editorial event labels" in CHANGELOG
+    and "the top-level `[Unreleased]` bucket itself remains undated" in CHANGELOG,
+    "CHANGELOG must distinguish dated editorial subheadings from dated release sections",
+)
 require("update_qemu_hook_pci()" in INSTALLER and "if ! update_qemu_hook_pci" in INSTALLER, "installer must use the checked QEMU hook PCI updater and fail closed on error")
 require(not re.search(r"(?m)^## (?:Unreleased|Previous unreleased changes)\s*[—-]\s*\d{4}-\d{2}-\d{2}", CHANGELOG), "CHANGELOG still gives an Unreleased heading a date")
+require(
+    "## Follow-up fixes — documented 2026-10-23 (includes earlier changes)" in CHANGELOG
+    and "not a claim that every listed change first occurred on 23 October" in CHANGELOG,
+    "23 October must be identified as the consolidation date, not the date of every historical change",
+)
+require("## Follow-up fixes — 2026-10-23" not in CHANGELOG, "CHANGELOG must not retain the ambiguous 23 October section heading")
 require("rollback of the 2026-10-23 password-enabled SSH setting" in CHANGELOG, "CHANGELOG must state the SSH password-authentication rollback")
 require("PasswordAuthentication" in CHANGELOG and "KbdInteractiveAuthentication" in CHANGELOG, "CHANGELOG must describe both disabled SSH password and keyboard-interactive authentication")
 require("Superseded on 2026-10-29" in CHANGELOG, "the old system-wide Reflex entry must be marked superseded")
@@ -672,8 +708,8 @@ require(
     "every cursor state must resolve to the plus glyph with no inherited theme or alternative cursor package",
 )
 require(
-    "### Ninth-audit remediation — 2026-11-04" in CHANGELOG
-    and "### Ninth-audit remediation — 2026-11-04" in STATE_INDEX
+    "### Pyprland, PCI and cursor audit remediation — 2026-11-04" in CHANGELOG
+    and "### Pyprland, PCI and cursor audit remediation — 2026-11-04" in STATE_INDEX
     and "pypr-term" in STATE_INDEX
     and "fresh full-system build is required before release" in REPAIR,
     "ninth-audit remediation and its build boundary must be recorded in current-state documents",
@@ -751,7 +787,55 @@ require("def pci_class_code" in VM_XML_SYNC and "lspci" in VM_XML_SYNC and '"030
 require('cat > "$MOCK_BIN/lspci"' in MANUAL_VM_BOOTSTRAP_TEST and "class=0300" in MANUAL_VM_BOOTSTRAP_TEST and "class=0403" in MANUAL_VM_BOOTSTRAP_TEST, "manual VM bootstrap regression must mock lspci after the sync helper gained PCI-class checks")
 require("different physical slots" in VM_XML_SYNC_TEST and "gpu_class=gpu_class" in VM_XML_SYNC_TEST and "audio_class=audio_class" in VM_XML_SYNC_TEST, "VM XML sync tests must reject wrong PCI classes and different slots")
 require("scripts/sync-vm-xml.py" in RELEASING and "scripts/test-vm-xml-sync.py" in RELEASING and "scripts/sync-vm-xml.py" in RELEASE_WORKFLOW and "scripts/test-vm-xml-sync.py" in RELEASE_WORKFLOW, "release policy must document the out-of-flake VM XML sync helper and test allowlist")
+release_allowlist_match = re.search(
+    r"(?s)\*\*Exact release allowlist \(literal paths only\):\*\*\s*(.*?)\n\n",
+    RELEASING,
+)
+workflow_allowlist_match = re.search(
+    r"(?m)^\s*(\S[^\n]*?\.github/workflows/release\.yml)\)\s*$",
+    RELEASE_WORKFLOW,
+)
+if release_allowlist_match and workflow_allowlist_match:
+    documented_release_paths = set(re.findall(r"`([^`]+)`", release_allowlist_match.group(1)))
+    workflow_release_paths = set(workflow_allowlist_match.group(1).strip().split("|"))
+else:
+    documented_release_paths = set()
+    workflow_release_paths = set()
+require(
+    documented_release_paths == workflow_release_paths and len(workflow_release_paths) == 25,
+    "RELEASING.md and release.yml must contain the same exhaustive 25-path literal allowlist",
+)
+require(
+    "no wildcard rules or blanket exemptions" in RELEASING
+    and "changed path matches the exact literal allowlist documented in RELEASING.md" in RELEASE_WORKFLOW,
+    "release policy must state that documentation/CI labels do not grant blanket path exemptions",
+)
+require(
+    "- name: Documentation integrity and MAKO integration regression tests" in CHECK_WORKFLOW
+    and "python3 scripts/test-documentation-integrity.py" in CHECK_WORKFLOW
+    and "python3 scripts/test-mako-renderer.py" in CHECK_WORKFLOW,
+    "the documentation test step name must disclose the MAKO regression suite it runs",
+)
+require(
+    "- name: Build the pinned LSFG-VK v2 and MAKO packages" in CHECK_WORKFLOW
+    and ".#lsfg-vk-v2" in CHECK_WORKFLOW
+    and ".#mako-renderer" in CHECK_WORKFLOW,
+    "the package build step name must disclose both LSFG-VK v2 and MAKO builds",
+)
 require("## Audit finding fixes — 2026-11-03" in REPAIR, "repair report must record the new audit findings")
+require(
+    "## Chronological navigation (newest first)" in REPAIR
+    and "The detailed sections remain grouped by subject and source snapshot" in REPAIR,
+    "repair report must provide chronological navigation while preserving its declared subject-based grouping",
+)
+require(
+    "## Current supplied archive report reconciliation — 2026-11-04" in REPAIR
+    and "e0880015" in REPAIR
+    and "760,112-byte" in REPAIR
+    and "54-entry" in REPAIR
+    and "not independently verified" in REPAIR,
+    "latest supplied ZIP identity conflict and unresolved .git-count outlier must remain explicitly unverified",
+)
 require("run #41603404803" in REPAIR and "3105ea2c90a17584e11a9776d0767f1de5d59221" in REPAIR and "Previous normal-CI reference (superseded)" in REPAIR and "current normal-CI verification for the reviewed snapshot is run #1120" in REPAIR, "repair report must distinguish the superseded parent CI from the reviewed-snapshot CI")
 require("actions/runs/41608022759" in REPAIR and "8d1e4585c9cd3f690c1df80ee531008c7e9d30ef" in REPAIR and "artifact ID `13217103984`" in REPAIR, "repair report must record the reviewed-snapshot CI and canonical artifact")
 require("OptiScaler-specific scope" in REPAIR and "Separately, the VFIO saved-state hook change" in REPAIR, "repair report must distinguish OptiScaler-only changes from the separate VFIO hook change")

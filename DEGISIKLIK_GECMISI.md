@@ -9,7 +9,7 @@
 - The supplied audit's ZIP size/hash measurements were not independently reproduced here because the archive bytes were not attached. Use the canonical package from `scripts/package-source-zip.sh` or its CI/release artifact.
 - The 4 November CS2 change modifies `nixos/home.nix`; build #10 predates it, so a new full-system build covering this change is required before release.
 
-### Tenth-audit reconciliation — 2026-11-04
+### VM XML and exact-HEAD audit reconciliation — 2026-11-04
 
 - Reviewed source HEAD: `480972a235655f6d1e9ec6137f85ad3f30b8655a`. The GitHub recursive tree is complete (not truncated), with 69 tracked file blobs and nine tracked `100755` executable files.
 - Normal CI [#1145](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/41731452053) passed all 28 workflow-defined steps on that exact commit. It uploaded canonical artifact 13277885590 (346,040 bytes; `sha256:e7b11c0f967b2df3428b4c3ca9417df741e8727a4a4fb67001bd9a43e45a5730`).
@@ -18,17 +18,25 @@
 - README/INSTALLATION now explain that the XML's PS/2 keyboard/mouse definitions are separate from USB hostdev entries and document the NixOS QEMU/OVMF runtime paths. No VM XML or runtime setting was changed in this documentation update.
 - A genuine saved-state restore remains outside the verified hardware boundary.
 
-### Ninth-audit remediation — 2026-11-04
+### Pyprland, PCI and cursor audit remediation — 2026-11-04
 
 - GameMode's comment now matches the existing `renice = 10` setting: nice `+10` lowers CPU scheduling priority. The value itself and all runtime settings were preserved.
 - The normal CI count is 28 workflow-defined YAML steps. Run #1127 passed all 28 workflow-defined steps. GitHub numbers its generated `Set up job` entry as 1 and the YAML-defined steps as 2–29.
 - INSTALLATION now distinguishes the NixOS 26.05 Live ISO from the installed flake's `nixos-unstable` package input and explains that `system.stateVersion = "26.05"` is not a channel pin.
-- The ninth supplied ZIP's reported metadata remains audit-supplied because its bytes were not attached for this recheck; use the canonical CI artifact for the exact commit or `scripts/package-source-zip.sh` from a clean checkout. GameMode `gpu_device = 1` remains unchanged pending the target host's live DRM `cardN` mapping.
+- The supplied ZIP's reported metadata remains audit-supplied because its bytes were not attached for this recheck; use the canonical CI artifact for the exact commit or `scripts/package-source-zip.sh` from a clean checkout. GameMode `gpu_device = 1` remains unchanged pending the target host's live DRM `cardN` mapping.
 - The Pypr terminal floating rule now matches the configured `pypr-term` window class. The installer's secondary PCI updater rejects slots above `1f`, with explicit `20`/`ff` regression cases for GPU and audio functions.
 - The `Plus-Cursor` theme now maps every shipped cursor name and common XCursor alias to the same `+` glyph; theme inheritance is disabled, and the standalone Bibata theme is no longer installed as an alternative. System, Home Manager, GTK/X11, and Hyprland select `Plus-Cursor`.
 - The fresh full-system build requirement was satisfied by exact-HEAD manual run #10 on 4 November; that build does not validate a real saved-state restore or replace later target-host testing.
 
 This legacy filename now contains an English current-state summary so older links remain useful. The maintained and current change log is [`CHANGELOG.md`](CHANGELOG.md).
+
+## Audit history index — 2026-10-30 to 2026-11-03
+
+- **Fifth audit follow-up — 2026-10-30:** repaired the supplied-ZIP provenance heading, restored the installer-invariants test executable bit, and removed its duplicated 602-line block.
+- **Sixth and seventh audit follow-ups — 2026-10-30:** hardware/documentation preflight and VM-sync wording; supplied ZIP measurements retained as unverified.
+- **Eighth, ninth, and tenth audit follow-ups — 2026-10-30:** new-VM XML behavior, current USB/ICH9 historical qualifications, and separate provenance records for supplied archives.
+- **Eleventh audit and release-workflow repair / twelfth audit update — 2026-11-01:** repaired the release workflow, added ShellCheck follow-up, and recorded the supplied ZIP plus CI-artifact provenance.
+- **Supplied comprehensive audit cross-check — 2026-11-03:** intentionally left unnumbered because the supplied review did not identify itself as the next item in the numbered audit series.
 
 ## Current configuration notes — 2026-11-04
 
@@ -39,7 +47,7 @@ This legacy filename now contains an English current-state summary so older link
 - Optional OptiScaler support now includes `scripts/optiscaler_manager.py` and `docs/OPTISCALER-MANAGER.md`: stable-only checks, SHA-256-verified downloads, explicit per-game installation, status, rollback, and removal. It is not a NixOS/Home Manager package or background service and leaves LSFG-VK and latency-layer defaults unchanged.
 - 2026-11-03 OptiScaler update follow-up: when a new archive drops a previously managed file, the manager restores its pre-install original instead of deleting it; missing/unsafe original backups fail before game mutation or rollback rotation. Regression tests cover update, rollback, removal, and missing-backup handling.
 - 2026-11-03 follow-up hardening: OptiScaler original-file backups are now copied atomically before the previous rollback is rotated; a failed backup leaves the installed state and existing one-step rollback untouched. Per-game `flock` serialization prevents overlapping install/update, status, rollback, and removal operations for the same game. New fault-injection and lock regression tests cover both changes.
-- The previous normal-CI reference was run #41603404803 for parent snapshot `3105ea2c90a17584e11a9776d0767f1de5d59221`; it predates the final OptiScaler backup-ordering and per-game-lock changes and is superseded by run #1120 below.
+- The previous normal-CI reference was run ID 41603404803 for parent snapshot `3105ea2c90a17584e11a9776d0767f1de5d59221`; it predates the final OptiScaler backup-ordering and per-game-lock changes and is superseded by run #1120 below.
 - Reviewed source snapshot (2026-11-03): GitHub `main` at `8d1e4585c9cd3f690c1df80ee531008c7e9d30ef`. Normal CI [#1120](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/41608022759) passed for that exact snapshot, including the final OptiScaler backup-ordering and per-game-lock regressions; this is the successful normal-CI record for that reviewed snapshot; later pre-remediation main snapshot `d34c8c3` passed CI #1127.
 - Previous full-system build baseline (2026-11-03, superseded): GitHub `main` at `ab89f350803d47eb16499c613b110da05a57673f` (69 tracked file blobs). Manual run #9 (https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/41643450896) passed for that exact commit.
 - Normal CI [#1124](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/41643189403) on the build-baseline commit failed only at the documentation-integrity baseline comparison: the regression still used the superseded `ca6edf2` build SHA. This commit synchronizes the report, index, changelog, and test with successful build #9; the changed-path gate remains enabled.

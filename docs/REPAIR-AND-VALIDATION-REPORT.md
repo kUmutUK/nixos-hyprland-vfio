@@ -2,6 +2,16 @@
 
 > **Delivery-scope note:** This report is part of the tracked source tree. The dated “patch-only ZIP” notes below are historical. For a canonical full-source ZIP, use `scripts/package-source-zip.sh` or the CI-uploaded `nixos-hyprland-vfio-source` artifact for the exact commit. The helper verifies tracked-file completeness, excludes `.git/`, preserves executable bits, and makes the finished artifact readable from shared output directories.
 
+## Chronological navigation (newest first)
+
+The detailed sections remain grouped by subject and source snapshot; this index supplies their date order without rewriting the historical record.
+
+- **2026-11-04:** MAKO Renderer integration; supplied VM XML/exact-HEAD cross-check; current supplied archive-report reconciliation; supplied configuration/installer cross-check; Pyprland, PCI, and cursor remediation.
+- **2026-11-03:** post-audit remediation; supplied comprehensive audit cross-check (unnumbered).
+- **2026-11-01:** ShellCheck follow-up; eleventh audit/release-workflow repair; twelfth audit update.
+- **2026-10-30:** ninth and tenth audit cross-checks.
+- **2026-10-28 and earlier:** historical source-ZIP, packaging, installer, and configuration follow-ups.
+
 ## MAKO Renderer integration — 2026-11-04
 
 - Added the official MAKO Renderer v4.6.0 x86_64 Linux archive as a fixed-hash Nix package (`nixos/mako-renderer.nix`) and exposed it to Home Manager through `nixos/home.nix`. The Home Manager package is optional at game level: it does not edit Steam launch options, add a global Vulkan layer manifest, replace LSFG-VK, change OptiScaler files, or alter the global AMD Anti-Lag/latency-layer defaults.
@@ -9,7 +19,7 @@
 - **Build gate:** `nixos/home.nix`, `nixos/mako-renderer.nix`, and `install.sh` changed after the last successful full-system build baseline. A fresh full-system build is required before release. The normal-CI/package checks and upstream archive checksum do not replace that build.
 - **Hardware boundary:** no target-host MAKO runtime test, RDNA2/RX 6700 XT compatibility result, per-game frametime comparison, or Gamescope/VRR qualification is claimed. No MAKO frame generation should be stacked with LSFG-VK or OptiScaler frame generation in one game. The upstream launcher uses a private Vulkan implicit-layer path, so the globally registered latency layer must be checked separately for any MAKO-launched game.
 
-## Tenth supplied audit cross-check and exact-HEAD verification — 2026-11-04
+## Supplied VM XML and exact-HEAD cross-check — 2026-11-04
 
 **Reviewed Git snapshot before this documentation-only reconciliation:** GitHub `main` at `480972a235655f6d1e9ec6137f85ad3f30b8655a`. GitHub's recursive tree response was not truncated: **69 tracked file blobs**, with **9 tracked executable files** stored as `100755`.
 
@@ -25,7 +35,14 @@
 - **Other attention notes — retained without guessing.** The revision marker in `SOURCE_REVISION` remains the expected checkout placeholder expanded by `export-subst` when producing `git archive`; the lockfile is guarded by CI; Pypr's class rule matches the configured `pypr-term` command; GameMode `gpu_device = 1` remains pending live target-host DRM mapping; LSFG-VK v2's package/configuration/test chain remains the documented current path.
 - **Verification boundary.** Normal CI #1145 and full-system build #10 both passed on exact parent snapshot `480972a235655f6d1e9ec6137f85ad3f30b8655a`. The reconciliation commit changes only documentation and the documentation-integrity regression; its own push-triggered normal CI remains the validation gate. No new physical VM/VFIO or saved-state restore test is claimed.
 
-## Ninth supplied audit cross-check — 2026-11-04
+## Current supplied archive report reconciliation — 2026-11-04
+
+- **Source identity mismatch in the supplied text:** its package summary names `e080015ca3593d4f185888f86379268a20706639`, which is the reviewed GitHub `main` HEAD, while section 2.1 names `e0880015`. Those identifiers do not establish one consistent archive revision.
+- **ZIP measurements remain unverified:** the archive bytes were not attached to this repository-editing session. The reported 760,112-byte size, 126 entries, 101 files, 25 directories, 45 `.git/` entries, missing Unix mode metadata, and extracted mode changes are therefore retained as supplied measurements, not independent findings. The source tree was inspected at the GitHub commit above; that does not substitute for inspecting the ZIP.
+- **The 54-entry `.git/` count is an unresolved outlier:** the supplied report contrasts it with repeated 45-entry measurements. Without both corresponding archive byte streams, neither the outlier nor a proposed explanation can be independently established.
+- **Disposition:** do not install or distribute a hand-compressed checkout ZIP. The canonical `scripts/package-source-zip.sh` output or the CI artifact built for the exact commit remains the supported source bundle. No package-helper, installer, NixOS, VFIO, VM XML, kernel, or desktop setting change is warranted by unverified ZIP metadata.
+
+## Supplied configuration and installer cross-check — 2026-11-04
 
 **Audit target snapshot:** GitHub `main` at `7addd412e06181239ccab0422cc175768df7a3fd`, matching the revision named by the supplied ninth audit.
 
@@ -36,7 +53,7 @@
 - **Unchanged target-specific choices.** GameMode `gpu_device = 1` remains pending inspection of the live `/sys/class/drm` mapping. The `scratchterm-float` rule still matches a title while the Pyprland terminal is configured with class `pypr-term`; its effective runtime behavior and intended sizing need target-session verification before changing the rule. The historical ICH9, USB, IOMMU, and backup-retention records remain historical uncertainties rather than grounds for speculative runtime changes.
 - **Build and hardware boundary.** The only edit to `nixos/configuration.nix` in this update is comment-only: it corrects the inaccurate GameMode explanation, with no Nix option or expression changed. The path is nevertheless conservatively tracked as requiring a fresh full-system build before release. This update does not claim a new complete-system build or physical VM/VFIO test; normal CI on the resulting commit is the next validation gate.
 
-## Ninth-audit remediation against main — 2026-11-04
+## Pyprland, PCI and cursor remediation against main — 2026-11-04
 
 **Starting source snapshot:** `48d9533f8b8ea83533e4297d810df7174a28e4ff`, confirmed as the `main` HEAD before these changes.
 
@@ -93,7 +110,7 @@
 - **Manual VM PCI validation:** `sync-vm-xml.py` now verifies the selected GPU/display class, audio class, and shared domain:bus:slot with `lspci -Dn -s`, matching the installer's checks. The mock-backed XML sync regression covers wrong classes and different physical slots.
 - **Installer and VM helper preflight:** `install.sh` now requires exactly one matching Home Manager variable assignment before replacing it; duplicate assignments fail without changing the file. `sync-vm-xml.py --domain` now rejects a requested libvirt domain whose name differs from the XML template's domain before querying libvirt or writing backups/XML. Both paths have focused mock-backed regressions.
 - **Documentation and regression harness:** README's full validation command includes `scripts/test-optiscaler-manager.py` and its repository map lists the manager guide, implementation, and tests. The OptiScaler guide explicitly identifies the in-repository manager as an independent, nonofficial third-party helper. The release ancestor allowlist documents the two Python VM XML sync paths as migration-time helpers outside the NixOS flake/derivation graph, and the mock-only `scripts/test-manual-vm-bootstrap.sh` harness is allowed as test code. The VM XML template and QEMU hook remain gated.
-- **Previous normal-CI reference (superseded):** [run #41603404803](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/41603404803) completed successfully for the parent snapshot `3105ea2c90a17584e11a9776d0767f1de5d59221` on 3 November 2026. It predates the original-backup ordering and per-game lock changes; current normal-CI verification for the reviewed snapshot is run #1120 above.
+- **Previous normal-CI reference (superseded):** [run ID 41603404803](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/41603404803) completed successfully for the parent snapshot `3105ea2c90a17584e11a9776d0767f1de5d59221` on 3 November 2026. It predates the original-backup ordering and per-game lock changes; current normal-CI verification for the reviewed snapshot is run #1120 above.
 - **OptiScaler-specific scope:** the OptiScaler fixes in this audit subsection are limited to the standalone helper, its offline regression tests, and related documentation. Those OptiScaler changes do not alter NixOS modules, flake inputs/lock, RT-Bore-LTO selection, QEMU/VFIO hook, VM XML template, LSFG-VK, latency-layer defaults, or the desktop theme. Separately, the VFIO saved-state hook change recorded in the preceding section does alter `nixos/hooks/qemu`; it is covered by full-system build #9, while normal VM shutdown/handback and Hyprland recovery were subsequently reported successful by the maintainer; saved-state restore remains outstanding.
 ## Last completed full-system build baseline — 2026-11-04
 

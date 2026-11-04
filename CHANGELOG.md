@@ -1,6 +1,6 @@
 # Changelog
 
-This file summarizes notable changes in English. The Turkish release-by-release history is retained in [`docs/archive/DEGISIKLIK_GECMISI.md`](docs/archive/DEGISIKLIK_GECMISI.md); a dated status preface was added there to flag settings later superseded.
+This file summarizes notable changes in English. The Turkish release-by-release history is retained in [`docs/archive/DEGISIKLIK_GECMISI.md`](docs/archive/DEGISIKLIK_GECMISI.md); a dated status preface was added there to flag settings later superseded. Dated third-level headings under `[Unreleased]` are editorial event labels, not dated release sections; the top-level `[Unreleased]` bucket itself remains undated.
 
 ## [Unreleased]
 
@@ -18,7 +18,7 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 ### Source-tree audit hardening — 2026-11-04
 - Fixed the VM XML sync regression test so its mocked `lspci` executable is created in a `TemporaryDirectory` and cleaned up on every exit; normal CI now rejects a dirty or untracked checkout after validation.
 - Aligned the current-state audit section order, qualified the historical four/five-file preflight wording, and corrected the Home Manager customization line range in INSTALLATION.
-- The archive measurements quoted in the supplied audit remain report-supplied in this source-only pass because the ZIP bytes were not attached. The supported distribution remains the canonical output of `scripts/package-source-zip.sh`, published by CI/release automation.
+- The archive measurements quoted in the supplied audit remain report-supplied in this source-only pass because the ZIP bytes were not attached. The supplied twelfth-audit text names `e080015ca3593d4f185888f86379268a20706639` in its package summary but says `e0880015` in section 2.1; its 760,112-byte/126-entry/45-`.git` inventory is therefore not independently verified. The separate 54-`.git` count remains an unresolved report-supplied outlier, not a new source-tree measurement. The supported distribution remains the canonical output of `scripts/package-source-zip.sh`, published by CI/release automation.
 - Reconciled the historical gaps against Git: the IOMMU parameters were added on 9 October and removed on 13 October; ICH9 audio was removed on 12 October and restored on 23 October; the old `2a7a:8a47` USB hostdev was disabled on 9 October and replaced by the active `1532:0098` / `05ac:024f` entries on 16 October. Exact commits and the documented rationale are recorded in the current-state index and Turkish archive preface.
 - The supplied report's claimed empty Hyprlock label did not reproduce: the current lock label contains the lock glyph (`text = ;`), so no Home Manager runtime setting was changed.
 
@@ -27,14 +27,14 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 - Added the package to Home Manager without global Vulkan injection, Steam launch-option edits, LSFG-VK profile changes, OptiScaler changes, or latency-layer default changes; each game opts in with `mako-launch %command%`.
 - Added package/integration regression checks and a normal-CI build. The new NixOS/Home Manager source requires a fresh full-system build; no target-host MAKO runtime or RX 6700 XT game test is claimed.
 
-### Tenth-audit reconciliation — 2026-11-04
+### VM XML and exact-HEAD audit reconciliation — 2026-11-04
 - Reconciled the README's review date with the 4 November audit and documented the XML's separate emulated PS/2 inputs alongside the machine-specific USB passthrough devices.
 - Documented the NixOS runtime QEMU/OVMF paths used by the VM template, including a host-side check for the configured QEMU emulator.
 - Recorded exact-HEAD verification for `480972a235655f6d1e9ec6137f85ad3f30b8655a`: normal CI #1145 passed all 28 workflow-defined steps and uploaded canonical source artifact 13277885590; full NixOS system build #10 passed on the same commit.
 - Confirmed the Git tree has 69 tracked files and nine tracked executable modes. The supplied hand-compressed ZIP's reported size, entry counts, metadata, and 60 mode changes remain unverified because its bytes were not attached; use the matching CI artifact or canonical packager.
 - Kept the old eight-executable count as a dated 2026-10-28 snapshot, and retained the already-qualified ICH9/backup-retention history. No VM XML, installer, NixOS runtime setting, flake input, kernel, or desktop preference was changed.
 
-### Ninth-audit remediation — 2026-11-04
+### Pyprland, PCI and cursor audit remediation — 2026-11-04
 - Corrected the Pyprland terminal scratchpad rule to match the configured Kitty window class `pypr-term`, rather than an unset `scratchterm` title; added a documentation-integrity regression for the class/command relationship.
 - Tightened the installer's QEMU-hook PCI updater to the same valid slot range (`00`–`1f`) as the shared PCI validator. Added regressions accepting slot `1f` and rejecting `20`/`ff` for both GPU and audio functions without modifying the hook.
 - Made `Plus-Cursor` a single-shape theme: every cursor filename and common XCursor alias resolves to the `+` glyph, with no inherited theme for hand, text, wait, or resize states. Removed the separately installed Bibata theme; it remains only the source asset for the generated plus-only theme.
@@ -131,7 +131,7 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 - Clarified that ZIP permission recovery depends on extraction behavior; corrected the report's inventory arithmetic note without inventing a replacement line count.
 - Confirmed that the reported “anual” typo is not present in the current report and left the protected `vm-xml/win10.xml` template unchanged.
 
-### Audit follow-up — 2026-10-30
+### Fifth audit follow-up — 2026-10-30
 - Repaired the pasted heading in the supplied-ZIP provenance table and expanded the documentation-integrity regression test to check both audit reports, the current archive record, the five-file migration instruction, and the date reference.
 - Restored the executable bit on `scripts/test-installer-invariants.sh`; the canonical ZIP helper now checks the complete expected executable-file set so a lost mode bit is caught before artifact publication.
 - Removed the 602-line duplicate block from `scripts/test-installer-invariants.sh`; the root current-state index records this cleanup.
@@ -220,7 +220,9 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 - Added a fail-closed preflight for file-backed CD-ROM ISO paths before VM disk creation and XML definition, with regression tests wired into CI and documented in the README and installation guide.
 - Validated the XML root element in both the ISO preflight and diagnostic-copy helpers, with wrong-root regression tests. Hardened the two-file new-VM publication rollback so a concurrent final-XML collision removes only the disk inode created by this run; added a mocked concurrency regression test. Added the VM bootstrap test to CI/contributor Bash syntax and ShellCheck coverage and completed the repository map entries for `scripts/test-manual-vm-bootstrap.sh` and `statix.toml`.
 
-## Follow-up fixes — 2026-10-23
+## Follow-up fixes — documented 2026-10-23 (includes earlier changes)
+
+This is the date the consolidated note was recorded, not a claim that every listed change first occurred on 23 October. Earlier status snapshots and repair notes retain their own dates.
 
 ### Follow-up audit fixes
 - Preserved an existing deployed VM XML as the source of truth during migration and synchronized only the two GPU/audio PCI addresses. The helper retains the existing VM identity, custom CPU/firmware/NVRAM/device settings, disk path, USB passthrough entries, and extra source-address attributes; unsupported layouts fail closed. Added regression tests for new VM identity, existing XML preservation, backups, and unsafe XML refusal.

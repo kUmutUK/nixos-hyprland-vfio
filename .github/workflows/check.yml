@@ -68,7 +68,7 @@ jobs:
           python3 scripts/test-vm-diagnostic.py
           python3 scripts/test-vm-iso-paths.py
 
-      - name: Documentation integrity regression tests
+      - name: Documentation integrity and MAKO integration regression tests
         run: |
           python3 scripts/test-documentation-integrity.py
           python3 scripts/test-mako-renderer.py
@@ -210,7 +210,7 @@ jobs:
           nix develop . --no-update-lock-file --command luac -p "$lua_file"
           echo "  generated Hyprland Lua syntax OK"
 
-      - name: Build the pinned LSFG-VK v2 package
+      - name: Build the pinned LSFG-VK v2 and MAKO packages
         working-directory: nixos
         run: |
           nix build --no-link --no-update-lock-file .#lsfg-vk-v2

@@ -10,17 +10,36 @@ manual-dispatch input; ordinary pushes and pull requests never publish a release
 2. Confirm that **Nix Flake Check** passed for the exact commit to be released.
 3. Confirm that a successful **Full NixOS System Build (manual)** exists on
    that commit or an ancestor of it.
-4. If the full-system build is from an ancestor, the release workflow verifies
-   that every later changed path is explicitly allowlisted as release,
-   documentation, CI metadata, or a standalone opt-in helper not consumed by the NixOS flake: `.git-cliff.toml`, `RELEASING.md`, `README.md`,
-   `DEGISIKLIK_GECMISI.md`, `INSTALLATION.md`, `CONTRIBUTING.md`, `CHANGELOG.md`, `docs/REPAIR-AND-VALIDATION-REPORT.md`,
-   `docs/OPTISCALER.md`, `docs/OPTISCALER-MANAGER.md`, `docs/MAKO.md`, `scripts/test-mako-renderer.py`,
-   `scripts/optiscaler_manager.py`, `scripts/test-optiscaler-manager.py`,
-   `scripts/sync-vm-xml.py`, `scripts/test-vm-xml-sync.py`, `scripts/test-manual-vm-bootstrap.sh`, `scripts/test-installer-invariants.sh`,
-   `scripts/test-vfio-hook-driver-state.sh`, `scripts/test-documentation-integrity.py`, `scripts/test-lsfg-vk-v2.py`, `.github/workflows/check.yml`, or
-   `.github/workflows/release.yml`. Any later change to NixOS, VM, installer,
-   runtime hooks, or other system-affecting source paths blocks publication and
-   requires a new full-system build.
+4. If the full-system build is from an ancestor, the release workflow checks every later changed path against the **literal, exhaustive allowlist** below. The category descriptions are explanatory only: there are no wildcard rules or blanket exemptions for all documentation, CI files, or helper scripts.
+
+   **Exact release allowlist (literal paths only):**
+   `.git-cliff.toml`,
+   `RELEASING.md`,
+   `README.md`,
+   `INSTALLATION.md`,
+   `DEGISIKLIK_GECMISI.md`,
+   `CONTRIBUTING.md`,
+   `CHANGELOG.md`,
+   `docs/REPAIR-AND-VALIDATION-REPORT.md`,
+   `docs/OPTISCALER.md`,
+   `docs/OPTISCALER-MANAGER.md`,
+   `docs/MAKO.md`,
+   `docs/archive/DEGISIKLIK_GECMISI.md`,
+   `docs/archive/README.md`,
+   `scripts/test-mako-renderer.py`,
+   `scripts/optiscaler_manager.py`,
+   `scripts/test-optiscaler-manager.py`,
+   `scripts/sync-vm-xml.py`,
+   `scripts/test-vm-xml-sync.py`,
+   `scripts/test-manual-vm-bootstrap.sh`,
+   `scripts/test-installer-invariants.sh`,
+   `scripts/test-vfio-hook-driver-state.sh`,
+   `scripts/test-documentation-integrity.py`,
+   `scripts/test-lsfg-vk-v2.py`,
+   `.github/workflows/check.yml`,
+   `.github/workflows/release.yml`
+
+   Any later change outside this exact list, including a documentation or test file not named above, blocks publication and requires a new full-system build.
 The two VM XML sync Python paths above are narrowly scoped migration-time helpers outside the NixOS flake/derivation graph and are covered by the dedicated mock-backed VM XML sync suite in normal CI. The `scripts/test-manual-vm-bootstrap.sh` and `scripts/test-installer-invariants.sh` paths are CI-only mock regression harnesses; they do not run host mutations or alter the NixOS system closure. NixOS modules/flake outputs/inputs (including `nixos/configuration.nix`, `nixos/flake.nix`, and `nixos/mako-renderer.nix`), `vm-xml/win10.xml`, `install.sh`, runtime hooks, and other system-closure-affecting paths remain gated by a new full-system build.
 
 5. Review the release version and changelog before publishing.
