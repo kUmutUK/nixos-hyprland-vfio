@@ -90,7 +90,7 @@ require("MAKO Renderer integration" in CHANGELOG,
         "Unreleased changelog must record the MAKO integration")
 
 require("python3 scripts/test-mako-renderer.py" in WORKFLOW
-        and "Build the pinned LSFG-VK v2 package" in WORKFLOW
+        and "Build the pinned LSFG-VK v2 and MAKO packages" in WORKFLOW
         and ".#mako-renderer" in WORKFLOW,
         "normal CI must run MAKO integration checks and build the pinned package")
 require("python3 scripts/test-mako-renderer.py" in CONTRIBUTING
