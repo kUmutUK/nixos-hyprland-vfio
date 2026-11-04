@@ -16,7 +16,7 @@ The detailed sections remain grouped by subject and source snapshot; this index 
 
 ## Fourteenth supplied audit cross-check — 2026-11-04
 
-**Reviewed GitHub main HEAD before this update:** ce2cd55ffbc8bc6859f746445ad533212f1aec25 (created 4 November 2026 at 17:20:22 UTC). The last successful full-system build remains manual build #10 at 480972a235655f6d1e9ec6137f85ad3f30b8655a; **the release build gate remains OPEN**.
+**Reviewed pre-update main HEAD:** GitHub `main` at `ce2cd55ffbc8bc6859f746445ad533212f1aec25`; **last successful full-system build:** #10 at `480972a235655f6d1e9ec6137f85ad3f30b8655a`; **build gate: OPEN** — `nixos/home.nix` changed after that build. Run a new full-system build before release.
 
 **Date qualification:** The supplied report labels its review date as 5 November 2026. This repository cross-check is dated 4 November 2026, so 5 November is retained only as the source report's stated metadata, not treated as the date of this update.
 
