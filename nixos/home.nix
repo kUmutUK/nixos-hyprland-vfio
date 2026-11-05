@@ -996,7 +996,8 @@ in
       [[profile]]
       name = "Genshin Impact"
       active_in = [ "GenshinImpact.exe", "GenshinImpact" ]
-      multiplier = 3
+      # Conservative fallback; MAKO Adaptive is the preferred first path to validate.
+      multiplier = 2
       flow_scale = 1.0
       performance_mode = false
       pacing_mode = "vsync"
