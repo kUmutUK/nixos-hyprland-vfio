@@ -188,7 +188,7 @@ require(
     "Last completed full-system build baseline — 2026-11-05" in REPAIR,
     "repair report must label the last completed full-system build baseline and avoid a duplicated heading",
 )
-audit_gate_line = "**Current verified source snapshot (5 November 2026):** GitHub `main` at `994b05c888fbb52295d93e8ef74e41bac66c5e65`; **normal CI:** run #1242 passed all 28 workflow-defined steps on this exact commit; **full-system build:** manual [#13](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42002113160) passed on ancestor build baseline `1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b` (2 h 24 min 51 s); **published release:** [v1.4.5](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.5) was published by release run #17 from this exact source snapshot. **Full-system build gate: CLOSED** — changes after the successful full-system build are confined to the documented release/documentation/CI/test allowlist. The 3 November target-hardware validation remains owner-reported; libvirt saved-state/managed-save restore remains unverified."
+audit_gate_line = "**Latest published release snapshot (5 November 2026):** GitHub `main` at `994b05c888fbb52295d93e8ef74e41bac66c5e65` at publication time; **normal CI:** run #1242 passed all 28 workflow-defined steps on this exact release commit; **full-system build:** manual [#13](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42002113160) passed on ancestor build baseline `1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b` (2 h 24 min 51 s); **published release:** [v1.4.5](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.5) was published by release run #17 from this exact snapshot. Changes after this release snapshot are documentation/test-only and do not alter the NixOS system closure; a successful normal-CI run on the exact current commit is still required before a later release. The 3 November target-hardware validation remains owner-reported; libvirt saved-state/managed-save restore remains unverified."
 require(
     audit_gate_line in REPAIR and audit_gate_line in STATE_INDEX and audit_gate_line in README,
     "the repair report, root status index, and README must show the same explicit reviewed-HEAD/full-build gate",
@@ -282,7 +282,7 @@ require(
     and "392,212 bytes" in STATE_INDEX and "392,212 bytes" in REPAIR
     and "f97fb12bdfbaaff4d32e7ab57bbc9251fababcd126a8ef7644947844924de9e0" in README
     and "f97fb12bdfbaaff4d32e7ab57bbc9251fababcd126a8ef7644947844924de9e0" in REPAIR,
-    "current HEAD, CI #1242, and v1.4.5 release metadata must agree across current documentation",
+    "the v1.4.5 release snapshot and its CI/build metadata must agree across documentation",
 )
 require(
     "run #13" in REPAIR and "run #13" in STATE_INDEX
