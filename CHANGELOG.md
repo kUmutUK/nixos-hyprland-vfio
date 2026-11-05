@@ -4,6 +4,11 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+### Conservative frame-generation fallback profiles — 2026-11-05
+- Reduced the Genshin Impact LSFG-VK v2 fallback profile from 3x to 2x; Wuthering Waves remains at 2x. MAKO Adaptive remains the preferred first per-game Frame Generation path to validate, with LSFG-VK retained as the alternative.
+- Added regression coverage for both 2x LSFG-VK profiles and clarified that the MAKO-first preference is not a measured RX 6700 XT performance ranking. Frame Generation remains opt-in per game; CS2, global AMD low-latency settings, Reflex, MAKO packaging, and OptiScaler behavior are unchanged.
+- This updates `nixos/home.nix`; the previous full-system build #11 does not cover this change. A fresh full-system build is required before release, in addition to exact-HEAD normal CI.
+
 ### Exact-HEAD build, CI and v1.4.2 release verification — 2026-11-05
 - Reconciled the current-state README, root index, repair report, and documentation-integrity regression with the verified 5 November source snapshot `9661091e35aed98b18483ff6d25a54fe0653c877`.
 - Normal CI #1220 passed all 28 workflow-defined steps on that exact commit; manual full-system build #11 also passed on the same commit, including complete NixOS toplevel/selected-kernel build and unchanged-lock verification.
