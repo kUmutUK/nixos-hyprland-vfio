@@ -1,5 +1,11 @@
 # Historical Change Log Index (English)
 
+## Current pending full-system build gate — 2026-11-05
+
+- The latest completed full-system build remains #11 on `9661091e35aed98b18483ff6d25a54fe0653c877`; it predates the current Genshin LSFG-VK fallback adjustment.
+- The current Home Manager profile uses Genshin LSFG-VK 2x instead of 3x. Wuthering Waves remains 2x. MAKO Adaptive is the preferred first per-game Frame Generation path to validate; LSFG-VK remains the fallback. This is a configuration preference, not a measured performance ranking.
+- The change modifies `nixos/home.nix`, so the full-system build gate is **OPEN** until a fresh full-system build covers the updated configuration. Exact-HEAD normal CI must also pass. CS2 native rendering, global AMD low-latency defaults, the Reflex choice, MAKO package, OptiScaler integration, and VM XML remain unchanged.
+
 ## Latest verification follow-up — 2026-11-05
 
 **Verified main snapshot:** GitHub `main` at `9661091e35aed98b18483ff6d25a54fe0653c877`; **normal CI:** #1220 passed on this exact commit; **full-system build:** #11 passed on this exact commit; **release:** v1.4.2 published by run #7. **Full-system build gate: CLOSED** — the complete NixOS toplevel and selected kernel were built on this snapshot. This follow-up changes only documentation, changelog, and the documentation-integrity regression, all covered by the release ancestor-build allowlist; normal CI must still pass on the exact resulting `main` commit before any subsequent release.
