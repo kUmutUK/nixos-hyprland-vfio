@@ -64,10 +64,12 @@ heading to match `## <requested-tag> - YYYY-MM-DD`. It then creates the annotate
 tag, builds the canonical source ZIP, creates its SHA-256 manifest, and publishes
 the GitHub Release.
 
-The current history contains a legacy annotated `v1.4.3` tag at the same commit
-as the published `v1.4.4` release; `v1.4.3` has no associated GitHub Release.
-Treat `v1.4.4` as the published version. The workflow now prevents additional
-manual version tags from being attached to a commit that is already tagged.
+The history contains a legacy annotated `v1.4.3` tag at the same commit as the
+published `v1.4.4` release; `v1.4.3` has no associated GitHub Release. That is a
+historical tag anomaly, not the current release state. The current published
+release is [v1.4.5](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.5),
+published by release run #17 on 5 November 2026. The workflow now prevents
+additional manual version tags from being attached to an already-tagged commit.
 
 Alternatively, a maintainer can create and push the annotated tag locally:
 

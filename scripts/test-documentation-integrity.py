@@ -193,6 +193,25 @@ require(
     audit_gate_line in REPAIR and audit_gate_line in STATE_INDEX and audit_gate_line in README,
     "the repair report, root status index, and README must show the same explicit reviewed-HEAD/full-build gate",
 )
+pre_reconciliation_main_line = "**Pre-reconciliation main verification (5 November 2026):** GitHub `main` at `4eb6a106d825890a929fe57054a1660da524a458`; normal CI [#1244](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42076151633) passed all 28 workflow-defined steps on this exact commit and uploaded `nixos-hyprland-vfio-source` (artifact ID `13438456860`, 383,949 bytes; outer artifact digest `sha256:f04a477945bc2b47d7f8c7394a8f178895ed950bba2f245fae9b7aecdf553d97`). The preceding documentation-only commit `d35155ce6b9fb089934ee2f15f4208279dc5e2da` had CI #1243 fail at the documentation-integrity gate; commit `4eb6a10` restored the missing historical assertions and CI #1244 passed. This is the last completed validation before this documentation/test reconciliation; this follow-up requires its own exact-commit normal CI before a later release."
+require(
+    pre_reconciliation_main_line in README
+    and pre_reconciliation_main_line in CHANGELOG
+    and pre_reconciliation_main_line in STATE_INDEX
+    and pre_reconciliation_main_line in REPAIR,
+    "README, changelog, root index, and repair report must agree on the latest completed pre-reconciliation main CI and artifact",
+)
+require(
+    "**Previous reviewed artifact (historical):** Normal CI #1239" in README
+    and "13416329673" in README
+    and "not the artifact for the pre-reconciliation main verification above" in README,
+    "README must label CI #1239's v1.4.4 artifact as historical rather than current",
+)
+require(
+    "[v1.4.5](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.5)" in RELEASING
+    and "published by release run #17 on 5 November 2026" in RELEASING,
+    "release guide must identify v1.4.5 as the current published release while retaining the v1.4.3 tag anomaly as history",
+)
 require(
     "Thirteenth supplied audit cross-check — 2026-11-04" in REPAIR
     and "46 commits ahead" in REPAIR
