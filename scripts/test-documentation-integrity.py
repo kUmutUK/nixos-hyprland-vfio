@@ -32,6 +32,7 @@ FLAKE = (ROOT / "nixos/flake.nix").read_text(encoding="utf-8")
 FLAKE_LOCK = json.loads((ROOT / "nixos/flake.lock").read_text(encoding="utf-8"))
 HOME_NIX = (ROOT / "nixos/home.nix").read_text(encoding="utf-8")
 REPAIR = (ROOT / "docs/REPAIR-AND-VALIDATION-REPORT.md").read_text(encoding="utf-8")
+UUID_GUIDE = (ROOT / "docs/UUID-AND-MACHINE-IDENTITY.md").read_text(encoding="utf-8")
 OPTISCALER_DOC = (ROOT / "docs/OPTISCALER.md").read_text(encoding="utf-8")
 OPTISCALER_MANAGER_DOC = (ROOT / "docs/OPTISCALER-MANAGER.md").read_text(encoding="utf-8")
 OPTISCALER_MANAGER_SCRIPT = (ROOT / "scripts/optiscaler_manager.py").read_text(encoding="utf-8")
@@ -51,6 +52,30 @@ def require(condition: bool, message: str) -> None:
 readme_top = "\n".join(README.splitlines()[:8])
 require("docs/REPAIR-AND-VALIDATION-REPORT.md" in readme_top and "docs/AUDIT-2026-10-28-VM-XML-VFIO.md" not in readme_top, "README must point to the current repair report, not the older audit")
 require("2026-11-04 source-tree cross-checks" in readme_top, "README must identify the current 2026-11-04 source-tree cross-check")
+require(
+    "docs/UUID-AND-MACHINE-IDENTITY.md" in README
+    and "docs/UUID-AND-MACHINE-IDENTITY.md" in INSTALLATION
+    and "[UUID and machine-identity safeguards](docs/UUID-AND-MACHINE-IDENTITY.md)" in STATE_INDEX,
+    "README, installation guide, and status index must link the UUID safety guide",
+)
+require(
+    "A filesystem UUID, a PARTUUID, and a LUKS UUID are different identifiers." in UUID_GUIDE
+    and "intentional, not placeholders" in UUID_GUIDE
+    and "Do not edit, regenerate, swap, or replace the committed host identifiers" in UUID_GUIDE,
+    "UUID guide must distinguish host storage identifiers and warn against casual changes",
+)
+require(
+    "Genuinely new VM" in UUID_GUIDE
+    and "Existing VM" in UUID_GUIDE
+    and "keeps the existing UUID, MAC, disk path" in UUID_GUIDE
+    and "Do not manually replace the UUID in an existing `win10` domain" in UUID_GUIDE,
+    "UUID guide must distinguish fresh VM identity from preservation of an existing domain",
+)
+require(
+    "fresh UUID/MAC for a new XML" in INSTALLATION
+    and "preserves the registered/on-disk identity" in INSTALLATION,
+    "installation guide must warn that VM identity is fresh only for a new domain and preserved for existing VMs",
+)
 require("- [License](#license)" in README and "## License" in README, "README contents must link to the License section")
 require(".git-cliff.toml" in README and "RELEASING.md" in README and ".github/workflows/release.yml" in README, "README repository map must include the release configuration, guide, and workflow")
 require("Normal CI must pass for the exact tagged commit" in README, "README must require successful CI for the exact tagged commit")

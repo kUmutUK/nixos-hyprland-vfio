@@ -4,6 +4,11 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+### Host storage and VM identity warnings — 2026-11-05
+
+- Added explicit guidance that the deployed host's Btrfs/LUKS identifiers are intentional and must not be regenerated or interchanged with PARTUUID values.
+- Documented that the libvirt domain UUID/MAC are persistent VM identity: the helper assigns fresh identity only for a genuinely new VM and preserves an existing domain's identity.
+
 ### Current repository status and v1.4.5 release — 2026-11-05
 
 **Latest published release snapshot (5 November 2026):** GitHub `main` at `994b05c888fbb52295d93e8ef74e41bac66c5e65` at publication time; **normal CI:** run #1242 passed all 28 workflow-defined steps on this exact release commit; **full-system build:** manual [#13](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42002113160) passed on ancestor build baseline `1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b` (2 h 24 min 51 s); **published release:** [v1.4.5](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.5) was published by release run #17 from this exact snapshot. Changes after this release snapshot are documentation/test-only and do not alter the NixOS system closure; a successful normal-CI run on the exact current commit is still required before a later release. The 3 November target-hardware validation remains owner-reported; libvirt saved-state/managed-save restore remains unverified.
