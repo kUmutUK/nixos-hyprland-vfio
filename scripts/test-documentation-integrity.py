@@ -173,9 +173,16 @@ require(
     "manual releases must refuse a commit that already has another stable version tag",
 )
 require(
-    "re.escape(release_tag)" in RELEASE_WORKFLOW
+    r'rf"^## {re.escape(release_tag)} - \d{{4}}-\d{{2}}-\d{{2}}$"' in RELEASE_WORKFLOW
     and "Release notes heading does not match" in RELEASE_WORKFLOW,
-    "release workflow must verify that the first generated note heading matches the requested version",
+    "release workflow must preserve literal date quantifiers inside its raw f-string",
+)
+release_heading_pattern = re.compile(rf"^## {re.escape('v1.4.5')} - \d{{4}}-\d{{2}}-\d{{2}}$")
+require(
+    release_heading_pattern.fullmatch("## v1.4.5 - 2026-11-05") is not None
+    and release_heading_pattern.fullmatch("## v1.4.4 - 2026-11-05") is None
+    and release_heading_pattern.fullmatch("## v1.4.5 - 2026-11-5") is None,
+    "release-note heading regex must accept only the exact requested version and an ISO date",
 )
 require(
     "Last completed full-system build baseline — 2026-11-05" in REPAIR,

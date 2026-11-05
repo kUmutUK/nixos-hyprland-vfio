@@ -223,7 +223,7 @@ jobs:
           import sys
           notes = Path(sys.argv[1]).read_text(encoding="utf-8").lstrip()
           release_tag = os.environ["RELEASE_TAG"]
-          expected = re.compile(rf"^## {re.escape(release_tag)} - \d{4}-\d{2}-\d{2}$")
+          expected = re.compile(rf"^## {re.escape(release_tag)} - \d{{4}}-\d{{2}}-\d{{2}}$")
           first_line = notes.splitlines()[0] if notes else "<empty>"
           if expected.match(first_line) is None:
               raise SystemExit(f"Release notes heading does not match {release_tag!r}: {first_line!r}")
