@@ -758,12 +758,13 @@ gamemode_comment_end = CONFIG.find("networking.hostName", gamemode_comment_start
 gamemode_comment = CONFIG[gamemode_comment_start:gamemode_comment_end] if gamemode_comment_start >= 0 and gamemode_comment_end > gamemode_comment_start else ""
 if gamemode_renice_match:
     gamemode_renice = int(gamemode_renice_match.group(1))
+    applied_nice = -gamemode_renice
     nice_direction = (
-        "lowering CPU scheduling priority" if gamemode_renice > 0
-        else "raising CPU scheduling priority" if gamemode_renice < 0
+        "lowering CPU scheduling priority" if applied_nice > 0
+        else "raising CPU scheduling priority" if applied_nice < 0
         else "leaving CPU scheduling priority unchanged"
     )
-    expected_nice = f"nice value ({gamemode_renice:+d})"
+    expected_nice = f"nice value ({applied_nice:+d})"
 else:
     nice_direction = expected_nice = ""
 require(

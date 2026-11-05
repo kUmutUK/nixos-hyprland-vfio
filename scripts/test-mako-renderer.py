@@ -52,12 +52,14 @@ require('makoRendererPackage = pkgs.callPackage ./mako-renderer.nix { };' in FLA
         "flake must expose a direct build target for the MAKO package")
 
 required_sources = "configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix"
-require(f"REQUIRED_NIXOS_SOURCE_FILES=({required_sources})" in INSTALLER,
-        "installer preflight must require the new MAKO Nix source")
+require(f"REQUIRED_NIXOS_SOURCE_FILES=({required_sources})" in INSTALLER
+        and "REQUIRED_NIXOS_RUNTIME_FILES=(hooks/qemu)" in INSTALLER,
+        "installer preflight must require the six Nix sources and separate QEMU runtime hook")
 require('"$NIXOS_FLAKE_DIR/mako-renderer.nix"' in INSTALLER,
         "installer rollback/backup transaction must include the MAKO package expression")
-require(f"REQUIRED_NIXOS_SOURCE_FILES=({required_sources})" in INSTALLER_TEST,
-        "installer regression harness must cover all six deployed Nix sources")
+require(f"REQUIRED_NIXOS_SOURCE_FILES=({required_sources})" in INSTALLER_TEST
+        and "REQUIRED_NIXOS_RUNTIME_FILES=(hooks/qemu)" in INSTALLER_TEST,
+        "installer regression harness must cover the six deployed Nix sources and QEMU runtime hook")
 
 require("### MAKO Renderer for Proton games" in README and "docs/MAKO.md" in README,
         "README must describe and link the optional MAKO integration")

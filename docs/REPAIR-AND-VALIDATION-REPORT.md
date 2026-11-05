@@ -6,7 +6,8 @@
 
 The detailed sections remain grouped by subject and source snapshot; this index supplies their date order without rewriting the historical record.
 
-- **2026-11-05 (latest):** conservative Genshin LSFG-VK fallback profile, MAKO-first selection guidance, and the resulting pending full-system build gate.
+- **2026-11-05 (latest):** GameMode renice semantics/test correction and installer early preflight coverage for the QEMU hook; full-system build pending.
+- **2026-11-05 (earlier):** conservative Genshin LSFG-VK fallback profile and MAKO-first selection guidance; full-system build pending.
 - **2026-11-05 (previous verified baseline):** exact-HEAD normal CI #1220, full-system build #11, and v1.4.2 release verification; this remains the last completed full-system build.
 - **2026-11-04 (historical):** fourteenth supplied audit cross-check; archive version-table reconciliation; Home Manager package de-duplication; historical build-label correction.
 - **2026-11-04 (earlier, historical):** thirteenth supplied audit cross-check; MAKO Renderer integration; supplied VM XML/exact-HEAD cross-check; current supplied archive-report reconciliation; supplied configuration/installer cross-check; Pyprland, PCI, and cursor remediation.
@@ -15,6 +16,13 @@ The detailed sections remain grouped by subject and source snapshot; this index 
 - **2026-11-01:** ShellCheck follow-up; eleventh audit/release-workflow repair; twelfth audit update.
 - **2026-10-30:** ninth and tenth audit cross-checks.
 - **2026-10-28 and earlier:** historical source-ZIP, packaging, installer, and configuration follow-ups.
+
+## GameMode and installer preflight remediation — 2026-11-05
+
+- **GameMode semantics:** corrected the `nixos/configuration.nix` comment to state that GameMode negates the configured positive `renice` magnitude. With `renice = 10`, the effective nice value is `-10`, which raises CPU scheduling priority when GameMode successfully applies it. The documentation-integrity regression now calculates and checks the effective value and direction. No GameMode numeric setting was changed.
+- **Installer preflight:** `install.sh` now requires the non-empty `nixos/hooks/qemu` source before asking for the high-risk acknowledgement or creating backups. A separate runtime-source list preserves the six-file Nix copy loop. The extracted preflight regression checks that the hook is accepted when valid and rejected when missing or empty; the MAKO integration test is aligned with the split source lists.
+- **Preserved choices:** `gpu_device = 1` remains pending the target host's live `/sys/class/drm` mapping. VM XML, PCI/USB identities, VFIO runtime behavior, kernel selection, frame-generation settings, and desktop preferences were not changed.
+- **Build gate: OPEN.** `nixos/configuration.nix` and `install.sh` are outside the release workflow's ancestor-build allowlist. A fresh successful full-system build must cover the resulting source snapshot before release, and normal CI must pass on the exact HEAD. This source update does not claim a new NixOS build, physical VFIO test, or saved-state restore.
 
 ## Last completed full-system build baseline — 2026-11-05
 

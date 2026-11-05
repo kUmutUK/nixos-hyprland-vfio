@@ -4,6 +4,11 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+### GameMode priority and installer source preflight — 2026-11-05
+- Corrected the GameMode comment and documentation-integrity regression: the configured positive `renice = 10` magnitude is negated by GameMode and applied as nice `-10`, raising CPU scheduling priority. The numeric setting itself is unchanged.
+- Added `nixos/hooks/qemu` to the installer's initial required-source preflight through a separate runtime-source list, preserving the six-file Nix deployment loop. Expanded installer invariant and MAKO integration checks to cover the hook being present, non-empty, and required.
+- These changes touch `nixos/configuration.nix` and `install.sh`, which remain outside the release ancestor-build allowlist. A fresh full-system build is required before release; exact-HEAD normal CI must pass as well. `gpu_device = 1`, VM XML, VFIO behavior, and other hardware-specific settings remain unchanged.
+
 ### Conservative frame-generation fallback profiles — 2026-11-05
 - Reduced the Genshin Impact LSFG-VK v2 fallback profile from 3x to 2x; Wuthering Waves remains at 2x. MAKO Adaptive remains the preferred first per-game Frame Generation path to validate, with LSFG-VK retained as the alternative.
 - Added regression coverage for both 2x LSFG-VK profiles and clarified that the MAKO-first preference is not a measured RX 6700 XT performance ranking. Frame Generation remains opt-in per game; CS2, global AMD low-latency settings, Reflex, MAKO packaging, and OptiScaler behavior are unchanged.

@@ -259,7 +259,7 @@ state_test_dir="$(mktemp -d)"
 
 # Exercise the actual installer source preflight against temporary repository trees.
 preflight_dir="$state_test_dir/source-preflight"
-mkdir -p "$preflight_dir/repo/nixos"
+mkdir -p "$preflight_dir/repo/nixos/hooks"
 preflight_function="$preflight_dir/validate-source.sh"
 awk '/^validate_nixos_source_files\(\) \{/ { capture=1 } capture { print } capture && /^}/ { exit }' "$INSTALLER" \
   > "$preflight_function"
@@ -268,27 +268,28 @@ if ! grep -q '^validate_nixos_source_files() {' "$preflight_function"; then
   exit 1
 fi
 if ! grep -Fq 'REQUIRED_NIXOS_SOURCE_FILES=(configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix)' "$INSTALLER"; then
-  echo "FAIL: installer source preflight must declare all six required Nix source files." >&2
+  echo "FAIL: installer source preflight must declare six Nix sources and a separate QEMU hook list." >&2
   exit 1
 fi
 cat > "$preflight_dir/harness.sh" <<'BASH'
 set -euo pipefail
 REPO_DIR="$1"
 REQUIRED_NIXOS_SOURCE_FILES=(configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix)
+REQUIRED_NIXOS_RUNTIME_FILES=(hooks/qemu)
 error() { printf '%s\\n' "$*" >&2; return 1; }
 source "$2"
 validate_nixos_source_files
 BASH
-for file in configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix; do
+for file in configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix hooks/qemu; do
   printf 'valid %s\\n' "$file" > "$preflight_dir/repo/nixos/$file"
 done
 if ! bash "$preflight_dir/harness.sh" "$preflight_dir/repo" "$preflight_function"; then
-  echo "FAIL: complete non-empty Nix source set was rejected." >&2
+  echo "FAIL: complete non-empty Nix source set and QEMU hook were rejected." >&2
   exit 1
 fi
 
-# Every required source must fail closed when missing or empty.
-for file in configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix; do
+# Every required Nix source and the QEMU hook must fail closed when missing or empty.
+for file in configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix hooks/qemu; do
   source_file="$preflight_dir/repo/nixos/$file"
   mv "$source_file" "$source_file.saved"
   if bash "$preflight_dir/harness.sh" "$preflight_dir/repo" "$preflight_function" >/dev/null 2>&1; then
@@ -304,6 +305,12 @@ for file in configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix mako-
   fi
   mv "$source_file.saved" "$source_file"
 done
+
+if ! grep -Fq 'REQUIRED_NIXOS_RUNTIME_FILES=(hooks/qemu)' "$INSTALLER" \
+  || ! grep -Fq 'for file in "${REQUIRED_NIXOS_SOURCE_FILES[@]}" "${REQUIRED_NIXOS_RUNTIME_FILES[@]}"; do' "$INSTALLER"; then
+  echo "FAIL: installer preflight must separately require the QEMU runtime hook." >&2
+  exit 1
+fi
 
 # The initial preflight must run before the risk acknowledgement and before backup creation.
 preflight_call_line="$(grep -n "^validate_nixos_source_files$" "$INSTALLER" | head -n 1 | cut -d: -f1)"
@@ -434,9 +441,9 @@ if [ ! -s "$ROOT/nixos/mako-renderer.nix" ]; then
   exit 1
 fi
 if ! grep -Fq 'REQUIRED_NIXOS_SOURCE_FILES=(configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix)' "$INSTALLER" \
-  || ! grep -Fq 'for file in "${REQUIRED_NIXOS_SOURCE_FILES[@]}"; do' "$INSTALLER" \
+  || ! grep -Fq 'for file in "${REQUIRED_NIXOS_SOURCE_FILES[@]}" "${REQUIRED_NIXOS_RUNTIME_FILES[@]}"; do' "$INSTALLER" \
   || ! grep -Fq 'for f in "${REQUIRED_NIXOS_SOURCE_FILES[@]}"; do' "$INSTALLER"; then
-  echo "FAIL: installer preflight and deployment must require/copy the v2 package expression." >&2
+  echo "FAIL: installer preflight and deployment must require/copy the six Nix expressions." >&2
   exit 1
 fi
 transaction_block="$(sed -n '/^TRANSACTION_PATHS=(/,/^)/p' "$INSTALLER")"

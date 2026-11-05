@@ -114,19 +114,20 @@ SNAPSHOT_SUBVOL="/home/.snapshots"
 SNAPSHOT_SUBVOL_CREATED=0
 
 REQUIRED_NIXOS_SOURCE_FILES=(configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix)
+REQUIRED_NIXOS_RUNTIME_FILES=(hooks/qemu)
 
-# Reject an incomplete checkout before prompting or touching system state. A skipped
-# source file can leave a mixed old/new deployment even when individual copies work.
+# Reject an incomplete checkout, including its runtime QEMU hook, before prompting
+# or touching system state. A skipped source can leave a mixed old/new deployment.
 validate_nixos_source_files() {
   local file source_file
   if [[ ! -d "$REPO_DIR/nixos" ]]; then
     error "Required source directory is missing: $REPO_DIR/nixos. No system files have been changed."
     return 1
   fi
-  for file in "${REQUIRED_NIXOS_SOURCE_FILES[@]}"; do
+  for file in "${REQUIRED_NIXOS_SOURCE_FILES[@]}" "${REQUIRED_NIXOS_RUNTIME_FILES[@]}"; do
     source_file="$REPO_DIR/nixos/$file"
     if [[ ! -f "$source_file" || ! -s "$source_file" ]]; then
-      error "Required NixOS source file is missing or empty: $source_file. No system files have been changed."
+      error "Required NixOS source file or runtime hook is missing or empty: $source_file. No system files have been changed."
       return 1
     fi
   done
