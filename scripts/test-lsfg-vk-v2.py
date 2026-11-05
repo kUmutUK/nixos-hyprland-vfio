@@ -73,6 +73,10 @@ if not {"GenshinImpact.exe", "GenshinImpact"}.issubset(set(profiles["Genshin Imp
     raise SystemExit("FAIL: Genshin profile must include its executable/process aliases.")
 if not {"Client-Win64-Shipping.exe", "Client-Win64-Shipping"}.issubset(set(profiles["Wuthering Waves"].get("active_in", []))):
     raise SystemExit("FAIL: Wuthering Waves profile must include its executable/process aliases.")
+if profiles["Genshin Impact"].get("multiplier") != 2:
+    raise SystemExit("FAIL: Genshin must retain the conservative 2x LSFG-VK fallback profile.")
+if profiles["Wuthering Waves"].get("multiplier") != 2:
+    raise SystemExit("FAIL: Wuthering Waves must retain its 2x LSFG-VK fallback profile.")
 for profile in profiles.values():
     active_in = profile.get("active_in", [])
     aliases = set(active_in if isinstance(active_in, list) else [active_in])
