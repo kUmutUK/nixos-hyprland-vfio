@@ -6,7 +6,8 @@
 
 The detailed sections remain grouped by subject and source snapshot; this index supplies their date order without rewriting the historical record.
 
-- **2026-11-05 (latest):** exact-HEAD normal CI #1220, full-system build #11, and v1.4.2 release verification.
+- **2026-11-05 (latest):** conservative Genshin LSFG-VK fallback profile, MAKO-first selection guidance, and the resulting pending full-system build gate.
+- **2026-11-05 (previous verified baseline):** exact-HEAD normal CI #1220, full-system build #11, and v1.4.2 release verification; this remains the last completed full-system build.
 - **2026-11-04 (historical):** fourteenth supplied audit cross-check; archive version-table reconciliation; Home Manager package de-duplication; historical build-label correction.
 - **2026-11-04 (earlier, historical):** thirteenth supplied audit cross-check; MAKO Renderer integration; supplied VM XML/exact-HEAD cross-check; current supplied archive-report reconciliation; supplied configuration/installer cross-check; Pyprland, PCI, and cursor remediation.
 - **2026-11-05 build/navigation records:** Last completed full-system build baseline (#11); the 4 November CHANGELOG-only entries for Game graphics profile guidance, CS2 frame-generation profile, and Source-tree audit hardening remain listed below.
@@ -28,6 +29,14 @@ The detailed sections remain grouped by subject and source snapshot; this index 
 - **Release input retry:** run #6 stopped at strict version-input validation because `1.4.2` lacked the required `v` prefix. Run #7 used `v1.4.2` and completed successfully; the first attempt did not fail in Nix build or normal CI.
 - **Build-gate disposition:** build #11 covers the exact verified source commit. The documentation, changelog, and documentation-integrity updates in this follow-up are inside the release workflow's explicit ancestor-build allowlist; they do not reopen the system-build gate. The normal-CI exact-commit requirement still applies before any later release.
 - **Hardware boundary:** this build and normal CI do not prove a real libvirt saved-state restore. The maintainer-reported normal VM start/shutdown, RX 6700 XT GPU handback, and Hyprland recovery remain separate target-host evidence.
+
+## Frame-generation fallback profile update — 2026-11-05
+
+- **LSFG-VK fallback:** changed only the Genshin Impact profile in `nixos/home.nix` from a 3x to a 2x multiplier. Wuthering Waves remains at 2x; Benchmark and vkcube profiles are unchanged.
+- **Selection guidance:** MAKO Adaptive remains the first per-game Frame Generation path to validate; LSFG-VK v2 is the fallback when MAKO is unavailable or unsuitable for that title. OptiScaler remains optional and game-local. This is a configuration preference, not a measured performance comparison on the RX 6700 XT.
+- **Preserved settings:** CS2 remains native with no Frame Generation; global AMD low-latency/Anti-Lag settings and the unset Reflex variable are unchanged. No MAKO profile is auto-enabled, no OptiScaler files or Steam options are changed, and no VM XML or VFIO behavior is touched.
+- **Build gate: OPEN.** The Home Manager change in `nixos/home.nix` is newer than full-system build #11 at `9661091e35aed98b18483ff6d25a54fe0653c877`; that build does not cover this profile update. A fresh full-system build is required before release. Exact-HEAD normal CI and the LSFG-VK regression test must also pass.
+- **Hardware boundary:** no new game runtime, frame-pacing, VRR, or RX 6700 XT MAKO-vs-LSFG performance result is claimed.
 
 ## Fourteenth supplied audit cross-check — 2026-11-04 (historical, superseded)
 
