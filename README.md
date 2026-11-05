@@ -688,7 +688,7 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 
 ## Known limitations
 
-- **RT-Bore-LTO validation:** the upstream source does not publish the ThinLTO variant in its binary cache, so each newly selected upstream revision needs a local build. The project owner reports that the currently locked revision built and passed the VM start/shutdown and Hyprland-recovery check on the target machine (see the 2026-10-23 update below); this result is owner-reported, not independently reproduced, and does not guarantee compatibility on other hardware. Real-time preemption does not guarantee higher FPS or better frametimes. Retain a known-good boot generation when testing future kernel revisions.
+- **RT-Bore-LTO validation:** the upstream source does not publish the ThinLTO variant in its binary cache, so each newly selected upstream revision needs a local build. The project owner reports that the currently locked revision built and passed the VM start/shutdown and Hyprland-recovery check on the target machine (see the 2026-11-03 update below); this result is owner-reported, not independently reproduced, and does not guarantee compatibility on other hardware. Real-time preemption does not guarantee higher FPS or better frametimes. Retain a known-good boot generation when testing future kernel revisions.
 - **Global Vulkan latency layer compatibility:** upstream `low_latency_layer` v0.2.0 documents an incompatibility with the `obs_vkcapture` Vulkan capture layer. If game capture or recording breaks while the layer is enabled, launch the affected game with `DISABLE_LOW_LATENCY_LAYER=1 %command%` and verify whether capture works again.
 - **LSFG-VK schema:** the current tree uses the upstream v2 `[[profile]]` profile format (`version = 2` and `[global]`). The layer/UI/CLI are built from the immutable revision and source hash in `nixos/lsfg-vk-v2.nix`; CI validates the generated TOML and builds `.#lsfg-vk-v2`. Upstream is licensed CC BY-NC-ND 4.0, so the package does not patch or redistribute modified upstream source. Lossless Scaling itself must be separately installed through Steam.
 - **Wuthering Waves LSFG profile:** the v2 configuration includes common Proton/Wine executable aliases `Client-Win64-Shipping.exe` and `Client-Win64-Shipping`. Confirm the actual process name selected by LSFG-VK from the target machine's runtime log; the static configuration test cannot prove the profile is activated in-game.
@@ -860,11 +860,15 @@ For a complete NixOS system build on GitHub Actions, open **Actions → Full Nix
 
 > **Historical scope as of 2026-10-16:** this result applies to the previous standard BORE-LTO kernel, not the then-untested RT-Bore-LTO kernel.
 >
-> On 2026-10-16, the project owner reported that GitHub Actions CI was green, the NixOS rebuild and standard BORE-LTO kernel build completed successfully, the Windows VM started, and a normal VM shutdown returned the host display and Hyprland session. At that time, the selected RT-Bore-LTO variant had not yet been built or tested. This is a historical, owner-reported result for the previous kernel and was not independently reproduced during this audit. The later RT-Bore-LTO test is recorded in the 2026-10-23 update below.
+> On 2026-10-16, the project owner reported that GitHub Actions CI was green, the NixOS rebuild and standard BORE-LTO kernel build completed successfully, the Windows VM started, and a normal VM shutdown returned the host display and Hyprland session. At that time, the selected RT-Bore-LTO variant had not yet been built or tested. This is a historical, owner-reported result for the previous kernel and was not independently reproduced during this audit. The later RT-Bore-LTO test is recorded in the 2026-11-03 update below.
 
-### Target-system validation update — 2026-10-23
+### Historical target-system validation update — 2026-10-23 (superseded by 2026-11-03)
 
-> The project owner now reports that NixOS rebuilt successfully, the RT-Bore-LTO ThinLTO kernel compiled successfully, the Windows VM started and shut down normally, and control returned to Hyprland. This is owner-reported validation on the target machine, not independent reproduction and not a guarantee for other hardware.
+> The project owner reported that NixOS rebuilt successfully, the RT-Bore-LTO ThinLTO kernel compiled successfully, the Windows VM started and shut down normally, and control returned to Hyprland. This is historical owner-reported validation; the later 3 November result below is the current target-hardware record.
+
+### Target-system validation update — 2026-11-03
+
+> On 3 November 2026, the project owner confirmed that the then-current target configuration rebuilt successfully, the selected RT-Bore-LTO ThinLTO kernel compiled locally, and the Windows 10 VM started and completed a normal shutdown, returning the host display and Hyprland session. The corresponding `nixos/flake.lock` resolved the CachyOS kernel input to `755712deee259ef7efbfe9154038a270c3d75a87`. This is owner-reported physical-hardware validation, not independent reproduction and not a guarantee for other hardware. It covers the normal VM start/shutdown and host-recovery path; it does not validate libvirt saved-state or managed-save restore.
 
 ## Releasing
 

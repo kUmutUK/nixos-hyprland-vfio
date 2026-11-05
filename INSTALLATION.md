@@ -864,13 +864,23 @@ only for startup troubleshooting; it is not a permanent gaming configuration.
 > The later RT-Bore-LTO result is recorded separately below; neither owner-reported result is an
 > independent reproduction or a guarantee for other hardware.
 
-### Target-system validation update — 23 October 2026
+### Historical target-system validation update — 23 October 2026 (superseded)
 
-> The project owner reports that NixOS rebuilt successfully, the RT-Bore-LTO ThinLTO kernel compiled,
-> the Windows VM started and shut down normally, and control returned to Hyprland on the target
-> machine. This is owner-reported validation, not independent reproduction. Since this kernel variant
-> is not available in the upstream binary cache, a newly selected upstream revision still needs a
-> local build and a repeat of the boot, VM start/shutdown, display recovery, and second-start checks.
+> The owner-reported RT-Bore-LTO ThinLTO build and ordinary VM lifecycle result recorded at this date
+> is retained as historical evidence. The newer 3 November target-machine validation below is the
+> current physical-hardware record.
+
+### Target-system validation update — 3 November 2026
+
+> On 3 November 2026, the project owner reported a successful NixOS rebuild with the then-current
+> target configuration, successful local compilation of the selected RT-Bore-LTO ThinLTO kernel,
+> a normal Windows 10 VM start and shutdown, and return of GPU/display control to the Hyprland host
+> session. The CachyOS kernel input was locked to
+> `755712deee259ef7efbfe9154038a270c3d75a87` at that validation point. This is owner-reported
+> physical-hardware evidence, not independent reproduction or a guarantee for other hardware.
+> It covers ordinary VM start/shutdown and host recovery; libvirt saved-state/managed-save restore
+> remains unverified. Every newly selected upstream kernel revision still needs a local build and
+> its boot and VM lifecycle revalidated before relying on it.
 
 ---
 

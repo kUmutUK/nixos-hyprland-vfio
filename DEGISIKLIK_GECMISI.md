@@ -10,6 +10,7 @@
 - **Canonical CI artifact:** [`nixos-hyprland-vfio-source`](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42001709686), artifact ID `13403280716`, **376,179 bytes**, GitHub artifact digest `sha256:d892c0ee1a7227c9e4f593c04ce19fe0e3f69b35b1ae7a2562ed8e0804c3309d`. This is the outer Actions artifact digest.
 - **Release status:** v1.4.2 remains published from the earlier `9661091e35aed98b18483ff6d25a54fe0653c877` snapshot by release run #7. The newer `1dbb7d5` source snapshot has not been tagged or released.
 - **Hardware boundary:** the successful runner build and CI do not prove physical GPU/VM behavior or libvirt saved-state restore. The maintainer-reported normal Windows VM start/shutdown, GPU handback, and Hyprland recovery remain separate target-host evidence; saved-state restore remains unverified.
+- **Target-host hardware validation (2026-11-03):** the project owner reports that the then-current NixOS configuration rebuilt successfully, the selected RT-Bore-LTO ThinLTO kernel compiled locally, and the Windows 10 VM completed a normal start/shutdown cycle with GPU handback and return to Hyprland. The corresponding CachyOS input is locked at `755712deee259ef7efbfe9154038a270c3d75a87`. This is owner-reported, not independently reproduced; saved-state/managed-save restore remains unverified.
 
 ## Previous exact-HEAD build and v1.4.2 release verification — 2026-11-05 (historical)
 

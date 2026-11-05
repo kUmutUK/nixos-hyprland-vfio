@@ -13,6 +13,7 @@ The detailed sections remain grouped by subject and source snapshot; this index 
 - **2026-11-04 (historical):** fourteenth supplied audit cross-check; archive version-table reconciliation; Home Manager package de-duplication; historical build-label correction.
 - **2026-11-04 (earlier, historical):** thirteenth supplied audit cross-check; MAKO Renderer integration; supplied VM XML/exact-HEAD cross-check; current supplied archive-report reconciliation; supplied configuration/installer cross-check; Pyprland, PCI, and cursor remediation.
 - **2026-11-05 build/navigation records:** Last completed full-system build baseline (#13); the 4 November CHANGELOG-only entries for Game graphics profile guidance, CS2 frame-generation profile, and Source-tree audit hardening remain listed below.
+- **2026-11-03 (target hardware):** owner-reported successful rebuild, selected kernel compilation, Windows VM start/shutdown, and Hyprland recovery on the then-current target configuration.
 - **2026-11-03:** post-audit remediation; supplied comprehensive audit cross-check (unnumbered).
 - **2026-11-01:** ShellCheck follow-up; eleventh audit/release-workflow repair; twelfth audit update.
 - **2026-10-30:** ninth and tenth audit cross-checks.
@@ -51,6 +52,13 @@ The detailed sections remain grouped by subject and source snapshot; this index 
 - **Release input retry:** run #6 stopped at strict version-input validation because `1.4.2` lacked the required `v` prefix. Run #7 used `v1.4.2` and completed successfully; the first attempt did not fail in Nix build or normal CI.
 - **Build-gate disposition:** build #11 covers the exact verified source commit. The documentation, changelog, and documentation-integrity updates in this follow-up are inside the release workflow's explicit ancestor-build allowlist; they do not reopen the system-build gate. The normal-CI exact-commit requirement still applies before any later release.
 - **Hardware boundary:** this build and normal CI do not prove a real libvirt saved-state restore. The maintainer-reported normal VM start/shutdown, RX 6700 XT GPU handback, and Hyprland recovery remain separate target-host evidence.
+
+## Target-host hardware validation — 2026-11-03
+
+- **NixOS rebuild:** the project owner reports that rebuilding the then-current target configuration completed successfully.
+- **Kernel compilation:** the selected RT-Bore-LTO ThinLTO kernel compiled locally. The corresponding `nixos/flake.lock` resolved the CachyOS kernel input to `755712deee259ef7efbfe9154038a270c3d75a87`.
+- **Windows VM lifecycle:** the VM started and completed a normal shutdown; the host GPU/display returned and the Hyprland session recovered.
+- **Evidence boundary:** this is maintainer-reported physical-hardware validation dated 3 November 2026, not independent reproduction and not a compatibility guarantee for other hardware. It covers ordinary start/shutdown only; libvirt saved-state and managed-save restore remain unverified.
 
 ## Frame-generation fallback profile update — 2026-11-05
 

@@ -1100,7 +1100,7 @@ if grep -Eq '^[[:space:]]*loginctl[[:space:]]+terminate-user' "$HOOK" || ! grep 
   echo "FAIL: VFIO handoff must preserve remote SSH sessions and terminate only seat0." >&2
   exit 1
 fi
-if ! grep -Fq 'Target-system validation update — 2026-10-23' "$README" || ! grep -Fq 'RT-Bore-LTO ThinLTO kernel compiled successfully' "$README"; then
+if ! grep -Fq 'Target-system validation update — 2026-11-03' "$README" || ! grep -Fq 'RT-Bore-LTO ThinLTO kernel compiled locally' "$README" || ! grep -Fq '755712deee259ef7efbfe9154038a270c3d75a87' "$README"; then
   echo "FAIL: README must record the latest owner-reported RT-Bore-LTO target-system validation." >&2
   exit 1
 fi
@@ -1108,11 +1108,11 @@ if ! grep -Fq 'On 2026-10-16' "$README" || grep -Fq 'The current RT-Bore-LTO var
   echo "FAIL: README must keep the 2026-10-16 BORE-LTO result explicitly historical." >&2
   exit 1
 fi
-if ! grep -Fq 'In a later update dated 2026-10-23' "$CONTRIBUTING" || ! grep -Fq 'RT-Bore-LTO ThinLTO' "$CONTRIBUTING"; then
+if ! grep -Fq 'latest target-machine update dated 2026-11-03' "$CONTRIBUTING" || ! grep -Fq 'RT-Bore-LTO ThinLTO' "$CONTRIBUTING" || ! grep -Fq '755712deee259ef7efbfe9154038a270c3d75a87' "$CONTRIBUTING"; then
   echo "FAIL: CONTRIBUTING.md must describe the latest owner-reported RT-Bore-LTO validation." >&2
   exit 1
 fi
-if ! grep -Fq 'Target-system validation update — 23 October 2026' "$ENGLISH_GUIDE" || grep -Fq 'current RT-Bore-LTO kernel has not yet been validated' "$ENGLISH_GUIDE"; then
+if ! grep -Fq 'Target-system validation update — 3 November 2026' "$ENGLISH_GUIDE" || ! grep -Fq '755712deee259ef7efbfe9154038a270c3d75a87' "$ENGLISH_GUIDE"; then
   echo "FAIL: INSTALLATION.md must distinguish the historical result from the latest RT-Bore-LTO validation." >&2
   exit 1
 fi

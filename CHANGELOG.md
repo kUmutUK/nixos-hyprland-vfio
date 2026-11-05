@@ -4,6 +4,12 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+### Target-machine hardware validation — 2026-11-03 (owner-reported)
+
+- On 3 November 2026, the project owner reported a successful NixOS rebuild on the then-current target configuration, successful local compilation of the selected RT-Bore-LTO ThinLTO kernel, and a successful Windows 10 VM start followed by normal shutdown and return of the host display/Hyprland session.
+- The source lock at this validation point resolved the CachyOS kernel input to `755712deee259ef7efbfe9154038a270c3d75a87`. The result is maintainer-reported physical-hardware evidence, not an independently reproduced test and not a guarantee for other machines.
+- This validates the ordinary VM start/shutdown and host-recovery path only. It does not claim a successful libvirt saved-state/managed-save restore cycle.
+
 ### Exact-HEAD CI and full-system build verification — 2026-11-05
 - Verified exact `main` HEAD `1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b`: normal CI #1233 passed all 28 workflow-defined steps, including source ZIP validation, documentation/VM/installer regressions, Nix evaluation, LSFG-VK v2 and MAKO package builds, ShellCheck, Statix, and Deadnix.
 - Manual full-system build #13 passed on that same commit from 09:24:30 to 11:49:21 UTC (2 h 24 min 51 s), including evaluation, the complete NixOS toplevel/selected-kernel build, and the unchanged-lock check.

@@ -252,6 +252,26 @@ require(
     "current full-system build #13, exact run ID, and duration must be recorded in both current-state documents",
 )
 require(
+    "2026-11-03 update below" in README
+    and "Target-system validation update — 2026-11-03" in README
+    and "755712deee259ef7efbfe9154038a270c3d75a87" in README,
+    "README must identify the latest 3 November target-host rebuild/kernel/VM validation",
+)
+require(
+    "Target-machine hardware validation — 2026-11-03" in CHANGELOG
+    and "755712deee259ef7efbfe9154038a270c3d75a87" in CHANGELOG
+    and "Target-host hardware validation — 2026-11-03" in REPAIR
+    and "Target-host hardware validation (2026-11-03)" in STATE_INDEX,
+    "the changelog, repair report, and current-state index must preserve the dated owner-reported hardware validation",
+)
+require(
+    "latest target-machine update dated 2026-11-03" in CONTRIBUTING
+    and "Target-system validation update — 3 November 2026" in INSTALLATION
+    and "755712deee259ef7efbfe9154038a270c3d75a87" in CONTRIBUTING
+    and "755712deee259ef7efbfe9154038a270c3d75a87" in INSTALLATION,
+    "contributor and installation guides must identify the latest 3 November target-host validation",
+)
+require(
     "13403280716" in REPAIR and "376,179 bytes" in REPAIR
     and "sha256:d892c0ee1a7227c9e4f593c04ce19fe0e3f69b35b1ae7a2562ed8e0804c3309d" in REPAIR,
     "repair report must identify the canonical artifact uploaded by current normal CI #1233",
