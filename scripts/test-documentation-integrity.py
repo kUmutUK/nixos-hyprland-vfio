@@ -412,6 +412,7 @@ verification_metadata_paths = {
     "INSTALLATION.md",
     "RELEASING.md",
     "docs/REPAIR-AND-VALIDATION-REPORT.md",
+    "docs/UUID-AND-MACHINE-IDENTITY.md",
     "docs/OPTISCALER.md",
     "docs/OPTISCALER-MANAGER.md",
     "docs/MAKO.md",
@@ -1017,13 +1018,19 @@ else:
     documented_release_paths = set()
     workflow_release_paths = set()
 require(
-    documented_release_paths == workflow_release_paths and len(workflow_release_paths) == 25,
-    "RELEASING.md and release.yml must contain the same exhaustive 25-path literal allowlist",
+    documented_release_paths == workflow_release_paths and len(workflow_release_paths) == 26,
+    "RELEASING.md and release.yml must contain the same exhaustive 26-path literal allowlist",
 )
 require(
     "no wildcard rules or blanket exemptions" in RELEASING
     and "changed path matches the exact literal allowlist documented in RELEASING.md" in RELEASE_WORKFLOW,
     "release policy must state that documentation/CI labels do not grant blanket path exemptions",
+)
+require(
+    "docs/UUID-AND-MACHINE-IDENTITY.md" in RELEASING
+    and "docs/UUID-AND-MACHINE-IDENTITY.md" in RELEASE_WORKFLOW
+    and "docs/UUID-AND-MACHINE-IDENTITY.md" in verification_metadata_paths,
+    "the UUID identity guide must be an explicit single-path entry in both ancestor-build allowlists and their integrity set",
 )
 require(
     "- name: Documentation integrity and MAKO integration regression tests" in CHECK_WORKFLOW

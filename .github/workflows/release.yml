@@ -133,7 +133,7 @@ jobs:
           while IFS= read -r path; do
             [[ -z "$path" ]] && continue
             case "$path" in
-              .git-cliff.toml|RELEASING.md|README.md|INSTALLATION.md|DEGISIKLIK_GECMISI.md|CONTRIBUTING.md|CHANGELOG.md|docs/REPAIR-AND-VALIDATION-REPORT.md|docs/OPTISCALER.md|docs/OPTISCALER-MANAGER.md|docs/MAKO.md|docs/archive/DEGISIKLIK_GECMISI.md|docs/archive/README.md|scripts/test-mako-renderer.py|scripts/optiscaler_manager.py|scripts/test-optiscaler-manager.py|scripts/sync-vm-xml.py|scripts/test-vm-xml-sync.py|scripts/test-manual-vm-bootstrap.sh|scripts/test-installer-invariants.sh|scripts/test-vfio-hook-driver-state.sh|scripts/test-documentation-integrity.py|scripts/test-lsfg-vk-v2.py|.github/workflows/check.yml|.github/workflows/release.yml)
+              .git-cliff.toml|RELEASING.md|README.md|INSTALLATION.md|DEGISIKLIK_GECMISI.md|CONTRIBUTING.md|CHANGELOG.md|docs/REPAIR-AND-VALIDATION-REPORT.md|docs/UUID-AND-MACHINE-IDENTITY.md|docs/OPTISCALER.md|docs/OPTISCALER-MANAGER.md|docs/MAKO.md|docs/archive/DEGISIKLIK_GECMISI.md|docs/archive/README.md|scripts/test-mako-renderer.py|scripts/optiscaler_manager.py|scripts/test-optiscaler-manager.py|scripts/sync-vm-xml.py|scripts/test-vm-xml-sync.py|scripts/test-manual-vm-bootstrap.sh|scripts/test-installer-invariants.sh|scripts/test-vfio-hook-driver-state.sh|scripts/test-documentation-integrity.py|scripts/test-lsfg-vk-v2.py|.github/workflows/check.yml|.github/workflows/release.yml)
                 ;;
               *)
                 echo "::error::Full-system build is older and $path changed afterwards."
