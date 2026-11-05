@@ -4,17 +4,24 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+### Exact-HEAD CI and full-system build verification — 2026-11-05
+- Verified exact `main` HEAD `1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b`: normal CI #1233 passed all 28 workflow-defined steps, including source ZIP validation, documentation/VM/installer regressions, Nix evaluation, LSFG-VK v2 and MAKO package builds, ShellCheck, Statix, and Deadnix.
+- Manual full-system build #13 passed on that same commit from 09:24:30 to 11:49:21 UTC (2 h 24 min 51 s), including evaluation, the complete NixOS toplevel/selected-kernel build, and the unchanged-lock check.
+- CI uploaded canonical artifact `nixos-hyprland-vfio-source` (artifact ID `13403280716`, 376,179 bytes; GitHub artifact digest `sha256:d892c0ee1a7227c9e4f593c04ce19fe0e3f69b35b1ae7a2562ed8e0804c3309d`). The digest identifies the outer GitHub Actions artifact.
+- Build #13 covers the previously pending 5 November changes to `nixos/configuration.nix`, `install.sh`, and `nixos/home.nix`; the full-system build gate is now CLOSED for this exact source snapshot. No VM XML, PCI/USB identity, kernel selection, or desktop preference was changed by this verification follow-up.
+- v1.4.2 remains the latest published release from earlier commit `9661091e35aed98b18483ff6d25a54fe0653c877` (release run #7); this newer commit has not been tagged/released. CI/build success does not add a new physical saved-state-restore result.
+
 ### GameMode priority and installer source preflight — 2026-11-05
 - Corrected the GameMode comment and documentation-integrity regression: the configured positive `renice = 10` magnitude is negated by GameMode and applied as nice `-10`, raising CPU scheduling priority. The numeric setting itself is unchanged.
 - Added `nixos/hooks/qemu` to the installer's initial required-source preflight through a separate runtime-source list, preserving the six-file Nix deployment loop. Expanded installer invariant and MAKO integration checks to cover the hook being present, non-empty, and required.
-- These changes touch `nixos/configuration.nix` and `install.sh`, which remain outside the release ancestor-build allowlist. A fresh full-system build is required before release; exact-HEAD normal CI must pass as well. `gpu_device = 1`, VM XML, VFIO behavior, and other hardware-specific settings remain unchanged.
+- These changes touch `nixos/configuration.nix` and `install.sh`, which remain outside the release ancestor-build allowlist. The previously required fresh build is now satisfied by exact-HEAD full-system build #13; normal CI #1233 also passed on that commit. `gpu_device = 1`, VM XML, VFIO behavior, and other hardware-specific settings remain unchanged.
 
 ### Conservative frame-generation fallback profiles — 2026-11-05
 - Reduced the Genshin Impact LSFG-VK v2 fallback profile from 3x to 2x; Wuthering Waves remains at 2x. MAKO Adaptive remains the preferred first per-game Frame Generation path to validate, with LSFG-VK retained as the alternative.
 - Added regression coverage for both 2x LSFG-VK profiles and clarified that the MAKO-first preference is not a measured RX 6700 XT performance ranking. Frame Generation remains opt-in per game; CS2, global AMD low-latency settings, Reflex, MAKO packaging, and OptiScaler behavior are unchanged.
-- This updates `nixos/home.nix`; the previous full-system build #11 does not cover this change. A fresh full-system build is required before release, in addition to exact-HEAD normal CI.
+- This updates `nixos/home.nix`; the earlier full-system build #11 did not cover the change. Exact-HEAD full-system build #13 and normal CI #1233 subsequently passed on `1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b`, closing the build gate for this profile update.
 
-### Exact-HEAD build, CI and v1.4.2 release verification — 2026-11-05
+### Previous exact-HEAD build, CI and v1.4.2 release verification — 2026-11-05 (historical)
 - Reconciled the current-state README, root index, repair report, and documentation-integrity regression with the verified 5 November source snapshot `9661091e35aed98b18483ff6d25a54fe0653c877`.
 - Normal CI #1220 passed all 28 workflow-defined steps on that exact commit; manual full-system build #11 also passed on the same commit, including complete NixOS toplevel/selected-kernel build and unchanged-lock verification.
 - Release workflow run #7 published v1.4.2 from the same commit. The canonical release ZIP contains 72 tracked files and nine executable files, excludes `.git/`, expands `SOURCE_REVISION` to the exact commit, and is accompanied by a SHA-256 manifest.

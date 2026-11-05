@@ -165,7 +165,7 @@ require(
     "repair report must label the last completed full-system build baseline and avoid a duplicated heading",
 )
 audit_gate_line = (
-    "**Verified main snapshot:** GitHub `main` at `9661091e35aed98b18483ff6d25a54fe0653c877`; **normal CI:** #1220 passed on this exact commit; **full-system build:** #11 passed on this exact commit; **release:** v1.4.2 published by run #7. **Full-system build gate: CLOSED** — the complete NixOS toplevel and selected kernel were built on this snapshot. This follow-up changes only documentation, changelog, and the documentation-integrity regression, all covered by the release ancestor-build allowlist; normal CI must still pass on the exact resulting `main` commit before any subsequent release."
+    "**Verified main snapshot:** GitHub `main` at `1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b`; **normal CI:** #1233 passed on this exact commit; **full-system build:** #13 passed on this exact commit; **published release:** v1.4.2 remains published from earlier commit `9661091e35aed98b18483ff6d25a54fe0653c877` by run #7. **Full-system build gate: CLOSED** — the complete NixOS toplevel and selected kernel were built on this snapshot. This follow-up changes only documentation and the documentation-integrity regression, all covered by the release ancestor-build allowlist; normal CI must still pass on the exact resulting `main` commit before any subsequent release."
 )
 require(
     audit_gate_line in REPAIR and audit_gate_line in STATE_INDEX and audit_gate_line in README,
@@ -197,7 +197,7 @@ repair_baseline_match = re.search(
     REPAIR,
 )
 index_baseline_match = re.search(
-    r"(?m)^- Last completed full-system build baseline \(2026-11-05\): GitHub `main` at `([0-9a-f]{40})`",
+    r"(?m)^- \*\*Last completed full-system build baseline \(2026-11-05\):\*\* GitHub `main` at `([0-9a-f]{40})`",
     STATE_INDEX,
 )
 reviewed_snapshot_match = re.search(
@@ -239,10 +239,22 @@ require("[#" + (ci_run_match.group(1) if ci_run_match else "") + "]" in STATE_IN
 require("run #" + (build_run_match.group(1) if build_run_match else "") in STATE_INDEX,
         "current-state index must reference the same full-system build as the repair report")
 require(
-    "run #1220" in REPAIR and "run #1220" in STATE_INDEX
-    and "9661091e35aed98b18483ff6d25a54fe0653c877" in REPAIR
-    and "9661091e35aed98b18483ff6d25a54fe0653c877" in STATE_INDEX,
-    "current normal CI must be recorded for the exact build #11 source snapshot",
+    "run #1233" in REPAIR and "run #1233" in STATE_INDEX
+    and "42001709686" in REPAIR and "42001709686" in STATE_INDEX
+    and "1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b" in REPAIR
+    and "1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b" in STATE_INDEX,
+    "current normal CI must be recorded for the exact build #13 source snapshot",
+)
+require(
+    "run #13" in REPAIR and "run #13" in STATE_INDEX
+    and "42002113160" in REPAIR and "42002113160" in STATE_INDEX
+    and "2 h 24 min 51 s" in REPAIR and "2 h 24 min 51 s" in STATE_INDEX,
+    "current full-system build #13, exact run ID, and duration must be recorded in both current-state documents",
+)
+require(
+    "13403280716" in REPAIR and "376,179 bytes" in REPAIR
+    and "sha256:d892c0ee1a7227c9e4f593c04ce19fe0e3f69b35b1ae7a2562ed8e0804c3309d" in REPAIR,
+    "repair report must identify the canonical artifact uploaded by current normal CI #1233",
 )
 require(
     "v1.4.2" in REPAIR and "run #7" in REPAIR and "v1.4.2" in STATE_INDEX and "run #7" in STATE_INDEX,
