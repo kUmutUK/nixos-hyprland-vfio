@@ -2,7 +2,7 @@
 
 A flake-based NixOS gaming desktop that passes its single AMD Radeon GPU through to a Windows 10 virtual machine, while using Hyprland for the host desktop.
 
-The latest 4 November 2026 follow-up reconciles the conflicting archived Hyprland version tables, removes a duplicate Home Manager eza entry, and marks the 3 November build #9 record as superseded by full-system build #10. It also covers the 2026-11-04 source-tree cross-checks. The last successful full-system build remains #10 at `480972a`; the later `nixos/home.nix` change keeps the release build gate open. Details and verification boundaries are recorded in the [repair and validation report](docs/REPAIR-AND-VALIDATION-REPORT.md). The 2026-10-28 audit remains a dated historical review.
+The 5 November 2026 verification follow-up confirms that normal CI #1220 and full-system build #11 both passed on exact `main` commit `9661091e35aed98b18483ff6d25a54fe0653c877`, and GitHub Release v1.4.2 was published from that same commit. The 2026-11-04 source-tree cross-checks and historical Hyprland version-table reconciliation remain documented below. The full-system build gate is closed for the verified snapshot; this follow-up changes only documentation, changelog, and the documentation-integrity regression, within the release ancestor-build allowlist. Details and verification boundaries are recorded in the [repair and validation report](docs/REPAIR-AND-VALIDATION-REPORT.md). The 2026-10-28 audit remains a dated historical review.
 
 > **Windows guest lifecycle warning:** The default template targets Windows 10 22H2. Standard support for Windows 10 Home/Pro ended on 14 October 2025. This repository does not enroll the guest in Extended Security Updates (ESU), confirm license eligibility, or verify that guest updates are installed. Before using the VM for network-connected or sensitive activity, check the installed edition and license, verify current ESU or other supported-lifecycle coverage, and install all available security updates. See [Microsoft's end-of-support guidance](https://support.microsoft.com/en-us/windows/windows-10-support-has-ended-on-october-14-2025) and [ESU FAQ](https://learn.microsoft.com/en-us/lifecycle/faq/extended-security-updates). Windows 11 migration is not automated by this repository; do not assume the existing VM XML meets Windows 11 requirements.
 
@@ -775,7 +775,7 @@ Hyprland's native Lua configuration, Hyprlock, Waybar, Pyprland, MangoHud, lsfg-
 
 ## Validation
 
-> **Reviewed pre-update main HEAD:** GitHub `main` at `ce2cd55ffbc8bc6859f746445ad533212f1aec25`; **last successful full-system build:** #10 at `480972a235655f6d1e9ec6137f85ad3f30b8655a`; **build gate: OPEN** — `nixos/home.nix` changed after that build. Run a new full-system build before release.
+**Verified main snapshot:** GitHub `main` at `9661091e35aed98b18483ff6d25a54fe0653c877`; **normal CI:** #1220 passed on this exact commit; **full-system build:** #11 passed on this exact commit; **release:** v1.4.2 published by run #7. **Full-system build gate: CLOSED** — the complete NixOS toplevel and selected kernel were built on this snapshot. This follow-up changes only documentation, changelog, and the documentation-integrity regression, all covered by the release ancestor-build allowlist; normal CI must still pass on the exact resulting `main` commit before any subsequent release.
 
 To distribute a source ZIP, first commit the source you intend to ship, then run
 `./scripts/package-source-zip.sh ./dist/nixos-hyprland-vfio-source.zip`.

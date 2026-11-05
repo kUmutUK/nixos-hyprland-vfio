@@ -161,13 +161,11 @@ require(
     "tag pushes must use git-cliff --current while manual main-branch releases use --latest",
 )
 require(
-    "Last completed full-system build baseline — 2026-11-04" in REPAIR,
+    "Last completed full-system build baseline — 2026-11-05" in REPAIR,
     "repair report must label the last completed full-system build baseline and avoid a duplicated heading",
 )
 audit_gate_line = (
-    "**Reviewed pre-update main HEAD:** GitHub `main` at `ce2cd55ffbc8bc6859f746445ad533212f1aec25`; "
-    "**last successful full-system build:** #10 at `480972a235655f6d1e9ec6137f85ad3f30b8655a`; "
-    "**build gate: OPEN** — `nixos/home.nix` changed after that build. Run a new full-system build before release."
+    "**Verified main snapshot:** GitHub `main` at `9661091e35aed98b18483ff6d25a54fe0653c877`; **normal CI:** #1220 passed on this exact commit; **full-system build:** #11 passed on this exact commit; **release:** v1.4.2 published by run #7. **Full-system build gate: CLOSED** — the complete NixOS toplevel and selected kernel were built on this snapshot. This follow-up changes only documentation, changelog, and the documentation-integrity regression, all covered by the release ancestor-build allowlist; normal CI must still pass on the exact resulting `main` commit before any subsequent release."
 )
 require(
     audit_gate_line in REPAIR and audit_gate_line in STATE_INDEX and audit_gate_line in README,
@@ -199,7 +197,7 @@ repair_baseline_match = re.search(
     REPAIR,
 )
 index_baseline_match = re.search(
-    r"(?m)^- Last completed full-system build baseline \(2026-11-04\): GitHub `main` at `([0-9a-f]{40})`",
+    r"(?m)^- Last completed full-system build baseline \(2026-11-05\): GitHub `main` at `([0-9a-f]{40})`",
     STATE_INDEX,
 )
 reviewed_snapshot_match = re.search(
@@ -240,6 +238,16 @@ require("[#" + (ci_run_match.group(1) if ci_run_match else "") + "]" in STATE_IN
         "current-state index must reference the same normal-CI run as the repair report")
 require("run #" + (build_run_match.group(1) if build_run_match else "") in STATE_INDEX,
         "current-state index must reference the same full-system build as the repair report")
+require(
+    "run #1220" in REPAIR and "run #1220" in STATE_INDEX
+    and "9661091e35aed98b18483ff6d25a54fe0653c877" in REPAIR
+    and "9661091e35aed98b18483ff6d25a54fe0653c877" in STATE_INDEX,
+    "current normal CI must be recorded for the exact build #11 source snapshot",
+)
+require(
+    "v1.4.2" in REPAIR and "run #7" in REPAIR and "v1.4.2" in STATE_INDEX and "run #7" in STATE_INDEX,
+    "current release must be recorded as v1.4.2 from release workflow run #7",
+)
 require("manual run #9" in REPAIR and "full-system build baseline" in REPAIR and "ab89f350803d47eb16499c613b110da05a57673f" in REPAIR,
         "repair report must identify the successful exact-HEAD full-system build baseline")
 require("run #9" in STATE_INDEX and "69 tracked file blobs" in STATE_INDEX and "ab89f350803d47eb16499c613b110da05a57673f" in STATE_INDEX,

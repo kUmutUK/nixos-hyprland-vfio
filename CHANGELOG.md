@@ -4,6 +4,14 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+### Exact-HEAD build, CI and v1.4.2 release verification — 2026-11-05
+- Reconciled the current-state README, root index, repair report, and documentation-integrity regression with the verified 5 November source snapshot `9661091e35aed98b18483ff6d25a54fe0653c877`.
+- Normal CI #1220 passed all 28 workflow-defined steps on that exact commit; manual full-system build #11 also passed on the same commit, including complete NixOS toplevel/selected-kernel build and unchanged-lock verification.
+- Release workflow run #7 published v1.4.2 from the same commit. The canonical release ZIP contains 72 tracked files and nine executable files, excludes `.git/`, expands `SOURCE_REVISION` to the exact commit, and is accompanied by a SHA-256 manifest.
+- Clarified that the 4 November #10 / OPEN build-gate status was accurate for its then-reviewed snapshot but was superseded by #11. The documentation/changelog/test-only follow-up remains within the release ancestor-build allowlist; exact-commit normal CI is still required before a subsequent release.
+- No NixOS runtime setting, kernel selection, VFIO hook, or VM XML was changed. The successful build does not independently validate real libvirt saved-state restore or add new target-host hardware-test evidence.
+
+
 ### Fourteenth supplied audit cross-check — 2026-11-04
 - Flagged the contradictory historical Hyprland package tables attributed to the same nixpkgs 7a0f122 revision; the archive now records the conflict without asserting an unverified exact package version.
 - Removed the redundant eza item from home.packages; programs.eza.enable remains responsible for the Home Manager package and integration. System-profile fzf, git, and kitty remain intentionally available alongside their per-user Home Manager configuration.
