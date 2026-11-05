@@ -755,7 +755,17 @@ require(
 gamemode_renice_match = re.search(r"(?m)^\s*renice\s*=\s*(-?\d+);", CONFIG)
 gamemode_comment_start = CONFIG.find("# Three components can change CPU scheduling/priority")
 gamemode_comment_end = CONFIG.find("networking.hostName", gamemode_comment_start)
-gamemode_comment = CONFIG[gamemode_comment_start:gamemode_comment_end] if gamemode_comment_start >= 0 and gamemode_comment_end > gamemode_comment_start else ""
+gamemode_comment_raw = (
+    CONFIG[gamemode_comment_start:gamemode_comment_end]
+    if gamemode_comment_start >= 0 and gamemode_comment_end > gamemode_comment_start
+    else ""
+)
+# Join wrapped comment lines before checking the semantic description; source formatting
+# should not make the regression depend on where a comment happens to wrap.
+gamemode_comment = " ".join(
+    re.sub(r"^\s*#\s?", "", line).strip()
+    for line in gamemode_comment_raw.splitlines()
+)
 if gamemode_renice_match:
     gamemode_renice = int(gamemode_renice_match.group(1))
     applied_nice = -gamemode_renice

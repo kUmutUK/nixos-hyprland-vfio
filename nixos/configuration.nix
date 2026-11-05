@@ -230,9 +230,10 @@ in
   services.power-profiles-daemon.enable = true;
   # Three components can change CPU scheduling/priority, and their order is not
   # guaranteed: power-profiles-daemon controls the governor, ananicy-cpp applies
-  # nice/ioprio rules, and GameMode's renice = 10 is negated to nice value (-10), raising
-  # CPU scheduling priority when GameMode successfully applies it. This configuration
-  # accepts the overlap; consider using a balanced desktop power profile outside games.
+  # nice/ioprio rules, and GameMode's renice = 10 is negated to nice value (-10),
+  # raising CPU scheduling priority when GameMode successfully applies it. This
+  # configuration accepts the overlap; consider using a balanced desktop power
+  # profile outside games.
   networking.hostName = "nixos";
   networking.networkmanager.enable = true;
   time.timeZone = "Europe/Istanbul";
