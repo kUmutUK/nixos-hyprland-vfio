@@ -60,6 +60,18 @@ jobs:
             fi
           fi
 
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            existing_commit_tags="$(
+              git tag --points-at "$GITHUB_SHA" --list 'v[0-9]*' |
+                grep -E '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$' |
+                sort -V || true
+            )"
+            if [[ -n "$existing_commit_tags" ]]; then
+              echo "::error::Commit $GITHUB_SHA already has stable release tag(s): $existing_commit_tags. Create a new commit before publishing another version."
+              exit 1
+            fi
+          fi
+
           git fetch --no-tags origin main
           if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
             echo "::error::The release commit must be reachable from main."
@@ -161,7 +173,7 @@ jobs:
           version: v2.14.2
           config: .git-cliff.toml
           # A pushed tag is already at HEAD; manual dispatch runs on main before creating its new tag.
-          args: ${{ github.event_name == 'push' && '--current --strip header' || '--latest --strip header' }}
+          args: ${{ github.event_name == 'push' && '--current --strip header' || format('{0}..{1} --tag {2} --strip header', steps.previous.outputs.tag, github.sha, steps.release.outputs.tag) }}
           github_token: ${{ github.token }}
         env:
           OUTPUT: ${{ runner.temp }}/release-notes.md
@@ -170,10 +182,14 @@ jobs:
       - name: Use curated notes for the first tagged release
         if: steps.previous.outputs.tag == ''
         shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
         run: |
           set -Eeuo pipefail
           python3 - "$RUNNER_TEMP/release-notes.md" <<'PY'
+          from datetime import datetime, timezone
           from pathlib import Path
+          import os
           import re
           import sys
 
@@ -181,7 +197,6 @@ jobs:
           match = re.search(r"(?m)^## \[Unreleased\]\s*\n", source)
           if match is None:
               raise SystemExit("CHANGELOG.md has no ## [Unreleased] section.")
-
           body = source[match.end():]
           next_section = re.search(r"(?m)^## ", body)
           if next_section is not None:
@@ -189,14 +204,31 @@ jobs:
           body = body.strip()
           if not body:
               raise SystemExit("The curated [Unreleased] section is empty.")
-
-          Path(sys.argv[1]).write_text(body + "\n", encoding="utf-8")
+          release_date = datetime.now(timezone.utc).date().isoformat()
+          heading = f"## {os.environ['RELEASE_TAG']} - {release_date}"
+          Path(sys.argv[1]).write_text(f"{heading}\n\n{body}\n", encoding="utf-8")
           PY
           echo "  first release: using curated CHANGELOG.md [Unreleased] notes"
 
       - name: Verify release notes
-        run: test -s "$RUNNER_TEMP/release-notes.md"
-
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          set -Eeuo pipefail
+          python3 - "$RUNNER_TEMP/release-notes.md" <<'PY'
+          from pathlib import Path
+          import os
+          import re
+          import sys
+          notes = Path(sys.argv[1]).read_text(encoding="utf-8").lstrip()
+          release_tag = os.environ["RELEASE_TAG"]
+          expected = re.compile(rf"^## {re.escape(release_tag)} - \d{4}-\d{2}-\d{2}$")
+          first_line = notes.splitlines()[0] if notes else "<empty>"
+          if expected.match(first_line) is None:
+              raise SystemExit(f"Release notes heading does not match {release_tag!r}: {first_line!r}")
+          print(f"  release notes heading verified: {first_line}")
+          PY
       - name: Build and validate canonical source ZIP
         run: scripts/package-source-zip.sh "$RUNNER_TEMP/nixos-hyprland-vfio-source.zip"
 

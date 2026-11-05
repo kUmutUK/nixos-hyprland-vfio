@@ -6,8 +6,9 @@
 
 The detailed sections remain grouped by subject and source snapshot; this index supplies their date order without rewriting the historical record.
 
-- **2026-11-05 (latest verified snapshot):** exact-HEAD normal CI #1233 and full-system build #13 passed on `1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b`; the full-system build gate is CLOSED.
-- **2026-11-05 (latest source change):** GameMode comment/regression wrap-safety and installer QEMU-hook preflight changes; covered by build #13.
+- **2026-11-05 (latest reviewed source/release snapshot):** normal CI #1239 passed on `7f923a2c7aa59721bc00728faccbc073e06c697a`; release run #15 published v1.4.4 from the same commit; full-system build #13 remains the successful ancestor baseline.
+- **2026-11-05 (release workflow hardening):** explicit previous-tag-to-HEAD note range, requested-tag heading validation, and same-commit duplicate-version-tag guard.
+- **2026-11-05 (last system-affecting source change):** GameMode priority regression wrap-safety and installer QEMU-hook preflight changes; covered by build #13.
 - **2026-11-05 (earlier configuration update):** conservative Genshin LSFG-VK fallback profile and MAKO-first selection guidance; covered by build #13.
 - **2026-11-05 (previous release snapshot):** exact-HEAD normal CI #1220, full-system build #11, and v1.4.2 publication from `9661091e35aed98b18483ff6d25a54fe0653c877`; superseded as the current build baseline by #13.
 - **2026-11-04 (historical):** fourteenth supplied audit cross-check; archive version-table reconciliation; Home Manager package de-duplication; historical build-label correction.
@@ -19,6 +20,17 @@ The detailed sections remain grouped by subject and source snapshot; this index 
 - **2026-10-30:** ninth and tenth audit cross-checks.
 - **2026-10-28 and earlier:** historical source-ZIP, packaging, installer, and configuration follow-ups.
 
+## Latest reviewed CI and release status — 2026-11-05
+
+**Last pre-reconciliation source snapshot:** GitHub `main` at `7f923a2c7aa59721bc00728faccbc073e06c697a`; **normal CI:** [#1239](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42032980751) passed all 28 workflow-defined steps on this exact commit; **full-system build:** manual [#13](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42002113160) passed on ancestor build baseline `1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b` (2 h 24 min 51 s); **published release:** [v1.4.4](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.4) was published by release run [#15](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42035815458) from this reviewed commit. **Full-system build gate: CLOSED** — subsequent changes are limited to the explicit release/documentation/CI/test allowlist. The separate annotated `v1.4.3` tag also points to this commit but has no GitHub Release; `v1.4.4` is the published version. The existing v1.4.4 release description carries an incorrect `v1.4.3` heading; this follow-up hardens future release notes by selecting the explicit previous-tag-to-HEAD range, setting the requested version, and rejecting mismatched headings before future publication. The 3 November target-hardware validation remains owner-reported; libvirt saved-state/managed-save restore remains unverified.
+
+- **Exact-HEAD normal CI:** [run #1239](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42032980751) passed all 28 workflow-defined steps on `7f923a2c7aa59721bc00728faccbc073e06c697a`.
+- **Canonical CI artifact:** artifact 13416329673, 379,511 bytes, outer GitHub Actions digest `sha256:f9fdf7c3be15b69d032f4965e6765f841fd04f54e9096d2536091f5c01e267ed`.
+- **Published v1.4.4 release:** [run #15](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42035815458) published from the reviewed commit. The 388,000-byte source ZIP passed canonical package checks: 72 tracked files, nine executable files, and no `.git/` entries. Asset SHA-256: `7621fcdccfe327e9e59f453947b9f7903cd0f477b73cde8f4aa5ee513061e0ff`.
+- **Version-tag anomaly:** annotated tag `v1.4.3` also points to this commit but has no GitHub Release; `v1.4.4` is the published release. Its existing release description has an inherited `v1.4.3` section heading. The workflow is hardened below to generate the requested version explicitly and fail before tag creation if the heading does not match.
+- **Build-gate disposition:** build #13 on ancestor `1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b` remains sufficient because later changes are limited to the literal release/documentation/CI/test allowlist. The latest CI covers the reviewed source commit; this follow-up does not change the NixOS system closure.
+- **Hardware boundary:** the 3 November normal rebuild/kernel/VM-startup/shutdown result remains owner-reported. No new physical test or libvirt saved-state/managed-save restore result is claimed.
+
 ## GameMode and installer preflight remediation — 2026-11-05
 
 - **GameMode semantics:** corrected the `nixos/configuration.nix` comment to state that GameMode negates the configured positive `renice` magnitude. With `renice = 10`, the effective nice value is `-10`, which raises CPU scheduling priority when GameMode successfully applies it. The documentation-integrity regression now calculates and checks the effective value and direction. No GameMode numeric setting was changed.
@@ -28,7 +40,7 @@ The detailed sections remain grouped by subject and source snapshot; this index 
 
 ## Last completed full-system build baseline — 2026-11-05
 
-**Verified main snapshot:** GitHub `main` at `1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b`; **normal CI:** #1233 passed on this exact commit; **full-system build:** #13 passed on this exact commit; **published release:** v1.4.2 remains published from earlier commit `9661091e35aed98b18483ff6d25a54fe0653c877` by run #7. **Full-system build gate: CLOSED** — the complete NixOS toplevel and selected kernel were built on this snapshot. This follow-up changes only documentation and the documentation-integrity regression, all covered by the release ancestor-build allowlist; normal CI must still pass on the exact resulting `main` commit before any subsequent release.
+**Build-baseline snapshot:** GitHub `main` at `1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b`; **normal CI at that time:** #1233 passed on this exact commit; **full-system build:** #13 passed on this exact commit; **published release at that time:** v1.4.2 from earlier commit `9661091e35aed98b18483ff6d25a54fe0653c877` by run #7. **Full-system build gate: CLOSED** — the complete NixOS toplevel and selected kernel were built on this snapshot. The later reviewed source snapshot and v1.4.4 release are recorded in the current-status section above.
 
 **Verified full-system build baseline:** GitHub `main` at `1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b` (5 November 2026).
 
@@ -36,7 +48,7 @@ The detailed sections remain grouped by subject and source snapshot; this index 
 - **Full NixOS system build:** [manual run #13](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42002113160) completed successfully for the **same exact commit** `1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b`. It started at 09:24:30 UTC and completed at 11:49:21 UTC on 5 November 2026 (**2 h 24 min 51 s**). Flake evaluation, the complete NixOS toplevel/selected-kernel build, and the unchanged-lock check all passed.
 - **Canonical source artifact:** normal CI uploaded `nixos-hyprland-vfio-source` (artifact ID `13403280716`, **376,179 bytes**, GitHub artifact digest `sha256:d892c0ee1a7227c9e4f593c04ce19fe0e3f69b35b1ae7a2562ed8e0804c3309d`). This digest is for the outer GitHub Actions artifact; it is not presented as the inner source ZIP's SHA-256.
 - **Previously pending source paths:** full-system build #13 includes the 5 November changes to `nixos/configuration.nix`, `install.sh`, and `nixos/home.nix`. The full-system build gate is CLOSED for this exact source snapshot. The current documentation/test follow-up is confined to paths in the release ancestor-build allowlist.
-- **Release status:** v1.4.2 remains published from the earlier `9661091e35aed98b18483ff6d25a54fe0653c877` snapshot by release run #7. Commit `1dbb7d5` has not been tagged or released.
+- **Release status at this historical build baseline:** v1.4.2 was published from the earlier `9661091e35aed98b18483ff6d25a54fe0653c877` snapshot by release run #7. It was superseded by v1.4.4, published by run #15 from the later reviewed source commit `7f923a2c7aa59721bc00728faccbc073e06c697a`.
 - **Hardware boundary:** the successful CI and build do not prove physical GPU/VM behavior or libvirt saved-state restore. The maintainer-reported normal VM start/shutdown, RX 6700 XT GPU handback, and Hyprland recovery remain separate target-host evidence; saved-state restore remains unverified.
 
 ## Previous exact-HEAD build and v1.4.2 release verification — 2026-11-05 (historical)

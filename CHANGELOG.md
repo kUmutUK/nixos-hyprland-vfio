@@ -4,18 +4,27 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+### Latest reviewed CI, build baseline, and release reconciliation — 2026-11-05
+
+**Last pre-reconciliation source snapshot:** GitHub `main` at `7f923a2c7aa59721bc00728faccbc073e06c697a`; **normal CI:** [#1239](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42032980751) passed all 28 workflow-defined steps on this exact commit; **full-system build:** manual [#13](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42002113160) passed on ancestor build baseline `1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b` (2 h 24 min 51 s); **published release:** [v1.4.4](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.4) was published by release run [#15](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42035815458) from this reviewed commit. **Full-system build gate: CLOSED** — subsequent changes are limited to the explicit release/documentation/CI/test allowlist. The separate annotated `v1.4.3` tag also points to this commit but has no GitHub Release; `v1.4.4` is the published version. The existing v1.4.4 release description carries an incorrect `v1.4.3` heading; this follow-up hardens future release notes by selecting the explicit previous-tag-to-HEAD range, setting the requested version, and rejecting mismatched headings before future publication. The 3 November target-hardware validation remains owner-reported; libvirt saved-state/managed-save restore remains unverified.
+
+- Release run #15 validated the 388,000-byte source ZIP for exact commit `7f923a2c7aa59721bc00728faccbc073e06c697a`: 72 tracked files, nine executable files, and no `.git/` entries. The source ZIP asset digest is `sha256:7621fcdccfe327e9e59f453947b9f7903cd0f477b73cde8f4aa5ee513061e0ff`.
+- Current normal CI #1239 uploaded artifact 13416329673 (379,511 bytes; outer artifact digest `sha256:f9fdf7c3be15b69d032f4965e6765f841fd04f54e9096d2536091f5c01e267ed`).
+- The v1.4.3 annotated tag is a legacy duplicate alias on the v1.4.4 commit and has no associated GitHub Release. The published release is v1.4.4. Its existing description was generated with a stale `v1.4.3` heading; this follow-up hardens the workflow to use an explicit previous-tag-to-HEAD range and requested version, then validate the heading before publication. It also rejects a manual release when the selected commit already has a stable version tag.
+- This follow-up changes only documentation, release automation, and regression checks. It adds no new physical-hardware or saved-state-restore evidence.
+
 ### Target-machine hardware validation — 2026-11-03 (owner-reported)
 
 - On 3 November 2026, the project owner reported a successful NixOS rebuild on the then-current target configuration, successful local compilation of the selected RT-Bore-LTO ThinLTO kernel, and a successful Windows 10 VM start followed by normal shutdown and return of the host display/Hyprland session.
 - The source lock at this validation point resolved the CachyOS kernel input to `755712deee259ef7efbfe9154038a270c3d75a87`. The result is maintainer-reported physical-hardware evidence, not an independently reproduced test and not a guarantee for other machines.
 - This validates the ordinary VM start/shutdown and host-recovery path only. It does not claim a successful libvirt saved-state/managed-save restore cycle.
 
-### Exact-HEAD CI and full-system build verification — 2026-11-05
-- Verified exact `main` HEAD `1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b`: normal CI #1233 passed all 28 workflow-defined steps, including source ZIP validation, documentation/VM/installer regressions, Nix evaluation, LSFG-VK v2 and MAKO package builds, ShellCheck, Statix, and Deadnix.
+### Full-system build #13 baseline — 2026-11-05 (historical snapshot)
+- Manual build #13 and normal CI #1233 both covered exact `main` commit `1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b`; CI passed all 28 workflow-defined steps, including source ZIP validation, documentation/VM/installer regressions, Nix evaluation, LSFG-VK v2 and MAKO package builds, ShellCheck, Statix, and Deadnix. The later reviewed source snapshot and published v1.4.4 release are recorded above.
 - Manual full-system build #13 passed on that same commit from 09:24:30 to 11:49:21 UTC (2 h 24 min 51 s), including evaluation, the complete NixOS toplevel/selected-kernel build, and the unchanged-lock check.
 - CI uploaded canonical artifact `nixos-hyprland-vfio-source` (artifact ID `13403280716`, 376,179 bytes; GitHub artifact digest `sha256:d892c0ee1a7227c9e4f593c04ce19fe0e3f69b35b1ae7a2562ed8e0804c3309d`). The digest identifies the outer GitHub Actions artifact.
 - Build #13 covers the previously pending 5 November changes to `nixos/configuration.nix`, `install.sh`, and `nixos/home.nix`; the full-system build gate is now CLOSED for this exact source snapshot. No VM XML, PCI/USB identity, kernel selection, or desktop preference was changed by this verification follow-up.
-- v1.4.2 remains the latest published release from earlier commit `9661091e35aed98b18483ff6d25a54fe0653c877` (release run #7); this newer commit has not been tagged/released. CI/build success does not add a new physical saved-state-restore result.
+- At the time of this historical build-baseline record, v1.4.2 was the latest published release from commit `9661091e35aed98b18483ff6d25a54fe0653c877` (run #7). It was superseded by v1.4.4, published by run #15 from the later reviewed source snapshot above. CI/build success does not add a new physical saved-state-restore result.
 
 ### GameMode priority and installer source preflight — 2026-11-05
 - Corrected the GameMode comment and documentation-integrity regression: the configured positive `renice = 10` magnitude is negated by GameMode and applied as nice `-10`, raising CPU scheduling priority. The numeric setting itself is unchanged.

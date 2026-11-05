@@ -118,6 +118,12 @@ require(
 require("DEGISIKLIK_GECMISI.md" in RELEASING and "DEGISIKLIK_GECMISI.md" in RELEASE_WORKFLOW and "CONTRIBUTING.md" in RELEASING and "CHANGELOG.md" in RELEASING and "docs/REPAIR-AND-VALIDATION-REPORT.md" in RELEASING and "docs/OPTISCALER.md" in RELEASING and "docs/OPTISCALER.md" in RELEASE_WORKFLOW and "INSTALLATION.md" in RELEASING and "INSTALLATION.md" in RELEASE_WORKFLOW and ".github/workflows/check.yml" in RELEASING and "scripts/test-documentation-integrity.py" in RELEASING, "RELEASING allowlist documentation must match release.yml")
 require("grep -E '^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$' |" in RELEASE_WORKFLOW, "release workflow must use a closed stable-semver regex when finding previous tags")
 require("stable `vMAJOR.MINOR.PATCH` form" in RELEASING and "numeric components must not contain" in RELEASING, "release guide must document the strict stable tag format")
+require(
+    "previous-tag-to-HEAD" in RELEASING
+    and "first release-note" in RELEASING
+    and "already carries another stable version tag" in RELEASING,
+    "release guide must explain version range, heading validation, and duplicate-commit tag protection",
+)
 cliff_tag_match = re.search(r'(?m)^tag_pattern = "([^"]+)"$', CLIFF_CONFIG)
 release_tag_match = re.search(r'\[\[ ! "\$release_tag" =~ (.*?) \]\]', RELEASE_WORKFLOW)
 previous_tag_match = re.search(r"grep -E '([^']+)' \|", RELEASE_WORKFLOW)
@@ -157,16 +163,25 @@ require(
     "CONTRIBUTING local validation must mirror Actionlint, generated-hook ShellCheck, and generated-Lua syntax CI gates",
 )
 require(
-    "args: ${{ github.event_name == 'push' && '--current --strip header' || '--latest --strip header' }}" in RELEASE_WORKFLOW,
-    "tag pushes must use git-cliff --current while manual main-branch releases use --latest",
+    "format('{0}..{1} --tag {2} --strip header', steps.previous.outputs.tag, github.sha, steps.release.outputs.tag)" in RELEASE_WORKFLOW
+    and "github.event_name == 'push' && '--current --strip header'" in RELEASE_WORKFLOW,
+    "tag pushes must use git-cliff --current while manual releases use the explicit previous-tag..HEAD range and requested version",
+)
+require(
+    'git tag --points-at "$GITHUB_SHA"' in RELEASE_WORKFLOW
+    and "already has stable release tag(s)" in RELEASE_WORKFLOW,
+    "manual releases must refuse a commit that already has another stable version tag",
+)
+require(
+    "re.escape(release_tag)" in RELEASE_WORKFLOW
+    and "Release notes heading does not match" in RELEASE_WORKFLOW,
+    "release workflow must verify that the first generated note heading matches the requested version",
 )
 require(
     "Last completed full-system build baseline — 2026-11-05" in REPAIR,
     "repair report must label the last completed full-system build baseline and avoid a duplicated heading",
 )
-audit_gate_line = (
-    "**Verified main snapshot:** GitHub `main` at `1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b`; **normal CI:** #1233 passed on this exact commit; **full-system build:** #13 passed on this exact commit; **published release:** v1.4.2 remains published from earlier commit `9661091e35aed98b18483ff6d25a54fe0653c877` by run #7. **Full-system build gate: CLOSED** — the complete NixOS toplevel and selected kernel were built on this snapshot. This follow-up changes only documentation and the documentation-integrity regression, all covered by the release ancestor-build allowlist; normal CI must still pass on the exact resulting `main` commit before any subsequent release."
-)
+audit_gate_line = "**Last pre-reconciliation source snapshot:** GitHub `main` at `7f923a2c7aa59721bc00728faccbc073e06c697a`; **normal CI:** [#1239](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42032980751) passed all 28 workflow-defined steps on this exact commit; **full-system build:** manual [#13](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42002113160) passed on ancestor build baseline `1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b` (2 h 24 min 51 s); **published release:** [v1.4.4](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.4) was published by release run [#15](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42035815458) from this reviewed commit. **Full-system build gate: CLOSED** — subsequent changes are limited to the explicit release/documentation/CI/test allowlist. The separate annotated `v1.4.3` tag also points to this commit but has no GitHub Release; `v1.4.4` is the published version. The existing v1.4.4 release description carries an incorrect `v1.4.3` heading; this follow-up hardens future release notes by selecting the explicit previous-tag-to-HEAD range, setting the requested version, and rejecting mismatched headings before future publication. The 3 November target-hardware validation remains owner-reported; libvirt saved-state/managed-save restore remains unverified."
 require(
     audit_gate_line in REPAIR and audit_gate_line in STATE_INDEX and audit_gate_line in README,
     "the repair report, root status index, and README must show the same explicit reviewed-HEAD/full-build gate",
@@ -239,11 +254,11 @@ require("[#" + (ci_run_match.group(1) if ci_run_match else "") + "]" in STATE_IN
 require("run #" + (build_run_match.group(1) if build_run_match else "") in STATE_INDEX,
         "current-state index must reference the same full-system build as the repair report")
 require(
-    "run #1233" in REPAIR and "run #1233" in STATE_INDEX
-    and "42001709686" in REPAIR and "42001709686" in STATE_INDEX
-    and "1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b" in REPAIR
-    and "1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b" in STATE_INDEX,
-    "current normal CI must be recorded for the exact build #13 source snapshot",
+    "run #1239" in REPAIR and "run #1239" in STATE_INDEX
+    and "42032980751" in REPAIR and "42032980751" in STATE_INDEX
+    and "7f923a2c7aa59721bc00728faccbc073e06c697a" in REPAIR
+    and "7f923a2c7aa59721bc00728faccbc073e06c697a" in STATE_INDEX,
+    "current normal CI must be recorded for the pre-reconciliation source snapshot",
 )
 require(
     "run #13" in REPAIR and "run #13" in STATE_INDEX
@@ -274,11 +289,21 @@ require(
 require(
     "13403280716" in REPAIR and "376,179 bytes" in REPAIR
     and "sha256:d892c0ee1a7227c9e4f593c04ce19fe0e3f69b35b1ae7a2562ed8e0804c3309d" in REPAIR,
-    "repair report must identify the canonical artifact uploaded by current normal CI #1233",
+    "repair report must retain the historical canonical artifact from baseline CI #1233",
 )
 require(
-    "v1.4.2" in REPAIR and "run #7" in REPAIR and "v1.4.2" in STATE_INDEX and "run #7" in STATE_INDEX,
-    "current release must be recorded as v1.4.2 from release workflow run #7",
+    "13416329673" in REPAIR and "379,511 bytes" in REPAIR
+    and "sha256:f9fdf7c3be15b69d032f4965e6765f841fd04f54e9096d2536091f5c01e267ed" in REPAIR,
+    "repair report must identify the latest canonical artifact from CI #1239",
+)
+require(
+    "v1.4.4" in REPAIR and "run #15" in REPAIR and "v1.4.4" in STATE_INDEX and "run #15" in STATE_INDEX
+    and "42035815458" in REPAIR and "42035815458" in STATE_INDEX,
+    "published release must be recorded as v1.4.4 from run #15",
+)
+require(
+    "v1.4.3" in REPAIR and "no GitHub Release" in REPAIR and "incorrect" in REPAIR,
+    "repair report must distinguish the legacy v1.4.3 tag and v1.4.4 heading anomaly",
 )
 require("manual run #9" in REPAIR and "full-system build baseline" in REPAIR and "ab89f350803d47eb16499c613b110da05a57673f" in REPAIR,
         "repair report must identify the successful exact-HEAD full-system build baseline")

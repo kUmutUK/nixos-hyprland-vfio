@@ -55,10 +55,19 @@ GPU/VFIO/VM lifecycle test.
 Open **Actions → Release → Run workflow**, select the `main` branch, and enter
 a **new, unused** stable semantic version. The input intentionally has no
 preselected default; check the existing releases/tags before choosing a version.
-The workflow rejects a tag that already exists, then validates the version,
-checks the CI/build prerequisites, generates the notes, creates and pushes an
-annotated tag, builds the canonical source ZIP, creates its SHA-256 manifest,
-and publishes the GitHub Release.
+The workflow rejects a requested tag that already exists and refuses a manual
+release when the selected commit already carries another stable version tag.
+It then validates the CI/build prerequisites and generates release notes from
+the explicit previous-tag-to-HEAD commit range while setting the requested
+release version. Before creating any tag, it requires the first release-note
+heading to match `## <requested-tag> - YYYY-MM-DD`. It then creates the annotated
+tag, builds the canonical source ZIP, creates its SHA-256 manifest, and publishes
+the GitHub Release.
+
+The current history contains a legacy annotated `v1.4.3` tag at the same commit
+as the published `v1.4.4` release; `v1.4.3` has no associated GitHub Release.
+Treat `v1.4.4` as the published version. The workflow now prevents additional
+manual version tags from being attached to a commit that is already tagged.
 
 Alternatively, a maintainer can create and push the annotated tag locally:
 
@@ -84,8 +93,10 @@ The historical Turkish changelog ends at `1.3.8`, but that historical entry is
 not a Git tag. The current workflow's first-release notes therefore come from
 the curated `CHANGELOG.md` `[Unreleased]` section instead of treating the
 entire repository history as one release. The first release version is entered
-explicitly in the workflow. Once a version tag exists, git-cliff generates
-subsequent notes from commits since the previous matching tag.
+explicitly in the workflow. For a manual release, git-cliff receives the exact `<previous-tag>..HEAD`
+range and `--tag <requested-version>`; a pushed tag uses `--current`. The
+workflow checks the generated first heading against the requested version so
+an older tag at the same commit cannot silently label a new release.
 
 ## What the release workflow publishes
 
