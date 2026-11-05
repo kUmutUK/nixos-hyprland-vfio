@@ -188,7 +188,7 @@ require(
     "Last completed full-system build baseline — 2026-11-05" in REPAIR,
     "repair report must label the last completed full-system build baseline and avoid a duplicated heading",
 )
-audit_gate_line = "**Last pre-reconciliation source snapshot:** GitHub `main` at `7f923a2c7aa59721bc00728faccbc073e06c697a`; **normal CI:** [#1239](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42032980751) passed all 28 workflow-defined steps on this exact commit; **full-system build:** manual [#13](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42002113160) passed on ancestor build baseline `1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b` (2 h 24 min 51 s); **published release:** [v1.4.4](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.4) was published by release run [#15](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42035815458) from this reviewed commit. **Full-system build gate: CLOSED** — subsequent changes are limited to the explicit release/documentation/CI/test allowlist. The separate annotated `v1.4.3` tag also points to this commit but has no GitHub Release; `v1.4.4` is the published version. The existing v1.4.4 release description carries an incorrect `v1.4.3` heading; this follow-up hardens future release notes by selecting the explicit previous-tag-to-HEAD range, setting the requested version, and rejecting mismatched headings before future publication. The 3 November target-hardware validation remains owner-reported; libvirt saved-state/managed-save restore remains unverified."
+audit_gate_line = "**Current verified source snapshot (5 November 2026):** GitHub `main` at `994b05c888fbb52295d93e8ef74e41bac66c5e65`; **normal CI:** run #1242 passed all 28 workflow-defined steps on this exact commit; **full-system build:** manual [#13](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42002113160) passed on ancestor build baseline `1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b` (2 h 24 min 51 s); **published release:** [v1.4.5](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.5) was published by release run #17 from this exact source snapshot. **Full-system build gate: CLOSED** — changes after the successful full-system build are confined to the documented release/documentation/CI/test allowlist. The 3 November target-hardware validation remains owner-reported; libvirt saved-state/managed-save restore remains unverified."
 require(
     audit_gate_line in REPAIR and audit_gate_line in STATE_INDEX and audit_gate_line in README,
     "the repair report, root status index, and README must show the same explicit reviewed-HEAD/full-build gate",
@@ -261,11 +261,28 @@ require("[#" + (ci_run_match.group(1) if ci_run_match else "") + "]" in STATE_IN
 require("run #" + (build_run_match.group(1) if build_run_match else "") in STATE_INDEX,
         "current-state index must reference the same full-system build as the repair report")
 require(
-    "run #1239" in REPAIR and "run #1239" in STATE_INDEX
+    "Previous reviewed snapshot (historical, 5 November 2026)" in REPAIR
+    and "Previous reviewed snapshot (historical, 5 November 2026)" in STATE_INDEX
+    and "run #1239" in REPAIR and "run #1239" in STATE_INDEX
     and "42032980751" in REPAIR and "42032980751" in STATE_INDEX
     and "7f923a2c7aa59721bc00728faccbc073e06c697a" in REPAIR
     and "7f923a2c7aa59721bc00728faccbc073e06c697a" in STATE_INDEX,
-    "current normal CI must be recorded for the pre-reconciliation source snapshot",
+    "previous CI #1239 / v1.4.4 snapshot must remain clearly historical",
+)
+require(
+    "994b05c888fbb52295d93e8ef74e41bac66c5e65" in README
+    and "994b05c888fbb52295d93e8ef74e41bac66c5e65" in CHANGELOG
+    and "994b05c888fbb52295d93e8ef74e41bac66c5e65" in STATE_INDEX
+    and "994b05c888fbb52295d93e8ef74e41bac66c5e65" in REPAIR
+    and "run #1242" in README and "run #1242" in CHANGELOG
+    and "run #1242" in STATE_INDEX and "run #1242" in REPAIR
+    and "release run #17" in README and "release run #17" in CHANGELOG
+    and "v1.4.5" in STATE_INDEX and "v1.4.5" in REPAIR
+    and "392,212 bytes" in README and "392,212 bytes" in CHANGELOG
+    and "392,212 bytes" in STATE_INDEX and "392,212 bytes" in REPAIR
+    and "f97fb12bdfbaaff4d32e7ab57bbc9251fababcd126a8ef7644947844924de9e0" in README
+    and "f97fb12bdfbaaff4d32e7ab57bbc9251fababcd126a8ef7644947844924de9e0" in REPAIR,
+    "current HEAD, CI #1242, and v1.4.5 release metadata must agree across current documentation",
 )
 require(
     "run #13" in REPAIR and "run #13" in STATE_INDEX
@@ -301,12 +318,12 @@ require(
 require(
     "13416329673" in REPAIR and "379,511 bytes" in REPAIR
     and "sha256:f9fdf7c3be15b69d032f4965e6765f841fd04f54e9096d2536091f5c01e267ed" in REPAIR,
-    "repair report must identify the latest canonical artifact from CI #1239",
+    "repair report must retain the canonical artifact details for historical CI #1239",
 )
 require(
     "v1.4.4" in REPAIR and "run #15" in REPAIR and "v1.4.4" in STATE_INDEX and "run #15" in STATE_INDEX
     and "42035815458" in REPAIR and "42035815458" in STATE_INDEX,
-    "published release must be recorded as v1.4.4 from run #15",
+    "the previous v1.4.4 release must remain recorded as a historical snapshot",
 )
 require(
     "v1.4.3" in REPAIR and "no GitHub Release" in REPAIR and "incorrect" in REPAIR,
