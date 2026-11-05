@@ -9,6 +9,7 @@ The detailed sections remain grouped by subject and source snapshot; this index 
 - **2026-11-05 (latest):** exact-HEAD normal CI #1220, full-system build #11, and v1.4.2 release verification.
 - **2026-11-04 (historical):** fourteenth supplied audit cross-check; archive version-table reconciliation; Home Manager package de-duplication; historical build-label correction.
 - **2026-11-04 (earlier, historical):** thirteenth supplied audit cross-check; MAKO Renderer integration; supplied VM XML/exact-HEAD cross-check; current supplied archive-report reconciliation; supplied configuration/installer cross-check; Pyprland, PCI, and cursor remediation.
+- **2026-11-05 build/navigation records:** Last completed full-system build baseline (#11); the 4 November CHANGELOG-only entries for Game graphics profile guidance, CS2 frame-generation profile, and Source-tree audit hardening remain listed below.
 - **2026-11-03:** post-audit remediation; supplied comprehensive audit cross-check (unnumbered).
 - **2026-11-01:** ShellCheck follow-up; eleventh audit/release-workflow repair; twelfth audit update.
 - **2026-10-30:** ninth and tenth audit cross-checks.
