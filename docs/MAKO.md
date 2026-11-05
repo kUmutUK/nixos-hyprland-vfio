@@ -29,6 +29,8 @@ These are conservative starting values for the repository's RX 6700 XT (RDNA2), 
 
 MAKO profiles are saved by `mako-ui` in the user's configuration. The Nix package does not currently declare or overwrite those user profiles. Apply these values in the UI; do not copy guessed profile JSON into `home.nix`.
 
+**Selection preference:** Treat MAKO Adaptive as the first per-game Frame Generation path to validate. Keep LSFG-VK v2 as the alternative when MAKO is unavailable or does not behave well in that title. This is a conservative configuration preference, not a measured claim that MAKO is faster or has better image quality on the RX 6700 XT. OptiScaler remains a separate, optional game-local upscaling/compatibility tool.
+
 ### System-wide policy
 
 - Keep the current NixOS `LOW_LATENCY_LAYER=1` default and its AMD Anti-Lag interface. Leave `LOW_LATENCY_LAYER_REFLEX` unset globally; do not force Reflex on an AMD system.
@@ -43,7 +45,7 @@ MAKO profiles are saved by `mako-ui` in the user's configuration. The Nix packag
 | Genshin Impact | MAKO Adaptive, after per-game validation | Target 170 FPS; maximum adaptive multiplier 2x initially. Try a 3x ceiling only if the measured real FPS and image quality justify it. |
 | Wuthering Waves | MAKO Adaptive, after per-game validation | Target 170 FPS; maximum adaptive multiplier 2x initially. Consider 3x only after comparing responsiveness and interpolation artifacts. |
 | Other single-player games | MAKO Adaptive, game by game | Start at a 2x ceiling and change one setting at a time. Keep frame generation off when native performance is already preferable. |
-| MAKO fallback | Existing LSFG-VK v2 profiles | Keep the current Genshin 3x and Wuthering Waves 2x profiles as alternatives; use LSFG-VK only when MAKO Frame Generation is not active for that game. |
+| LSFG-VK fallback | Genshin 2x and Wuthering Waves 2x profiles | Keep both conservative profiles as alternatives; use LSFG-VK only when MAKO Frame Generation is not active for that game. |
 | OptiScaler | Optional game-local upscaling / compatibility path | Use only for a compatible offline single-player title. It is not a global setting; do not combine its Frame Generation with MAKO or LSFG-VK Frame Generation. |
 
 The 170 FPS value is an **Adaptive target**, not a promise that the game will output 170 FPS. At a 60 FPS real-frame rate, a 2x ceiling can produce about 120 output FPS; a 3x ceiling permits more generated frames but can increase latency or visible interpolation artifacts. Adaptive chooses within the selected ceiling; it is not the same as forcing a fixed multiplier.
