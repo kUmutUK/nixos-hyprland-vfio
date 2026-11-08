@@ -496,7 +496,6 @@ in
       vscode = vscode.fhs;
       vscodeExtensions = with vscode-extensions; [ continue.continue ];
     })
-    brave
     telegram-desktop
     discord
     proton-vpn
