@@ -1,4 +1,4 @@
-# Repair and validation report — updated 2026-11-05
+# Repair and validation report — updated 2026-11-09
 
 > **Delivery-scope note:** This report is part of the tracked source tree. The dated “patch-only ZIP” notes below are historical. For a canonical full-source ZIP, use `scripts/package-source-zip.sh` or the CI-uploaded `nixos-hyprland-vfio-source` artifact for the exact commit. The helper verifies tracked-file completeness, excludes `.git/`, preserves executable bits, and makes the finished artifact readable from shared output directories.
 
@@ -14,16 +14,17 @@ The detailed sections remain grouped by subject and source snapshot; this index 
 - **2026-11-05 (previous release snapshot):** exact-HEAD normal CI #1220, full-system build #11, and v1.4.2 publication from `9661091e35aed98b18483ff6d25a54fe0653c877`; superseded as the current build baseline by #13.
 - **2026-11-04 (historical):** fourteenth supplied audit cross-check; archive version-table reconciliation; Home Manager package de-duplication; historical build-label correction.
 - **2026-11-04 (earlier, historical):** thirteenth supplied audit cross-check; MAKO Renderer integration; supplied VM XML/exact-HEAD cross-check; current supplied archive-report reconciliation; supplied configuration/installer cross-check; Pyprland, PCI, and cursor remediation.
-- **2026-11-05 build/navigation records:** Last completed full-system build baseline (#13); the 4 November CHANGELOG-only entries for Game graphics profile guidance, CS2 frame-generation profile, and Source-tree audit hardening remain listed below.
+- **2026-11-07 (latest completed full-system build):** normal CI #1251 and manual full-system build #16 passed on exact commit `a6dd4544319fafa7ec517e73b31ad29a1b4010b3`; later kernel/input/hardware changes are pending a new build.
+- **2026-11-05 build/navigation records (historical):** full-system build #13 remains recorded below as an earlier successful baseline; the 4 November CHANGELOG-only entries remain listed below.
 - **2026-11-03 (target hardware):** owner-reported successful rebuild, selected kernel compilation, Windows VM start/shutdown, and Hyprland recovery on the then-current target configuration.
 - **2026-11-03:** post-audit remediation; supplied comprehensive audit cross-check (unnumbered).
 - **2026-11-01:** ShellCheck follow-up; eleventh audit/release-workflow repair; twelfth audit update.
 - **2026-10-30:** ninth and tenth audit cross-checks.
 - **2026-10-28 and earlier:** historical source-ZIP, packaging, installer, and configuration follow-ups.
 
-## Latest verified CI and release status — 2026-11-05
+## Latest verified CI and release status — 2026-11-09
 
-**Latest published release snapshot (5 November 2026):** GitHub `main` at `994b05c888fbb52295d93e8ef74e41bac66c5e65` at publication time; **normal CI:** run #1242 passed all 28 workflow-defined steps on this exact release commit; **full-system build:** manual [#13](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42002113160) passed on ancestor build baseline `1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b` (2 h 24 min 51 s); **published release:** [v1.4.5](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.5) was published by release run #17 from this exact snapshot. Changes after this release snapshot are documentation/test-only and do not alter the NixOS system closure; a successful normal-CI run on the exact current commit is still required before a later release. The 3 November target-hardware validation remains owner-reported; libvirt saved-state/managed-save restore remains unverified.
+**Latest published release snapshot (5 November 2026):** GitHub `main` at `994b05c888fbb52295d93e8ef74e41bac66c5e65` at publication time; **normal CI:** run #1242 passed all 28 workflow-defined steps on this exact release commit; **full-system build:** manual [#13](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42002113160) passed on ancestor build baseline `1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b` (2 h 24 min 51 s); **published release:** [v1.4.5](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.5) was published by release run #17 from this exact snapshot. The latest subsequent full-system build is manual run #16 on ancestor `a6dd4544319fafa7ec517e73b31ad29a1b4010b3`; changes after that build include kernel configuration, flake inputs/lock, and host hardware-configuration updates, so a new full-system build and successful normal CI on the exact candidate commit are required before a later release. The 3 November target-hardware validation remains owner-reported; libvirt saved-state/managed-save restore remains unverified.
 
 **Pre-reconciliation main verification (5 November 2026):** GitHub `main` at `4eb6a106d825890a929fe57054a1660da524a458`; normal CI [#1244](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42076151633) passed all 28 workflow-defined steps on this exact commit and uploaded `nixos-hyprland-vfio-source` (artifact ID `13438456860`, 383,949 bytes; outer artifact digest `sha256:f04a477945bc2b47d7f8c7394a8f178895ed950bba2f245fae9b7aecdf553d97`). The preceding documentation-only commit `d35155ce6b9fb089934ee2f15f4208279dc5e2da` had CI #1243 fail at the documentation-integrity gate; commit `4eb6a10` restored the missing historical assertions and CI #1244 passed. This is the last completed validation before this documentation/test reconciliation; this follow-up requires its own exact-commit normal CI before a later release.
 
@@ -35,6 +36,19 @@ The detailed sections remain grouped by subject and source snapshot; this index 
 - **Documentation-test follow-up:** CI #1243 (run ID `42075592891`) on the first documentation-only update stopped at the documentation-integrity regression because the root index omitted the exact historical full-build baseline line and the historical CI entry lacked the literal `run #1239` wording. The test failure was limited to those two documentation-contract assertions; the preceding installer-mode, ZIP-package, actionlint, Nix formatting, and XML checks passed. This follow-up restores both expected records without changing runtime configuration.
 - **Hardware boundary:** the 3 November rebuild/kernel/VM-startup/shutdown result remains owner-reported. No new physical test or libvirt saved-state/managed-save restore result is claimed.
 
+## Current system-update validation — 2026-11-09 (full-build gate OPEN)
+
+The current uploaded source snapshot was reviewed at GitHub `main` commit `dc97b93df08ba625382b77c4ed369f77bb034c1e` (commit message: “Add files via upload”). The last successful exact-commit normal CI and full-system build are #1251 and #16 on ancestor `a6dd4544319fafa7ec517e73b31ad29a1b4010b3`; neither validates the later changes listed here.
+
+- **Kernel configuration:** the configuration adds `BLK_DEV_RUST_NULL = lib.kernel.no;` to avoid the experimental Rust null-block module's failing BTF finalization path. General Rust, BTF, ThinLTO, and RT-Bore selection remain enabled.
+- **Flake inputs:** `nixos/flake.lock` now advances the CachyOS kernel overlay to `9df32f70be3550911f178b3ba9ad784996a4e80c` (kernel 7.3.3), its nested Nixpkgs to `4d6a01a11146f4691c0991682885ad9e4686e3ee`, the root Nixpkgs to `f4a03c008967841f2a0b3cb7c436fc6fc31671f6`, and Home Manager to `2c0c1f01521469cf0271180c453c79782d53c2f6`. These are system/input changes and require a new full-system build.
+- **Host hardware mapping:** the uploaded `nixos/hardware-configuration.nix` changes the Btrfs root, LUKS, EFI, and swap identifiers. These are machine-specific values; CI cannot establish that they match the physical host. Before any activation, compare `lsblk -f`, `sudo blkid`, and `findmnt` for `/`, `/home`, and `/boot`. Stop before rebuilding or activating if any configured identifier does not resolve to the intended device.
+- **Other uploaded configuration change:** `brave` was removed from `environment.systemPackages`; this is preserved as uploaded and is not related to either CI failure.
+- **Formatting:** CI #1255 stopped at read-only Nix formatting because `nixos/flake.nix` contained trailing whitespace after `...` and missing spacing around the overlay list. The formatting-only correction is applied in the follow-up commit.
+- **Integrity gate:** CI #1254 stopped because `nixos/flake.lock` was not yet included among the explicit pending-full-build paths. The integrity regression now treats both `nixos/flake.lock` and `nixos/hardware-configuration.nix` as system-affecting pending paths, while keeping both outside the release ancestor-build allowlist.
+
+**Release/build disposition:** the full-system build gate is OPEN for the current source. A successful exact-commit normal CI and a new manual full NixOS system build are required before release. CI #1254/#1255 did not reach or report a new kernel compilation failure; neither run confirms that the 7.3.3 BTF workaround builds successfully.
+
 ## GameMode and installer preflight remediation — 2026-11-05
 
 - **GameMode semantics:** corrected the `nixos/configuration.nix` comment to state that GameMode negates the configured positive `renice` magnitude. With `renice = 10`, the effective nice value is `-10`, which raises CPU scheduling priority when GameMode successfully applies it. The documentation-integrity regression now calculates and checks the effective value and direction. No GameMode numeric setting was changed.
@@ -42,7 +56,17 @@ The detailed sections remain grouped by subject and source snapshot; this index 
 - **Preserved choices:** `gpu_device = 1` remains pending the target host's live `/sys/class/drm` mapping. VM XML, PCI/USB identities, VFIO runtime behavior, kernel selection, frame-generation settings, and desktop preferences were not changed.
 - **Build-gate disposition:** the gate was OPEN when these `nixos/configuration.nix` and `install.sh` changes were first recorded. It was subsequently closed by exact-HEAD full-system build #13 on `1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b`; normal CI #1233 also passed on that commit. This does not add a new physical VFIO test or saved-state-restore result.
 
-## Last completed full-system build baseline — 2026-11-05
+## Last completed full-system build baseline — 2026-11-07
+
+**Reviewed source snapshot:** GitHub `main` at `a6dd4544319fafa7ec517e73b31ad29a1b4010b3`.
+
+- **Normal CI for the reviewed snapshot:** [run #1251](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42525185215) completed successfully for the exact reviewed snapshot `a6dd4544319fafa7ec517e73b31ad29a1b4010b3`.
+- **Full NixOS system build:** [manual run #16](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42414377307) completed successfully for the **same exact commit** `a6dd4544319fafa7ec517e73b31ad29a1b4010b3`. The complete NixOS toplevel, selected kernel, and unchanged-lock check passed.
+- **Verified full-system build baseline:** GitHub `main` at `a6dd4544319fafa7ec517e73b31ad29a1b4010b3` (7 November 2026).
+- **Build-gate boundary:** the 7.3.3 CachyOS input update, the Rust null-block workaround, the later root Nixpkgs/Home Manager lock updates, and the uploaded host hardware-configuration refresh all occurred after this build. A new full-system build is required before release.
+- **Hardware boundary:** runner success does not validate the newly uploaded storage mapping on the physical host or add a new VFIO/VM lifecycle or saved-state-restore result.
+
+## Previous full-system build baseline — 2026-11-05 (historical; superseded by #16)
 
 **Build-baseline snapshot:** GitHub `main` at `1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b`; **normal CI at that time:** #1233 passed on this exact commit; **full-system build:** #13 passed on this exact commit; **published release at that time:** v1.4.2 from earlier commit `9661091e35aed98b18483ff6d25a54fe0653c877` by run #7. **Full-system build gate: CLOSED** — the complete NixOS toplevel and selected kernel were built on this snapshot. The later reviewed source snapshot and v1.4.4 release are recorded in the current-status section above.
 

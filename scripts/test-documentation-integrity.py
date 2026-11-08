@@ -210,10 +210,10 @@ require(
     "release-note heading regex must accept only the exact requested version and an ISO date",
 )
 require(
-    "Last completed full-system build baseline — 2026-11-05" in REPAIR,
+    "Last completed full-system build baseline — 2026-11-07" in REPAIR,
     "repair report must label the last completed full-system build baseline and avoid a duplicated heading",
 )
-audit_gate_line = "**Latest published release snapshot (5 November 2026):** GitHub `main` at `994b05c888fbb52295d93e8ef74e41bac66c5e65` at publication time; **normal CI:** run #1242 passed all 28 workflow-defined steps on this exact release commit; **full-system build:** manual [#13](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42002113160) passed on ancestor build baseline `1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b` (2 h 24 min 51 s); **published release:** [v1.4.5](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.5) was published by release run #17 from this exact snapshot. Changes after this release snapshot are documentation/test-only and do not alter the NixOS system closure; a successful normal-CI run on the exact current commit is still required before a later release. The 3 November target-hardware validation remains owner-reported; libvirt saved-state/managed-save restore remains unverified."
+audit_gate_line = "**Latest published release snapshot (5 November 2026):** GitHub `main` at `994b05c888fbb52295d93e8ef74e41bac66c5e65` at publication time; **normal CI:** run #1242 passed all 28 workflow-defined steps on this exact release commit; **full-system build:** manual [#13](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42002113160) passed on ancestor build baseline `1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b` (2 h 24 min 51 s); **published release:** [v1.4.5](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.5) was published by release run #17 from this exact snapshot. The latest subsequent full-system build is manual run #16 on ancestor `a6dd4544319fafa7ec517e73b31ad29a1b4010b3`; changes after that build include kernel configuration, flake inputs/lock, and host hardware-configuration updates, so a new full-system build and successful normal CI on the exact candidate commit are required before a later release. The 3 November target-hardware validation remains owner-reported; libvirt saved-state/managed-save restore remains unverified."
 require(
     audit_gate_line in REPAIR and audit_gate_line in STATE_INDEX and audit_gate_line in README,
     "the repair report, root status index, and README must show the same explicit reviewed-HEAD/full-build gate",
@@ -263,7 +263,7 @@ repair_baseline_match = re.search(
     REPAIR,
 )
 index_baseline_match = re.search(
-    r"(?m)^- \*\*Last completed full-system build baseline \(2026-11-05\):\*\* GitHub `main` at `([0-9a-f]{40})`",
+    r"(?m)^- \*\*Last completed full-system build baseline \(2026-11-07\):\*\* GitHub `main` at `([0-9a-f]{40})`",
     STATE_INDEX,
 )
 reviewed_snapshot_match = re.search(
@@ -271,7 +271,7 @@ reviewed_snapshot_match = re.search(
     REPAIR,
 )
 index_reviewed_snapshot_match = re.search(
-    r"(?m)^- Reviewed source snapshot \(2026-11-03\): GitHub `main` at `([0-9a-f]{40})`",
+    r"(?m)^- Reviewed source snapshot \(2026-11-07\): GitHub `main` at `([0-9a-f]{40})`",
     STATE_INDEX,
 )
 ci_run_match = re.search(
@@ -462,7 +462,7 @@ if current_head and repair_baseline_match:
                 reviewed_ancestor = subprocess.run(["git", "merge-base", "--is-ancestor", reviewed_sha, current_head], cwd=ROOT, capture_output=True, text=True)
                 require(reviewed_ancestor.returncode == 0, "reviewed normal-CI source snapshot must be an ancestor of the current checkout HEAD")
             changed = subprocess.run(["git", "diff", "--name-only", verified_sha, current_head], cwd=ROOT, check=True, capture_output=True, text=True).stdout.splitlines()
-            full_build_pending_paths = {"nixos/configuration.nix", "nixos/hooks/qemu", "install.sh", "nixos/home.nix", "nixos/flake.nix", "nixos/mako-renderer.nix"}
+            full_build_pending_paths = {"nixos/configuration.nix", "nixos/hooks/qemu", "install.sh", "nixos/home.nix", "nixos/flake.nix", "nixos/flake.lock", "nixos/hardware-configuration.nix", "nixos/mako-renderer.nix"}
             unexpected = sorted(set(changed) - verification_metadata_paths - full_build_pending_paths)
             require(
                 not unexpected,
@@ -518,6 +518,29 @@ if current_head and repair_baseline_match:
                 require(
                     "nixos/flake.nix" in RELEASING and "nixos/flake.nix" not in RELEASE_WORKFLOW,
                     "nixos/flake.nix must remain outside the ancestor-build release allowlist",
+                )
+            if "nixos/flake.lock" in pending:
+                require(
+                    "nixos/flake.lock" in REPAIR
+                    and "fresh full-system build is required before release" in REPAIR,
+                    "flake-lock input updates must be documented as requiring a fresh full-system build",
+                )
+                require(
+                    "nixos/flake.lock" in RELEASING and "nixos/flake.lock" not in RELEASE_WORKFLOW,
+                    "nixos/flake.lock must remain outside the release ancestor-build allowlist until a new full-system build passes",
+                )
+            if "nixos/hardware-configuration.nix" in pending:
+                require(
+                    "nixos/hardware-configuration.nix" in REPAIR
+                    and "lsblk -f" in REPAIR
+                    and "sudo blkid" in REPAIR
+                    and "findmnt" in REPAIR,
+                    "host hardware-configuration updates must document storage-ID verification and the full-system build gate",
+                )
+                require(
+                    "nixos/hardware-configuration.nix" in RELEASING
+                    and "nixos/hardware-configuration.nix" not in RELEASE_WORKFLOW,
+                    "nixos/hardware-configuration.nix must remain outside the release ancestor-build allowlist until a new full-system build passes",
                 )
             if "nixos/mako-renderer.nix" in pending:
                 require(

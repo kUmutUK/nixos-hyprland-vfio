@@ -31,7 +31,7 @@
       nixpkgs,
       cachyos-kernel,
       home-manager,
-      ...      
+      ...
     }:
     let
       system = "x86_64-linux";
@@ -57,7 +57,7 @@
             # Update the flake lock intentionally with `nix flake update cachyos-kernel` when
             # upstream publishes a newer kernel. RT-Bore-LTO LTO is not in the binary cache,
             # so this variant is expected to build locally even with `pinned`.
-            nixpkgs.overlays = [cachyos-kernel.overlays.pinned];
+            nixpkgs.overlays = [ cachyos-kernel.overlays.pinned ];
             boot.kernelPackages = pkgs.cachyosKernels.linuxPackages-cachyos-rt-bore-lto;
             # Hyprland, its companion tools, and xdg-desktop-portal-hyprland
             # come from the same nixpkgs revision to keep their ABI consistent.
