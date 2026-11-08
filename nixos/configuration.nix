@@ -132,6 +132,19 @@ in
     # host grace periods and works against the low-jitter goal of this configuration.
   ];
 
+  # The experimental Rust null block driver is not used by this host.
+  # Its module BTF finalization fails in the current CachyOS RT-Bore-LTO build
+  # (rnull_mod.ko.BTF.1 is missing). Keep general Rust, BTF, and ThinLTO support.
+  boot.kernelPatches = [
+    {
+      name = "disable-rust-null-block-driver";
+      patch = null;
+      structuredExtraConfig = {
+        BLK_DEV_RUST_NULL = lib.kernel.no;
+      };
+    }
+  ];
+
   # Optional host-graphics convenience: make amdgpu available in the initrd so
   # the single-GPU host can initialize its Radeon display early in boot. This
   # is not required for VFIO itself (vfio-pci is configured separately below);
