@@ -693,6 +693,26 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 ## Known limitations
 
 - **RT-Bore-LTO validation:** the upstream source does not publish the ThinLTO variant in its binary cache, so each newly selected upstream revision needs a local build. The project owner reports that the currently locked revision built and passed the VM start/shutdown and Hyprland-recovery check on the target machine (see the 2026-11-03 update below); this result is owner-reported, not independently reproduced, and does not guarantee compatibility on other hardware. Real-time preemption does not guarantee higher FPS or better frametimes. Retain a known-good boot generation when testing future kernel revisions.
+
+### 7.3.3 Rust/BTF build failure — diagnosis and workaround (2026-11-09)
+
+The local CachyOS RT-Bore-LTO 7.3.3 build reached module finalization, then failed while generating/loading BTF for the experimental Rust null-block module:
+
+```text
+RUSTC [M] drivers/block/rnull/rnull.o
+LD [M]  drivers/block/rnull/rnull_mod.ko
+BTF [M] drivers/block/rnull/rnull_mod.ko
+FAILED: load BTF from drivers/block/rnull/rnull_mod.ko.BTF.1: No such file or directory
+```
+
+The underlying compatibility problem is the combination of **Rust, LTO, and module BTF**. LTO can move Rust-generated debug information across compilation-unit boundaries, leaving Rust information in DWARF units labelled as C. Pahole's language-based Rust filtering cannot reliably identify that mixed information, and the kernel cannot safely consume the resulting BTF. This is a known kernel limitation; see the [upstream Rust + LTO BTF discussion and proposed Kconfig restriction](https://lists.openwall.net/linux-kernel/2025/01/08/1904). The driver itself is explicitly experimental and its Kconfig help says “If unsure, say N” ([kernel configuration reference](https://cateee.net/lkddb/web-lkddb/BLK_DEV_RUST_NULL.html)).
+
+The failed build resolved **pahole 1.32**. The version number alone does not explain this failure: the key issue is the Rust + LTO + BTF interaction, not merely that Pahole was absent from the host PATH. The `rustfmt` and libclang/Clang messages in the same build log were non-fatal and were not the terminating error.
+
+**Workaround committed on 9 November 2026:** `nixos/configuration.nix` sets `BLK_DEV_RUST_NULL = lib.kernel.no;` through `boot.kernelPatches`. This prevents the unused experimental `rnull_mod` module from entering the failing BTF-finalization path while retaining general Rust support, BTF, ThinLTO, and the RT-Bore kernel selection. It does not disable Rust globally.
+
+**Verification status:** this is a log-supported diagnosis and a targeted workaround, not yet a confirmed successful rebuild. Confirm it with a successful exact-commit CI run and a local 7.3.3 kernel/module build. Until those pass, do not describe the kernel fix as validated.
+
 - **Global Vulkan latency layer compatibility:** upstream `low_latency_layer` v0.2.0 documents an incompatibility with the `obs_vkcapture` Vulkan capture layer. If game capture or recording breaks while the layer is enabled, launch the affected game with `DISABLE_LOW_LATENCY_LAYER=1 %command%` and verify whether capture works again.
 - **LSFG-VK schema:** the current tree uses the upstream v2 `[[profile]]` profile format (`version = 2` and `[global]`). The layer/UI/CLI are built from the immutable revision and source hash in `nixos/lsfg-vk-v2.nix`; CI validates the generated TOML and builds `.#lsfg-vk-v2`. Upstream is licensed CC BY-NC-ND 4.0, so the package does not patch or redistribute modified upstream source. Lossless Scaling itself must be separately installed through Steam.
 - **Wuthering Waves LSFG profile:** the v2 configuration includes common Proton/Wine executable aliases `Client-Win64-Shipping.exe` and `Client-Win64-Shipping`. Confirm the actual process name selected by LSFG-VK from the target machine's runtime log; the static configuration test cannot prove the profile is activated in-game.
