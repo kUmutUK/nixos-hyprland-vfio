@@ -15,7 +15,7 @@ The detailed sections remain grouped by subject and source snapshot; this index 
 - **2026-11-04 (historical):** fourteenth supplied audit cross-check; archive version-table reconciliation; Home Manager package de-duplication; historical build-label correction.
 - **2026-11-04 (earlier, historical):** thirteenth supplied audit cross-check; MAKO Renderer integration; supplied VM XML/exact-HEAD cross-check; current supplied archive-report reconciliation; supplied configuration/installer cross-check; Pyprland, PCI, and cursor remediation.
 - **2026-11-07 (latest completed full-system build):** normal CI #1251 and manual full-system build #16 passed on exact commit `a6dd4544319fafa7ec517e73b31ad29a1b4010b3`; later kernel/input/hardware changes are pending a new build.
-- **2026-11-05 build/navigation records (historical):** full-system build #13 remains recorded below as an earlier successful baseline; the 4 November CHANGELOG-only entries remain listed below.
+- **2026-11-05 build/navigation records (historical):** full-system build #13 remains recorded below as an earlier successful baseline; the 4 November CHANGELOG-only entries for Game graphics profile guidance, CS2 frame-generation profile, and Source-tree audit hardening remain listed below.
 - **2026-11-03 (target hardware):** owner-reported successful rebuild, selected kernel compilation, Windows VM start/shutdown, and Hyprland recovery on the then-current target configuration.
 - **2026-11-03:** post-audit remediation; supplied comprehensive audit cross-check (unnumbered).
 - **2026-11-01:** ShellCheck follow-up; eleventh audit/release-workflow repair; twelfth audit update.
@@ -60,6 +60,8 @@ The current uploaded source snapshot was reviewed at GitHub `main` commit `dc97b
 
 **Reviewed source snapshot:** GitHub `main` at `a6dd4544319fafa7ec517e73b31ad29a1b4010b3`.
 
+**Verified full-system build baseline:** GitHub `main` at `a6dd4544319fafa7ec517e73b31ad29a1b4010b3` (7 November 2026).
+
 - **Normal CI for the reviewed snapshot:** [run #1251](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42525185215) completed successfully for the exact reviewed snapshot `a6dd4544319fafa7ec517e73b31ad29a1b4010b3`.
 - **Full NixOS system build:** [manual run #16](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42414377307) completed successfully for the **same exact commit** `a6dd4544319fafa7ec517e73b31ad29a1b4010b3`. The complete NixOS toplevel, selected kernel, and unchanged-lock check passed.
 - **Verified full-system build baseline:** GitHub `main` at `a6dd4544319fafa7ec517e73b31ad29a1b4010b3` (7 November 2026).
@@ -70,7 +72,7 @@ The current uploaded source snapshot was reviewed at GitHub `main` commit `dc97b
 
 **Build-baseline snapshot:** GitHub `main` at `1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b`; **normal CI at that time:** #1233 passed on this exact commit; **full-system build:** #13 passed on this exact commit; **published release at that time:** v1.4.2 from earlier commit `9661091e35aed98b18483ff6d25a54fe0653c877` by run #7. **Full-system build gate: CLOSED** — the complete NixOS toplevel and selected kernel were built on this snapshot. The later reviewed source snapshot and v1.4.4 release are recorded in the current-status section above.
 
-**Verified full-system build baseline:** GitHub `main` at `1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b` (5 November 2026).
+**Historical verified full-system build baseline:** GitHub `main` at `1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b` (5 November 2026).
 
 - **Normal CI:** [run #1233](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42001709686) completed successfully for this exact commit. All **28 workflow-defined steps** passed, including canonical source ZIP creation/validation, documentation integrity and MAKO integration, VM XML and installer regressions, Nix formatting/evaluation, LSFG-VK v2 and MAKO package builds, ShellCheck, Statix, and Deadnix.
 - **Full NixOS system build:** [manual run #13](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42002113160) completed successfully for the **same exact commit** `1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b`. It started at 09:24:30 UTC and completed at 11:49:21 UTC on 5 November 2026 (**2 h 24 min 51 s**). Flake evaluation, the complete NixOS toplevel/selected-kernel build, and the unchanged-lock check all passed.
