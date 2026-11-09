@@ -747,8 +747,12 @@ require(
     and "N I X O S   /   K I N G   G R E Y" not in HOME_NIX
     and "ENTER PASSWORD TO UNLOCK" not in HOME_NIX
     and "text =   $USER" not in HOME_NIX
+    and "path = screenshot" in HOME_NIX
+    and "blur_passes = 2" in HOME_NIX
+    and "blur_size = 8" in HOME_NIX
+    and "brightness = 0.60" in HOME_NIX
     and re.search(r'(?m)^\s*text\s*=\s*;', HOME_NIX) is None,
-    "Minimal Hyprlock layout must retain its lock glyph and remove branding, username, and helper labels",
+    "Minimal Hyprlock layout must retain its lock glyph, remove branding labels, and use a dimmed blurred desktop screenshot",
 )
 require(
     "The helper synchronizes `/var/lib/libvirt/win10.xml` only when `win10` is registered" in README
