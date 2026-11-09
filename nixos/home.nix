@@ -420,8 +420,7 @@ let
     end)
   '';
   hyprlockConf = ''
-    # King Grey lock screen: restrained lilac accents, deep charcoal surfaces,
-    # a clear clock hierarchy, and one centered password field.
+    # Minimal lock screen: compact clock, subtle accent, and one password field.
     general {
         hide_cursor = true
     }
@@ -430,58 +429,36 @@ let
         color = rgba(13, 16, 24, 1.0)
     }
 
-    # Center panel.
     shape {
-        size = 560, 560
-        color = rgba(27, 30, 37, 0.96)
-        rounding = 30
+        size = 480, 340
+        color = rgba(24, 27, 36, 0.92)
+        rounding = 28
         border_size = 1
-        border_color = rgba(234, 178, 194, 0.28)
-        position = 0, 18
+        border_color = rgba(234, 178, 194, 0.22)
+        position = 0, 0
         halign = center
         valign = center
         zindex = -1
     }
 
     label {
-        position = 0, -244
+        position = 0, -118
         halign = center
         valign = center
         text = ;
         font_family = JetBrainsMono Nerd Font
-        font_size = 24
-        color = rgba(234, 178, 194, 1.0)
-        shadow_passes = 0
-    }
-
-    # Small lilac signature above the clock.
-    shape {
-        size = 52, 4
-        color = rgba(234, 178, 194, 1.0)
-        rounding = 2
-        position = 0, -226
-        halign = center
-        valign = center
-    }
-
-    label {
-        position = 0, -194
-        halign = center
-        valign = center
-        text = N I X O S   /   K I N G   G R E Y
-        font_family = JetBrainsMono Nerd Font
-        font_size = 12
+        font_size = 18
         color = rgba(234, 178, 194, 0.92)
         shadow_passes = 0
     }
 
     label {
-        position = 0, -104
+        position = 0, -44
         halign = center
         valign = center
         text = $TIME
         font_family = JetBrainsMono Nerd Font
-        font_size = 108
+        font_size = 96
         color = rgba(238, 241, 250, 1.0)
         shadow_passes = 2
         shadow_size = 3
@@ -489,39 +466,28 @@ let
     }
 
     label {
-        position = 0, -20
+        position = 0, 30
         halign = center
         valign = center
         text = cmd[update:60000, LC_TIME=en_US.UTF-8 ${pkgs.coreutils}/bin/date +"%A, %d %B %Y"]
         font_family = JetBrainsMono Nerd Font
-        font_size = 18
+        font_size = 16
         color = rgba(180, 190, 211, 0.88)
         shadow_passes = 0
     }
 
-    label {
-        position = 0, 66
-        halign = center
-        valign = center
-        text =   $USER
-        font_family = JetBrainsMono Nerd Font
-        font_size = 17
-        color = rgba(204, 217, 255, 0.92)
-        shadow_passes = 0
-    }
-
     input-field {
-        position = 0, 150
+        position = 0, 112
         halign = center
         valign = center
-        size = 360, 60
-        outline_thickness = 2
-        rounding = 14
-        outer_color = rgba(234, 178, 194, 0.95) rgba(118, 196, 215, 0.90) 45deg
-        inner_color = rgba(18, 22, 31, 1.0)
+        size = 340, 58
+        outline_thickness = 1
+        rounding = 16
+        outer_color = rgba(234, 178, 194, 0.82)
+        inner_color = rgba(18, 22, 31, 0.94)
         font_color = rgba(238, 241, 250, 1.0)
         font_family = JetBrainsMono Nerd Font
-        placeholder_text = Enter password
+        placeholder_text = Password
         dots_size = 0.22
         dots_spacing = 0.22
         dots_center = true
@@ -532,17 +498,6 @@ let
         fail_color = rgba(234, 130, 154, 1.0)
         fail_text = $FAIL
         capslock_color = rgba(217, 201, 94, 1.0)
-    }
-
-    label {
-        position = 0, 230
-        halign = center
-        valign = center
-        text = ENTER PASSWORD TO UNLOCK
-        font_family = JetBrainsMono Nerd Font
-        font_size = 11
-        color = rgba(145, 157, 181, 0.72)
-        shadow_passes = 0
     }
   '';
 
