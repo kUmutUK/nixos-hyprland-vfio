@@ -335,6 +335,11 @@ in
     };
   };
 
+  # Preserve hardware ALSA mixer state (for example, ALC897 capture gain) across
+  # shutdowns and restore it when the sound card appears. This does not enable
+  # standalone ALSA in place of PipeWire, choose an input jack, or set gain values.
+  hardware.alsa.enablePersistence = true;
+
   security.rtkit.enable = true;
   services.pipewire = {
     enable = true;
