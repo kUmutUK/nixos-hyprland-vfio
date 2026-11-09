@@ -1150,6 +1150,12 @@ only for startup troubleshooting; it is not a permanent gaming configuration.
 > remains unverified. Every newly selected upstream kernel revision still needs a local build and
 > its boot and VM lifecycle revalidated before relying on it.
 
+
+
+### Target-host validation — 9 November 2026 (owner-reported)
+
+> The project owner reports that NixOS was installed from scratch on the reference hardware without issues. The **Windows 10 VFIO VM** started successfully and shut down normally; GPU control returned to the host and Hyprland resumed. This records the ordinary VM lifecycle only. A libvirt saved-state/managed-save restore, HDR transitions, 10-bit output, and display flicker were not separately validated.
+
 ---
 
 # 🧠 After installation
