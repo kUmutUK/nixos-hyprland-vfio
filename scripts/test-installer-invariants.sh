@@ -173,20 +173,29 @@ fi
 cat > "$partition_count_test_dir/harness.sh" <<'BASH'
 set -euo pipefail
 DISK_REAL=/dev/testdisk
+EXPECTED_PARTITIONS="${EXPECTED_PARTITIONS:-3}"
 lsblk() { printf '%s\n' "${TEST_LSBLK_TYPES:?}"; }
 source "$1"
 assert_exact_partition_count
 BASH
-if ! TEST_LSBLK_TYPES=$'disk\npart\npart\npart' bash "$partition_count_test_dir/harness.sh" "$partition_count_test_dir/assert-exact-partition-count.sh"; then
-  echo "FAIL: exactly three partitions were rejected." >&2
+if ! EXPECTED_PARTITIONS=3 TEST_LSBLK_TYPES=$'disk\npart\npart\npart' bash "$partition_count_test_dir/harness.sh" "$partition_count_test_dir/assert-exact-partition-count.sh"; then
+  echo "FAIL: the three-partition layout was rejected." >&2
   exit 1
 fi
-if TEST_LSBLK_TYPES=$'disk\npart\npart' bash "$partition_count_test_dir/harness.sh" "$partition_count_test_dir/assert-exact-partition-count.sh" >/dev/null 2>&1; then
-  echo "FAIL: fewer than three partitions were accepted." >&2
+if EXPECTED_PARTITIONS=3 TEST_LSBLK_TYPES=$'disk\npart\npart' bash "$partition_count_test_dir/harness.sh" "$partition_count_test_dir/assert-exact-partition-count.sh" >/dev/null 2>&1; then
+  echo "FAIL: a two-partition layout was accepted when three were expected." >&2
   exit 1
 fi
-if TEST_LSBLK_TYPES=$'disk\npart\npart\npart\npart' bash "$partition_count_test_dir/harness.sh" "$partition_count_test_dir/assert-exact-partition-count.sh" >/dev/null 2>&1; then
-  echo "FAIL: more than three partitions were accepted." >&2
+if EXPECTED_PARTITIONS=3 TEST_LSBLK_TYPES=$'disk\npart\npart\npart\npart' bash "$partition_count_test_dir/harness.sh" "$partition_count_test_dir/assert-exact-partition-count.sh" >/dev/null 2>&1; then
+  echo "FAIL: a four-partition layout was accepted when three were expected." >&2
+  exit 1
+fi
+if ! EXPECTED_PARTITIONS=4 TEST_LSBLK_TYPES=$'disk\npart\npart\npart\npart' bash "$partition_count_test_dir/harness.sh" "$partition_count_test_dir/assert-exact-partition-count.sh"; then
+  echo "FAIL: the four-partition layout was rejected." >&2
+  exit 1
+fi
+if EXPECTED_PARTITIONS=4 TEST_LSBLK_TYPES=$'disk\npart\npart\npart' bash "$partition_count_test_dir/harness.sh" "$partition_count_test_dir/assert-exact-partition-count.sh" >/dev/null 2>&1; then
+  echo "FAIL: a three-partition layout was accepted when four were expected." >&2
   exit 1
 fi
 if ! grep -Fq 'sha256sum nixos-hyprland-vfio-source.zip > nixos-hyprland-vfio-source.zip.sha256' "$ROOT/.github/workflows/check.yml" \
