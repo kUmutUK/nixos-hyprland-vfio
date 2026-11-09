@@ -481,7 +481,7 @@ let
         position = 0, -20
         halign = center
         valign = center
-        text = cmd[update:60000, LC_TIME=en_US.UTF-8 \${pkgs.coreutils}/bin/date +"%A, %d %B %Y"]
+        text = cmd[update:60000, LC_TIME=en_US.UTF-8 ${pkgs.coreutils}/bin/date +"%A, %d %B %Y"]
         font_family = JetBrainsMono Nerd Font
         font_size = 18
         color = rgba(180, 190, 211, 0.88)
