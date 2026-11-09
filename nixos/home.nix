@@ -426,7 +426,15 @@ let
     }
 
     background {
+        path = screenshot
         color = rgba(13, 16, 24, 1.0)
+        blur_passes = 2
+        blur_size = 8
+        noise = 0.0117
+        contrast = 0.92
+        brightness = 0.60
+        vibrancy = 0.10
+        vibrancy_darkness = 0.05
     }
 
     shape {
