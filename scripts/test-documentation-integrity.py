@@ -154,7 +154,7 @@ require(
     and "MEDIA_UUID" in INSTALLATION
     and "Expected exactly %s partitions" in INSTALLATION
     and "ext4 `/mnt/media`" in README
-    and "MEDIA_UUID" in README
+    and 'sudo blkid -s UUID -o value' in README
     and "fileSystems." in README
     and "/mnt/media" in README
     and "MEDIA_UUID=" in INSTALLER
@@ -320,7 +320,7 @@ require("run #" + (build_run_match.group(1) if build_run_match else "") in STATE
 require(
     "2026-11-05 (previous reviewed snapshot; historical)" in REPAIR
     and "Previous reviewed snapshot (historical, 5 November 2026)" in STATE_INDEX
-    and "run #1239" in REPAIR and "run #1239" in STATE_INDEX
+    and "CI #1239" in REPAIR and "CI #1239" in STATE_INDEX
     and "42032980751" in REPAIR and "42032980751" in STATE_INDEX
     and "7f923a2c7aa59721bc00728faccbc073e06c697a" in REPAIR
     and "7f923a2c7aa59721bc00728faccbc073e06c697a" in STATE_INDEX,
