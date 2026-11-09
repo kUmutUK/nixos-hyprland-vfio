@@ -154,8 +154,12 @@ require(
     and "MEDIA_UUID" in INSTALLATION
     and "Expected exactly %s partitions" in INSTALLATION
     and "ext4 `/mnt/media`" in README
+    and "MEDIA_UUID" in README
+    and 'fileSystems."/mnt/media"' in README
+    and "MEDIA_UUID=" in INSTALLER
+    and "findmnt /mnt/media" in INSTALLER
     and 'fileSystems."/mnt/media"' in CONFIG,
-    "installation and README must document the optional fourth ext4 media partition and its machine-specific UUID mapping",
+    "installation, README, and migration helper must document the optional fourth ext4 media partition and its machine-specific UUID mapping",
 )
 require("DEGISIKLIK_GECMISI.md" in RELEASING and "DEGISIKLIK_GECMISI.md" in RELEASE_WORKFLOW and "CONTRIBUTING.md" in RELEASING and "CHANGELOG.md" in RELEASING and "docs/REPAIR-AND-VALIDATION-REPORT.md" in RELEASING and "docs/OPTISCALER.md" in RELEASING and "docs/OPTISCALER.md" in RELEASE_WORKFLOW and "INSTALLATION.md" in RELEASING and "INSTALLATION.md" in RELEASE_WORKFLOW and ".github/workflows/check.yml" in RELEASING and "scripts/test-documentation-integrity.py" in RELEASING, "RELEASING allowlist documentation must match release.yml")
 require("grep -E '^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$' |" in RELEASE_WORKFLOW, "release workflow must use a closed stable-semver regex when finding previous tags")
@@ -219,48 +223,39 @@ require(
     and "Release notes heading does not match" in RELEASE_WORKFLOW,
     "release workflow must preserve literal date quantifiers inside its raw f-string",
 )
-release_heading_pattern = re.compile(rf"^## {re.escape('v1.4.5')} - \d{{4}}-\d{{2}}-\d{{2}}$")
-require(
-    release_heading_pattern.fullmatch("## v1.4.5 - 2026-11-05") is not None
-    and release_heading_pattern.fullmatch("## v1.4.4 - 2026-11-05") is None
-    and release_heading_pattern.fullmatch("## v1.4.5 - 2026-11-5") is None,
-    "release-note heading regex must accept only the exact requested version and an ISO date",
+current_release_match = re.search(
+    r"current published release is\s+\[(v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))\]\(https://github\.com/kUmutUK/nixos-hyprland-vfio/releases/tag/\1\)",
+    RELEASING,
 )
 require(
-    "Last completed full-system build baseline — 2026-11-07" in REPAIR,
-    "repair report must label the last completed full-system build baseline and avoid a duplicated heading",
+    current_release_match is not None
+    and "published by [release run #20]" in RELEASING
+    and "on 6 November 2026" in RELEASING,
+    "release guide must identify the current published release without freezing its version in this regression",
 )
-audit_gate_line = "**Latest published release snapshot (5 November 2026):** GitHub `main` at `994b05c888fbb52295d93e8ef74e41bac66c5e65` at publication time; **normal CI:** run #1242 passed all 28 workflow-defined steps on this exact release commit; **full-system build:** manual [#13](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42002113160) passed on ancestor build baseline `1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b` (2 h 24 min 51 s); **published release:** [v1.4.5](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.5) was published by release run #17 from this exact snapshot. The latest subsequent full-system build is manual run #16 on ancestor `a6dd4544319fafa7ec517e73b31ad29a1b4010b3`; changes after that build include kernel configuration, flake inputs/lock, and host hardware-configuration updates, so a new full-system build and successful normal CI on the exact candidate commit are required before a later release. The 3 November target-hardware validation remains owner-reported; libvirt saved-state/managed-save restore remains unverified."
+current_release = current_release_match.group(1) if current_release_match else "v0.0.0"
+release_heading_pattern = re.compile(rf"^## {re.escape(current_release)} - \d{{4}}-\d{{2}}-\d{{2}}$")
 require(
-    audit_gate_line in REPAIR and audit_gate_line in STATE_INDEX and audit_gate_line in README,
-    "the repair report, root status index, and README must show the same explicit reviewed-HEAD/full-build gate",
+    release_heading_pattern.fullmatch(f"## {current_release} - 2026-11-06") is not None
+    and release_heading_pattern.fullmatch("## v0.0.0 - 2026-11-06") is None
+    and release_heading_pattern.fullmatch(f"## {current_release} - 2026-11-6") is None,
+    "release-note heading regex must accept only the current published release and an ISO date",
 )
-pre_reconciliation_main_line = "**Pre-reconciliation main verification (5 November 2026):** GitHub `main` at `4eb6a106d825890a929fe57054a1660da524a458`; normal CI [#1244](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42076151633) passed all 28 workflow-defined steps on this exact commit and uploaded `nixos-hyprland-vfio-source` (artifact ID `13438456860`, 383,949 bytes; outer artifact digest `sha256:f04a477945bc2b47d7f8c7394a8f178895ed950bba2f245fae9b7aecdf553d97`). The preceding documentation-only commit `d35155ce6b9fb089934ee2f15f4208279dc5e2da` had CI #1243 fail at the documentation-integrity gate; commit `4eb6a10` restored the missing historical assertions and CI #1244 passed. This is the last completed validation before this documentation/test reconciliation; this follow-up requires its own exact-commit normal CI before a later release."
-require(
-    pre_reconciliation_main_line in README
-    and pre_reconciliation_main_line in CHANGELOG
-    and pre_reconciliation_main_line in STATE_INDEX
-    and pre_reconciliation_main_line in REPAIR,
-    "README, changelog, root index, and repair report must agree on the latest completed pre-reconciliation main CI and artifact",
+require("Verified full-system build baseline" in REPAIR,
+        "repair report must identify the last completed full-system build baseline")
+current_status_line = (
+    "**Latest published release:** [v1.4.6](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.6), "
 )
+require(current_status_line in REPAIR and current_status_line in STATE_INDEX and current_status_line in README,
+        "current release must agree across README, status index, and repair report")
 require(
-    "**Previous reviewed artifact (historical):** Normal CI #1239" in README
-    and "13416329673" in README
-    and "not the artifact for the pre-reconciliation main verification above" in README,
-    "README must label CI #1239's v1.4.4 artifact as historical rather than current",
-)
-require(
-    "[v1.4.5](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.5)" in RELEASING
-    and "published by release run #17 on 5 November 2026" in RELEASING,
-    "release guide must identify v1.4.5 as the current published release while retaining the v1.4.3 tag anomaly as history",
-)
-require(
-    "Thirteenth supplied audit cross-check — 2026-11-04" in REPAIR
-    and "46 commits ahead" in REPAIR
-    and "765,259-byte" in REPAIR
-    and "SOURCE_REVISION export-subst" in REPAIR
-    and "54-entry" not in REPAIR.split("## Thirteenth supplied audit cross-check", 1)[1].split("\n## ", 1)[0],
-    "the thirteenth audit reconciliation must distinguish confirmed Git facts from unverified ZIP measurements",
+    "all 28 workflow-defined steps" in CHANGELOG
+    and "all 28 workflow-defined steps" in STATE_INDEX
+    and "all 28 workflow-defined steps" in REPAIR
+    and "runner-generated `Set up job` entry" in CHANGELOG
+    and "runner-generated `Set up job` entry" in STATE_INDEX
+    and "runner-generated `Set up job` entry" in REPAIR,
+    "CI documentation must state the 28 YAML-defined steps and distinguish GitHub's generated setup entry",
 )
 nav_section = REPAIR.split("## MAKO Renderer integration", 1)[0]
 require(
@@ -268,7 +263,7 @@ require(
     and "Game graphics profile guidance" in nav_section
     and "CS2 frame-generation profile" in nav_section
     and "Source-tree audit hardening" in nav_section,
-    "the repair report navigation must include the build baseline and related 4 November changelog updates",
+    "repair report navigation must include the build baseline and established historical sections",
 )
 require(
     'read -rp "Enter a non-empty monitor output name (e.g. DP-1): " input_mon' in INSTALLER
@@ -280,7 +275,7 @@ repair_baseline_match = re.search(
     REPAIR,
 )
 index_baseline_match = re.search(
-    r"(?m)^- \*\*Last completed full-system build baseline \(2026-11-07\):\*\* GitHub `main` at `([0-9a-f]{40})`",
+    r"(?m)^- \*\*Last completed full-system build baseline \(2026-11-09\):\*\* GitHub `main` at `([0-9a-f]{40})`",
     STATE_INDEX,
 )
 reviewed_snapshot_match = re.search(
@@ -288,7 +283,7 @@ reviewed_snapshot_match = re.search(
     REPAIR,
 )
 index_reviewed_snapshot_match = re.search(
-    r"(?m)^- Reviewed source snapshot \(2026-11-07\): GitHub `main` at `([0-9a-f]{40})`",
+    r"(?m)^- Reviewed source snapshot \(2026-11-09\): GitHub `main` at `([0-9a-f]{40})`",
     STATE_INDEX,
 )
 ci_run_match = re.search(
@@ -296,31 +291,31 @@ ci_run_match = re.search(
     REPAIR,
 )
 build_run_match = re.search(
-    r"\[manual run #(\d+)\]\(https://github\.com/kUmutUK/nixos-hyprland-vfio/actions/runs/(\d+)\) completed successfully for the \*\*same exact commit\*\* `([0-9a-f]{40})`",
+    r"manual \[run #(\d+)\]\(https://github\.com/kUmutUK/nixos-hyprland-vfio/actions/runs/(\d+)\) completed successfully for the \*\*same exact commit\*\* `([0-9a-f]{40})`",
     REPAIR,
 )
 require(repair_baseline_match is not None, "repair report must contain the full SHA of the last successful full-system build")
 require(index_baseline_match is not None, "current-state index must contain the full SHA of the last successful full-system build")
 require(reviewed_snapshot_match is not None, "repair report must identify the separately reviewed source snapshot")
 require(index_reviewed_snapshot_match is not None, "current-state index must identify the separately reviewed source snapshot")
-require(ci_run_match is not None, "repair report must link successful normal CI for the reviewed source snapshot")
+require(ci_run_match is not None, "repair report must link normal CI for the reviewed source snapshot")
 require(build_run_match is not None, "repair report must link the last successful full-system build")
 if repair_baseline_match and index_baseline_match:
     build_sha = repair_baseline_match.group(1)
     require(index_baseline_match.group(1) == build_sha,
-            "current-state index and repair report must identify the same full-system build baseline")
+            "status index and repair report must identify the same full-system baseline")
     require(build_run_match is not None and build_run_match.group(3) == build_sha,
-            "the documented manual full-system build must match the full-system build baseline SHA")
+            "manual full-system build must match the documented baseline SHA")
 if reviewed_snapshot_match and index_reviewed_snapshot_match and ci_run_match:
     reviewed_sha = reviewed_snapshot_match.group(1)
     require(index_reviewed_snapshot_match.group(1) == reviewed_sha,
-            "current-state index and repair report must identify the same reviewed source snapshot")
+            "status index and repair report must identify the same reviewed source snapshot")
     require(ci_run_match.group(3) == reviewed_sha,
-            "the normal-CI run must cover the exact reviewed source snapshot")
+            "normal CI must cover the exact reviewed source snapshot")
 require("[#" + (ci_run_match.group(1) if ci_run_match else "") + "]" in STATE_INDEX,
-        "current-state index must reference the same normal-CI run as the repair report")
+        "status index must reference the same normal-CI run as the repair report")
 require("run #" + (build_run_match.group(1) if build_run_match else "") in STATE_INDEX,
-        "current-state index must reference the same full-system build as the repair report")
+        "status index must reference the same full-system build as the repair report")
 require(
     "Previous reviewed snapshot (historical, 5 November 2026)" in REPAIR
     and "Previous reviewed snapshot (historical, 5 November 2026)" in STATE_INDEX
@@ -328,48 +323,55 @@ require(
     and "42032980751" in REPAIR and "42032980751" in STATE_INDEX
     and "7f923a2c7aa59721bc00728faccbc073e06c697a" in REPAIR
     and "7f923a2c7aa59721bc00728faccbc073e06c697a" in STATE_INDEX,
-    "previous CI #1239 / v1.4.4 snapshot must remain clearly historical",
+    "the previous CI #1239 / v1.4.4 snapshot must remain explicitly historical",
 )
 require(
-    "994b05c888fbb52295d93e8ef74e41bac66c5e65" in README
-    and "994b05c888fbb52295d93e8ef74e41bac66c5e65" in CHANGELOG
-    and "994b05c888fbb52295d93e8ef74e41bac66c5e65" in STATE_INDEX
-    and "994b05c888fbb52295d93e8ef74e41bac66c5e65" in REPAIR
-    and "run #1242" in README and "run #1242" in CHANGELOG
-    and "run #1242" in STATE_INDEX and "run #1242" in REPAIR
-    and "release run #17" in README and "release run #17" in CHANGELOG
-    and "v1.4.5" in STATE_INDEX and "v1.4.5" in REPAIR
-    and "392,212 bytes" in README and "392,212 bytes" in CHANGELOG
-    and "392,212 bytes" in STATE_INDEX and "392,212 bytes" in REPAIR
-    and "f97fb12bdfbaaff4d32e7ab57bbc9251fababcd126a8ef7644947844924de9e0" in README
-    and "f97fb12bdfbaaff4d32e7ab57bbc9251fababcd126a8ef7644947844924de9e0" in REPAIR,
-    "the v1.4.5 release snapshot and its CI/build metadata must agree across documentation",
+    all(item in (README + CHANGELOG + STATE_INDEX + REPAIR + RELEASING) for item in (
+        "v1.4.6", "release run #20", "a6dd4544319fafa7ec517e73b31ad29a1b4010b3"
+    ))
+    and all(item in (README + CHANGELOG + STATE_INDEX + REPAIR) for item in (
+        "402,118 bytes", "05ffe97ee342a4b233f56bc7ae0e455f3b91a1c87df86c42e57e0441e9089e76"
+    )),
+    "v1.4.6 release version, tag commit, run, and artifact checksum must be recorded consistently",
 )
 require(
-    "run #13" in REPAIR and "run #13" in STATE_INDEX
-    and "42002113160" in REPAIR and "42002113160" in STATE_INDEX
-    and "2 h 24 min 51 s" in REPAIR and "2 h 24 min 51 s" in STATE_INDEX,
-    "current full-system build #13, exact run ID, and duration must be recorded in both current-state documents",
+    all(item in (README + CHANGELOG + STATE_INDEX + REPAIR) for item in (
+        "run #18", "42597469118", "c6f4b955475de2ea16bc2b34c59a95dad3a1ae78",
+        "BLK_DEV_RUST_NULL", "CPUFREQ_DT_RUST"
+    )),
+    "successful Build #18 and both Rust/BTF workaround symbols must be recorded",
 )
 require(
-    "2026-11-03 update below" in README
-    and "Target-system validation update — 2026-11-03" in README
-    and "755712deee259ef7efbfe9154038a270c3d75a87" in README,
-    "README must identify the latest 3 November target-host rebuild/kernel/VM validation",
+    "run #1285" in README and "run #1285" in CHANGELOG and "run #1285" in STATE_INDEX and "run #1285" in REPAIR
+    and "42625179836" in README and "42625179836" in REPAIR,
+    "normal CI #1285 must be consistently recorded for exact current main",
 )
 require(
-    "Target-machine hardware validation — 2026-11-03" in CHANGELOG
-    and "755712deee259ef7efbfe9154038a270c3d75a87" in CHANGELOG
-    and "Target-host hardware validation — 2026-11-03" in REPAIR
-    and "Target-host hardware validation (2026-11-03)" in STATE_INDEX,
-    "the changelog, repair report, and current-state index must preserve the dated owner-reported hardware validation",
+    "NixOS was installed from scratch" in README and "Windows 10 VFIO VM" in README
+    and "Fresh-install and VM validation — 2026-11-09" in CHANGELOG
+    and "Target-host validation (owner-reported, 9 November 2026)" in REPAIR
+    and "clean NixOS installation from scratch" in STATE_INDEX
+    and "Windows 10 VFIO VM" in INSTALLATION
+    and "installed from scratch without issues" in CONTRIBUTING,
+    "documentation must record owner-reported fresh-install and Windows VFIO VM validation",
 )
 require(
-    "latest target-machine update dated 2026-11-03" in CONTRIBUTING
+    "11 commits" in REPAIR and "do not invalidate" in REPAIR
+    and "11 later commits" in INSTALLATION,
+    "build-to-HEAD boundary must be documented without claiming Build #18 ran on current HEAD",
+)
+require(
+    "Target-system validation update — 3 November 2026" in README
+    and "Target-machine hardware validation — 2026-11-03" in CHANGELOG
+    and "Target-host hardware validation (2026-11-03)" in STATE_INDEX
     and "Target-system validation update — 3 November 2026" in INSTALLATION
-    and "755712deee259ef7efbfe9154038a270c3d75a87" in CONTRIBUTING
     and "755712deee259ef7efbfe9154038a270c3d75a87" in INSTALLATION,
-    "contributor and installation guides must identify the latest 3 November target-host validation",
+    "the 3 November target-host test must remain as dated historical information",
+)
+require(
+    "latest target-machine update dated 2026-11-09" in CONTRIBUTING
+    and "3 November 2026" in CONTRIBUTING,
+    "contributor guide must distinguish latest and historical target-host validation",
 )
 require(
     "13403280716" in REPAIR and "376,179 bytes" in REPAIR

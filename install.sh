@@ -1153,6 +1153,15 @@ echo "   Then set: LUKS device, Btrfs subvolumes, EFI, swap."
 ((step_num++))
 
 echo ""
+echo -e "${step_num}. Verify the optional /mnt/media UUID in ${CYAN}${NIXOS_FLAKE_DIR}/configuration.nix${NC}:"
+echo "   Inspect filesystems with: lsblk -f"
+echo "   MEDIA_UUID=\$(sudo blkid -s UUID -o value /dev/<your-ext4-media-partition>)"
+echo "   Set fileSystems.\"/mnt/media\".device to /dev/disk/by-uuid/\$MEDIA_UUID."
+echo "   If this host has no media volume, remove/comment out the entire fileSystems.\"/mnt/media\" block."
+echo "   Verify the resulting mount with: findmnt /mnt/media"
+((step_num++))
+
+echo ""
 echo -e "${step_num}. Ensure the hashed password file exists and is secure:"
 echo "   Preserve an existing valid hash; create one only if the file is missing or empty."
 echo -e "   ${CYAN}if [ ! -s /etc/nixos/hashedPassword ]; then${NC}"

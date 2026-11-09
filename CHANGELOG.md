@@ -11,7 +11,7 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 - The owner confirms that the 11 commits following that build do not invalidate its successful result; normal CI #1285 separately passed on current `main` `f63250a4867105ea1e9e2724c0c47b5ae5e707cb`.
 - Updated the CachyOS kernel overlay to 7.3.3, refreshed the nested/root Nixpkgs and Home Manager lock entries, and updated the machine-specific hardware mapping. Verify host storage identifiers before activation.
 - The current published release is [v1.4.6](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.6), published by release run #20 on 6 November 2026. Its ZIP is 402,118 bytes; SHA-256 `05ffe97ee342a4b233f56bc7ae0e455f3b91a1c87df86c42e57e0441e9089e76`.
-- Normal CI #1285 passed all 28 workflow-defined steps on current `main` `f63250a4867105ea1e9e2724c0c47b5ae5e707cb`.
+- Normal CI #1285 passed all 28 workflow-defined steps on current `main` `f63250a4867105ea1e9e2724c0c47b5ae5e707cb`; the runner-generated `Set up job` entry is not part of the YAML-defined step count.
 
 ### Fresh-install and VM validation — 2026-11-09 (owner-reported)
 

@@ -1343,4 +1343,9 @@ if [ -e "$hardware_target" ]; then
   echo "FAIL: README migration created a target despite a missing machine-generated source." >&2
   exit 1
 fi
+if ! grep -Fq 'MEDIA_UUID=' "$INSTALLER" || ! grep -Fq 'findmnt /mnt/media' "$INSTALLER" || ! grep -Fq '/mnt/media' "$INSTALLER"; then
+  echo "FAIL: installer final checklist must explicitly validate the optional /mnt/media UUID." >&2
+  exit 1
+fi
+echo "OK: installer final checklist includes machine-specific /mnt/media UUID verification."
 echo "OK: README hardware-configuration migration checks source, preserves existing target, and fails closed."
