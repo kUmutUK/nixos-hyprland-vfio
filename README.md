@@ -4,7 +4,7 @@ A flake-based NixOS gaming desktop that passes its single AMD Radeon GPU through
 
 **Latest published release snapshot (5 November 2026):** GitHub `main` at `994b05c888fbb52295d93e8ef74e41bac66c5e65` at publication time; **normal CI:** run #1242 passed all 28 workflow-defined steps on this exact release commit; **full-system build:** manual [#13](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42002113160) passed on ancestor build baseline `1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b` (2 h 24 min 51 s); **published release:** [v1.4.5](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.5) was published by release run #17 from this exact snapshot. The latest subsequent full-system build is manual run #16 on ancestor `a6dd4544319fafa7ec517e73b31ad29a1b4010b3`; changes after that build include kernel configuration, flake inputs/lock, and host hardware-configuration updates, so a new full-system build and successful normal CI on the exact candidate commit are required before a later release. The 3 November target-hardware validation remains owner-reported; libvirt saved-state/managed-save restore remains unverified.
 
-**Current source update (9 November 2026):** the kernel workaround, CachyOS 7.3.3 input, updated Nixpkgs/Home Manager pins, and refreshed host hardware mapping are newer than full-system build #16 and remain pending a fresh full-system build. The latest normal-CI attempts exposed a Nix formatting issue and an incomplete pending-build integrity allowlist, not a kernel compilation result. The 2026-11-04 source-tree cross-checks and historical Hyprland version-table reconciliation remain documented below. Review [the current repair and validation report](docs/REPAIR-AND-VALIDATION-REPORT.md) before activating the updated storage mapping; verify its identifiers against the host with `lsblk -f`, `blkid`, and `findmnt`.
+**Current source update (9 November 2026):** the kernel workaround, CachyOS 7.3.3 input, updated Nixpkgs/Home Manager pins, and refreshed host hardware mapping are newer than full-system build #16 and remain pending a fresh full-system build. Normal CI #1254/#1255 exposed formatting and pending-build allowlist issues. Manual full-system build #17 then reached kernel module finalization and failed on Rust module BTF for `rcpufreq_dt.ko`; disabling `BLK_DEV_RUST_NULL` had removed the earlier `rnull_mod.ko` failure but was incomplete. Both unused Rust drivers are now disabled; a new successful full-system build is still required. The 2026-11-04 source-tree cross-checks and historical Hyprland version-table reconciliation remain documented below. Review [the current repair and validation report](docs/REPAIR-AND-VALIDATION-REPORT.md) before activating the updated storage mapping; verify its identifiers against the host with `lsblk -f`, `blkid`, and `findmnt`.
 
 The 5 November v1.4.5 release ZIP contains 72 tracked files and nine executable files; the release job confirmed that `.git/` metadata is excluded. The ZIP is 392,212 bytes with SHA-256 `f97fb12bdfbaaff4d32e7ab57bbc9251fababcd126a8ef7644947844924de9e0`. The [v1.4.5 release page](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.5) includes the ZIP and checksum sidecar. Details and verification boundaries are recorded in the [repair and validation report](docs/REPAIR-AND-VALIDATION-REPORT.md). The 2026-11-04 source-tree cross-checks and historical Hyprland version-table reconciliation remain documented below. The 2026-10-28 audit remains a dated historical review.
 
@@ -698,7 +698,7 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 
 ### 7.3.3 Rust/BTF build failure — diagnosis and workaround (2026-11-09)
 
-The local CachyOS RT-Bore-LTO 7.3.3 build reached module finalization, then failed while generating/loading BTF for the experimental Rust null-block module:
+The CachyOS RT-Bore-LTO 7.3.3 module build exposed the same BTF finalization failure in two optional Rust drivers. The first failure was:
 
 ```text
 RUSTC [M] drivers/block/rnull/rnull.o
@@ -707,182 +707,21 @@ BTF [M] drivers/block/rnull/rnull_mod.ko
 FAILED: load BTF from drivers/block/rnull/rnull_mod.ko.BTF.1: No such file or directory
 ```
 
-The underlying compatibility problem is the combination of **Rust, LTO, and module BTF**. LTO can move Rust-generated debug information across compilation-unit boundaries, leaving Rust information in DWARF units labelled as C. Pahole's language-based Rust filtering cannot reliably identify that mixed information, and the kernel cannot safely consume the resulting BTF. This is a known kernel limitation; see the [upstream Rust + LTO BTF discussion and proposed Kconfig restriction](https://lists.openwall.net/linux-kernel/2025/01/08/1904). The driver itself is explicitly experimental and its Kconfig help says “If unsure, say N” ([kernel configuration reference](https://cateee.net/lkddb/web-lkddb/BLK_DEV_RUST_NULL.html)).
-
-The failed build resolved **pahole 1.32**. The version number alone does not explain this failure: the key issue is the Rust + LTO + BTF interaction, not merely that Pahole was absent from the host PATH. The `rustfmt` and libclang/Clang messages in the same build log were non-fatal and were not the terminating error.
-
-**Workaround committed on 9 November 2026:** `nixos/configuration.nix` sets `BLK_DEV_RUST_NULL = lib.kernel.no;` through `boot.kernelPatches`. This prevents the unused experimental `rnull_mod` module from entering the failing BTF-finalization path while retaining general Rust support, BTF, ThinLTO, and the RT-Bore kernel selection. It does not disable Rust globally.
-
-**Verification status:** this is a log-supported diagnosis and a targeted workaround, not yet a confirmed successful rebuild. Confirm it with a successful exact-commit CI run and a local 7.3.3 kernel/module build. Until those pass, do not describe the kernel fix as validated.
-
-- **Global Vulkan latency layer compatibility:** upstream `low_latency_layer` v0.2.0 documents an incompatibility with the `obs_vkcapture` Vulkan capture layer. If game capture or recording breaks while the layer is enabled, launch the affected game with `DISABLE_LOW_LATENCY_LAYER=1 %command%` and verify whether capture works again.
-- **LSFG-VK schema:** the current tree uses the upstream v2 `[[profile]]` profile format (`version = 2` and `[global]`). The layer/UI/CLI are built from the immutable revision and source hash in `nixos/lsfg-vk-v2.nix`; CI validates the generated TOML and builds `.#lsfg-vk-v2`. Upstream is licensed CC BY-NC-ND 4.0, so the package does not patch or redistribute modified upstream source. Lossless Scaling itself must be separately installed through Steam.
-- **Wuthering Waves LSFG profile:** the v2 configuration includes common Proton/Wine executable aliases `Client-Win64-Shipping.exe` and `Client-Win64-Shipping`. Confirm the actual process name selected by LSFG-VK from the target machine's runtime log; the static configuration test cannot prove the profile is activated in-game.
-- **Waydroid and single-GPU VFIO:** the hook records the prior activity of `waydroid-container.service`, stops it during GPU handoff, and restores it only if it was active beforehand. Mock tests cannot prove the target host releases every GPU file descriptor; verify the complete VM lifecycle on the physical target system.
-- **Navi 2x reset behavior:** reliable reset and host rebind cannot be guaranteed from static analysis. The optional `remove`/`rtcwake`/`rescan` recovery path is disabled by default. Enabling `VFIO_ALLOW_SUSPEND_RECOVERY=1` can suspend the host briefly and should only be attempted after checking firmware support and arranging recovery access.
-- **Single-GPU host:** while the VM owns the GPU, the host does not have a normal graphical session. Keep a physical recovery TTY available. The hook ends only local `seat0` sessions and is designed to preserve SSH sessions. The device-node usage check still fails closed if a process retains the GPU, so test the full VM lifecycle on the target hardware.
-- **Saved-state restore:** libvirt calls the QEMU hook with `restore begin` and the domain XML on standard input, rather than the ordinary `prepare begin` operation. The hook now runs the same VFIO preparation and emits the buffered XML unchanged only after preparation succeeds. This is covered by a filter-contract mock test; the target machine still needs a real `virsh save`/restore or managed-save/restore cycle before this behavior can be considered hardware-validated.
-- **Local graphical-session scope:** the hook runs `loginctl terminate-seat seat0`; it ends local sessions on that seat without filtering by user, and does not target SSH sessions with that command. This is designed for a single-GPU host where the desktop must release the GPU.
-- **Fixed USB passthrough IDs:** the default VM XML actively passes through USB IDs `1532:0098` and `05ac:024f`. The installer synchronizes GPU/audio PCI addresses only; it does not discover, validate, or replace these USB IDs. Verify them with `lsusb` and edit/remove the XML entries if they are not the intended devices.
-- **Swap outside LUKS2:** the reference `hardware-configuration.nix` enables per-activation random swap encryption (`randomEncryption.enable = true`). A fresh install must preserve this option in the machine-specific generated hardware file. If it is missing or disabled, the disk swap is unencrypted; random swap encryption is not persistent-key LUKS encryption.
-- **OCR display geometry:** default WuWa crop regions target a 2560×1440 display. The script validates configured geometry and can be overridden with `WUWA_GEOMETRY_MAIN` and `WUWA_GEOMETRY_CHOICE`.
-- **Windows 10 lifecycle:** standard support has ended; see the lifecycle warning above and verify the guest edition’s ESU/LTSC status before using it online.
-- `assets/` is intentionally absent; active configuration files do not reference it.
-
-## Repository map
+After `BLK_DEV_RUST_NULL` was disabled, full-system build #17 no longer contained `rnull`, but failed on the Rust Generic Device Tree CPUFreq driver:
 
 ```text
-.
-├── README.md
-├── .gitattributes                  # expand source commit identity in canonical ZIPs
-├── SOURCE_REVISION                 # Git archive expands this to the packaged commit
-├── .gitignore
-├── .git-cliff.toml                 # Conventional Commit release-note configuration
-├── RELEASING.md                    # release prerequisites and publication procedure
-├── DISCLAIMER.md
-├── KURULUM.md                      # English compatibility pointer to INSTALLATION.md
-├── INSTALLATION.md                 # English fresh-install guide
-├── DEGISIKLIK_GECMISI.md           # English current-state summary + archive pointer
-├── CONTRIBUTING.md
-├── CHANGELOG.md
-├── LICENSE
-├── statix.toml                     # Statix lint configuration
-├── install.sh                      # migration/update helper for an existing NixOS host
-├── .github/workflows/check.yml
-├── .github/workflows/full-system-build.yml
-├── .github/workflows/release.yml
-├── docs/
-│   ├── REPAIR-AND-VALIDATION-REPORT.md
-│   ├── OPTISCALER.md                 # optional per-game Proton DLL proxy guide
-│   ├── OPTISCALER-MANAGER.md          # independent per-game manager and recovery guide
-│   ├── MAKO.md                         # optional pinned MAKO Renderer Nix integration
-│   ├── AUDIT-2026-10-28-VM-XML-VFIO.md
-│   └── archive/                    # Historical audits and original Turkish release history
-├── scripts/
-│   ├── check-vm-iso-paths.py
-│   ├── optiscaler_manager.py
-│   ├── test-optiscaler-manager.py
-│   ├── extract-embedded-scripts.py
-│   ├── package-source-zip.sh
-│   ├── check-home-snapper-layout.py
-│   ├── test-home-snapper-layout.py
-│   ├── verify-source-revision.sh
-│   ├── test-source-revision.sh
-│   ├── installer-lock.sh
-│   ├── pci-address.sh
-│   ├── prepare-vm-diagnostic.py
-│   ├── test-extract-embedded-scripts.py
-│   ├── test-documentation-integrity.py
-│   ├── test-lsfg-vk-v2.py
-│   ├── test-mako-renderer.py
-│   ├── test-installer-invariants.sh
-│   ├── test-installer-lock.sh
-│   ├── test-installer-rollback.sh
-│   ├── test-manual-vm-bootstrap.sh
-│   ├── test-vfio-hook-driver-state.sh
-│   ├── sync-vm-xml.py
-│   ├── test-vm-diagnostic.py
-│   ├── test-vm-iso-paths.py
-│   ├── test-vm-xml-paths.py
-│   ├── test-vm-xml-sync.py
-│   ├── test-vm-xml-structure.py
-│   └── test-vm-xml.py
-├── vm-xml/win10.xml
-└── nixos/
-    ├── flake.nix
-    ├── flake.lock
-    ├── configuration.nix
-    ├── home.nix
-    ├── lsfg-vk-v2.nix
-    ├── mako-renderer.nix
-    ├── hardware-configuration.nix   # machine-specific: replace for another host
-    └── hooks/qemu
+LD [M]  drivers/cpufreq/rcpufreq_dt.ko
+BTF [M] drivers/cpufreq/rcpufreq_dt.ko
+FAILED: load BTF from drivers/cpufreq/rcpufreq_dt.ko.BTF.1: No such file or directory
 ```
 
-Hyprland's native Lua configuration, Hyprlock, Waybar, Pyprland, MangoHud, lsfg-vk, and helper scripts are declared inline in `nixos/home.nix`; there is no parallel Hyprland config file to keep in sync.
+The kernel Kconfig defines `CPUFREQ_DT_RUST` as the Rust-based Generic DT CPUFreq driver, and the cpufreq Makefile builds `rcpufreq_dt.o` from that symbol ([Kconfig](https://github.com/torvalds/linux/blob/7475ea8b58616b33c04afb976cf0fbaad9dd63fb/drivers/cpufreq/Kconfig), [Makefile](https://github.com/torvalds/linux/blob/7475ea8b58616b33c04afb976cf0fbaad9dd63fb/drivers/cpufreq/Makefile)). This project targets an x86_64 Ryzen host and does not use either optional Rust driver.
 
-## Validation
+The repeated missing `.ko.BTF.1` failure across two different Rust modules shows the problem is not specific to `rnull_mod`. It points to the Rust + LTO + module-BTF path in this build. The build log resolved `pahole-1.32`; the version alone does not prove the root cause. The earlier `rustfmt` and libclang/Clang messages were not the terminating error.
 
-**Pre-reconciliation main verification (5 November 2026):** GitHub `main` at `4eb6a106d825890a929fe57054a1660da524a458`; normal CI [#1244](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42076151633) passed all 28 workflow-defined steps on this exact commit and uploaded `nixos-hyprland-vfio-source` (artifact ID `13438456860`, 383,949 bytes; outer artifact digest `sha256:f04a477945bc2b47d7f8c7394a8f178895ed950bba2f245fae9b7aecdf553d97`). The preceding documentation-only commit `d35155ce6b9fb089934ee2f15f4208279dc5e2da` had CI #1243 fail at the documentation-integrity gate; commit `4eb6a10` restored the missing historical assertions and CI #1244 passed. This is the last completed validation before this documentation/test reconciliation; this follow-up requires its own exact-commit normal CI before a later release.
+**Updated workaround:** `nixos/configuration.nix` now disables both `BLK_DEV_RUST_NULL` and `CPUFREQ_DT_RUST` through the existing `boot.kernelPatches.structuredExtraConfig`. General Rust support, BTF, ThinLTO, and RT-Bore-LTO remain enabled. This is a targeted workaround for the two unused modules, not a claim that every Rust module is compatible with this LTO/BTF toolchain.
 
-**Latest published release snapshot (5 November 2026):** GitHub `main` at `994b05c888fbb52295d93e8ef74e41bac66c5e65` at publication time; **normal CI:** run #1242 passed all 28 workflow-defined steps on this exact release commit; **full-system build:** manual [#13](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42002113160) passed on ancestor build baseline `1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b` (2 h 24 min 51 s); **published release:** [v1.4.5](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.5) was published by release run #17 from this exact snapshot. The latest subsequent full-system build is manual run #16 on ancestor `a6dd4544319fafa7ec517e73b31ad29a1b4010b3`; changes after that build include kernel configuration, flake inputs/lock, and host hardware-configuration updates, so a new full-system build and successful normal CI on the exact candidate commit are required before a later release. The 3 November target-hardware validation remains owner-reported; libvirt saved-state/managed-save restore remains unverified.
-
-**Previous reviewed artifact (historical):** Normal CI #1239 uploaded the canonical `nixos-hyprland-vfio-source` artifact for the preceding `7f923a2c7aa59721bc00728faccbc073e06c697a` / v1.4.4 snapshot (379,511 bytes; artifact ID `13416329673`; GitHub outer artifact digest `sha256:f9fdf7c3be15b69d032f4965e6765f841fd04f54e9096d2536091f5c01e267ed`). This is not the artifact for the pre-reconciliation main verification above. The digest identifies the outer GitHub Actions artifact, not the inner source ZIP. The last full-system build remains manual build #13 on ancestor `1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b`; all changes since that build remain within the explicit release/documentation/CI/test allowlist.
-
-To distribute a source ZIP, first commit the source you intend to ship, then run
-`./scripts/package-source-zip.sh ./dist/nixos-hyprland-vfio-source.zip`.
-This packages committed `HEAD` (uncommitted edits are deliberately excluded), expands
-`SOURCE_REVISION` to that commit, excludes `.git/`, and verifies the tracked-file
-inventory and executable permissions. Do not create the distributable by manually
-compressing the working directory: that can include Git metadata and leave the revision
-placeholder unresolved. CI uploads the validated ZIP as the `nixos-hyprland-vfio-source`
-artifact only after the required checks pass. The artifact also contains a relative-path
-`nixos-hyprland-vfio-source.zip.sha256` manifest; after downloading both files, verify it
-with `sha256sum -c nixos-hyprland-vfio-source.zip.sha256`.
-
-Run from the repository root. The command uses fail-fast behavior, validates Nix formatting without rewriting files, and runs tests inside the development shell.
-
-```bash
-nix develop ./nixos --command bash -euo pipefail -c '
-  find ./nixos -type f -name "*.nix" -print0 | xargs -0 -r nixfmt --check
-  for f in \
-    install.sh \
-    scripts/package-source-zip.sh \
-    scripts/verify-source-revision.sh \
-    scripts/test-source-revision.sh \
-    scripts/installer-lock.sh \
-    scripts/pci-address.sh \
-    scripts/test-installer-lock.sh \
-    nixos/hooks/qemu \
-    scripts/test-vfio-hook-driver-state.sh \
-    scripts/test-installer-invariants.sh \
-    scripts/test-installer-rollback.sh \
-    scripts/test-manual-vm-bootstrap.sh
-  do
-    bash -n "$f" || exit 1
-  done
-  shellcheck -S warning install.sh scripts/package-source-zip.sh scripts/verify-source-revision.sh scripts/test-source-revision.sh scripts/installer-lock.sh scripts/pci-address.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-lock.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh
-  python3 -c "import xml.etree.ElementTree as ET; ET.parse(\"vm-xml/win10.xml\")"
-  python3 scripts/test-lsfg-vk-v2.py
-  python3 scripts/test-mako-renderer.py
-  python3 scripts/test-home-snapper-layout.py
-  python3 scripts/test-extract-embedded-scripts.py
-  python3 scripts/test-documentation-integrity.py
-  python3 scripts/test-optiscaler-manager.py
-  python3 scripts/test-vm-iso-paths.py
-  bash -n scripts/test-manual-vm-bootstrap.sh
-  bash scripts/test-manual-vm-bootstrap.sh
-  python3 scripts/test-vm-xml.py
-  python3 scripts/test-vm-xml-structure.py
-  python3 scripts/test-vm-xml-paths.py
-  python3 scripts/test-vm-xml-sync.py
-  python3 scripts/test-vm-diagnostic.py
-  bash scripts/test-vfio-hook-driver-state.sh
-  bash scripts/test-installer-lock.sh
-  bash scripts/test-source-revision.sh
-  bash scripts/test-installer-invariants.sh
-  bash scripts/test-installer-rollback.sh
-  tmpdir="$(mktemp -d)"
-  trap "rm -rf -- \"$tmpdir\"" EXIT
-  python3 scripts/extract-embedded-scripts.py "$tmpdir" > "$tmpdir/paths.nul"
-  mapfile -d "" -t embedded_scripts < "$tmpdir/paths.nul"
-  if [ "${#embedded_scripts[@]}" -ne 7 ]; then
-    printf "Expected 7 embedded Bash scripts, found %s\\n" "${#embedded_scripts[@]}" >&2
-    exit 1
-  fi
-  shellcheck -S warning "${embedded_scripts[@]}"
-  (cd nixos && nix flake check --no-build --show-trace --no-update-lock-file --option warn-dirty false)
-  (cd nixos && nix build --no-link --no-update-lock-file .#lsfg-vk-v2)
-  (cd nixos && nix build --no-link --no-update-lock-file .#mako-renderer)
-  statix check .
-  deadnix .
-'
-```
-`nix flake check --no-build` evaluates the flake but does not build the complete system or kernel. The separate `nix build .#lsfg-vk-v2` and `nix build .#mako-renderer` commands verify only their selected package derivations. Neither command replaces a full system/kernel build, libvirt domain validation, or a physical GPU lifecycle test. To intentionally rewrite formatting, run `nixfmt` without `--check` as a separate reviewed edit.
-
-The manual sequence also runs `statix check .` and `deadnix .`, both required CI gates. `statix.toml` disables only the style-only repeated-key lint used by the repository's intentionally flat option assignments; actionable Statix and Deadnix findings still fail validation.
-
-For a complete NixOS system build on GitHub Actions, open **Actions → Full NixOS System Build (manual) → Run workflow**. This six-hour, manually dispatched job builds `nixosConfigurations.nixos.config.system.build.toplevel`, including the selected RT-Bore-LTO kernel. It is kept out of normal push/PR CI because the custom kernel can be expensive to compile. A successful build validates the build graph on the runner; it does not prove GPU passthrough or host-display recovery on physical hardware.
+**Verification status:** full-system build #17 failed at `rcpufreq_dt.ko` BTF finalization after the first workaround; the updated two-symbol workaround has not yet been confirmed by a successful full-system build.
 
 ### Prior target-system hardware validation — 2026-10-16
 

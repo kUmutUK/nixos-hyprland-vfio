@@ -80,6 +80,11 @@ require("- [License](#license)" in README and "## License" in README, "README co
 require(".git-cliff.toml" in README and "RELEASING.md" in README and ".github/workflows/release.yml" in README, "README repository map must include the release configuration, guide, and workflow")
 require("Normal CI must pass for the exact tagged commit" in README, "README must require successful CI for the exact tagged commit")
 require("successful full NixOS system build must exist for that commit or an ancestor" in README, "README must describe the permitted ancestor full-system build")
+require(
+    "BLK_DEV_RUST_NULL = lib.kernel.no;" in CONFIG
+    and "CPUFREQ_DT_RUST = lib.kernel.no;" in CONFIG,
+    "the CachyOS RT-Bore-LTO workaround must keep both unused Rust modules out of the failing module-BTF path",
+)
 cachyos_locked = FLAKE_LOCK.get("nodes", {}).get("cachyos-kernel", {}).get("locked", {})
 cachyos_revision = cachyos_locked.get("rev")
 require(

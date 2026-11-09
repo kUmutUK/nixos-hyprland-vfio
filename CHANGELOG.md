@@ -6,10 +6,10 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ### Kernel, flake inputs, and host configuration refresh — 2026-11-09
 
-- Added the targeted `BLK_DEV_RUST_NULL = lib.kernel.no;` workaround for the experimental Rust null-block module's 7.3.3 module-BTF finalization failure; general Rust, BTF, ThinLTO, and RT-Bore selection remain enabled.
+- Added targeted `BLK_DEV_RUST_NULL = lib.kernel.no;` and `CPUFREQ_DT_RUST = lib.kernel.no;` settings after full-system build #17 showed the same 7.3.3 module-BTF failure in `rcpufreq_dt.ko` once `rnull_mod.ko` was excluded. General Rust, BTF, ThinLTO, and RT-Bore selection remain enabled.
 - Updated the CachyOS kernel overlay to 7.3.3 and refreshed its nested Nixpkgs, the root Nixpkgs, and Home Manager lock entries.
 - Uploaded a refreshed machine-specific `nixos/hardware-configuration.nix` and removed Brave from the configured system package list. The new storage identifiers must be checked against the target host before activation.
-- This update is newer than successful full-system build #16; a fresh full-system build is required before release. The 9 November CI failures were formatting and integrity-gate failures, not a result from kernel compilation.
+- This update is newer than successful full-system build #16; a fresh full-system build is required before release. Normal CI #1254/#1255 failed at integrity/format checks, and manual full-system build #17 failed during Rust module BTF finalization for `rcpufreq_dt.ko`. The two-driver workaround has not yet passed a new full-system build.
 
 ### Host storage and VM identity warnings — 2026-11-05
 

@@ -132,15 +132,16 @@ in
     # host grace periods and works against the low-jitter goal of this configuration.
   ];
 
-  # The experimental Rust null block driver is not used by this host.
-  # Its module BTF finalization fails in the current CachyOS RT-Bore-LTO build
-  # (rnull_mod.ko.BTF.1 is missing). Keep general Rust, BTF, and ThinLTO support.
+  # These optional Rust drivers are not used by this x86_64 host.
+  # CachyOS RT-Bore-LTO 7.3.3 fails module BTF finalization for Rust modules
+  # (first rnull_mod.ko, then rcpufreq_dt.ko). Keep general Rust, BTF, and ThinLTO.
   boot.kernelPatches = [
     {
-      name = "disable-rust-null-block-driver";
+      name = "disable-unused-rust-drivers-for-btf-lto";
       patch = null;
       structuredExtraConfig = {
         BLK_DEV_RUST_NULL = lib.kernel.no;
+        CPUFREQ_DT_RUST = lib.kernel.no;
       };
     }
   ];
