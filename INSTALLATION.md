@@ -712,7 +712,7 @@ git -C /tmp/repo show "$SOURCE_REVISION:nixos/flake.lock" |
 > build [#18](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42597469118)
 > passed on commit `c6f4b955475de2ea16bc2b34c59a95dad3a1ae78`, including the two-symbol Rust/BTF workaround.
 > Normal CI [#1285](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42625179836)
-> separately passed on current `main` `f63250a4867105ea1e9e2724c0c47b5ae5e707cb`. Build #18
+> separately passed on the reviewed `main` snapshot `f63250a4867105ea1e9e2724c0c47b5ae5e707cb`. Build #18
 > is recorded against its actual commit, not relabelled as an exact-HEAD build; the
 > project owner confirms that the 11 later commits do not invalidate its result.
 >

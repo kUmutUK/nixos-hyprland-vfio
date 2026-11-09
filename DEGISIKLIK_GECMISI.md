@@ -6,7 +6,7 @@
 
 **Latest published release:** [v1.4.6](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.6), published by release run #20 on 6 November 2026 from `a6dd4544319fafa7ec517e73b31ad29a1b4010b3`; canonical ZIP 402,118 bytes, SHA-256 `05ffe97ee342a4b233f56bc7ae0e455f3b91a1c87df86c42e57e0441e9089e76`.
 
-**Current `main` snapshot:** `f63250a4867105ea1e9e2724c0c47b5ae5e707cb`; normal CI [#1285](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42625179836) passed all 28 workflow-defined steps on the exact HEAD. GitHub's runner-generated `Set up job` entry is not included in that YAML-defined count.
+**Last reviewed `main` snapshot (2026-11-09):** `f63250a4867105ea1e9e2724c0c47b5ae5e707cb`; normal CI [#1285](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42625179836) passed all 28 workflow-defined steps on that exact snapshot. GitHub's runner-generated `Set up job` entry is not included in that YAML-defined count. Subsequent follow-up commits change documentation, the manual `/mnt/media` checklist and regression tests only; no NixOS runtime configuration or lock file changed.
 
 - **Last completed full-system build baseline (2026-11-09):** GitHub `main` at `c6f4b955475de2ea16bc2b34c59a95dad3a1ae78`.
 - **Full-system build #18:** manual run #18 ([workflow](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42597469118)) passed on that exact build baseline; both `BLK_DEV_RUST_NULL` and `CPUFREQ_DT_RUST` are disabled in the successful build.

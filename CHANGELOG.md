@@ -8,10 +8,10 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 - Disabled the two unused Rust kernel modules through `BLK_DEV_RUST_NULL = lib.kernel.no;` and `CPUFREQ_DT_RUST = lib.kernel.no;`, keeping general Rust, BTF, ThinLTO, and RT-Bore selection enabled.
 - Manual full-system build #17 exposed the second Rust-module BTF failure in `rcpufreq_dt.ko`; **manual full-system build [run #18](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42597469118) then completed successfully** with both symbols disabled on commit `c6f4b955475de2ea16bc2b34c59a95dad3a1ae78`.
-- The owner confirms that the 11 commits following that build do not invalidate its successful result; normal CI #1285 separately passed on current `main` `f63250a4867105ea1e9e2724c0c47b5ae5e707cb`.
+- The owner confirms that the 11 commits between the Build #18 baseline and reviewed source snapshot do not invalidate its successful result; normal CI #1285 passed on the exact reviewed snapshot `f63250a4867105ea1e9e2724c0c47b5ae5e707cb`. Subsequent follow-up commits are limited to documentation, the install helper's printed media-UUID checklist, regression assertions, and executable-mode preservation; no NixOS runtime configuration or flake lock was changed.
 - Updated the CachyOS kernel overlay to 7.3.3, refreshed the nested/root Nixpkgs and Home Manager lock entries, and updated the machine-specific hardware mapping. Verify host storage identifiers before activation.
 - The current published release is [v1.4.6](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.6), published by release run #20 on 6 November 2026. Its ZIP is 402,118 bytes; SHA-256 `05ffe97ee342a4b233f56bc7ae0e455f3b91a1c87df86c42e57e0441e9089e76`.
-- Normal CI #1285 passed all 28 workflow-defined steps on current `main` `f63250a4867105ea1e9e2724c0c47b5ae5e707cb`; the runner-generated `Set up job` entry is not part of the YAML-defined step count.
+- Normal CI #1285 passed all 28 workflow-defined steps on the reviewed source snapshot `f63250a4867105ea1e9e2724c0c47b5ae5e707cb`; the runner-generated `Set up job` entry is not part of the YAML-defined step count.
 
 ### Fresh-install and VM validation — 2026-11-09 (owner-reported)
 
