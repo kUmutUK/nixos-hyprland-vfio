@@ -1,0 +1,47 @@
+name: CachyOS Kernel Build (manual)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kernel-build-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  kernel-build:
+    name: Build selected kernel only
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@3138316df39ed29be04236d7ffc686fa525866aa
+
+      - name: Report available disk space
+        run: df -h "$GITHUB_WORKSPACE" "$RUNNER_TEMP"
+
+      - name: Build only the configured kernel package
+        working-directory: nixos
+        run: |
+          set -euo pipefail
+          kernel_out="$(nix build --no-link --print-out-paths --show-trace \
+            --no-update-lock-file \
+            .#nixosConfigurations.nixos.config.boot.kernelPackages.kernel)"
+          printf 'Built kernel output: %s\\n' "$kernel_out"
+
+      - name: Verify the lock file was not rewritten
+        run: |
+          if ! git diff --quiet -- nixos/flake.lock; then
+            echo "::error::flake.lock changed during the kernel build."
+            git --no-pager diff -- nixos/flake.lock
+            exit 1
+          fi
+          echo "  flake.lock clean"
+
+      - name: Report remaining disk space
+        if: always()
+        run: df -h "$GITHUB_WORKSPACE" "$RUNNER_TEMP"
