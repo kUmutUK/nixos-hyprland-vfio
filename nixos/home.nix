@@ -256,6 +256,9 @@ let
         dwindle = {
             smart_resizing = true,
         },
+        render = {
+            cm_auto_hdr = 0,
+        },
         decoration = {
             rounding = 12,
             rounding_power = 2,

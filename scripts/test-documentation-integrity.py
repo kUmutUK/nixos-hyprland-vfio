@@ -154,6 +154,9 @@ require(
     and "MEDIA_UUID" in INSTALLATION
     and "Expected exactly %s partitions" in INSTALLATION
     and "ext4 `/mnt/media`" in README
+    and "Use a disk with at least 810 GiB of total capacity" in README
+    and "when enabled, the media partition uses the remaining space" in README
+    and "Use at least 810 GiB when creating the media partition" not in README
     and 'sudo blkid -s UUID -o value' in README
     and "fileSystems." in README
     and "/mnt/media" in README
