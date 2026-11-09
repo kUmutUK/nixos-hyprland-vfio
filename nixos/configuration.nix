@@ -115,6 +115,12 @@ in
 
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
+  # Apple Aluminium Keyboard (USB ID 05ac:024f) exposes the F-row as media keys
+  # in hid_apple's automatic mode. Prefer standard F1-F12 keys; hold Fn for media.
+  boot.extraModprobeConfig = ''
+    options hid_apple fnmode=2
+  '';
+
   boot.kernelParams = [
     # Diagnostic trade-off: `nowatchdog` and `nmi_watchdog=0` disable kernel/NMI
     # watchdog-based lockup detection. This favors lower jitter but reduces diagnostic

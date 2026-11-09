@@ -51,6 +51,9 @@ The current uploaded source snapshot was reviewed at GitHub `main` commit `dc97b
 
 **Release/build disposition:** the full-system build gate remains OPEN. The current source disables both `BLK_DEV_RUST_NULL` and `CPUFREQ_DT_RUST`; successful normal CI and a new manual full NixOS system build are still required. Build #17 does not validate the updated two-symbol workaround.
 
+
+- **Apple keyboard function-row mapping — 2026-11-09:** the target USB keyboard reports USB ID `05ac:024f` (Apple Aluminium Keyboard), although its Linux input-device name is `SONiX Gaming Keyboard`. With the automatic `hid_apple` Fn mode, F1/F2 were emitted as brightness/media events instead of function-key events. A live `fnmode=2` test changed the events to `KEY_F1`, `KEY_F2`, and `KEY_F3`. `nixos/configuration.nix` now declares `options hid_apple fnmode=2` through `boot.extraModprobeConfig`, making F1-F12 the default and retaining media actions behind Fn. This is a system-configuration change: the normal CI evaluation and a fresh manual full-system build are required before release, followed by a rebooted target-host check of both the F-row and Fn-media behavior.
+
 ## GameMode and installer preflight remediation — 2026-11-05
 
 - **GameMode semantics:** corrected the `nixos/configuration.nix` comment to state that GameMode negates the configured positive `renice` magnitude. With `renice = 10`, the effective nice value is `-10`, which raises CPU scheduling priority when GameMode successfully applies it. The documentation-integrity regression now calculates and checks the effective value and direction. No GameMode numeric setting was changed.
