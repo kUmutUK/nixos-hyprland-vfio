@@ -119,6 +119,26 @@ require(
     isinstance(cachyos_revision, str) and re.fullmatch(r"[0-9a-f]{40}", cachyos_revision) is not None,
     "flake.lock must contain a full resolved CachyOS kernel revision",
 )
+historical_kernel_revision = "755712deee259ef7efbfe9154038a270c3d75a87"
+kernel_limitations = README.split("## Known limitations", 1)[1].split("\n### ", 1)[0]
+require(
+    f"`{cachyos_revision}`" in kernel_limitations
+    and "Build #18" in kernel_limitations
+    and "ancestor source commit" in kernel_limitations
+    and "exact v1.4.7 build" in kernel_limitations
+    and "exact kernel SHA booted for that test was not recorded" in kernel_limitations,
+    "README must tie the active kernel note to flake.lock and distinguish the ancestor build from unrecorded target-host kernel identity",
+)
+historical_kernel_section = README.split(
+    "### Historical target-system validation update — 2026-11-03", 1
+)[1].split("\n## Repository map", 1)[0]
+require(
+    cachyos_revision != historical_kernel_revision
+    and f"`{historical_kernel_revision}`" in historical_kernel_section
+    and "historical physical kernel test" in historical_kernel_section
+    and "must not be attributed to the newer kernel revision" in historical_kernel_section,
+    "README must keep the 3 November physical test tied to its historical SHA, not the current flake.lock revision",
+)
 kernel_state_note = next(
     (line for line in STATE_INDEX.splitlines() if line.startswith("- The active kernel package")),
     "",
@@ -1181,6 +1201,26 @@ require(
     "the package build step name must disclose both LSFG-VK v2 and MAKO builds",
 )
 require("## Audit finding fixes — 2026-11-03" in REPAIR, "repair report must record the new audit findings")
+for feature_title, hardware_check in (
+    ("Apple keyboard function-row mapping", "Fn-media behavior"),
+    ("ALC897 mixer-state persistence", "input routing"),
+    ("Razer DeathAdder scroll-wheel bounce filter", "device hotplug"),
+):
+    feature_match = re.search(
+        rf"(?ms)^- \*\*{re.escape(feature_title)}.*?(?=^- \*\*|\Z)",
+        REPAIR,
+    )
+    feature_note = feature_match.group(0) if feature_match else ""
+    require(
+        feature_match is not None
+        and "Build #18" in feature_note
+        and "CI #1299" in feature_note
+        and "ancestor baseline" in feature_note
+        and "release run #23" in feature_note
+        and hardware_check in feature_note
+        and "fresh manual full-system build are required before release" not in feature_note,
+        f"{feature_title} must distinguish completed ancestor build/exact-release CI from still-pending target-host hardware verification",
+    )
 require(
     "## Chronological navigation (newest first)" in REPAIR
     and "The detailed sections remain grouped by subject and source snapshot" in REPAIR,
