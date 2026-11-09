@@ -409,6 +409,7 @@ require("run #1124" in REPAIR and "stale" in REPAIR and "target-host" in REPAIR,
 verification_metadata_paths = {
     ".git-cliff.toml",
     ".github/workflows/check.yml",
+    ".github/workflows/kernel-build.yml",
     ".github/workflows/release.yml",
     "CHANGELOG.md",
     "CONTRIBUTING.md",
@@ -1046,8 +1047,8 @@ else:
     documented_release_paths = set()
     workflow_release_paths = set()
 require(
-    documented_release_paths == workflow_release_paths and len(workflow_release_paths) == 26,
-    "RELEASING.md and release.yml must contain the same exhaustive 26-path literal allowlist",
+    documented_release_paths == workflow_release_paths and len(workflow_release_paths) == 27,
+    "RELEASING.md and release.yml must contain the same exhaustive 27-path literal allowlist",
 )
 require(
     "no wildcard rules or blanket exemptions" in RELEASING

@@ -38,6 +38,7 @@ manual-dispatch input; ordinary pushes and pull requests never publish a release
    `scripts/test-documentation-integrity.py`,
    `scripts/test-lsfg-vk-v2.py`,
    `.github/workflows/check.yml`,
+   `.github/workflows/kernel-build.yml`,
    `.github/workflows/release.yml`
 
    Any later change outside this exact list, including a documentation or test file not named above, blocks publication and requires a new full-system build.
