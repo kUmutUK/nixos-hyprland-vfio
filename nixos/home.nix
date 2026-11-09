@@ -420,69 +420,119 @@ let
     end)
   '';
   hyprlockConf = ''
-    # Hyprlock 0.9.6 no longer accepts the old `grace` and `disable_loading_bar` options.
-    # They were ignored with a warning. Grace is a CLI option and the loading bar was
-    # removed; the previous zero grace value did not change the effective behavior.
+    # King Grey lock screen: restrained lilac accents, deep charcoal surfaces,
+    # a clear clock hierarchy, and one centered password field.
     general {
-        hide_cursor = 0
+        hide_cursor = true
     }
-    background { color = rgba(27, 30, 37, 1.0) }
+
+    background {
+        color = rgba(13, 16, 24, 1.0)
+    }
+
+    # Center panel.
+    shape {
+        size = 560, 560
+        color = rgba(27, 30, 37, 0.96)
+        rounding = 30
+        border_size = 1
+        border_color = rgba(234, 178, 194, 0.28)
+        position = 0, 18
+        halign = center
+        valign = center
+        zindex = -1
+    }
+
+    # Small lilac signature above the clock.
+    shape {
+        size = 52, 4
+        color = rgba(234, 178, 194, 1.0)
+        rounding = 2
+        position = 0, -226
+        halign = center
+        valign = center
+    }
+
     label {
-        position = 0, -65; halign = center; valign = center;
-        text = ; font_family = JetBrainsMono Nerd Font; font_size = 15;
-        color = rgba(234, 178, 194, 1.0); shadow_passes = 0;
+        position = 0, -194
+        halign = center
+        valign = center
+        text = N I X O S   /   K I N G   G R E Y
+        font_family = JetBrainsMono Nerd Font
+        font_size = 12
+        color = rgba(234, 178, 194, 0.92)
+        shadow_passes = 0
     }
+
+    label {
+        position = 0, -104
+        halign = center
+        valign = center
+        text = $TIME
+        font_family = JetBrainsMono Nerd Font
+        font_size = 108
+        color = rgba(238, 241, 250, 1.0)
+        shadow_passes = 2
+        shadow_size = 3
+        shadow_color = rgba(0, 0, 0, 0.28)
+    }
+
+    label {
+        position = 0, -20
+        halign = center
+        valign = center
+        text = cmd[update:60000, LC_TIME=en_US.UTF-8 \${pkgs.coreutils}/bin/date +"%A, %d %B %Y"]
+        font_family = JetBrainsMono Nerd Font
+        font_size = 18
+        color = rgba(180, 190, 211, 0.88)
+        shadow_passes = 0
+    }
+
+    label {
+        position = 0, 66
+        halign = center
+        valign = center
+        text =   $USER
+        font_family = JetBrainsMono Nerd Font
+        font_size = 17
+        color = rgba(204, 217, 255, 0.92)
+        shadow_passes = 0
+    }
+
     input-field {
-        position = 0, -120; size = 300, 50; halign = center; valign = center;
-        # Hyprlock 0.9.6 no longer registers `font_size`, `check_symbol`, `placeholder_color`,
-        # or `fail_transition`; these keys were silently ignored. `check_symbol` maps to
-        # `check_text`; font sizing and placeholder color are derived automatically, and the
-        # supported fade options replace the removed transition option.
-        placeholder_text = Password...; font_family = JetBrainsMono Nerd Font;
-        dots_size = 0.55; dots_spacing = 0.15; check_text = ✓;
-        font_color = rgba(204, 217, 255, 1.0);
-        check_color = rgba(118, 196, 215, 1.0); fail_color = rgba(234, 178, 194, 1.0);
-        hide_input = false; rounding = 10;
-        outline_thickness = 2; outer_color = rgba(217, 201, 94, 0.85);
-        inner_color = rgba(27, 30, 37, 0.95); shadow_passes = 0;
+        position = 0, 150
+        halign = center
+        valign = center
+        size = 360, 60
+        outline_thickness = 2
+        rounding = 14
+        outer_color = rgba(234, 178, 194, 0.95) rgba(118, 196, 215, 0.90) 45deg
+        inner_color = rgba(18, 22, 31, 1.0)
+        font_color = rgba(238, 241, 250, 1.0)
+        font_family = JetBrainsMono Nerd Font
+        placeholder_text = Enter password
+        dots_size = 0.22
+        dots_spacing = 0.22
+        dots_center = true
+        fade_on_empty = false
+        hide_input = false
+        check_color = rgba(118, 196, 215, 1.0)
+        check_text = ✓
+        fail_color = rgba(234, 130, 154, 1.0)
+        fail_text = $FAIL
+        capslock_color = rgba(217, 201, 94, 1.0)
     }
+
     label {
-        position = 0, 150; halign = center; valign = center;
-        text =  $TIME; font_family = JetBrainsMono Nerd Font; font_size = 80;
-        color = rgba(204, 217, 255, 1.0); shadow_passes = 0;
+        position = 0, 230
+        halign = center
+        valign = center
+        text = ENTER PASSWORD TO UNLOCK
+        font_family = JetBrainsMono Nerd Font
+        font_size = 11
+        color = rgba(145, 157, 181, 0.72)
+        shadow_passes = 0
     }
-    label {
-        position = 0, 60; halign = center; valign = center;
-        text = cmd[update:60000, LC_TIME=en_US.UTF-8 ${pkgs.coreutils}/bin/date +"%d %B %Y"];
-        font_family = JetBrainsMono Nerd Font; font_size = 20;
-        color = rgba(204, 217, 255, 0.75); shadow_passes = 0;
-    }
-    label {
-        position = 0, 10; halign = center; valign = center;
-        text =  $USER; font_family = JetBrainsMono Nerd Font; font_size = 15;
-        color = rgba(204, 217, 255, 0.65); shadow_passes = 0;
-    }
-    label {
-        position = 20, 20; halign = left; valign = top;
-        text = cmd[update:2000, ${pkgs.wireplumber}/bin/wpctl get-volume @DEFAULT_AUDIO_SINK@ | ${pkgs.gawk}/bin/awk '{printf "%.0f%%", $2*100}'];
-        font_family = JetBrainsMono Nerd Font; font_size = 15;
-        color = rgba(217, 201, 94, 1.0); shadow_passes = 0;
-    }
-    label {
-        position = 20, 20; halign = right; valign = top;
-        text = cmd[update:5000, ${pkgs.networkmanager}/bin/nmcli -t -f NAME,TYPE,STATE con show --active 2>/dev/null | ${pkgs.gnugrep}/bin/grep -v loopback | ${pkgs.coreutils}/bin/head -1 | ${pkgs.coreutils}/bin/cut -d: -f1 | ${pkgs.gawk}/bin/awk 'NF { print " " $0; found=1 } END { if (!found) print " Disconnected" }'];
-        font_family = JetBrainsMono Nerd Font; font_size = 15;
-        color = rgba(118, 196, 215, 1.0); shadow_passes = 0;
-    }
-    label {
-        position = 0, -260; halign = center; valign = center;
-        text = Unlock the screen to access session shortcuts
-        font_family = JetBrainsMono Nerd Font; font_size = 14;
-        color = rgba(204, 217, 255, 0.45); shadow_passes = 0;
-    }
-    # Hyprlock 0.9.6 removed the `button` widget, so the old wlogout/suspend buttons
-    # were never rendered. The configured `SUPER+SHIFT+E` shortcut still exits Hyprland.
-    # Use an older hyprlock release if clickable widgets are required.
   '';
 
   waybarStyle = ''
