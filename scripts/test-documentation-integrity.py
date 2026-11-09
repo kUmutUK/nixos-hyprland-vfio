@@ -748,11 +748,14 @@ require(
     and "ENTER PASSWORD TO UNLOCK" not in HOME_NIX
     and "text =   $USER" not in HOME_NIX
     and "path = screenshot" in HOME_NIX
-    and "blur_passes = 2" in HOME_NIX
-    and "blur_size = 8" in HOME_NIX
-    and "brightness = 0.60" in HOME_NIX
+    and "blur_passes = 3" in HOME_NIX
+    and "blur_size = 7" in HOME_NIX
+    and "brightness = 0.72" in HOME_NIX
+    and "size = 480, 340" not in HOME_NIX
+    and "position = 0, 72" in HOME_NIX
+    and "valign = bottom" in HOME_NIX
     and re.search(r'(?m)^\s*text\s*=\s*;', HOME_NIX) is None,
-    "Minimal Hyprlock layout must retain its lock glyph, remove branding labels, and use a dimmed blurred desktop screenshot",
+    "Fullscreen Hyprlock must use a blurred screenshot, omit the center card and place the password field at the bottom",
 )
 require(
     "The helper synchronizes `/var/lib/libvirt/win10.xml` only when `win10` is registered" in README
