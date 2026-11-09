@@ -662,6 +662,10 @@ The OCR script now checks that the model is available before beginning; it repor
 | power-profiles-daemon | Power profile / CPU governor management |
 | Steam / Proton / Wine | Windows game compatibility tools |
 
+### LSFG-VK schema
+
+**LSFG-VK schema:** Home Manager generates the v2 `conf.toml` configuration using the `version = 2` declaration, the `[global]` table, and the v2 `[[profile]]` profile format. Keep per-game profiles in that v2 structure; do not copy legacy v1 profile syntax into the generated file. The `scripts/test-lsfg-vk-v2.py` regression checks the package, pinned source, Vulkan manifest, and generated TOML, and normal CI also builds the pinned LSFG-VK v2 and MAKO packages. This schema validation does not change or rewrite the existing per-game profile choices.
+
 ### MAKO Renderer for Proton games
 
 MAKO Renderer is an optional Vulkan layer for frame generation, spatial scaling, and bundled shader effects. The pinned v4.6.0 Linux archive is packaged through Nix and added to Home Manager; the upstream mutable user-local installer is intentionally not used. Open its configuration UI with `mako-ui`, create a profile for the detected game process, and use the launch option shown by the UI (the basic prefix is `mako-launch %command%`). Package installation alone does not inject MAKO into any game. See the [MAKO NixOS guide](docs/MAKO.md) for its Lossless Scaling prerequisite, Vulkan-layer isolation behavior, Flatpak boundary, build notes, and the [recommended per-game baseline for the RX 6700 XT](docs/MAKO.md#recommended-per-game-baseline-for-this-rx-6700-xt). Do not stack MAKO Frame Generation with LSFG-VK or OptiScaler Frame Generation. The global AMD low-latency default and existing LSFG-VK profiles remain unchanged.
