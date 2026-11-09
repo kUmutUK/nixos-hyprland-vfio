@@ -145,6 +145,18 @@ require(
     and "does not pin the installed packages to the 26.05 channel" in INSTALLATION,
     "installation guide must distinguish the Live ISO release, flake package channel, and stateVersion",
 )
+require(
+    "CREATE_MEDIA_PARTITION=yes" in INSTALLATION
+    and "CREATE_MEDIA_PARTITION=no" in INSTALLATION
+    and 'sudo sgdisk -n 4:0:0 -t 4:8300 -c 4:MEDIA "$DISK_REAL"' in INSTALLATION
+    and 'sudo mkfs.ext4 -L media "${PART_PREFIX}4"' in INSTALLATION
+    and 'fileSystems."/mnt/media".device' in INSTALLATION
+    and "MEDIA_UUID" in INSTALLATION
+    and "Expected exactly %s partitions" in INSTALLATION
+    and "ext4 `/mnt/media`" in README
+    and 'fileSystems."/mnt/media"' in CONFIG,
+    "installation and README must document the optional fourth ext4 media partition and its machine-specific UUID mapping",
+)
 require("DEGISIKLIK_GECMISI.md" in RELEASING and "DEGISIKLIK_GECMISI.md" in RELEASE_WORKFLOW and "CONTRIBUTING.md" in RELEASING and "CHANGELOG.md" in RELEASING and "docs/REPAIR-AND-VALIDATION-REPORT.md" in RELEASING and "docs/OPTISCALER.md" in RELEASING and "docs/OPTISCALER.md" in RELEASE_WORKFLOW and "INSTALLATION.md" in RELEASING and "INSTALLATION.md" in RELEASE_WORKFLOW and ".github/workflows/check.yml" in RELEASING and "scripts/test-documentation-integrity.py" in RELEASING, "RELEASING allowlist documentation must match release.yml")
 require("grep -E '^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$' |" in RELEASE_WORKFLOW, "release workflow must use a closed stable-semver regex when finding previous tags")
 require("stable `vMAJOR.MINOR.PATCH` form" in RELEASING and "numeric components must not contain" in RELEASING, "release guide must document the strict stable tag format")

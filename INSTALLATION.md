@@ -18,7 +18,7 @@ This guide walks through an AMD-oriented **NixOS + LUKS2 + Btrfs + Hyprland + VF
 - UEFI system
 - AMD Ryzen CPU
 - AMD Radeon RX 6700 XT (Navi 22) — the reference GPU for this configuration. Other RX 6000/7000 cards are not considered supported until PCI/IOMMU groups, GPU reset behavior, and ROCm settings have been verified separately.
-- At least 810 GiB of storage (about 870 GB decimal); a 1 TB-class drive is recommended in practice.
+- At least 810 GiB of storage (about 870 GB decimal) for the 809 GiB system layout and a minimal remainder partition; a 1 TB-class drive is recommended in practice.
 
 **ISO and installed-package channel are separate:** The NixOS 26.05 Live ISO is the installer environment only. The installed system's package set is selected by `nixos/flake.nix`: its root `nixpkgs` input follows `nixos-unstable`, with the exact source revision recorded in `nixos/flake.lock`. `system.stateVersion = "26.05"` selects compatibility defaults; it does not pin the installed packages to the 26.05 channel. The installed package snapshot can therefore differ from the Live ISO. Keep flake updates deliberate and review the lock-file diff.
 
@@ -210,7 +210,7 @@ assert_disk_unused() {
 
 assert_disk_unused || exit 1
 
-# G in sgdisk is GiB. The partitions allocate 809 GiB in total.
+# G in sgdisk is GiB. The three system partitions allocate 809 GiB; the optional media partition uses the remaining space.
 MIN_DISK_BYTES=$((810 * 1024 * 1024 * 1024))
 if [ "$DISK_BYTES" -lt "$MIN_DISK_BYTES" ]; then
   printf 'ERROR: Disk capacity is insufficient (%s bytes); at least 810 GiB (%s bytes) is required.\n' \
@@ -479,7 +479,7 @@ sudo chmod 0644 /mnt/etc/nixos/.source-revision
 
   ```bash
   MEDIA_UUID="$(sudo blkid -s UUID -o value "${PART_PREFIX}4")"
-  printf 'Use this value: /dev/disk/by-uuid/%s\\\\n' "$MEDIA_UUID"
+  printf 'Use this value: /dev/disk/by-uuid/%s' "$MEDIA_UUID"; echo
   sudoedit /mnt/etc/nixos/nixos/configuration.nix
   ```
 
@@ -541,9 +541,10 @@ sudo blkid -s PARTUUID -o value "${PART_PREFIX}2"
 sudo findmnt -R /mnt -o TARGET,SOURCE,FSTYPE,OPTIONS
 sudo grep -nE 'rootDev|fileSystems|device =|subvol|neededForBoot|swapDevices|randomEncryption|priority' \
   /mnt/etc/nixos/nixos/hardware-configuration.nix
+sudo grep -n -A6 'fileSystems."/mnt/media"' /mnt/etc/nixos/nixos/configuration.nix
 ```
 
-Verify the mapping in the generated file:
+Verify the mappings in the generated hardware configuration and `nixos/configuration.nix`:
 
 | Storage layer | Must match |
 |---|---|
