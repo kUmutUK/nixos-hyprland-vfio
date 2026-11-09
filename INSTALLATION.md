@@ -30,19 +30,65 @@ This guide walks through an AMD-oriented **NixOS + LUKS2 + Btrfs + Hyprland + VF
 
 # 🚀 1. Live environment
 
-Boot the ISO in UEFI mode
+Boot the NixOS Live ISO in UEFI mode. Confirm that the firmware booted the ISO in UEFI mode:
+
+```bash
+test -d /sys/firmware/efi && echo "UEFI boot confirmed" || { echo "ERROR: reboot the ISO in UEFI mode." >&2; exit 1; }
+```
+
+Connect to the network and set the Turkish keyboard layout:
 
 ```bash
 nmtui
+sudo loadkeys trq
 ```
-Set the keyboard layout to Turkish:
+
+Confirm that internet access works before cloning the repository:
 
 ```bash
-sudo loadkeys trq
+ping -c 3 github.com
 ```
 ---
 
-# 💾 2. Disk partitioning
+# 🔌 2. Optional SSH access and tmux
+
+SSH is optional; all commands can be run directly at the PC. For remote installation, set a temporary password for the Live ISO's `nixos` account, start SSH, and read the IP address:
+
+```bash
+passwd
+sudo systemctl start sshd
+ip -br addr
+```
+
+From another device, connect with:
+
+```bash
+ssh nixos@LIVE-ISO-IP
+```
+
+If SSH reports that the host key changed because the Live ISO was restarted, remove only the old key for that IP and reconnect:
+
+```bash
+ssh-keygen -R LIVE-ISO-IP
+```
+
+Keep long-running installation commands in tmux so they survive an SSH disconnect:
+
+```bash
+nix-shell -p tmux --run 'tmux new -A -s nixos-install'
+```
+
+After reconnecting, reattach to the same session:
+
+```bash
+nix-shell -p tmux --run 'tmux attach -t nixos-install'
+```
+
+The password set with `passwd` here belongs only to the temporary Live ISO account. It is not the installed `localhost` or root password. SSH is not required for the installation.
+
+---
+
+# 💾 3. Select and validate the target disk
 
 > ⚠️ **The commands below completely erase the disk's partition table.**
 > Selecting the wrong device can destroy your existing system.
@@ -52,7 +98,9 @@ sudo loadkeys trq
 lsblk -o NAME,SIZE,MODEL,SERIAL,FSTYPE,MOUNTPOINTS
 ```
 > Check the target drive twice. Replace `/dev/nvme0n1` below with your own
-> drive and run the following commands in the same terminal session.
+> drive and run the following commands in the same terminal session. The later
+> partition, format, and mount blocks reuse `DISK`, `DISK_REAL`, and
+> `PART_PREFIX`; keep this shell open (tmux is useful for remote installs).
 
 ```bash
 set -Eeuo pipefail
@@ -217,7 +265,7 @@ assert_partition_on_target() {
 
 ---
 
-## Create the partition table
+# 💾 4. Create the partition table
 
 > `G` in the `sgdisk` commands means GiB. The partitions below allocate 809 GiB in total.
 > Even if the capacity and mounted-device checks pass, `sgdisk -Z` irreversibly removes the existing partition table. Verify the model and serial number one final time.
@@ -253,7 +301,7 @@ printf 'Partition table created and all three partition devices verified. Review
 ```
 ---
 
-# 🔒 3. LUKS2 setup
+# 🔒 5. LUKS2 setup
 
 ```bash
 set -Eeuo pipefail
@@ -276,7 +324,7 @@ sudo cryptsetup status cryptroot
 ```
 ---
 
-# 💽 4. Filesystems
+# 💽 6. Create filesystems
 
 ```bash
 set -Eeuo pipefail
@@ -296,13 +344,19 @@ if [ "$FORMAT_CONFIRMATION" != "FORMAT $DISK_REAL" ]; then
   exit 1
 fi
 sudo mkfs.fat -F32 "${PART_PREFIX}1"
-sudo mkswap "${PART_PREFIX}2"
 sudo mkfs.btrfs -L nixos /dev/mapper/cryptroot
-sudo blkid "${PART_PREFIX}1" "${PART_PREFIX}2" /dev/mapper/cryptroot
+sudo blkid "${PART_PREFIX}1" "${PART_PREFIX}2" "${PART_PREFIX}3" /dev/mapper/cryptroot
 ```
+
+> **Do not run `mkswap` on the raw swap partition.** The installed configuration
+> uses `randomEncryption.enable = true;`: NixOS opens a temporary dm-crypt mapping
+> with a fresh random key at boot and initializes swap on that encrypted mapping.
+> The backing partition is selected by **PARTUUID**, because its filesystem UUID/label
+> is not stable across activations. This is not a persistent LUKS volume and it must
+> not be used for hibernation.
 ---
 
-# 🌳 5. Btrfs subvolumes
+# 🌳 7. Create Btrfs subvolumes
 
 ```bash
 sudo mount /dev/mapper/cryptroot /mnt
@@ -314,13 +368,13 @@ sudo btrfs subvolume create /mnt/@log
 sudo btrfs subvolume create /mnt/@snapshots
 # NOTE: @home/.snapshots cannot be created here because @home is not mounted yet.
 # The subvolume required by services.snapper.configs.home (SUBVOLUME="/home")
-# must be created after @home is mounted below (see Section 6).
+# must be created after @home is mounted below (see Step 8).
 
 sudo umount /mnt
 ```
 ---
 
-# 📦 6. Mount the filesystems
+# 📦 8. Mount filesystems
 
 ```bash
 sudo mount -o subvol=@,noatime,compress=zstd:1,ssd,discard=async /dev/mapper/cryptroot /mnt
@@ -343,13 +397,14 @@ sudo mount -o subvol=@snapshots,noatime,compress=zstd:1,ssd,discard=async /dev/m
 
 sudo mount "${PART_PREFIX}1" /mnt/boot
 
-sudo swapon "${PART_PREFIX}2"
+# Do not swapon the raw backing partition in the Live ISO. The installed system
+# creates and activates its random-key encrypted swap mapping during boot.
 
 # Impermanence is not enabled in this configuration; no persistent-home directory is needed.
 ```
 ---
 
-# 🧠 7. Set up the repository (correct method)
+# 🧠 9. Set up the repository and generate machine hardware configuration
 
 `nixos-generate-config` already creates `/mnt/etc/nixos/configuration.nix` and
 `hardware-configuration.nix`, so cloning the repository directly into `/mnt/etc/nixos`
@@ -409,7 +464,47 @@ sudo chmod 0644 /mnt/etc/nixos/.source-revision
 
 ---
 
-# ⚠️ 7b. Five settings to review and customize as needed
+# 🔎 10. Verify UUIDs, mounts, and swap configuration
+
+The generated `hardware-configuration.nix` copied in Step 9 belongs to this machine.
+Inspect the identifiers created during this installation:
+
+```bash
+sudo blkid "${PART_PREFIX}1" "${PART_PREFIX}2" "${PART_PREFIX}3" /dev/mapper/cryptroot
+printf 'Btrfs filesystem UUID: '
+sudo blkid -s UUID -o value /dev/mapper/cryptroot
+printf 'LUKS UUID: '
+sudo cryptsetup luksUUID "${PART_PREFIX}3"
+printf 'EFI filesystem UUID: '
+sudo blkid -s UUID -o value "${PART_PREFIX}1"
+printf 'Swap PARTUUID: '
+sudo blkid -s PARTUUID -o value "${PART_PREFIX}2"
+
+sudo findmnt -R /mnt -o TARGET,SOURCE,FSTYPE,OPTIONS
+sudo grep -nE 'rootDev|fileSystems|device =|subvol|neededForBoot|swapDevices|randomEncryption|priority' \
+  /mnt/etc/nixos/nixos/hardware-configuration.nix
+```
+
+Verify the mapping in the generated file:
+
+| Storage layer | Must match |
+|---|---|
+| Btrfs filesystem UUID | The `rootDev` value used by `/`, `/home`, `/nix`, `/var/log`, and both Snapper mounts |
+| LUKS UUID | `boot.initrd.luks.devices."cryptroot".device` |
+| EFI filesystem UUID | `fileSystems."/boot".device` |
+| Swap PARTUUID | `swapDevices.*.device`, using `/dev/disk/by-partuuid/...` |
+
+The `/home/.snapshots` entry must use subvolume `@home/.snapshots` and
+`neededForBoot = true;`. The swap entry must keep
+`randomEncryption.enable = true;` and use the swap **PARTUUID**, not a filesystem UUID
+or label. The guide's historical UUID values are not reusable: do not run static
+`sed` substitutions with another machine's identifiers. If a mapping is wrong,
+edit the generated file deliberately and re-check it with `blkid`, `lsblk -f`,
+and `findmnt` before proceeding.
+
+---
+
+# ⚠️ 11. Review personal settings
 
 When `win10` is already registered, the documented XML helper uses the persistent `virsh dumpxml --inactive win10` definition and stops without writing if libvirt cannot be queried or exported. It saves recovery copies of the registered definition and any existing on-disk XML before synchronizing PCI addresses.
 
@@ -472,7 +567,7 @@ services. A real monitor name is used for the output rule; select `preferred` or
 mode in `hyprlandMonitorMode`.
 ---
 
-# 🔑 8. Passwords (root + localhost)
+# 🔑 12. Set the installed user's password and optional SSH key
 
 `configuration.nix` reads the `localhost` user's password from
 `hashedPasswordFile = "/etc/nixos/hashedPassword"`. For a clean installation, create this
@@ -498,7 +593,7 @@ password_meta=$(sudo stat -c '%U:%G:%a' /mnt/etc/nixos/hashedPassword)
 >
 > The `localhost` password is for the Hyprland/tuigreet desktop session. The root password
 > is separate and is used for console/emergency access; set it after installation succeeds
-> (Section 9).
+> (Step 15).
 
 > 🔑 **SSH access (key-only by default):** the SSH server listens on TCP port 22 and the
 > host firewall allows that port, but password and keyboard-interactive authentication are
@@ -510,9 +605,61 @@ password_meta=$(sudo stat -c '%U:%G:%a' /mnt/etc/nixos/hashedPassword)
 > is disabled and Fail2ban remains enabled. Keep physical console/recovery access until
 > key-based login is confirmed.
 
+To add the key before installation, edit the target configuration:
+
+```bash
+sudoedit /mnt/etc/nixos/nixos/configuration.nix
+```
+
+Replace the commented example inside `users.users.localhost.openssh.authorizedKeys.keys`
+with the complete `ssh-ed25519 ...` public-key line. Never paste or commit the private
+`id_ed25519` file. Check the resulting block:
+
+```bash
+grep -n -A4 'openssh.authorizedKeys.keys = \[' /mnt/etc/nixos/nixos/configuration.nix
+```
+
 ---
 
-# ⚡ 9. Install NixOS
+# 📌 13. Preserve the repository's flake lock
+
+Do **not** run `nix flake update` during a clean installation. The checkout's
+`nixos/flake.lock` pins the exact input revisions expected by that source snapshot.
+Inspect the locked CachyOS input without changing it:
+
+```bash
+cd /mnt/etc/nixos/nixos
+grep -n -A9 '"cachyos-kernel"' flake.lock
+nix flake metadata --json --no-update-lock-file . | jq -r '.locks.nodes["cachyos-kernel"].locked.rev'
+```
+
+If the lock file was accidentally changed during setup, restore it from the exact
+source commit recorded in Step 9, not from a SHA copied from an old message:
+
+```bash
+SOURCE_REVISION="$(cat /mnt/etc/nixos/.source-revision)"
+git -C /tmp/repo show "$SOURCE_REVISION:nixos/flake.lock" |
+  sudo tee /mnt/etc/nixos/nixos/flake.lock >/dev/null
+```
+
+> **Kernel validation status (9 November 2026):** the focused manual kernel-only
+> workflow [run 42574458527](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42574458527)
+> passed on commit `4ab097bba844a30a3184357aee76272bccb58ebf`. This proves that the
+> selected kernel derivation built for that locked source/configuration; it does not
+> prove that the full NixOS toplevel or the physical host has been revalidated. The
+> earlier full-system build #17 failed during Rust-module BTF finalization before the
+> second unused Rust driver was disabled; a fresh successful full-system build is still
+> required before treating the current full system as verified.
+>
+> The 3 November hardware-validation record below belongs to its historical CachyOS
+> input revision `755712deee259ef7efbfe9154038a270c3d75a87`. That SHA is not a
+> universal rollback target for later repository snapshots. Do not replace a newer
+> checkout's lock with a remembered revision; use the exact lock file from the commit
+> you chose and read the current verification status in [README.md](README.md).
+
+---
+
+# ⚡ 14. Install NixOS
 
 Because `flake.nix` is in the `nixos/` subdirectory rather than the repository root, the
 path before `#nixos` must include that subdirectory:
@@ -521,13 +668,9 @@ path before `#nixos` must include that subdirectory:
 # On the first run, review and accept the configured binary cache if trusted.
 sudo nixos-install --flake /mnt/etc/nixos/nixos#nixos
 ```
-After installation succeeds, while the target system is still mounted under `/mnt`, set
-or update the root password. If run before installation has completed, `nixos-enter` may
-refuse to recognize the target system:
+After the installation command returns successfully, continue to Step 15. Do not reboot
+until the installed system profile exists and the root password has been set.
 
-```bash
-sudo nixos-enter --root /mnt -c 'passwd root'
-```
 > **Important:** The commands below that use `/etc/nixos/nixos` must be run on the installed
 > system after the first reboot. Do not run them from the Live ISO; the target system is
 > still mounted under `/mnt` there. To select a new kernel before the first installation,
@@ -566,18 +709,47 @@ sudo nixos-enter --root /mnt -c 'passwd root'
 
 ---
 
-> ⚠️ **VM preparation:** the XML and qcow2 files are prepared after installation on the first boot; see Section 10b.
+> ⚠️ **VM preparation:** the XML and qcow2 files are prepared after installation on the first boot; see the post-install VM setup immediately after Step 15.
 
 ---
 
-# 🔄 10. Reboot
+# 🔄 15. Set root password, reboot, and verify first boot
+
+While the target system is still mounted under `/mnt`, confirm that the system profile
+was created, then set the separate root password:
 
 ```bash
+ls -l /mnt/nix/var/nix/profiles/system
+sudo nixos-enter --root /mnt -c 'passwd root'
 sudo reboot
 ```
+
+Remove the Live ISO USB when the machine restarts. At the next boot, enter the LUKS2
+passphrase, then sign in as `localhost` with the yescrypt password created in Step 12.
+
+After logging in, run the first-boot checks:
+
+```bash
+uname -r
+swapon --show
+lsblk -o NAME,TYPE,FSTYPE,PKNAME,MOUNTPOINTS
+systemctl --failed
+findmnt -T /home/.snapshots -o TARGET,SOURCE,FSTYPE,OPTIONS
+ls -ld /home/.snapshots
+```
+
+The kernel release should identify the CachyOS kernel. With random swap encryption,
+`swapon --show` should list the encrypted mapper, not the raw swap partition. The
+Home Snapper path must be mounted from Btrfs subvolume `@home/.snapshots`. Review
+any output from `systemctl --failed` before proceeding; an empty list is the expected
+healthy result. Also verify IOMMU/AMD-Vi in firmware and at runtime before using VFIO.
+
 ---
 
-# 🖥️ 10b. Register the VM with libvirt (after the first reboot)
+## Next task after Step 15 — Register the VM with libvirt
+
+The base NixOS installation is complete at this point. Register and prepare the Windows
+VM only after the first successful boot.
 
 > **Correction (2026-10-04):** this step was missing from the earlier documentation. If it
 > is skipped, the domain remains undefined; the `if [ "$GUEST" != "$TARGET_VM" ]; then exit 0`
