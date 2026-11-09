@@ -1160,7 +1160,7 @@ require("docs/MAKO.md" in RELEASING and "scripts/test-mako-renderer.py" in RELEA
 require("scripts/test-vfio-hook-driver-state.sh" in RELEASING and "scripts/test-vfio-hook-driver-state.sh" in RELEASE_WORKFLOW, "release ancestor allowlist must include the hook test script but not the system-affecting hook itself")
 
 version_input_block = (
-    RELEASE_WORKFLOW.partition("      version:")[2].partition("permissions:")[0]
+    RELEASE_WORKFLOW.partition("      version:")[2].partition("      target_host_validated:")[0]
 )
 require(
     bool(version_input_block)
