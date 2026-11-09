@@ -6,9 +6,11 @@ A flake-based NixOS gaming desktop that passes its single AMD Radeon GPU through
 
 **Current source update (9 November 2026):** the kernel workaround, CachyOS 7.3.3 input, updated Nixpkgs/Home Manager pins, and refreshed host hardware mapping are newer than full-system build #16 and remain pending a fresh full-system build. Normal CI #1254/#1255 exposed formatting and pending-build allowlist issues. Manual full-system build #17 then reached kernel module finalization and failed on Rust module BTF for `rcpufreq_dt.ko`; disabling `BLK_DEV_RUST_NULL` had removed the earlier `rnull_mod.ko` failure but was incomplete. Both unused Rust drivers are now disabled; a new successful full-system build is still required. The 2026-11-04 source-tree cross-checks and historical Hyprland version-table reconciliation remain documented below. Review [the current repair and validation report](docs/REPAIR-AND-VALIDATION-REPORT.md) before activating the updated storage mapping; verify its identifiers against the host with `lsblk -f`, `blkid`, and `findmnt`.
 
+**Pre-reconciliation main verification (5 November 2026):** GitHub `main` at `4eb6a106d825890a929fe57054a1660da524a458`; normal CI [#1244](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42076151633) passed all 28 workflow-defined steps on this exact commit and uploaded `nixos-hyprland-vfio-source` (artifact ID `13438456860`, 383,949 bytes; outer artifact digest `sha256:f04a477945bc2b47d7f8c7394a8f178895ed950bba2f245fae9b7aecdf553d97`). The preceding documentation-only commit `d35155ce6b9fb089934ee2f15f4208279dc5e2da` had CI #1243 fail at the documentation-integrity gate; commit `4eb6a10` restored the missing historical assertions and CI #1244 passed. This is the last completed validation before this documentation/test reconciliation; this follow-up requires its own exact-commit normal CI before a later release.
+
 The 5 November v1.4.5 release ZIP contains 72 tracked files and nine executable files; the release job confirmed that `.git/` metadata is excluded. The ZIP is 392,212 bytes with SHA-256 `f97fb12bdfbaaff4d32e7ab57bbc9251fababcd126a8ef7644947844924de9e0`. The [v1.4.5 release page](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.5) includes the ZIP and checksum sidecar. Details and verification boundaries are recorded in the [repair and validation report](docs/REPAIR-AND-VALIDATION-REPORT.md). The 2026-11-04 source-tree cross-checks and historical Hyprland version-table reconciliation remain documented below. The 2026-10-28 audit remains a dated historical review.
 
-**Previous reviewed snapshot (historical, 5 November 2026):** GitHub `main` at `7f923a2c7aa59721bc00728faccbc073e06c697a`; normal CI #1239 passed all 28 workflow-defined steps on that commit; v1.4.4 was published by release run #15 ([run ID 42035815458](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42035815458)). Its release ZIP was 388,000 bytes (72 tracked files, nine executable files, no `.git/` entries; SHA-256 `7621fcdccfe327e9e59f453947b9f7903cd0f477b73cde8f4aa5ee513061e0ff`). CI #1239's canonical artifact was 379,511 bytes (artifact 13416329673; outer digest `sha256:f9fdf7c3be15b69d032f4965e6765f841fd04f54e9096d2536091f5c01e267ed`). This snapshot is superseded by the current HEAD, CI #1242, and v1.4.5 release above. The inherited `v1.4.3` heading issue belongs to the historical v1.4.4 release description, not v1.4.5.
+**Previous reviewed artifact (historical):** Normal CI #1239 passed all 28 workflow-defined steps on the historical 5 November snapshot at `7f923a2c7aa59721bc00728faccbc073e06c697a`; v1.4.4 was published by release run #15 ([run ID 42035815458](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42035815458)). Its canonical CI artifact was 379,511 bytes (artifact ID `13416329673`; outer digest `sha256:f9fdf7c3be15b69d032f4965e6765f841fd04f54e9096d2536091f5c01e267ed`), and its release ZIP was 388,000 bytes with SHA-256 `7621fcdccfe327e9e59f453947b9f7903cd0f477b73cde8f4aa5ee513061e0ff`. This historical artifact is superseded by v1.4.5 and is not the artifact for the pre-reconciliation main verification above. GitHub `main` at `7f923a2c7aa59721bc00728faccbc073e06c697a`; normal CI #1239 passed all 28 workflow-defined steps on that commit; v1.4.4 was published by release run #15 ([run ID 42035815458](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42035815458)). Its release ZIP was 388,000 bytes (72 tracked files, nine executable files, no `.git/` entries; SHA-256 `7621fcdccfe327e9e59f453947b9f7903cd0f477b73cde8f4aa5ee513061e0ff`). CI #1239's canonical artifact was 379,511 bytes (artifact 13416329673; outer digest `sha256:f9fdf7c3be15b69d032f4965e6765f841fd04f54e9096d2536091f5c01e267ed`). This snapshot is superseded by the current HEAD, CI #1242, and v1.4.5 release above. The inherited `v1.4.3` heading issue belongs to the historical v1.4.4 release description, not v1.4.5.
 
 **Current configuration note (5 November 2026):** Genshin Impact uses LSFG-VK v2 at 2x as its fallback; Wuthering Waves remains at 2x. MAKO Adaptive remains the preferred first per-game Frame Generation path to validate, with LSFG-VK as the fallback. The profile changes, the installer QEMU-hook source preflight, and the GameMode comment/regression correction are covered by full-system build #13 on exact commit `1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b`. This does not claim a measured MAKO performance advantage on the RX 6700 XT.
 
@@ -736,6 +738,65 @@ The repeated missing `.ko.BTF.1` failure across two different Rust modules shows
 ### Target-system validation update — 2026-11-03
 
 > On 3 November 2026, the project owner confirmed that the then-current target configuration rebuilt successfully, the selected RT-Bore-LTO ThinLTO kernel compiled locally, and the Windows 10 VM started and completed a normal shutdown, returning the host display and Hyprland session. The corresponding `nixos/flake.lock` resolved the CachyOS kernel input to `755712deee259ef7efbfe9154038a270c3d75a87`. This is owner-reported physical-hardware validation, not independent reproduction and not a guarantee for other hardware. It covers the normal VM start/shutdown and host-recovery path; it does not validate libvirt saved-state or managed-save restore.
+
+## Repository map
+
+- `nixos/configuration.nix`, `nixos/home.nix`, `nixos/flake.nix`, and `nixos/flake.lock`: NixOS modules, Home Manager configuration, flake outputs, and locked inputs.
+- `nixos/lsfg-vk-v2.nix`: pinned LSFG-VK v2 package definition; `nixos/mako-renderer.nix`: optional MAKO Renderer package.
+- `nixos/hooks/qemu` and `vm-xml/win10.xml`: VFIO handoff hook and Windows guest template.
+- `scripts/optiscaler_manager.py` and `scripts/test-optiscaler-manager.py`: optional per-game manager and its offline regression suite; see [the manager guide](docs/OPTISCALER-MANAGER.md).
+- `scripts/test-vm-xml-paths.py`, `scripts/test-documentation-integrity.py`, and the other `scripts/test-*.py` files: focused regression checks.
+- `docs/AUDIT-2026-10-28-VM-XML-VFIO.md`: dated historical audit; [the repair and validation report](docs/REPAIR-AND-VALIDATION-REPORT.md) is the current verification record.
+- `.git-cliff.toml`, `RELEASING.md`, and `.github/workflows/release.yml`: release-note generation, release procedure, and automated release workflow.
+
+## Validation
+
+Run contributor checks from the repository root. Enter the development shell with `nix develop ./nixos` first so the pinned Nix tools are available.
+
+The Bash syntax-check loop is kept in sync with [CONTRIBUTING.md](CONTRIBUTING.md):
+
+```bash
+  for f in \
+    install.sh \
+    scripts/package-source-zip.sh \
+    scripts/verify-source-revision.sh \
+    scripts/test-source-revision.sh \
+    scripts/installer-lock.sh \
+    scripts/pci-address.sh \
+    scripts/test-installer-lock.sh \
+    nixos/hooks/qemu \
+    scripts/test-vfio-hook-driver-state.sh \
+    scripts/test-installer-invariants.sh \
+    scripts/test-installer-rollback.sh \
+    scripts/test-manual-vm-bootstrap.sh
+  do
+    bash -n "$f"
+  done
+```
+
+Run the focused regression checks before proposing a change:
+
+```bash
+python3 scripts/test-documentation-integrity.py
+python3 scripts/test-optiscaler-manager.py
+python3 scripts/test-lsfg-vk-v2.py
+python3 scripts/test-mako-renderer.py
+python3 scripts/test-vm-xml.py
+python3 scripts/test-vm-xml-structure.py
+python3 scripts/test-vm-xml-paths.py
+python3 scripts/test-vm-xml-sync.py
+python3 scripts/test-vm-diagnostic.py
+python3 scripts/test-vm-iso-paths.py
+```
+
+Build the current LSFG-VK v2 flake output from the NixOS flake directory:
+
+```bash
+cd nixos
+nix build .#lsfg-vk-v2
+```
+
+Normal CI also runs the archive, installer, VM, VFIO hook, generated Lua, ShellCheck, Statix, Deadnix, and Nix evaluation checks. Normal CI is not a substitute for the manual full NixOS system build when NixOS modules, kernel settings, flake inputs, or other closure-affecting files change. Follow the current full-system build gate in [the repair report](docs/REPAIR-AND-VALIDATION-REPORT.md) and do not release while that gate is open.
 
 ## Releasing
 
