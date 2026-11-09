@@ -710,17 +710,31 @@ git -C /tmp/repo show "$SOURCE_REVISION:nixos/flake.lock" |
 
 > **Kernel and full-system validation status (9 November 2026):** manual full-system
 > build [#18](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42597469118)
-> passed on commit `c6f4b955475de2ea16bc2b34c59a95dad3a1ae78`, including the two-symbol Rust/BTF workaround.
-> Normal CI [#1285](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42625179836)
-> separately passed on the reviewed `main` snapshot `f63250a4867105ea1e9e2724c0c47b5ae5e707cb`. Build #18
-> is recorded against its actual commit, not relabelled as an exact-HEAD build; the
-> project owner confirms that the 11 later commits do not invalidate its result.
+> passed on ancestor commit `c6f4b955475de2ea16bc2b34c59a95dad3a1ae78`, including
+> the two-symbol Rust/BTF workaround. This was not a build of the later v1.4.7 release
+> snapshot.
 >
-> **Target hardware (owner-reported, 9 November 2026):** NixOS was installed from
-> scratch without issues. The Windows 10 VFIO VM started and shut down normally, GPU
-> control returned to the host, and Hyprland resumed. Saved-state/managed-save restore
-> remains unverified. The earlier 3 November record below is historical and uses its
-> own then-current CachyOS lock revision.
+> **v1.4.7 release snapshot:** `c28250c34de4b4349023681305da99dee75aac9e`. Normal CI
+> [#1299](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42684408581)
+> passed all 28 workflow-defined steps on that exact commit. The release snapshot is
+> 23 commits ahead of Build #18 and includes runtime-affecting updates to
+> `install.sh`, `nixos/configuration.nix`, `nixos/hardware-configuration.nix`, and
+> `nixos/home.nix`. Release run
+> [#23](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42685329584)
+> was accepted with the explicit `target_host_validated=true` maintainer attestation
+> after the owner-reported clean install, boot, normal VM start/shutdown, GPU handback,
+> and Hyprland recovery. The attestation does not mean a new full-system build ran
+> on the v1.4.7 commit.
+>
+> **HDR setting:** the v1.4.7 Home Manager configuration sets
+> `render.cm_auto_hdr = 0`, disabling automatic fullscreen HDR switching. The
+> recorded installation/VM test does not separately validate HDR transitions or
+> 10-bit output. Saved-state/managed-save restore remains unverified.
+>
+> **Previous reviewed source snapshot (historical):** normal CI [#1285](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42625179836)
+> passed on `f63250a4867105ea1e9e2724c0c47b5ae5e707cb`, before the v1.4.7 release
+> snapshot.
+
 >
 > Do not replace a newer checkout's lock with a remembered revision; use the exact
 > lock file from the commit you chose and read the current verification status in

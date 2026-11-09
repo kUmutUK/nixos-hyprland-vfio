@@ -49,6 +49,34 @@ def require(condition: bool, message: str) -> None:
         errors.append(message)
 
 
+def latest_stable_tag() -> str:
+    result = subprocess.run(
+        ["git", "tag", "--merged", "HEAD", "--list", "v[0-9]*"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        raise SystemExit(f"Could not list reachable stable release tags: {result.stderr.strip()}")
+    stable = []
+    for tag in result.stdout.splitlines():
+        match = re.fullmatch(r"v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)", tag)
+        if match:
+            stable.append((tuple(int(part) for part in match.groups()), tag))
+    if not stable:
+        raise SystemExit("No reachable stable vMAJOR.MINOR.PATCH release tag was found.")
+    return max(stable, key=lambda item: item[0])[1]
+
+
+LATEST_STABLE_TAG = latest_stable_tag()
+LATEST_STABLE_COMMIT = subprocess.run(
+    ["git", "rev-parse", f"{LATEST_STABLE_TAG}^{{commit}}"],
+    check=True,
+    capture_output=True,
+    text=True,
+).stdout.strip()
+
+
 readme_top = "\n".join(README.splitlines()[:8])
 require("docs/REPAIR-AND-VALIDATION-REPORT.md" in readme_top and "docs/AUDIT-2026-10-28-VM-XML-VFIO.md" not in readme_top, "README must point to the current repair report, not the older audit")
 require("2026-11-04 source-tree cross-checks" in readme_top, "README must identify the current 2026-11-04 source-tree cross-check")
@@ -231,27 +259,31 @@ current_release_match = re.search(
     r"current published release is\s+\[(v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))\]\(https://github\.com/kUmutUK/nixos-hyprland-vfio/releases/tag/\1\)",
     RELEASING,
 )
+current_release_section = RELEASING.partition("current published release is")[2].partition("Alternatively")[0]
+release_commit_match = re.search(r"from commit `([0-9a-f]{40})`", current_release_section)
 require(
     current_release_match is not None
-    and "published by [release run #20]" in RELEASING
-    and "on 6 November 2026" in RELEASING,
-    "release guide must identify the current published release without freezing its version in this regression",
+    and current_release_match.group(1) == LATEST_STABLE_TAG
+    and release_commit_match is not None
+    and release_commit_match.group(1) == LATEST_STABLE_COMMIT
+    and "published by [release run #" in current_release_section,
+    "release guide must match the newest reachable stable Git tag and its exact tag commit",
 )
 current_release = current_release_match.group(1) if current_release_match else "v0.0.0"
 release_heading_pattern = re.compile(rf"^## {re.escape(current_release)} - \d{{4}}-\d{{2}}-\d{{2}}$")
 require(
-    release_heading_pattern.fullmatch(f"## {current_release} - 2026-11-06") is not None
-    and release_heading_pattern.fullmatch("## v0.0.0 - 2026-11-06") is None
-    and release_heading_pattern.fullmatch(f"## {current_release} - 2026-11-6") is None,
+    release_heading_pattern.fullmatch(f"## {current_release} - 2026-11-09") is not None
+    and release_heading_pattern.fullmatch("## v0.0.0 - 2026-11-09") is None
+    and release_heading_pattern.fullmatch(f"## {current_release} - 2026-11-9") is None,
     "release-note heading regex must accept only the current published release and an ISO date",
 )
 require("Verified full-system build baseline" in REPAIR,
         "repair report must identify the last completed full-system build baseline")
 current_status_line = (
-    "**Latest published release:** [v1.4.6](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.6), "
+    f"**Latest published release:** [{LATEST_STABLE_TAG}](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/{LATEST_STABLE_TAG}), "
 )
 require(current_status_line in REPAIR and current_status_line in STATE_INDEX and current_status_line in README,
-        "current release must agree across README, status index, and repair report")
+        "README, status index, and repair report must agree with the latest reachable release tag")
 require(
     "all 28 workflow-defined steps" in CHANGELOG
     and "all 28 workflow-defined steps" in STATE_INDEX
@@ -331,12 +363,19 @@ require(
 )
 require(
     all(item in (README + CHANGELOG + STATE_INDEX + REPAIR + RELEASING) for item in (
+        LATEST_STABLE_TAG, "release run #23", LATEST_STABLE_COMMIT,
+        "407,251 bytes", "d33e36df8b8d6891c522fe2b8d27fa3d149da042c9284527d314c2eda89e9a05"
+    )),
+    "latest release version, exact tag commit, run, and canonical asset metadata must agree across current status documents",
+)
+require(
+    all(item in (README + CHANGELOG + STATE_INDEX + REPAIR + RELEASING) for item in (
         "v1.4.6", "release run #20", "a6dd4544319fafa7ec517e73b31ad29a1b4010b3"
     ))
     and all(item in (README + CHANGELOG + STATE_INDEX + REPAIR) for item in (
         "402,118 bytes", "05ffe97ee342a4b233f56bc7ae0e455f3b91a1c87df86c42e57e0441e9089e76"
     )),
-    "v1.4.6 release version, tag commit, run, and artifact checksum must be recorded consistently",
+    "previous v1.4.6 release metadata must remain available as historical information",
 )
 require(
     all(item in (README + CHANGELOG + STATE_INDEX + REPAIR) for item in (
@@ -346,9 +385,28 @@ require(
     "successful Build #18 and both Rust/BTF workaround symbols must be recorded",
 )
 require(
+    "#1299" in README and "#1299" in CHANGELOG and "#1299" in STATE_INDEX and "#1299" in REPAIR
+    and "42684408581" in README and "42684408581" in REPAIR,
+    "normal CI #1299 must be consistently recorded for the exact v1.4.7 release snapshot",
+)
+require(
     "#1285" in README and "#1285" in CHANGELOG and "#1285" in STATE_INDEX and "#1285" in REPAIR
     and "42625179836" in README and "42625179836" in REPAIR,
-    "normal CI #1285 must be consistently recorded for exact current main",
+    "normal CI #1285 must remain identified as the historical pre-release reviewed snapshot",
+)
+require(
+    "cm_auto_hdr = 0" in HOME_NIX
+    and "cm_auto_hdr = 0" in README
+    and "cm_auto_hdr = 0" in CHANGELOG
+    and "cm_auto_hdr = 0" in STATE_INDEX
+    and "cm_auto_hdr = 0" in REPAIR
+    and "did not separately measure HDR activation" in REPAIR,
+    "the Home Manager automatic-HDR runtime setting and its hardware-validation boundary must be documented",
+)
+require(
+    "manual full-system build #18 completed successfully" in README
+    and "has not yet been confirmed by a successful full-system build" not in README,
+    "README must mark the two-symbol Rust/BTF workaround as validated by full-system build #18",
 )
 require(
     "NixOS was installed from scratch" in README and "Windows 10 VFIO VM" in README
@@ -360,9 +418,11 @@ require(
     "documentation must record owner-reported fresh-install and Windows VFIO VM validation",
 )
 require(
-    "11 commits" in REPAIR and "do not invalidate" in REPAIR
-    and "11 later commits" in INSTALLATION,
-    "build-to-HEAD boundary must be documented without claiming Build #18 ran on current HEAD",
+    "23 commits" in REPAIR and "23 commits" in CHANGELOG and "23 commits" in STATE_INDEX
+    and "23 commits" in README and "23 commits" in INSTALLATION
+    and "No claim is made that the full-system build workflow ran on the v1.4.7 commit" in REPAIR
+    and "does not mean a new full-system build ran" in INSTALLATION,
+    "build-to-release boundary must distinguish Build #18's exact ancestor SHA from the attested release snapshot",
 )
 require(
     "Target-system validation update — 2026-11-03" in README

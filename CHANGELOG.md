@@ -4,20 +4,30 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+## [v1.4.7] - 2026-11-09
+
+### Release and validation boundary — 2026-11-09
+
+- Published [v1.4.7](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.7) with release run #23 ([run ID 42685329584](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42685329584)) from exact commit `c28250c34de4b4349023681305da99dee75aac9e`. The canonical ZIP is 407,251 bytes; SHA-256 `d33e36df8b8d6891c522fe2b8d27fa3d149da042c9284527d314c2eda89e9a05`.
+- Normal CI #1299 ([run ID 42684408581](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42684408581)) passed all 28 workflow-defined steps on that exact release commit. The runner-generated `Set up job` entry is not part of the YAML-defined step count.
+- The last full-system build remains manual build #18 on ancestor `c6f4b955475de2ea16bc2b34c59a95dad3a1ae78`. The release commit is 23 commits ahead of that baseline; Build #18 did not build the exact v1.4.7 source snapshot.
+- The 23-commit range includes runtime-affecting changes to `install.sh`, `nixos/configuration.nix`, `nixos/hardware-configuration.nix`, and `nixos/home.nix`. Release run #23 passed the gate through the explicit `target_host_validated=true` maintainer attestation after the owner-reported 9 November clean install, boot, normal Windows VM start/shutdown, GPU handback, and Hyprland recovery. This attestation is not a GitHub full-system build result.
+- `nixos/home.nix` sets `render.cm_auto_hdr = 0`, disabling Hyprland's automatic fullscreen HDR switch. It does not force HDR or 10-bit output. The recorded clean-install/VM test did not separately validate HDR transitions, 10-bit output, or display flicker.
+- The previous published release was [v1.4.6](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.6), release run #20 on 6 November 2026; its 402,118-byte ZIP SHA-256 was `05ffe97ee342a4b233f56bc7ae0e455f3b91a1c87df86c42e57e0441e9089e76`.
+- The prior pre-release reviewed source snapshot `f63250a4867105ea1e9e2724c0c47b5ae5e707cb` passed normal CI #1285; it is historical and superseded by the v1.4.7 release snapshot.
+
 ### Kernel, flake inputs, and host configuration refresh — 2026-11-09
 
 - Disabled the two unused Rust kernel modules through `BLK_DEV_RUST_NULL = lib.kernel.no;` and `CPUFREQ_DT_RUST = lib.kernel.no;`, keeping general Rust, BTF, ThinLTO, and RT-Bore selection enabled.
 - Manual full-system build #17 exposed the second Rust-module BTF failure in `rcpufreq_dt.ko`; **manual full-system build [run #18](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42597469118) then completed successfully** with both symbols disabled on commit `c6f4b955475de2ea16bc2b34c59a95dad3a1ae78`.
-- The owner confirms that the 11 commits between the Build #18 baseline and reviewed source snapshot do not invalidate its successful result; normal CI #1285 passed on the exact reviewed snapshot `f63250a4867105ea1e9e2724c0c47b5ae5e707cb`. Subsequent follow-up commits are limited to documentation, the install helper's printed media-UUID checklist, regression assertions, and executable-mode preservation; no NixOS runtime configuration or flake lock was changed.
 - Updated the CachyOS kernel overlay to 7.3.3, refreshed the nested/root Nixpkgs and Home Manager lock entries, and updated the machine-specific hardware mapping. Verify host storage identifiers before activation.
-- The current published release is [v1.4.6](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.6), published by release run #20 on 6 November 2026. Its ZIP is 402,118 bytes; SHA-256 `05ffe97ee342a4b233f56bc7ae0e455f3b91a1c87df86c42e57e0441e9089e76`.
-- Normal CI #1285 passed all 28 workflow-defined steps on the reviewed source snapshot `f63250a4867105ea1e9e2724c0c47b5ae5e707cb`; the runner-generated `Set up job` entry is not part of the YAML-defined step count.
+- Normal CI #1285 passed all 28 workflow-defined steps on the earlier reviewed snapshot `f63250a4867105ea1e9e2724c0c47b5ae5e707cb`; the later v1.4.7 release commit was separately validated by CI #1299.
 
 ### Fresh-install and VM validation — 2026-11-09 (owner-reported)
 
 - A clean NixOS installation from scratch on the reference physical machine completed without issues.
 - The Windows 10 VFIO VM was started successfully and shut down normally; GPU control returned to the host and Hyprland resumed.
-- This validates the ordinary VM lifecycle on the tested machine. Libvirt saved-state/managed-save restore was not part of this test and remains unverified.
+- This validates the ordinary VM lifecycle on the tested machine. Libvirt saved-state/managed-save restore remains unverified.
 
 ### Host storage and VM identity warnings — 2026-11-05
 
