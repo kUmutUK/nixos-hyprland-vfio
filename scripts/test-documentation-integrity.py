@@ -1081,6 +1081,24 @@ require(
     and "changed path matches the exact literal allowlist documented in RELEASING.md" in RELEASE_WORKFLOW,
     "release policy must state that documentation/CI labels do not grant blanket path exemptions",
 )
+
+manual_attestation_input = RELEASE_WORKFLOW.partition("      target_host_validated:")[2].partition("\npermissions:")[0]
+release_guard = RELEASE_WORKFLOW.partition("- name: Require successful CI and a current-enough full-system build")[2].partition("- name: Find previous version tag")[0]
+require(
+    "target_host_validated:" in RELEASE_WORKFLOW
+    and "type: boolean" in manual_attestation_input
+    and "default: false" in manual_attestation_input
+    and "TARGET_HOST_VALIDATED: ${{ inputs.target_host_validated }}" in RELEASE_WORKFLOW
+    and "GITHUB_REF" in release_guard
+    and '"refs/heads/main"' in release_guard
+    and 'TARGET_HOST_VALIDATED" == "true"' in release_guard
+    and "manual target-host validation attestation" in release_guard
+    and release_guard.index("--workflow check.yml") < release_guard.index('if [[ -z "$build_sha" ]]')
+    and release_guard.index('if [[ -z "$build_sha" ]]') < release_guard.index("manual_host_attestation=0")
+    and "target_host_validated" in RELEASING
+    and "Tag-triggered releases cannot" in RELEASING,
+    "manual target-host attestation must be explicit, main-only, and must not bypass exact CI or the successful ancestor build baseline",
+)
 require(
     "docs/UUID-AND-MACHINE-IDENTITY.md" in RELEASING
     and "docs/UUID-AND-MACHINE-IDENTITY.md" in RELEASE_WORKFLOW

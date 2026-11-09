@@ -41,16 +41,31 @@ manual-dispatch input; ordinary pushes and pull requests never publish a release
    `.github/workflows/kernel-build.yml`,
    `.github/workflows/release.yml`
 
-   Any later change outside this exact list, including a documentation or test file not named above, blocks publication and requires a new full-system build.
+   Any later change outside this exact list, including a documentation or test file not named above, blocks publication by default and requires a new full-system build.
+
+   For a manual **Release** dispatch from `main`, the workflow also exposes a
+   `target_host_validated` checkbox. This is a narrow maintainer attestation
+   for post-build changes that have actually been deployed to and validated on
+   the reference host. Select it only after the current source has been applied,
+   the host has booted successfully, and the Windows VM has completed a normal
+   start/shutdown cycle with GPU handback and Hyprland recovery. A clean install
+   is suitable evidence when it used the current source. The attestation bypasses
+   only the post-build changed-path rejection; it does **not** bypass exact-commit
+   normal CI, the existence of a successful ancestor full-system build, version
+   and tag validation, or release-artifact checks. Tag-triggered releases cannot
+   use it. GitHub records this as a maintainer assertion; it does not independently
+   verify physical hardware testing.
 The UUID identity guide above is documentation-only: it explains existing host storage identifiers and VM identity handling but does not alter either. It is included as one exact path, not as a wildcard documentation exemption. The two VM XML sync Python paths above are narrowly scoped migration-time helpers outside the NixOS flake/derivation graph and are covered by the dedicated mock-backed VM XML sync suite in normal CI. The `scripts/test-manual-vm-bootstrap.sh` and `scripts/test-installer-invariants.sh` paths are CI-only mock regression harnesses; they do not run host mutations or alter the NixOS system closure. NixOS modules/flake outputs/inputs and machine storage configuration (including `nixos/configuration.nix`, `nixos/flake.nix`, `nixos/flake.lock`, `nixos/hardware-configuration.nix`, and `nixos/mako-renderer.nix`), `vm-xml/win10.xml`, `install.sh`, runtime hooks, and other system-closure-affecting paths remain gated by a new full-system build.
 
 5. Review the release version and changelog before publishing.
 
 This is intentional: documentation and release automation do not alter the
-NixOS system derivation, but a successful evaluation-only CI run is not a
-substitute for building the full NixOS system and selected RT-Bore-LTO kernel.
-A release still does not claim that every machine has passed a physical
-GPU/VFIO/VM lifecycle test.
+NixOS system derivation, and a successful evaluation-only CI run is not a
+substitute for a full NixOS system/kernel build. The post-build hardware
+attestation is an explicit operator override for the reference machine; it
+does not create a GitHub full-system build result or establish compatibility
+for other hardware. A release still does not claim that every machine has
+passed a physical GPU/VFIO/VM lifecycle test.
 
 ## Publish a release
 

@@ -10,6 +10,15 @@ on:
         description: "New, unused stable version tag (vMAJOR.MINOR.PATCH)"
         required: true
         type: string
+      target_host_validated:
+        description: >-
+          I confirm that the post-build system changes are deployed on the
+          reference host and that a clean installation, boot, Windows VM
+          start/shutdown, GPU handback, and Hyprland recovery were verified.
+          This is a maintainer attestation, not a GitHub build result.
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   actions: read
@@ -82,6 +91,7 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          TARGET_HOST_VALIDATED: ${{ inputs.target_host_validated }}
         run: |
           set -Eeuo pipefail
 
@@ -142,13 +152,26 @@ jobs:
             esac
           done < <(git diff --name-only "$build_sha" "$GITHUB_SHA")
 
+          manual_host_attestation=0
           if [[ "$unexpected" -ne 0 ]]; then
-            echo "::error::Run a new full-system build after the system-affecting changes."
-            exit 1
+            if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" \
+              && "$GITHUB_REF" == "refs/heads/main" \
+              && "$TARGET_HOST_VALIDATED" == "true" ]]; then
+              manual_host_attestation=1
+              echo "::warning::Non-allowlisted post-build changes accepted by explicit target-host validation attestation."
+              echo "::notice::Maintainer attested target-host validation for exact commit $GITHUB_SHA."
+            else
+              echo "::error::Run a new full-system build after the system-affecting changes, or use manual Release on main with target-host validation attested."
+              exit 1
+            fi
           fi
 
-          echo "  full-system build passed at $build_sha"
-          echo "  changes since that build are release-only"
+          echo "  successful full-system build baseline: $build_sha"
+          if [[ "$manual_host_attestation" -eq 1 ]]; then
+            echo "  post-build changes accepted by manual target-host validation attestation"
+          else
+            echo "  changes since that build match the exact release-only allowlist"
+          fi
 
       - name: Find previous version tag
         id: previous
