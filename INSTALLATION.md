@@ -90,21 +90,42 @@ The password set with `passwd` here belongs only to the temporary Live ISO accou
 
 # 💾 3. Select and validate the target disk
 
-> ⚠️ **The commands below completely erase the disk's partition table.**
-> Selecting the wrong device can destroy your existing system.
-> First inspect the attached drives and verify the target drive's model and serial number:
+> ⚠️ **The commands below completely erase the selected disk's entire partition table**, including every existing partition, data volume, and operating system.
+> This destructive clean-install path is not an in-place repair and will not preserve an existing `/mnt/media` partition. Back up everything on the selected disk before proceeding.
+> First inspect all attached drives and verify the target drive's model and serial number:
 
 ```bash
 lsblk -o NAME,SIZE,MODEL,SERIAL,FSTYPE,MOUNTPOINTS
 ```
+
+For a 1 TB-class reference disk, the intended layout is:
+
+| Device | Size | Purpose |
+|---|---:|---|
+| `/dev/nvme0n1p1` | 1 GiB | EFI, mounted at `/boot` |
+| `/dev/nvme0n1p2` | 8 GiB | Swap backing partition; encrypted with a random key at boot |
+| `/dev/nvme0n1p3` | 800 GiB | LUKS2 container holding the Btrfs system |
+| `/dev/nvme0n1p4` | Remaining space (about 122.5 GiB on a 931.5 GiB disk) | ext4 media volume, mounted at `/mnt/media` |
+
+The device names above are examples, not stable identifiers. In a Live ISO session, `/dev/sda` may be the installer USB; identify the target by model, serial number, and capacity, not by assuming that the first disk is the internal drive. Never select the Live USB.
+
 > Check the target drive twice. Replace `/dev/nvme0n1` below with your own
-> drive and run the following commands in the same terminal session. The later
-> partition, format, and mount blocks reuse `DISK`, `DISK_REAL`, and
-> `PART_PREFIX`; keep this shell open (tmux is useful for remote installs).
+> whole-disk device. Choose whether to create the fourth media partition. Keep
+> this shell open for the later partition, format, and mount blocks: they reuse
+> `DISK`, `DISK_REAL`, `PART_PREFIX`, and `CREATE_MEDIA_PARTITION`.
 
 ```bash
 set -Eeuo pipefail
 DISK=/dev/nvme0n1    # CHANGE THIS
+CREATE_MEDIA_PARTITION=yes # yes: use remaining space for ext4 /mnt/media; no: leave it unused
+case "$CREATE_MEDIA_PARTITION" in
+  yes|no) ;;
+  *) echo "ERROR: CREATE_MEDIA_PARTITION must be yes or no." >&2; exit 1 ;;
+esac
+EXPECTED_PARTITIONS=3
+if [[ "$CREATE_MEDIA_PARTITION" == "yes" ]]; then
+  EXPECTED_PARTITIONS=4
+fi
 
 # Accept only a whole disk; reject partitions and nonexistent paths.
 if [ ! -b "$DISK" ]; then
@@ -210,8 +231,8 @@ assert_exact_partition_count() {
     echo "ERROR: Could not count partitions on $DISK_REAL." >&2
     return 1
   fi
-  if [[ "$count" -ne 3 ]]; then
-    printf 'ERROR: Expected exactly three partitions on %s, found %s; refusing to continue.\n' "$DISK_REAL" "$count" >&2
+  if [[ "$count" -ne "$EXPECTED_PARTITIONS" ]]; then
+    printf 'ERROR: Expected exactly %s partitions on %s, found %s; refusing to continue.\n' "$EXPECTED_PARTITIONS" "$DISK_REAL" "$count" >&2
     return 1
   fi
 }
@@ -259,16 +280,19 @@ assert_partition_on_target() {
 ```
 | Partition | Description |
 |---|---|
-| EFI | 1 GiB FAT32 |
-| SWAP | 8 GiB (required; the commands below assume this partition layout) |
-| LUKS | 800 GiB main system volume |
+| EFI | 1 GiB FAT32, mounted at `/boot` |
+| SWAP | 8 GiB backing partition; NixOS applies random-key encryption at boot |
+| LUKS | 800 GiB LUKS2 container with the Btrfs system |
+| MEDIA (optional; default: yes) | Remaining disk space, ext4, mounted at `/mnt/media` |
+
+Set `CREATE_MEDIA_PARTITION=no` in Step 3 only when you deliberately want to reserve the remaining space for another operating system or leave it unallocated. In that case, remove/comment the repository's `fileSystems."/mnt/media"` block from `nixos/configuration.nix` before installation (see Step 9).
 
 ---
 
 # 💾 4. Create the partition table
 
-> `G` in the `sgdisk` commands means GiB. The partitions below allocate 809 GiB in total.
-> Even if the capacity and mounted-device checks pass, `sgdisk -Z` irreversibly removes the existing partition table. Verify the model and serial number one final time.
+> `G` in the `sgdisk` commands means GiB. EFI, swap, and the LUKS system volume use 809 GiB; when enabled, the fourth media partition consumes all remaining usable space.
+> Even if the capacity and mounted-device checks pass, `sgdisk -Z` irreversibly removes the entire existing partition table. Verify the model and serial number one final time.
 
 ```bash
 set -Eeuo pipefail
@@ -287,17 +311,22 @@ sudo sgdisk -Z "$DISK_REAL"
 sudo sgdisk -n 1:0:+1G   -t 1:ef00 -c 1:EFI  "$DISK_REAL"
 sudo sgdisk -n 2:0:+8G   -t 2:8200 -c 2:SWAP "$DISK_REAL"
 sudo sgdisk -n 3:0:+800G -t 3:8309 -c 3:LUKS "$DISK_REAL"
+if [[ "$CREATE_MEDIA_PARTITION" == "yes" ]]; then
+  sudo sgdisk -n 4:0:0 -t 4:8300 -c 4:MEDIA "$DISK_REAL"
+fi
 sudo partprobe "$DISK_REAL"
 sudo udevadm settle
 
-# Explicitly verify total count as well as each partition's identity and parent disk.
-# The sgdisk -Z plus three creation commands should leave exactly three.
+# Verify the expected partition count as well as each partition's identity and parent disk.
 assert_disk_identity
 assert_exact_partition_count
 assert_partition_on_target "${PART_PREFIX}1"
 assert_partition_on_target "${PART_PREFIX}2"
 assert_partition_on_target "${PART_PREFIX}3"
-printf 'Partition table created and all three partition devices verified. Review the output before formatting.\n'
+if [[ "$CREATE_MEDIA_PARTITION" == "yes" ]]; then
+  assert_partition_on_target "${PART_PREFIX}4"
+fi
+printf 'Partition table created; all selected partition devices were verified. Review the output before formatting.\n'
 ```
 ---
 
@@ -331,13 +360,16 @@ set -Eeuo pipefail
 assert_disk_identity
 assert_partition_on_target "${PART_PREFIX}1"
 assert_partition_on_target "${PART_PREFIX}2"
+if [[ "$CREATE_MEDIA_PARTITION" == "yes" ]]; then
+  assert_partition_on_target "${PART_PREFIX}4"
+fi
 sudo cryptsetup isLuks "${PART_PREFIX}3"
 sudo cryptsetup status cryptroot >/dev/null
 if [ -e /dev/mapper/cryptroot ] && [ -n "$(findmnt -rn -S /dev/mapper/cryptroot -o TARGET || true)" ]; then
   echo "ERROR: /dev/mapper/cryptroot is already mounted; formatting cancelled." >&2
   exit 1
 fi
-printf '\nWARNING: EFI, swap, and encrypted Btrfs filesystems will be created. Existing contents on these partitions may be erased.\n'
+printf '\nWARNING: EFI, encrypted Btrfs, and (when enabled) ext4 media filesystems will be created. Existing contents on these partitions may be erased.\n'
 read -r -p "Type exactly 'FORMAT $DISK_REAL': " FORMAT_CONFIRMATION
 if [ "$FORMAT_CONFIRMATION" != "FORMAT $DISK_REAL" ]; then
   echo "Cancelled; filesystems were not created." >&2
@@ -345,7 +377,13 @@ if [ "$FORMAT_CONFIRMATION" != "FORMAT $DISK_REAL" ]; then
 fi
 sudo mkfs.fat -F32 "${PART_PREFIX}1"
 sudo mkfs.btrfs -L nixos /dev/mapper/cryptroot
+if [[ "$CREATE_MEDIA_PARTITION" == "yes" ]]; then
+  sudo mkfs.ext4 -L media "${PART_PREFIX}4"
+fi
 sudo blkid "${PART_PREFIX}1" "${PART_PREFIX}2" "${PART_PREFIX}3" /dev/mapper/cryptroot
+if [[ "$CREATE_MEDIA_PARTITION" == "yes" ]]; then
+  sudo blkid "${PART_PREFIX}4"
+fi
 ```
 
 > **Do not run `mkswap` on the raw swap partition.** The installed configuration
@@ -434,6 +472,21 @@ tar --exclude='./.git' -C /tmp/repo -cf - . | sudo tar --no-same-owner -C /mnt/e
 printf '%s\n' "$SOURCE_REVISION" | sudo tee /mnt/etc/nixos/.source-revision >/dev/null
 sudo chmod 0644 /mnt/etc/nixos/.source-revision
 ```
+
+**Configure the optional media mount before installing:**
+
+- With `CREATE_MEDIA_PARTITION=yes`, read partition 4's ext4 UUID and replace only the `device` value in the `fileSystems."/mnt/media"` block of `/mnt/etc/nixos/nixos/configuration.nix`. The UUID in the repository is for the reference machine and is not reusable:
+
+  ```bash
+  MEDIA_UUID="$(sudo blkid -s UUID -o value "${PART_PREFIX}4")"
+  printf 'Use this value: /dev/disk/by-uuid/%s\\\\n' "$MEDIA_UUID"
+  sudoedit /mnt/etc/nixos/nixos/configuration.nix
+  ```
+
+  Keep `fsType = "ext4";`, `nofail`, and `noatime`. Set `device` to the exact `/dev/disk/by-uuid/...` value printed above.
+
+- With `CREATE_MEDIA_PARTITION=no`, remove or comment out the entire `fileSystems."/mnt/media"` block. Do not leave the repository's reference UUID in the new installation.
+
 > ℹ️ The clean-install commands also record the original Git commit in `/mnt/etc/nixos/.source-revision`. The post-reboot VM-preparation block checks out and verifies that exact revision and refuses a dirty or mismatched checkout, so the VM XML/helper cannot silently come from a newer `main` commit.
 >
 > ℹ️ The `hardware-configuration.nix` file was replaced by the version generated for
@@ -471,6 +524,11 @@ Inspect the identifiers created during this installation:
 
 ```bash
 sudo blkid "${PART_PREFIX}1" "${PART_PREFIX}2" "${PART_PREFIX}3" /dev/mapper/cryptroot
+if [[ "$CREATE_MEDIA_PARTITION" == "yes" ]]; then
+  sudo blkid "${PART_PREFIX}4"
+  printf 'Media filesystem UUID: '
+  sudo blkid -s UUID -o value "${PART_PREFIX}4"
+fi
 printf 'Btrfs filesystem UUID: '
 sudo blkid -s UUID -o value /dev/mapper/cryptroot
 printf 'LUKS UUID: '
@@ -493,6 +551,13 @@ Verify the mapping in the generated file:
 | LUKS UUID | `boot.initrd.luks.devices."cryptroot".device` |
 | EFI filesystem UUID | `fileSystems."/boot".device` |
 | Swap PARTUUID | `swapDevices.*.device`, using `/dev/disk/by-partuuid/...` |
+| Media filesystem UUID (when enabled) | `fileSystems."/mnt/media".device` in `nixos/configuration.nix`, using `/dev/disk/by-uuid/...` and partition 4's ext4 UUID |
+
+When the media partition is enabled, `nixos/configuration.nix` must point
+`fileSystems."/mnt/media".device` to the ext4 filesystem UUID read from
+`${PART_PREFIX}4`; the UUID committed in the repository belongs to the reference
+machine and must not be reused on a new disk. If the media partition is disabled,
+remove/comment that entire mount block rather than keeping the reference UUID.
 
 The `/home/.snapshots` entry must use subvolume `@home/.snapshots` and
 `neededForBoot = true;`. The swap entry must keep
@@ -1130,10 +1195,11 @@ cat ~/.local/share/hyprland/hyprland.log
 
 # 💡 Note
 
-The remaining disk space can be used for:
-- dual boot
-- another distribution
-- test systems
+By default, the fourth partition uses all remaining disk space for the ext4
+`/mnt/media` volume. This matches the reference configuration. To reserve that
+space for dual boot, another distribution, or test systems, set
+`CREATE_MEDIA_PARTITION=no` in Step 3 and remove/comment the
+`fileSystems."/mnt/media"` block from `nixos/configuration.nix` before building.
 
 ---
 
