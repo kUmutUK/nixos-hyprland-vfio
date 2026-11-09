@@ -130,7 +130,7 @@ require(
     "README must tie the active kernel note to flake.lock and distinguish the ancestor build from unrecorded target-host kernel identity",
 )
 historical_kernel_section = README.split(
-    "### Historical target-system validation update — 2026-11-03", 1
+    "### Target-system validation update — 2026-11-03 (historical)", 1
 )[1].split("\n## Repository map", 1)[0]
 require(
     cachyos_revision != historical_kernel_revision

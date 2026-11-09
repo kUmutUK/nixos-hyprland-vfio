@@ -1109,7 +1109,7 @@ if grep -Eq '^[[:space:]]*loginctl[[:space:]]+terminate-user' "$HOOK" || ! grep 
   echo "FAIL: VFIO handoff must preserve remote SSH sessions and terminate only seat0." >&2
   exit 1
 fi
-if ! grep -Fq 'Historical target-system validation update — 2026-11-03' "$README" || ! grep -Fq 'historical physical kernel test' "$README" || ! grep -Fq '755712deee259ef7efbfe9154038a270c3d75a87' "$README"; then
+if ! grep -Fq 'Target-system validation update — 2026-11-03 (historical)' "$README" || ! grep -Fq 'historical physical kernel test' "$README" || ! grep -Fq '755712deee259ef7efbfe9154038a270c3d75a87' "$README"; then
   echo "FAIL: README must preserve the 3 November RT-Bore-LTO hardware result as historical evidence." >&2
   exit 1
 fi
