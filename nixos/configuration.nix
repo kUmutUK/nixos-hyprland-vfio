@@ -18,6 +18,45 @@ let
   # pabloaul NixOS module is v1-only and cannot read the v2 profile schema.
   lsfgVkV2 = pkgs.callPackage ./lsfg-vk-v2.nix { };
 
+  # Pin the tested upstream scroll-bounce filter. Build its C++ daemon and
+  # platform-independent filter tests directly; runtime needs only evdev/uinput.
+  mouseHardwareFix = pkgs.stdenv.mkDerivation {
+    pname = "mouse-hardware-fix";
+    version = "2026-10-05";
+
+    src = builtins.fetchGit {
+      url = "https://github.com/Aleynikovich/mouse-hardware-fix.git";
+      ref = "refs/heads/main";
+      rev = "9cb3bc2ae313cac8fbe60dc573955cb68a0354ae";
+    };
+
+    buildPhase = ''
+      runHook preBuild
+      $CXX -std=c++17 -O2 -Wall -Wextra -I. mouse-hardware-fix.cpp -o mouse-hardware-fix
+      $CXX -std=c++17 -O2 -Wall -Wextra -I. tests/filter-test.cpp -o filter-test
+      runHook postBuild
+    '';
+    doCheck = true;
+    checkPhase = ''
+      runHook preCheck
+      ./filter-test
+      runHook postCheck
+    '';
+
+    installPhase = ''
+      runHook preInstall
+      install -Dm755 mouse-hardware-fix $out/bin/mouse-hardware-fix
+      runHook postInstall
+    '';
+
+    meta = {
+      description = "Userspace filter for mouse scroll-wheel encoder bounce";
+      homepage = "https://github.com/Aleynikovich/mouse-hardware-fix";
+      license = lib.licenses.mit;
+      platforms = lib.platforms.linux;
+    };
+  };
+
   # Low-latency layer package derivation, pinned to upstream's latest published release.
   low-latency-layer = pkgs.stdenv.mkDerivation rec {
     pname = "low_latency_layer";
@@ -443,6 +482,52 @@ in
 
   hardware.uinput.enable = true;
   services.udev.packages = [ pkgs.libinput ];
+
+  # Intercept only the Razer DeathAdder Essential pointer node (1532:0098).
+  # The daemon clones it through uinput, filters scroll bounce, and leaves other
+  # mice, keyboard interfaces, and all physical mouse buttons untouched.
+  services.udev.extraRules = ''
+    ACTION=="add", SUBSYSTEM=="input", KERNEL=="event*", ENV{ID_INPUT_MOUSE}=="1", ATTRS{idVendor}=="1532", ATTRS{idProduct}=="0098", TAG+="systemd", ENV{SYSTEMD_WANTS}+="mouse-hardware-fix@%k.service"
+  '';
+
+  # The udev rule starts this template for the matching physical Razer pointer.
+  # EVIOCGRAB prevents duplicate raw events; if the service exits, the kernel
+  # releases the grab and the original mouse resumes working.
+  systemd.services."mouse-hardware-fix@" = {
+    description = "Razer DeathAdder scroll-wheel bounce filter";
+    unitConfig.BindsTo = "dev-input-%i.device";
+    after = [ "dev-input-%i.device" ];
+    serviceConfig = {
+      Type = "simple";
+      ExecStart = "${mouseHardwareFix}/bin/mouse-hardware-fix --device /dev/input/%I --only 1532:0098 --disable-click --scroll-timeout 0.300 --scroll-reversal 2 --verbose";
+      Restart = "on-failure";
+      RestartSec = "1s";
+
+      # The daemon needs only its matched evdev node and the uinput device.
+      DevicePolicy = "closed";
+      DeviceAllow = [
+        "/dev/input/%I r"
+        "/dev/uinput rw"
+      ];
+      CapabilityBoundingSet = "";
+      NoNewPrivileges = true;
+      PrivateNetwork = true;
+      PrivateTmp = true;
+      ProtectSystem = "strict";
+      ProtectHome = true;
+      ProtectKernelTunables = true;
+      ProtectKernelModules = true;
+      ProtectControlGroups = true;
+      ProtectClock = true;
+      ProtectHostname = true;
+      RestrictAddressFamilies = "AF_UNIX";
+      RestrictNamespaces = true;
+      RestrictRealtime = true;
+      LockPersonality = true;
+      MemoryDenyWriteExecute = true;
+      SystemCallArchitectures = "native";
+    };
+  };
 
   # Hyprlock needs a PAM service so the lock screen can authenticate. The NixOS
   # `security.pam` module generates `/etc/pam.d/hyprlock`; there is no systemd
