@@ -745,6 +745,36 @@ The repeated missing `.ko.BTF.1` failure across two different Rust modules shows
 
 ## Repository map
 
+```text
+.
+├── .gitignore
+├── DISCLAIMER.md
+├── README.md
+├── CONTRIBUTING.md
+├── INSTALLATION.md
+├── RELEASING.md
+├── nixos/
+│   ├── configuration.nix
+│   ├── home.nix
+│   ├── flake.nix
+│   ├── flake.lock
+│   ├── lsfg-vk-v2.nix
+│   └── mako-renderer.nix
+├── vm-xml/
+│   └── win10.xml
+├── scripts/
+│   ├── optiscaler_manager.py
+│   ├── test-optiscaler-manager.py
+│   ├── test-vm-xml-paths.py
+│   └── test-documentation-integrity.py
+└── docs/
+    ├── AUDIT-2026-10-28-VM-XML-VFIO.md
+    ├── OPTISCALER-MANAGER.md
+    └── REPAIR-AND-VALIDATION-REPORT.md
+```
+
+The root files provide the project entry point, installation guidance, contribution requirements, release procedure, and safety disclaimers. The NixOS directory owns the system/Home Manager modules and pinned package expressions; `vm-xml/` holds the Windows guest template; `scripts/` contains installer, maintenance, and regression helpers; `docs/` contains supporting technical guides and historical/current review reports.
+
 - `nixos/configuration.nix`, `nixos/home.nix`, `nixos/flake.nix`, and `nixos/flake.lock`: NixOS modules, Home Manager configuration, flake outputs, and locked inputs.
 - `nixos/lsfg-vk-v2.nix`: pinned LSFG-VK v2 package definition; `nixos/mako-renderer.nix`: optional MAKO Renderer package.
 - `nixos/hooks/qemu` and `vm-xml/win10.xml`: VFIO handoff hook and Windows guest template.
@@ -778,10 +808,26 @@ The Bash syntax-check loop is kept in sync with [CONTRIBUTING.md](CONTRIBUTING.m
   done
 ```
 
+Run the syntax, formatting, and static-analysis checks used by normal CI:
+
+```bash
+for f in install.sh scripts/package-source-zip.sh scripts/verify-source-revision.sh scripts/test-source-revision.sh scripts/installer-lock.sh scripts/pci-address.sh scripts/test-installer-lock.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh; do
+  bash -n "$f"
+done
+find ./nixos -type f -name "*.nix" -print0 | xargs -0 -r nixfmt --check
+shellcheck -S warning install.sh scripts/package-source-zip.sh scripts/verify-source-revision.sh scripts/test-source-revision.sh scripts/installer-lock.sh scripts/pci-address.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-lock.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh
+bash scripts/test-installer-lock.sh
+statix check .
+deadnix .
+```
+
+The ShellCheck command includes `scripts/pci-address.sh` because the installer sources that helper. The formatting command checks every Nix expression under `nixos/` without rewriting it. Statix and Deadnix are required CI gates, not optional style suggestions.
+
 Run the focused regression checks before proposing a change:
 
 ```bash
 python3 scripts/test-documentation-integrity.py
+bash scripts/test-installer-lock.sh
 python3 scripts/test-optiscaler-manager.py
 python3 scripts/test-lsfg-vk-v2.py
 python3 scripts/test-mako-renderer.py
