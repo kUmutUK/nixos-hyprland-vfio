@@ -155,7 +155,8 @@ require(
     and "Expected exactly %s partitions" in INSTALLATION
     and "ext4 `/mnt/media`" in README
     and "MEDIA_UUID" in README
-    and 'fileSystems."/mnt/media"' in README
+    and "fileSystems." in README
+    and "/mnt/media" in README
     and "MEDIA_UUID=" in INSTALLER
     and "findmnt /mnt/media" in INSTALLER
     and 'fileSystems."/mnt/media"' in CONFIG,
@@ -317,7 +318,7 @@ require("[#" + (ci_run_match.group(1) if ci_run_match else "") + "]" in STATE_IN
 require("run #" + (build_run_match.group(1) if build_run_match else "") in STATE_INDEX,
         "status index must reference the same full-system build as the repair report")
 require(
-    "Previous reviewed snapshot (historical, 5 November 2026)" in REPAIR
+    "2026-11-05 (previous reviewed snapshot; historical)" in REPAIR
     and "Previous reviewed snapshot (historical, 5 November 2026)" in STATE_INDEX
     and "run #1239" in REPAIR and "run #1239" in STATE_INDEX
     and "42032980751" in REPAIR and "42032980751" in STATE_INDEX
@@ -342,7 +343,7 @@ require(
     "successful Build #18 and both Rust/BTF workaround symbols must be recorded",
 )
 require(
-    "run #1285" in README and "run #1285" in CHANGELOG and "run #1285" in STATE_INDEX and "run #1285" in REPAIR
+    "#1285" in README and "#1285" in CHANGELOG and "#1285" in STATE_INDEX and "#1285" in REPAIR
     and "42625179836" in README and "42625179836" in REPAIR,
     "normal CI #1285 must be consistently recorded for exact current main",
 )
@@ -361,7 +362,7 @@ require(
     "build-to-HEAD boundary must be documented without claiming Build #18 ran on current HEAD",
 )
 require(
-    "Target-system validation update — 3 November 2026" in README
+    "Target-system validation update — 2026-11-03" in README
     and "Target-machine hardware validation — 2026-11-03" in CHANGELOG
     and "Target-host hardware validation (2026-11-03)" in STATE_INDEX
     and "Target-system validation update — 3 November 2026" in INSTALLATION

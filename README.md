@@ -1,6 +1,6 @@
 # NixOS · Hyprland · AMD GPU Passthrough (VFIO)
 
-A flake-based NixOS gaming desktop that passes its single AMD Radeon GPU through to a Windows 10 virtual machine, while using Hyprland for the host desktop.
+A flake-based NixOS gaming desktop that passes its single AMD Radeon GPU through to a Windows 10 virtual machine, while using Hyprland for the host desktop. See [the repair and validation report](docs/REPAIR-AND-VALIDATION-REPORT.md) for current verification and the historical 2026-11-04 source-tree cross-checks.
 
 **Latest published release:** [v1.4.6](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.6), published by [release run #20](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42203730895) on 6 November 2026 from commit `a6dd4544319fafa7ec517e73b31ad29a1b4010b3`. The canonical release ZIP is 402,118 bytes; SHA-256 `05ffe97ee342a4b233f56bc7ae0e455f3b91a1c87df86c42e57e0441e9089e76`.
 
