@@ -31,7 +31,7 @@ jobs:
           kernel_out="$(nix build --no-link --print-out-paths --show-trace \
             --no-update-lock-file \
             .#nixosConfigurations.nixos.config.boot.kernelPackages.kernel)"
-          printf 'Built kernel output: %s\\n' "$kernel_out"
+          printf 'Built kernel output: %s\n' "$kernel_out"
 
       - name: Verify the lock file was not rewritten
         run: |
