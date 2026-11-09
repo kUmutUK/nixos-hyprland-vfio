@@ -134,6 +134,13 @@ in
 {
   imports = [ ./hardware-configuration.nix ];
 
+    # Media partition
+  fileSystems."/mnt/media" = {
+    device = "/dev/disk/by-uuid/365a053e-38ce-4f45-a225-8a3ac7e0596e";
+    fsType = "ext4";
+    options = [ "nofail" "noatime" ];
+  };
+
   assertions = [
     {
       assertion = lib.versionAtLeast config.programs.hyprland.package.version "0.55.0";
