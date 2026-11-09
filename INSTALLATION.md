@@ -708,20 +708,23 @@ git -C /tmp/repo show "$SOURCE_REVISION:nixos/flake.lock" |
   sudo tee /mnt/etc/nixos/nixos/flake.lock >/dev/null
 ```
 
-> **Kernel validation status (9 November 2026):** the focused manual kernel-only
-> workflow [run 42574458527](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42574458527)
-> passed on commit `4ab097bba844a30a3184357aee76272bccb58ebf`. This proves that the
-> selected kernel derivation built for that locked source/configuration; it does not
-> prove that the full NixOS toplevel or the physical host has been revalidated. The
-> earlier full-system build #17 failed during Rust-module BTF finalization before the
-> second unused Rust driver was disabled; a fresh successful full-system build is still
-> required before treating the current full system as verified.
+> **Kernel and full-system validation status (9 November 2026):** manual full-system
+> build [#18](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42597469118)
+> passed on commit `c6f4b955475de2ea16bc2b34c59a95dad3a1ae78`, including the two-symbol Rust/BTF workaround.
+> Normal CI [#1285](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42625179836)
+> separately passed on current `main` `f63250a4867105ea1e9e2724c0c47b5ae5e707cb`. Build #18
+> is recorded against its actual commit, not relabelled as an exact-HEAD build; the
+> project owner confirms that the 11 later commits do not invalidate its result.
 >
-> The 3 November hardware-validation record below belongs to its historical CachyOS
-> input revision `755712deee259ef7efbfe9154038a270c3d75a87`. That SHA is not a
-> universal rollback target for later repository snapshots. Do not replace a newer
-> checkout's lock with a remembered revision; use the exact lock file from the commit
-> you chose and read the current verification status in [README.md](README.md).
+> **Target hardware (owner-reported, 9 November 2026):** NixOS was installed from
+> scratch without issues. The Windows 10 VFIO VM started and shut down normally, GPU
+> control returned to the host, and Hyprland resumed. Saved-state/managed-save restore
+> remains unverified. The earlier 3 November record below is historical and uses its
+> own then-current CachyOS lock revision.
+>
+> Do not replace a newer checkout's lock with a remembered revision; use the exact
+> lock file from the commit you chose and read the current verification status in
+> [README.md](README.md).
 
 ---
 
@@ -1121,7 +1124,7 @@ only for startup troubleshooting; it is not a permanent gaming configuration.
 > is retained as historical evidence. The newer 3 November target-machine validation below is the
 > current physical-hardware record.
 
-### Target-system validation update — 3 November 2026
+### Target-system validation update — 3 November 2026 (historical; superseded by 9 November validation)
 
 > On 3 November 2026, the project owner reported a successful NixOS rebuild with the then-current
 > target configuration, successful local compilation of the selected RT-Bore-LTO ThinLTO kernel,

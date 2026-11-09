@@ -68,9 +68,10 @@ the GitHub Release.
 
 The history contains a legacy annotated `v1.4.3` tag at the same commit as the
 published `v1.4.4` release; `v1.4.3` has no associated GitHub Release. That is a
-historical tag anomaly, not the current release state. The current published
-release is [v1.4.5](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.5),
-published by release run #17 on 5 November 2026. The workflow now prevents
+historical tag anomaly, not the current release state. The current published release is
+[v1.4.6](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.6),
+published by [release run #20](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42203730895)
+on 6 November 2026 from commit `a6dd4544319fafa7ec517e73b31ad29a1b4010b3`. The workflow now prevents
 additional manual version tags from being attached to an already-tagged commit.
 
 Alternatively, a maintainer can create and push the annotated tag locally:

@@ -6,29 +6,37 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ### Kernel, flake inputs, and host configuration refresh — 2026-11-09
 
-- Added targeted `BLK_DEV_RUST_NULL = lib.kernel.no;` and `CPUFREQ_DT_RUST = lib.kernel.no;` settings after full-system build #17 showed the same 7.3.3 module-BTF failure in `rcpufreq_dt.ko` once `rnull_mod.ko` was excluded. General Rust, BTF, ThinLTO, and RT-Bore selection remain enabled.
-- Updated the CachyOS kernel overlay to 7.3.3 and refreshed its nested Nixpkgs, the root Nixpkgs, and Home Manager lock entries.
-- Uploaded a refreshed machine-specific `nixos/hardware-configuration.nix` and removed Brave from the configured system package list. The new storage identifiers must be checked against the target host before activation.
-- This update is newer than successful full-system build #16; a fresh full-system build is required before release. Normal CI #1254/#1255 failed at integrity/format checks, and manual full-system build #17 failed during Rust module BTF finalization for `rcpufreq_dt.ko`. The two-driver workaround has not yet passed a new full-system build.
+- Disabled the two unused Rust kernel modules through `BLK_DEV_RUST_NULL = lib.kernel.no;` and `CPUFREQ_DT_RUST = lib.kernel.no;`, keeping general Rust, BTF, ThinLTO, and RT-Bore selection enabled.
+- Manual full-system build #17 exposed the second Rust-module BTF failure in `rcpufreq_dt.ko`; **manual full-system build [run #18](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42597469118) then completed successfully** with both symbols disabled on commit `c6f4b955475de2ea16bc2b34c59a95dad3a1ae78`.
+- The owner confirms that the 11 commits following that build do not invalidate its successful result; normal CI #1285 separately passed on current `main` `f63250a4867105ea1e9e2724c0c47b5ae5e707cb`.
+- Updated the CachyOS kernel overlay to 7.3.3, refreshed the nested/root Nixpkgs and Home Manager lock entries, and updated the machine-specific hardware mapping. Verify host storage identifiers before activation.
+- The current published release is [v1.4.6](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.6), published by release run #20 on 6 November 2026. Its ZIP is 402,118 bytes; SHA-256 `05ffe97ee342a4b233f56bc7ae0e455f3b91a1c87df86c42e57e0441e9089e76`.
+- Normal CI #1285 passed all 28 workflow-defined steps on current `main` `f63250a4867105ea1e9e2724c0c47b5ae5e707cb`.
+
+### Fresh-install and VM validation — 2026-11-09 (owner-reported)
+
+- A clean NixOS installation from scratch on the reference physical machine completed without issues.
+- The Windows 10 VFIO VM was started successfully and shut down normally; GPU control returned to the host and Hyprland resumed.
+- This validates the ordinary VM lifecycle on the tested machine. Libvirt saved-state/managed-save restore was not part of this test and remains unverified.
 
 ### Host storage and VM identity warnings — 2026-11-05
 
 - Added explicit guidance that the deployed host's Btrfs/LUKS identifiers are intentional and must not be regenerated or interchanged with PARTUUID values.
 - Documented that the libvirt domain UUID/MAC are persistent VM identity: the helper assigns fresh identity only for a genuinely new VM and preserves an existing domain's identity.
 
-### Current repository status and v1.4.5 release — 2026-11-05
+### Previous repository status and v1.4.5 release — 2026-11-05 (historical)
 
-**Latest published release snapshot (5 November 2026):** GitHub `main` at `994b05c888fbb52295d93e8ef74e41bac66c5e65` at publication time; **normal CI:** run #1242 passed all 28 workflow-defined steps on this exact release commit; **full-system build:** manual [#13](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42002113160) passed on ancestor build baseline `1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b` (2 h 24 min 51 s); **published release:** [v1.4.5](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.5) was published by release run #17 from this exact snapshot. The latest subsequent full-system build is manual run #16 on ancestor `a6dd4544319fafa7ec517e73b31ad29a1b4010b3`; changes after that build include kernel configuration, flake inputs/lock, and host hardware-configuration updates, so a new full-system build and successful normal CI on the exact candidate commit are required before a later release. The 3 November target-hardware validation remains owner-reported; libvirt saved-state/managed-save restore remains unverified.
+**Historical v1.4.5 release snapshot (5 November 2026):** GitHub `main` at `994b05c888fbb52295d93e8ef74e41bac66c5e65` at publication time; **normal CI:** run #1242 passed all 28 workflow-defined steps on this exact release commit; **full-system build:** manual [#13](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42002113160) passed on ancestor build baseline `1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b` (2 h 24 min 51 s); **published release:** [v1.4.5](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.5) was published by release run #17 from this exact snapshot. The latest subsequent full-system build is manual run #16 on ancestor `a6dd4544319fafa7ec517e73b31ad29a1b4010b3`; changes after that build include kernel configuration, flake inputs/lock, and host hardware-configuration updates, so a new full-system build and successful normal CI on the exact candidate commit are required before a later release. The 3 November target-hardware validation remains owner-reported; libvirt saved-state/managed-save restore remains unverified.
 
 **Pre-reconciliation main verification (5 November 2026):** GitHub `main` at `4eb6a106d825890a929fe57054a1660da524a458`; normal CI [#1244](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42076151633) passed all 28 workflow-defined steps on this exact commit and uploaded `nixos-hyprland-vfio-source` (artifact ID `13438456860`, 383,949 bytes; outer artifact digest `sha256:f04a477945bc2b47d7f8c7394a8f178895ed950bba2f245fae9b7aecdf553d97`). The preceding documentation-only commit `d35155ce6b9fb089934ee2f15f4208279dc5e2da` had CI #1243 fail at the documentation-integrity gate; commit `4eb6a10` restored the missing historical assertions and CI #1244 passed. This is the last completed validation before this documentation/test reconciliation; this follow-up requires its own exact-commit normal CI before a later release.
 
-- **Current canonical release ZIP:** 392,212 bytes; SHA-256 `f97fb12bdfbaaff4d32e7ab57bbc9251fababcd126a8ef7644947844924de9e0`; 72 tracked files, nine executable files, and no `.git/` entries.
+- **Historical v1.4.5 canonical release ZIP:** 392,212 bytes; SHA-256 `f97fb12bdfbaaff4d32e7ab57bbc9251fababcd126a8ef7644947844924de9e0`; 72 tracked files, nine executable files, and no `.git/` entries.
 - **Previous reviewed snapshot (historical):** `7f923a2c7aa59721bc00728faccbc073e06c697a`; CI #1239 / run ID `42032980751`; v1.4.4 from release run #15 / run ID `42035815458`. The 388,000-byte ZIP SHA-256 was `7621fcdccfe327e9e59f453947b9f7903cd0f477b73cde8f4aa5ee513061e0ff`.
-- The earlier v1.4.4 release description inherited an incorrect `v1.4.3` heading; that is a historical release-note issue. v1.4.5 is the current published release.
-- This documentation/test reconciliation adds no new physical-hardware or saved-state-restore evidence.
+- The earlier v1.4.4 release description inherited an incorrect `v1.4.3` heading; that remains a historical release-note issue. v1.4.6 is the current published release.
+- That 5 November documentation/test reconciliation added no new physical-hardware or saved-state-restore evidence.
 - The first documentation-only follow-up's normal CI #1243 failed only two documentation-integrity assertions (a missing exact build-baseline index line and missing historical `run #1239` wording); both records are restored in the follow-up. No runtime/NixOS configuration was changed.
 
-### Target-machine hardware validation — 2026-11-03 (owner-reported)
+### Target-machine hardware validation — 2026-11-03 (owner-reported; historical)
 
 - On 3 November 2026, the project owner reported a successful NixOS rebuild on the then-current target configuration, successful local compilation of the selected RT-Bore-LTO ThinLTO kernel, and a successful Windows 10 VM start followed by normal shutdown and return of the host display/Hyprland session.
 - The source lock at this validation point resolved the CachyOS kernel input to `755712deee259ef7efbfe9154038a270c3d75a87`. The result is maintainer-reported physical-hardware evidence, not an independently reproduced test and not a guarantee for other machines.
