@@ -443,6 +443,17 @@ let
         zindex = -1
     }
 
+    label {
+        position = 0, -244
+        halign = center
+        valign = center
+        text = ;
+        font_family = JetBrainsMono Nerd Font
+        font_size = 24
+        color = rgba(234, 178, 194, 1.0)
+        shadow_passes = 0
+    }
+
     # Small lilac signature above the clock.
     shape {
         size = 52, 4
