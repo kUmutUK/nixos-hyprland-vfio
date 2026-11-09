@@ -1117,8 +1117,8 @@ if ! grep -Fq 'On 2026-10-16' "$README" || grep -Fq 'The current RT-Bore-LTO var
   echo "FAIL: README must keep the 2026-10-16 BORE-LTO result explicitly historical." >&2
   exit 1
 fi
-if ! grep -Fq 'latest target-machine update dated 2026-11-03' "$CONTRIBUTING" || ! grep -Fq 'RT-Bore-LTO ThinLTO' "$CONTRIBUTING" || ! grep -Fq '755712deee259ef7efbfe9154038a270c3d75a87' "$CONTRIBUTING"; then
-  echo "FAIL: CONTRIBUTING.md must describe the latest owner-reported RT-Bore-LTO validation." >&2
+if ! grep -Fq 'latest target-machine update dated 2026-11-09' "$CONTRIBUTING" || ! grep -Fq 'historical target-machine update dated 2026-11-03' "$CONTRIBUTING" || ! grep -Fq 'RT-Bore-LTO ThinLTO' "$CONTRIBUTING" || ! grep -Fq '755712deee259ef7efbfe9154038a270c3d75a87' "$CONTRIBUTING"; then
+  echo "FAIL: CONTRIBUTING.md must distinguish the latest 9 November clean-install/VM validation from the historical 3 November RT-Bore-LTO validation." >&2
   exit 1
 fi
 if ! grep -Fq 'Target-system validation update — 3 November 2026' "$ENGLISH_GUIDE" || ! grep -Fq '755712deee259ef7efbfe9154038a270c3d75a87' "$ENGLISH_GUIDE"; then
