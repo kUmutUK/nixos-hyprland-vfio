@@ -420,7 +420,7 @@ let
     end)
   '';
   hyprlockConf = ''
-    # Minimal lock screen: compact clock, subtle accent, and one password field.
+    # Fullscreen lock screen: blurred desktop, centered clock, and bottom password entry.
     general {
         hide_cursor = true
     }
@@ -428,29 +428,17 @@ let
     background {
         path = screenshot
         color = rgba(13, 16, 24, 1.0)
-        blur_passes = 2
-        blur_size = 8
+        blur_passes = 3
+        blur_size = 7
         noise = 0.0117
-        contrast = 0.92
-        brightness = 0.60
-        vibrancy = 0.10
+        contrast = 1.04
+        brightness = 0.72
+        vibrancy = 0.16
         vibrancy_darkness = 0.05
     }
 
-    shape {
-        size = 480, 340
-        color = rgba(24, 27, 36, 0.92)
-        rounding = 28
-        border_size = 1
-        border_color = rgba(234, 178, 194, 0.22)
-        position = 0, 0
-        halign = center
-        valign = center
-        zindex = -1
-    }
-
     label {
-        position = 0, -118
+        position = 0, -148
         halign = center
         valign = center
         text = ;
@@ -461,16 +449,16 @@ let
     }
 
     label {
-        position = 0, -44
+        position = 0, -54
         halign = center
         valign = center
         text = $TIME
         font_family = JetBrainsMono Nerd Font
-        font_size = 96
-        color = rgba(238, 241, 250, 1.0)
+        font_size = 88
+        color = rgba(245, 246, 250, 1.0)
         shadow_passes = 2
         shadow_size = 3
-        shadow_color = rgba(0, 0, 0, 0.28)
+        shadow_color = rgba(0, 0, 0, 0.30)
     }
 
     label {
@@ -480,20 +468,20 @@ let
         text = cmd[update:60000, LC_TIME=en_US.UTF-8 ${pkgs.coreutils}/bin/date +"%A, %d %B %Y"]
         font_family = JetBrainsMono Nerd Font
         font_size = 16
-        color = rgba(180, 190, 211, 0.88)
+        color = rgba(213, 216, 229, 0.90)
         shadow_passes = 0
     }
 
     input-field {
-        position = 0, 112
+        position = 0, 72
         halign = center
-        valign = center
-        size = 340, 58
+        valign = bottom
+        size = 360, 60
         outline_thickness = 1
-        rounding = 16
-        outer_color = rgba(234, 178, 194, 0.82)
-        inner_color = rgba(18, 22, 31, 0.94)
-        font_color = rgba(238, 241, 250, 1.0)
+        rounding = 18
+        outer_color = rgba(234, 178, 194, 0.88)
+        inner_color = rgba(18, 22, 31, 0.78)
+        font_color = rgba(245, 246, 250, 1.0)
         font_family = JetBrainsMono Nerd Font
         placeholder_text = Password
         dots_size = 0.22
@@ -501,7 +489,7 @@ let
         dots_center = true
         fade_on_empty = false
         hide_input = false
-        check_color = rgba(118, 196, 215, 1.0)
+        check_color = rgba(177, 210, 218, 1.0)
         check_text = ✓
         fail_color = rgba(234, 130, 154, 1.0)
         fail_text = $FAIL
