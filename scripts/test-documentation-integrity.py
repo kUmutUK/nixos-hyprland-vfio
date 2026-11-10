@@ -72,6 +72,8 @@ require(
 )
 
 
+
+
 def extract_release_allowlists(
     releasing: str, workflow: str
 ) -> tuple[list[str], list[str]] | None:
@@ -91,6 +93,8 @@ def extract_release_allowlists(
     if not documented_paths or not workflow_paths or any(not item for item in workflow_paths):
         return None
     return documented_paths, workflow_paths
+
+
 
 
 readme_top = "\n".join(README.splitlines()[:8])
