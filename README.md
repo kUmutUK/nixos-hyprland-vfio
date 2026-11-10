@@ -317,7 +317,7 @@ OpenSSH is enabled on TCP port 22 and the host firewall allows that port, but pa
 
 ## Preparing and starting the VM
 
-The VM domain is named `win10`. The default `vm-xml/win10.xml` expects these files under `/var/lib/libvirt/images/`: `Win10_22H2_English_x64v1.iso`, `virtio-win-0.1.285.iso`, and `win10new.qcow2`. Confirm that the ISO files you downloaded match the XML paths; edit the XML if their names or locations differ. The XML uses the SATA bus for both CD-ROM drives; the operating-system disk uses VirtIO and needs the VirtIO storage driver during Windows setup. The structural XML test does not depend on ISO filenames: it requires two distinct, absolute file-backed CD-ROM paths with explicit boot priorities, and treats the earlier optical boot entry (after the system disk) as the Windows installer and the later one as the VirtIO driver ISO. This checks the declared XML structure, not the actual contents of the ISO files; `scripts/check-vm-iso-paths.py` separately checks that the paths exist.
+The VM domain is named `win10`. The default `vm-xml/win10.xml` keeps the existing Windows system disk at `/var/lib/libvirt/images/win10new.qcow2` as VirtIO `vda` and boot priority 1. It adds a separate VirtIO `vdb` disk at `/var/lib/libvirt/images/nixos-test.qcow2` with `startupPolicy="optional"` and boot priority 2; when that file has not been created yet, libvirt drops the optional disk rather than failing the Windows VM startup. The two required file-backed SATA CD-ROMs remain `sdb` (Windows installer: `Win10_22H2_English_x64v1.iso`, boot priority 3) and `sdc` (VirtIO drivers: `virtio-win-0.1.285.iso`, boot priority 4). A third SATA CD-ROM target `sdd` (boot priority 5) starts as an empty tray for an optional NixOS installer ISO. The XML tests verify these roles and the empty tray; `scripts/check-vm-iso-paths.py` checks file-backed media paths and intentionally accepts the unused empty tray.
 
 > **Windows 10 lifecycle:** Standard support for Windows 10 Home and Pro ended on October 14, 2025 ([Microsoft lifecycle policy](https://learn.microsoft.com/en-us/lifecycle/products/windows-10-home-and-pro)). Eligible, enrolled consumer devices may receive ESU protection through October 12, 2027; commercial ESU has separate licensing and coverage dates ([Microsoft ESU FAQ](https://learn.microsoft.com/en-us/lifecycle/faq/extended-security-updates)). This template does not enroll the guest, verify the license/edition, or install updates. Confirm the actual guest's ESU or other supported-lifecycle status before using it online; the ISO filename alone proves none of these conditions.
 
@@ -489,6 +489,57 @@ sudo virsh define "$VM_XML"
 ```
 
 When called with --domain win10, the helper checks libvirt itself and prefers the persistent `virsh dumpxml --inactive win10` definition over a missing or stale on-disk XML; if libvirt cannot be queried or the registered domain cannot be exported, it stops without writing. The registered persistent definition and any existing on-disk XML are backed up before the destination changes. If win10 is not registered, an existing deployed XML remains the source of truth; only a genuinely new, unregistered VM starts from the template and receives a fresh UUID/MAC. The helper preserves existing VM settings and changes only the two GPU/audio PCI addresses. It refuses to replace a symlink, malformed XML, a different VM domain, or an unsupported disk/PCI layout. It never edits `vm-xml/win10.xml`. The disk setup above reads the actual primary disk path from the synchronized XML: existing VM disks are preserved and are never auto-created, re-owned, or re-permissioned; a missing disk for an existing VM stops for manual recovery. Automatic creation is limited to the reviewed 120G default path for a new VM. Verify the Windows and VirtIO ISO paths in the deployed XML exist before starting the guest. The XML's PCI addresses must match `GPU_PCI` and `GPU_AUDIO` in `/etc/nixos/nixos/hooks/qemu`; when a registered `win10` domain or an already-deployed VM XML exists, `install.sh` performs this synchronization on a successful run. For a new, unregistered VM, `install.sh` defers fresh XML generation to the documented VM-preparation flow. The manual flow keeps the XML and disk in temporary staging directories until ISO checks and disk creation/ownership/permissions succeed. A missing ISO or staged disk-creation failure therefore leaves no deployed XML or final-path partial disk, and the user can retry safely; concurrent destination conflicts fail closed rather than overwriting files.
+
+### Install NixOS on a separate guest disk
+
+The same libvirt domain can boot either the existing Windows installation or a NixOS guest installation; the two systems do not run simultaneously. Both use the VM's existing RX 6700 XT passthrough and UEFI NVRAM. The Windows disk (`vda`), domain UUID, MAC address, firmware paths, NVRAM file, USB passthrough, and GPU/audio PCI mappings remain unchanged. The new NixOS disk (`vdb`) is independent.
+
+Create the NixOS qcow2 image only if it does not already exist. Run this while the VM is shut off; an existing image is inspected, never overwritten:
+
+```bash
+set -euo pipefail
+VM_STATE="$(sudo virsh domstate win10)"
+if [[ "$VM_STATE" != "shut off" ]]; then
+  echo "ERROR: win10 must be shut off before changing its disk/media." >&2
+  exit 1
+fi
+
+NIXOS_DISK=/var/lib/libvirt/images/nixos-test.qcow2
+if sudo test -e "$NIXOS_DISK"; then
+  echo "Preserving existing NixOS disk:"
+  sudo qemu-img info "$NIXOS_DISK"
+else
+  sudo qemu-img create -f qcow2 "$NIXOS_DISK" 120G
+  sudo chown qemu-libvirtd:qemu-libvirtd "$NIXOS_DISK"
+  sudo chmod 0660 "$NIXOS_DISK"
+fi
+```
+
+Download the official NixOS x86_64 graphical installer ISO from [nixos.org/download](https://nixos.org/download/) and place it under `/var/lib/libvirt/images/`. Attach it to the empty `sdd` tray (replace the example path with the exact downloaded filename):
+
+```bash
+NIXOS_ISO=/var/lib/libvirt/images/nixos-installer-x86_64-linux.iso
+sudo test -f "$NIXOS_ISO"
+sudo virsh change-media win10 sdd "$NIXOS_ISO" --insert --config
+
+# Validate libvirt's updated persistent definition, not the older source XML copy.
+CHECK_XML="$(mktemp)"
+trap 'rm -f "$CHECK_XML"' EXIT
+sudo virsh dumpxml --inactive win10 > "$CHECK_XML"
+sudo python3 "$REPO/scripts/check-vm-iso-paths.py" "$CHECK_XML"
+```
+
+Start the VM from outside the graphical login session, as described above. At the OVMF screen press **Esc**, open **Boot Manager**, and select the NixOS DVD entry. During installation, inspect the disk list with `lsblk -o NAME,SIZE,TYPE,MODEL`: install NixOS only onto `/dev/vdb`. **Do not partition, format, or install onto `/dev/vda`; that is the existing Windows disk.** The VirtIO block driver is included in the NixOS Linux kernel, so the installer should expose the second disk as `/dev/vdb`.
+
+After installation, shut down the guest and eject the installer from the host:
+
+```bash
+sudo virsh change-media win10 sdd --eject --config
+```
+
+On the next start, use OVMF **Boot Manager** to choose the NixOS boot entry or Windows Boot Manager. The two OS installations share the domain's existing UEFI NVRAM file, so firmware boot-order entries may change during installation; do not delete or recreate `/var/lib/libvirt/qemu/nvram/win10_VARS.fd`. Windows remains on its original disk even if you change which UEFI entry boots by default.
+
+The guest must use its own installer-generated `hardware-configuration.nix` and guest-specific NixOS configuration. **Do not copy this repository's physical-host `nixos/hardware-configuration.nix`, storage UUIDs, or VFIO host hook into the guest**: those describe the real machine, not the virtual disks. The VM's passed-through GPU is available to whichever guest OS is currently running.
 
 The default XML contains two active USB passthrough entries with fixed vendor/product IDs `1532:0098` and `05ac:024f`; they are not detected or substituted automatically by the installer. Confirm with `lsusb` that these IDs identify the devices you intend to pass through, and edit or remove the corresponding USB `<hostdev>` entries in `/var/lib/libvirt/win10.xml` before starting the VM if they do not. The XML intentionally has no emulated graphics console, so verify that the guest has a usable display and input path before handing it the only GPU.
 

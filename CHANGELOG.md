@@ -4,6 +4,8 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+- Extend the existing `win10` libvirt domain with a separate optional NixOS VirtIO disk and an initially empty SATA installer tray. Keep the Windows disk and boot priority first, document safe create/attach/install/eject steps, and add regression coverage for the two-OS device layout.
+
 ## [v1.5.0] - 2026-11-10
 
 ### Release and validation boundary — 2026-11-10

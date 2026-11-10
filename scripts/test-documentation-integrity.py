@@ -886,6 +886,24 @@ vcpu = vm.find("vcpu")
 sound = vm.find("./devices/sound")
 watchdog = vm.find("./devices/watchdog")
 network_model = vm.find("./devices/interface/model")
+vm_disks = vm.findall("./devices/disk[@device='disk']")
+vm_disk_targets = {
+    disk.find("target").get("dev"): disk
+    for disk in vm_disks
+    if disk.find("target") is not None
+}
+nixos_guest_disk = vm_disk_targets.get("vdb")
+vm_cdroms = vm.findall("./devices/disk[@device='cdrom']")
+vm_cdrom_targets = {
+    disk.find("target").get("dev"): disk
+    for disk in vm_cdroms
+    if disk.find("target") is not None
+}
+nixos_guest_tray = vm_cdrom_targets.get("sdd")
+require(len(vm_disks) == 2 and vm_disk_targets.get("vda") is not None and nixos_guest_disk is not None, "VM XML must preserve the Windows vda disk and add a separate NixOS vdb disk")
+require(nixos_guest_disk is not None and nixos_guest_disk.find("source") is not None and nixos_guest_disk.find("source").get("startupPolicy") == "optional", "the NixOS qcow2 disk must be optional so the Windows VM can start before it is created")
+require(len(vm_cdroms) == 3 and nixos_guest_tray is not None and nixos_guest_tray.find("source") is None, "VM XML must retain the Windows/VirtIO CD-ROMs and a source-free NixOS sdd tray")
+require("Install NixOS on a separate guest disk" in README and "/dev/vdb" in README and "/dev/vda" in README, "README must document the separate NixOS disk and protect the existing Windows disk during installation")
 require(memory is not None and memory.get("unit") == "KiB" and (memory.text or "").strip() == "16777216", "VM XML memory no longer matches the documented 16 GiB")
 require(vcpu is not None and (vcpu.text or "").strip() == "6", "VM XML vCPU count no longer matches the documented 6 vCPUs")
 require(sound is not None and sound.get("model") == "ich9", "VM XML sound model no longer matches the README")

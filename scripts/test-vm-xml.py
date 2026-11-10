@@ -76,57 +76,89 @@ def main() -> int:
                 return fail(f"duplicate disk boot order {order}")
             boot_entries[order] = disk
 
-    if 1 not in boot_entries:
-        return fail("the virtual system disk must remain first in boot order")
-    disk_one = boot_entries[1]
-    if disk_one.get("device") != "disk" or disk_one.find("target") is None:
-        return fail("boot order 1 must refer to the virtual system disk")
-    if disk_one.find("target").get("bus") != "virtio":
-        return fail("the primary Windows system disk must use the virtio bus")
+    hard_disks = root.findall("./devices/disk[@device='disk']")
+    if len(hard_disks) != 2:
+        return fail("VM XML must contain exactly two virtual system disks (Windows vda and NixOS vdb)")
 
-    # The template has two file-backed CD-ROMs. Their roles are defined by
-    # boot priority, not filename conventions: the earlier optical boot entry
-    # is the Windows installer and the later entry is the VirtIO driver ISO.
-    # This intentionally allows users to rename or relocate either ISO.
+    for order, role, expected_dev in (
+        (1, "Windows", "vda"),
+        (2, "NixOS", "vdb"),
+    ):
+        disk = boot_entries.get(order)
+        if disk is None or disk.get("device") != "disk":
+            return fail(f"boot order {order} must refer to the {role} virtual system disk")
+        target = disk.find("target")
+        if target is None or target.get("dev") != expected_dev:
+            return fail(f"boot order {order} must target {expected_dev} for the {role} virtual system disk")
+        if target.get("bus") != "virtio":
+            return fail(f"the {role} virtual system disk must use the virtio bus")
+        source = disk.find("source")
+        source_path = source.get("file", "").strip() if source is not None else ""
+        if disk.get("type") != "file" or not source_path:
+            return fail(f"the {role} virtual system disk must use a file-backed source")
+        if not Path(source_path).is_absolute():
+            return fail(f"{role} virtual disk source path must be absolute: {source_path!r}")
+
+    windows_disk = boot_entries[1]
+    nixos_disk = boot_entries[2]
+    windows_source = windows_disk.find("source")
+    nixos_source = nixos_disk.find("source")
+    windows_path = os.path.normpath(windows_source.get("file", "").strip())
+    nixos_path = os.path.normpath(nixos_source.get("file", "").strip())
+    if windows_path == nixos_path:
+        return fail("Windows and NixOS virtual disk source paths must be different")
+    if nixos_source.get("startupPolicy") != "optional":
+        return fail("the NixOS virtual disk must use startupPolicy='optional' so Windows can start before it is created")
+    nixos_driver = nixos_disk.find("driver")
+    if nixos_driver is None or nixos_driver.get("type") != "qcow2":
+        return fail("the NixOS virtual disk must use the qcow2 format")
+
+    # The first two SATA CD-ROMs carry the Windows installer and VirtIO drivers.
+    # The third SATA CD-ROM is deliberately an empty tray: attach the NixOS ISO
+    # only when needed so a missing/unconfigured installer cannot block Windows.
     cdroms = root.findall("./devices/disk[@device='cdrom']")
-    if len(cdroms) != 2:
+    if len(cdroms) != 3:
         return fail(
-            "VM XML must contain exactly two CD-ROM devices "
-            "(Windows installer and VirtIO driver)"
+            "VM XML must contain exactly three CD-ROM devices "
+            "(Windows installer, VirtIO driver, and an empty NixOS installer tray)"
         )
 
+    cdroms.sort(key=lambda disk: int(disk.find("boot").get("order", "")) if disk.find("boot") is not None else 0)
+    cdrom_orders = [
+        int(cdrom.find("boot").get("order", "")) if cdrom.find("boot") is not None else None
+        for cdrom in cdroms
+    ]
+    if cdrom_orders != [3, 4, 5]:
+        return fail("Windows, VirtIO, and NixOS CD-ROM boot priorities must be 3, 4, and 5 after both virtual disks")
+
     cdrom_paths: list[str] = []
-    for cdrom in cdroms:
+    for role, cdrom, expected_dev in (
+        ("Windows installer", cdroms[0], "sdb"),
+        ("VirtIO driver", cdroms[1], "sdc"),
+    ):
+        target = cdrom.find("target")
+        if target is None or target.get("bus") != "sata" or target.get("dev") != expected_dev:
+            return fail(f"{role} CD-ROM must use SATA target {expected_dev}")
         source = cdrom.find("source")
         if source is None:
-            return fail("every CD-ROM must declare a file-backed source path")
+            return fail(f"{role} CD-ROM must declare a file-backed source path")
         source_path = source.get("file", "").strip()
         if not source_path:
-            return fail("every CD-ROM must declare a non-empty source file path")
+            return fail(f"{role} CD-ROM must declare a non-empty source file path")
         if not Path(source_path).is_absolute():
             return fail(f"CD-ROM source paths must be absolute: {source_path!r}")
         normalized_path = os.path.normpath(source_path)
         if normalized_path in cdrom_paths:
             return fail("Windows and VirtIO CD-ROM source paths must be different")
         cdrom_paths.append(normalized_path)
-        if cdrom.find("boot") is None:
-            return fail("Windows and VirtIO CD-ROM boot priorities must be explicit")
 
-    # ISO contents cannot be identified reliably from arbitrary filenames.
-    # The VM template contract is therefore that the first optical boot entry
-    # is the Windows installer and the second is the VirtIO driver ISO.
-    cdroms.sort(key=lambda disk: int(disk.find("boot").get("order", "")))
-    windows_iso = cdroms[0]
-    windows_order = int(windows_iso.find("boot").get("order", ""))
-
-    if windows_order <= 1:
-        return fail("the virtual system disk must boot before the Windows and VirtIO CD-ROMs")
-    # Boot-order uniqueness is checked above, so the second optical entry is
-    # guaranteed to have a later boot priority than the first.
-    for role, cdrom in (("Windows installer", cdroms[0]), ("VirtIO driver", cdroms[1])):
-        target = cdrom.find("target")
-        if target is None or target.get("bus") != "sata":
-            return fail(f"{role} CD-ROM must use the SATA CD-ROM device bus")
+    nixos_cdrom = cdroms[2]
+    nixos_target = nixos_cdrom.find("target")
+    if nixos_target is None or nixos_target.get("bus") != "sata" or nixos_target.get("dev") != "sdd":
+        return fail("NixOS installer CD-ROM must use SATA target sdd")
+    nixos_tray_source = nixos_cdrom.find("source")
+    if nixos_tray_source is not None and (nixos_tray_source.attrib or len(nixos_tray_source)):
+        return fail("NixOS CD-ROM tray must start empty; attach the installer ISO on demand")
 
     # The default template intentionally includes two active USB passthrough
     # entries. Keep this invariant in sync with the README: install.sh only
@@ -209,7 +241,7 @@ def main() -> int:
             f"XML={sorted(xml_bdfs)}, hook={[hook_gpu, hook_audio]}"
         )
 
-    print("OK: VM XML invariants passed (well-formedness, Q35, boot order, two documented USB passthrough IDs, exactly two unique PCI hostdevs, and PCI addresses matching the QEMU hook).")
+    print("OK: VM XML invariants passed (Q35, separate Windows/NixOS VirtIO disks, optional NixOS disk, three SATA CD-ROMs with an empty NixOS tray, USB passthrough, and GPU/audio PCI addresses matching the QEMU hook).")
     print("NOTE: this test does not replace a libvirt/QEMU semantic validation or a real VM boot test.")
     return 0
 
