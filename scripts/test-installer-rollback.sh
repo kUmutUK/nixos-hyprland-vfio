@@ -302,7 +302,7 @@ sudo() {
 warn() { :; }
 source "$HELPERS"
 source "$SIGNAL_TRAPS"
-kill -s "$SIGNAL" "$"
+kill -s "$SIGNAL" "$BASHPID"
 printf 'FAIL: signal %s did not terminate the installer harness.\n' "$SIGNAL" >&2
 exit 1
 BASH
