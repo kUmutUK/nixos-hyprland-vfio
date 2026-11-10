@@ -126,7 +126,7 @@ class VmXmlStructureTests(unittest.TestCase):
         result = self.run_validator()
 
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("after both virtual disks", result.stderr)
+        self.assertIn("boot priorities must be 3, 4, and 5", result.stderr)
 
     def test_earliest_optical_boot_entry_must_use_sata(self) -> None:
         first_cdrom = min(
