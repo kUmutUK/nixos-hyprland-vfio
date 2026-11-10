@@ -672,6 +672,7 @@ transaction_backup_path() {
 rollback_deployment() {
   local exit_status="$1" target failed=0 backup_path parent
   trap - EXIT
+  trap '' INT TERM HUP
   if [ "$exit_status" -ne 0 ] && [ "${TRANSACTION_ACTIVE:-0}" = "1" ]; then
     warn "Installer failed after deployment began; restoring the prior NixOS/VFIO/XML files."
     for target in "${TRANSACTION_PATHS[@]}"; do
@@ -754,6 +755,9 @@ rollback_deployment() {
   fi
   exit "$exit_status"
 }
+trap 'exit 130' INT
+trap 'exit 143' TERM
+trap 'exit 129' HUP
 trap 'rollback_deployment "$?"' EXIT
 
 # Recovery backups are intentionally never pruned automatically. An interrupted
@@ -1208,5 +1212,5 @@ fi
 
 echo ""
 TRANSACTION_ACTIVE=0
-trap - EXIT
+trap - EXIT INT TERM HUP
 log "Setup complete."
