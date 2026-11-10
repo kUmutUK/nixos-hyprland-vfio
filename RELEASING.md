@@ -27,6 +27,7 @@ manual-dispatch input; ordinary pushes and pull requests never publish a release
    `docs/MAKO.md`,
    `docs/archive/DEGISIKLIK_GECMISI.md`,
    `docs/archive/README.md`,
+   `docs/archive/HISTORICAL-AUDITS.md`,
    `scripts/test-mako-renderer.py`,
    `scripts/optiscaler_manager.py`,
    `scripts/test-optiscaler-manager.py`,
