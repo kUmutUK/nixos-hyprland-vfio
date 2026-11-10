@@ -525,6 +525,12 @@ verification_metadata_paths = {
     "docs/MAKO.md",
     "docs/archive/DEGISIKLIK_GECMISI.md",
     "docs/archive/README.md",
+    "docs/archive/HISTORICAL-AUDITS.md",
+    "scripts/prepare-vm-diagnostic.py",
+    "scripts/test-vm-diagnostic.py",
+    "scripts/test-vm-xml-paths.py",
+    "scripts/test-installer-rollback.sh",
+    "docs/archive/README.md",
     "scripts/optiscaler_manager.py",
     "scripts/test-mako-renderer.py",
     "scripts/test-optiscaler-manager.py",
@@ -1200,8 +1206,8 @@ else:
     documented_release_paths = set()
     workflow_release_paths = set()
 require(
-    documented_release_paths == workflow_release_paths and len(workflow_release_paths) == 27,
-    "RELEASING.md and release.yml must contain the same exhaustive 27-path literal allowlist",
+    documented_release_paths == workflow_release_paths and len(workflow_release_paths) == 32,
+    "RELEASING.md and release.yml must contain the same exhaustive 32-path literal allowlist",
 )
 require(
     "no wildcard rules or blanket exemptions" in RELEASING
