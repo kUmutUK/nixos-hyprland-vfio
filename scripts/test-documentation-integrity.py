@@ -49,34 +49,6 @@ def require(condition: bool, message: str) -> None:
         errors.append(message)
 
 
-def latest_stable_tag() -> str:
-    result = subprocess.run(
-        ["git", "tag", "--merged", "HEAD", "--list", "v[0-9]*"],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0:
-        raise SystemExit(f"Could not list reachable stable release tags: {result.stderr.strip()}")
-    stable = []
-    for tag in result.stdout.splitlines():
-        match = re.fullmatch(r"v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)", tag)
-        if match:
-            stable.append((tuple(int(part) for part in match.groups()), tag))
-    if not stable:
-        raise SystemExit("No reachable stable vMAJOR.MINOR.PATCH release tag was found.")
-    return max(stable, key=lambda item: item[0])[1]
-
-
-LATEST_STABLE_TAG = latest_stable_tag()
-LATEST_STABLE_COMMIT = subprocess.run(
-    ["git", "rev-parse", f"{LATEST_STABLE_TAG}^{{commit}}"],
-    check=True,
-    capture_output=True,
-    text=True,
-).stdout.strip()
-
-
 readme_top = "\n".join(README.splitlines()[:8])
 require("docs/REPAIR-AND-VALIDATION-REPORT.md" in readme_top and "docs/AUDIT-2026-10-28-VM-XML-VFIO.md" not in readme_top, "README must point to the current repair report, not the older audit")
 require("2026-11-04 source-tree cross-checks" in readme_top, "README must identify the current 2026-11-04 source-tree cross-check")
@@ -275,35 +247,19 @@ require(
     and "Release notes heading does not match" in RELEASE_WORKFLOW,
     "release workflow must preserve literal date quantifiers inside its raw f-string",
 )
-current_release_match = re.search(
-    r"current published release is\s+\[(v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))\]\(https://github\.com/kUmutUK/nixos-hyprland-vfio/releases/tag/\1\)",
-    RELEASING,
-)
-current_release_section = RELEASING.partition("current published release is")[2].partition("Alternatively")[0]
-release_commit_match = re.search(r"from commit `([0-9a-f]{40})`", current_release_section)
+LATEST_RELEASES_URL = "https://github.com/kUmutUK/nixos-hyprland-vfio/releases/latest"
 require(
-    current_release_match is not None
-    and current_release_match.group(1) == LATEST_STABLE_TAG
-    and release_commit_match is not None
-    and release_commit_match.group(1) == LATEST_STABLE_COMMIT
-    and "published by [release run #" in current_release_section,
-    "release guide must match the newest reachable stable Git tag and its exact tag commit",
+    f"[GitHub Releases]({LATEST_RELEASES_URL})" in README
+    and f"[GitHub Releases]({LATEST_RELEASES_URL})" in RELEASING,
+    "README and release guide must use the stable GitHub latest-release URL instead of a copied version number",
 )
-current_release = current_release_match.group(1) if current_release_match else "v0.0.0"
-release_heading_pattern = re.compile(rf"^## {re.escape(current_release)} - \d{{4}}-\d{{2}}-\d{{2}}$")
 require(
-    release_heading_pattern.fullmatch(f"## {current_release} - 2026-11-09") is not None
-    and release_heading_pattern.fullmatch("## v0.0.0 - 2026-11-09") is None
-    and release_heading_pattern.fullmatch(f"## {current_release} - 2026-11-9") is None,
-    "release-note heading regex must accept only the current published release and an ISO date",
+    "does not require a follow-up documentation" in RELEASING
+    and "manual-dispatch input" in RELEASING,
+    "release guide must preserve manual version selection while documenting the dynamic latest-release link",
 )
 require("Verified full-system build baseline" in REPAIR,
         "repair report must identify the last completed full-system build baseline")
-current_status_line = (
-    f"**Latest published release:** [{LATEST_STABLE_TAG}](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/{LATEST_STABLE_TAG}), "
-)
-require(current_status_line in REPAIR and current_status_line in STATE_INDEX and current_status_line in README,
-        "README, status index, and repair report must agree with the latest reachable release tag")
 require(
     "all 28 workflow-defined steps" in CHANGELOG
     and "all 28 workflow-defined steps" in STATE_INDEX
@@ -382,11 +338,14 @@ require(
     "the previous CI #1239 / v1.4.4 snapshot must remain explicitly historical",
 )
 require(
-    all(item in (README + CHANGELOG + STATE_INDEX + REPAIR + RELEASING) for item in (
-        LATEST_STABLE_TAG, "release run #23", LATEST_STABLE_COMMIT,
+    all(item in (README + CHANGELOG + STATE_INDEX + REPAIR) for item in (
+        "v1.4.7", "release run #23", "c28250c34de4b4349023681305da99dee75aac9e",
         "407,251 bytes", "d33e36df8b8d6891c522fe2b8d27fa3d149da042c9284527d314c2eda89e9a05"
-    )),
-    "latest release version, exact tag commit, run, and canonical asset metadata must agree across current status documents",
+    ))
+    and "Historical release-source validation snapshot — v1.4.7" in README
+    and "Latest published release at this snapshot" in STATE_INDEX
+    and "Latest published release at this snapshot" in REPAIR,
+    "v1.4.7 run, commit, and ZIP metadata must remain recorded as a dated historical snapshot",
 )
 require(
     all(item in (README + CHANGELOG + STATE_INDEX + REPAIR + RELEASING) for item in (
@@ -536,16 +495,45 @@ verification_metadata_paths = {
 for path in verification_metadata_paths:
     require(path in RELEASE_WORKFLOW, f"release workflow must keep {path!r} in the full-build ancestor allowlist")
 require("fetch-depth: 0" in CHECK_WORKFLOW, "normal CI must fetch full Git history for the verified-baseline ancestry check")
-current_head = os.environ.get("GITHUB_SHA")
-if not current_head:
+try:
+    git_root_result = subprocess.run(
+        ["git", "rev-parse", "--show-toplevel"],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+except OSError:
+    git_root_result = None
+git_checkout = (
+    git_root_result is not None
+    and git_root_result.returncode == 0
+    and Path(git_root_result.stdout.strip()).resolve() == ROOT.resolve()
+)
+if git_checkout:
+    current_head = os.environ.get("GITHUB_SHA")
+    if not current_head:
+        head_result = subprocess.run(
+            ["git", "rev-parse", "--verify", "HEAD^{commit}"],
+            cwd=ROOT,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        current_head = head_result.stdout.strip() if head_result.returncode == 0 else None
+else:
+    # Canonical git-archive ZIPs expand this file through .gitattributes.
+    # They intentionally contain no .git directory or commit graph.
     try:
-        head_result = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, check=True, capture_output=True, text=True)
-        current_head = head_result.stdout.strip()
-    except (OSError, subprocess.CalledProcessError):
+        current_head = (ROOT / "SOURCE_REVISION").read_text(encoding="ascii").strip()
+    except (OSError, UnicodeError):
         current_head = None
-require(current_head is not None and re.fullmatch(r"[0-9a-f]{40}", current_head or "") is not None,
-        "documentation verification test must be run from a Git checkout with a resolvable HEAD")
-if current_head and repair_baseline_match:
+require(
+    current_head is not None
+    and re.fullmatch(r"[0-9a-f]{40}", current_head or "") is not None,
+    "documentation checks require either a Git checkout HEAD or a canonical source ZIP SOURCE_REVISION",
+)
+if git_checkout and current_head and repair_baseline_match:
     shallow_result = subprocess.run(
         ["git", "rev-parse", "--is-shallow-repository"],
         cwd=ROOT,
@@ -658,6 +646,12 @@ if current_head and repair_baseline_match:
                     "the MAKO Nix derivation must remain outside the ancestor-build release allowlist",
                 )
 
+
+elif not git_checkout:
+    print(
+        "SKIP: Git ancestry/diff checks require .git history; "
+        "static documentation checks ran using SOURCE_REVISION."
+    )
 
 
 for heading in (

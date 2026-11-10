@@ -1,10 +1,10 @@
 # Historical Change Log Index (English)
 
-## Current verification status — 2026-11-09
+## Verification status snapshot — 2026-11-09
 
 **UUID safety notice:** The committed host Btrfs/LUKS identifiers are intentional for the deployed machine. Do not regenerate or replace them casually; UUID, PARTUUID, and LUKS UUID refer to different storage layers. The Windows libvirt domain UUID/MAC are also persistent identity; only a genuinely new VM receives a fresh pair. See [UUID and machine-identity safeguards](docs/UUID-AND-MACHINE-IDENTITY.md).
 
-**Latest published release:** [v1.4.7](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.7), published by [release run #23](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42685329584) on 9 November 2026 from `c28250c34de4b4349023681305da99dee75aac9e`; canonical ZIP 407,251 bytes, SHA-256 `d33e36df8b8d6891c522fe2b8d27fa3d149da042c9284527d314c2eda89e9a05`.
+**Latest published release at this snapshot:** [v1.4.7](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.7), published by [release run #23](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42685329584) on 9 November 2026 from `c28250c34de4b4349023681305da99dee75aac9e`; canonical ZIP 407,251 bytes, SHA-256 `d33e36df8b8d6891c522fe2b8d27fa3d149da042c9284527d314c2eda89e9a05`.
 
 **Last reviewed source snapshot (2026-11-09):** `c28250c34de4b4349023681305da99dee75aac9e`, the v1.4.7 tag target. Normal CI [#1299](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42684408581) passed all 28 workflow-defined steps on that exact SHA. GitHub's runner-generated `Set up job` entry is not included in that YAML-defined count.
 - Reviewed source snapshot (2026-11-09): GitHub `main` at `c28250c34de4b4349023681305da99dee75aac9e`.

@@ -83,21 +83,16 @@ the GitHub Release.
 
 The history contains a legacy annotated `v1.4.3` tag at the same commit as the
 published `v1.4.4` release; `v1.4.3` has no associated GitHub Release. That is a
-historical tag anomaly, not the current release state. The current published release is
-[v1.4.7](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.7),
-published by [release run #23](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42685329584)
-on 9 November 2026 from commit `c28250c34de4b4349023681305da99dee75aac9e`. Its canonical ZIP
-is 407,251 bytes with SHA-256
-`d33e36df8b8d6891c522fe2b8d27fa3d149da042c9284527d314c2eda89e9a05`.
-Normal CI #1299 passed for the exact release commit. The last full-system build remains
-#18 on ancestor `c6f4b955475de2ea16bc2b34c59a95dad3a1ae78`, 23 commits before the release
-snapshot. Release run #23 accepted the later runtime-affecting paths through the explicit
-`target_host_validated=true` maintainer attestation, based on owner-reported clean-install,
-boot, and normal VM/GPU/Hyprland recovery checks. That attestation is not a full-system
-build result. The workflow now prevents additional manual version tags from being
-attached to an already-tagged commit.
+historical tag anomaly, not the current release state.
 
-The immediately previous published release was [v1.4.6](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.6), release run #20 (run ID `42203730895`) from `a6dd4544319fafa7ec517e73b31ad29a1b4010b3`; its canonical ZIP was 402,118 bytes with SHA-256 `05ffe97ee342a4b233f56bc7ae0e455f3b91a1c87df86c42e57e0441e9089e76`.
+The current published version is intentionally not copied into this guide. Use
+[GitHub Releases](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/latest)
+to resolve the latest published release. This link stays current when a new
+version is published, so a release does not require a follow-up documentation
+commit just to replace an old version number. You still choose the exact version
+in the manual **Release** workflow input; the workflow validates the stable
+version format and release-note heading before creating the tag and publishing
+the canonical source ZIP.
 
 Alternatively, a maintainer can create and push the annotated tag locally:
 

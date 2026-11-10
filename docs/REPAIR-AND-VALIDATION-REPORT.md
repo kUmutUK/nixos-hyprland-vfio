@@ -20,9 +20,9 @@ The detailed sections remain grouped by subject and source snapshot; this index 
 - **2026-11-04 and earlier:** historical audits, archive reconciliation, Home Manager package de-duplication, VM XML, installer, Pyprland, PCI, cursor, and release-workflow remediation.
 - The historical Game graphics profile guidance, CS2 frame-generation profile, and Source-tree audit hardening sections remain below in the archive of reviewed source records.
 
-## Latest verified CI and release status — 2026-11-09
+## Verified CI and release snapshot — 2026-11-09
 
-**Latest published release:** [v1.4.7](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.7), published by [release run #23](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42685329584) on 9 November 2026 from commit `c28250c34de4b4349023681305da99dee75aac9e`. The canonical ZIP is 407,251 bytes with SHA-256 `d33e36df8b8d6891c522fe2b8d27fa3d149da042c9284527d314c2eda89e9a05`.
+**Latest published release at this snapshot:** [v1.4.7](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.7), published by [release run #23](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42685329584) on 9 November 2026 from commit `c28250c34de4b4349023681305da99dee75aac9e`. The canonical ZIP is 407,251 bytes with SHA-256 `d33e36df8b8d6891c522fe2b8d27fa3d149da042c9284527d314c2eda89e9a05`.
 
 **Verified full-system build baseline:** GitHub `main` at `c6f4b955475de2ea16bc2b34c59a95dad3a1ae78`. Manual full-system build [#18](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42597469118) completed successfully on this exact commit, including the complete NixOS toplevel and selected kernel with both unused Rust module symbols disabled. For the documented baseline comparison, manual [run #18](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42597469118) completed successfully for the **same exact commit** `c6f4b955475de2ea16bc2b34c59a95dad3a1ae78`.
 **Reviewed source snapshot:** GitHub `main` at `c28250c34de4b4349023681305da99dee75aac9e` (the v1.4.7 tag target).
