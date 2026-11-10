@@ -90,7 +90,7 @@ class VmXmlStructureTests(unittest.TestCase):
         self.assertIn("exactly three CD-ROM devices", result.stderr)
 
     def test_nixos_disk_must_be_optional(self) -> None:
-        nixos_disk = self.root.find("./devices/disk[@device='disk'][target/@dev='vdb']")
+        nixos_disk = next(disk for disk in self.root.findall("./devices/disk[@device='disk']") if disk.find("target") is not None and disk.find("target").get("dev") == "vdb")
         nixos_disk.find("source").attrib.pop("startupPolicy")
 
         result = self.run_validator()
@@ -114,7 +114,7 @@ class VmXmlStructureTests(unittest.TestCase):
         result = self.run_validator()
 
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("boot priorities must be explicit", result.stderr)
+        self.assertIn("boot priorities must be 3, 4, and 5", result.stderr)
 
     def test_optical_boot_must_follow_both_virtual_system_disks(self) -> None:
         first_cdrom = min(
