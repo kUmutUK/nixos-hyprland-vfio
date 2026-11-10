@@ -356,6 +356,36 @@ require(
     )),
     "previous v1.4.6 release metadata must remain available as historical information",
 )
+v149_heading = CHANGELOG.find("## [v1.4.9] - 2026-11-10")
+v148_heading = CHANGELOG.find("## [v1.4.8] - 2026-11-09")
+v147_heading = CHANGELOG.find("## [v1.4.7] - 2026-11-09")
+require(
+    v149_heading >= 0 and v148_heading > v149_heading and v147_heading > v148_heading
+    and "v1.4.6 is the current published release" not in CHANGELOG,
+    "CHANGELOG must list v1.4.9, v1.4.8, and v1.4.7 newest-first without a stale current-release claim",
+)
+require(
+    all(item in CHANGELOG for item in (
+        "release run [#25]", "42807672922", "ad231d7529721eae343385cca9073790e4e3be61",
+        "410,138 bytes", "f28f91955d05679b7ff64cb33fbd193a86f87527f856b9801f0e7a197c1f5e61",
+        "Normal CI [#1309]", "42807151011",
+    )),
+    "CHANGELOG must preserve exact v1.4.9 release, CI, source commit, and archive provenance",
+)
+require(
+    all(item in CHANGELOG for item in (
+        "release run [#24]", "42699056863", "31acc15e5f590d67ab9d9ee477c7813e0766fe82",
+        "410,656 bytes", "4db66f4c856da157b8fc6995aaea7b86d40397868455976b21cb76566b1cadab",
+        "Normal CI [#1306]", "42698412118",
+    )),
+    "CHANGELOG must preserve exact v1.4.8 release, CI, source commit, and archive provenance",
+)
+require(
+    "Changes from the v1.4.8 tag are limited to documentation, CI workflow, and regression-test paths" in CHANGELOG
+    and "v1.4.9 is not a new full-system build" in CHANGELOG
+    and "At the time of this 5 November historical section, v1.4.6 was the then-current published release" in CHANGELOG,
+    "CHANGELOG must distinguish the v1.4.9 documentation-only release boundary and date the v1.4.6 status historically",
+)
 require(
     all(item in (README + CHANGELOG + STATE_INDEX + REPAIR) for item in (
         "run #18", "42597469118", "c6f4b955475de2ea16bc2b34c59a95dad3a1ae78",
