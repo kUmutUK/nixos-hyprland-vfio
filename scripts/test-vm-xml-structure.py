@@ -99,7 +99,7 @@ class VmXmlStructureTests(unittest.TestCase):
         self.assertIn("startupPolicy='optional'", result.stderr)
 
     def test_nixos_cdrom_tray_must_start_empty(self) -> None:
-        nixos_cdrom = self.root.find("./devices/disk[@device='cdrom'][target/@dev='sdd']")
+        nixos_cdrom = next(disk for disk in self.root.findall("./devices/disk[@device='cdrom']") if disk.find("target") is not None and disk.find("target").get("dev") == "sdd")
         ET.SubElement(nixos_cdrom, "source", {"file": "/srv/iso/nixos.iso"})
 
         result = self.run_validator()
