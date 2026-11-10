@@ -867,7 +867,7 @@ VM only after the first successful boot.
 > `Win10_22H2_English_x64v1.iso` and `virtio-win-0.1.285.iso` under
 > `/var/lib/libvirt/images/`. Confirm that both files exist at the exact paths shown by the
 > deployed XML; if you use different filenames or locations, edit those XML source paths first.
-> A missing Windows or VirtIO ISO prevents the VM from starting or completing Windows setup. The command block below runs `scripts/check-vm-iso-paths.py` against the staged XML before creating a VM disk and before `virsh define`; it checks each file-backed CD-ROM source path and stops with a clear error when a referenced file is missing.
+> A missing Windows or VirtIO ISO prevents the VM from starting or completing Windows setup. The third SATA CD-ROM (`sdd`) is intentionally an empty tray for optional NixOS installation media; it is not a required path until you insert an ISO. The command block below runs `scripts/check-vm-iso-paths.py` against the staged XML before creating a VM disk and before `virsh define`; it checks file-backed CD-ROM source paths and accepts the unused empty tray.
 >
 > Regression test: run `bash -n scripts/test-manual-vm-bootstrap.sh && bash scripts/test-manual-vm-bootstrap.sh` from the repository root. It exercises missing-ISO retry, failed/partial disk creation, orphan-disk refusal, safe rollback when another process creates the final XML path concurrently, and successful bootstrap using isolated temporary paths and mocked libvirt/qemu-img/mv commands.
 >
@@ -1034,6 +1034,10 @@ fi
 sudo virsh define "$VM_XML"
 sudo virsh list --all     # win10 should appear as "shut off"
 ```
+### Optional NixOS guest installation on the same VM
+
+The `win10` template now includes a separate optional VirtIO disk (`vdb`, `/var/lib/libvirt/images/nixos-test.qcow2`) and an initially empty SATA installer tray (`sdd`). This leaves the existing Windows disk (`vda`), UUID, UEFI NVRAM, USB devices, and VFIO PCI mappings intact. The NixOS disk is marked `startupPolicy="optional"`, so the Windows VM can still start before the second qcow2 file exists. After defining the VM, follow the [NixOS guest-disk and installer procedure in README](README.md#install-nixos-on-a-separate-guest-disk). During NixOS setup, select `/dev/vdb` only; never format the existing Windows `/dev/vda` disk. The VM exposes the passed-through RX 6700 XT to one guest OS at a time.
+
 ### Temporary display channel on first start (optional diagnostics)
 
 The production XML uses `<video><model type="none"/></video>` and therefore provides no VNC
