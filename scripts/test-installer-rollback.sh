@@ -26,6 +26,11 @@ if ! grep -q '^assert_no_symlink_transaction_targets() {' "$HELPERS" \
   fail 'could not extract the installer transaction helpers'
 fi
 
+SIGNAL_TRAPS="$TMP_DIR/signal-traps.sh"
+grep -E "^trap '(exit 130|exit 143|exit 129|rollback_deployment)" "$INSTALLER" > "$SIGNAL_TRAPS"
+[[ "$(wc -l < "$SIGNAL_TRAPS" | tr -d '[:space:]')" -eq 4 ]] \
+  || fail 'could not extract all three signal traps and the EXIT rollback trap'
+
 TEST_ROOT="$TMP_DIR/system"
 NIXOS_FLAKE_DIR="$TEST_ROOT/etc/nixos/nixos"
 PATCHED_XML="$TEST_ROOT/var/lib/libvirt/win10.xml"
@@ -271,3 +276,64 @@ set -e
 [[ "$nonempty_snapshot_status" -eq 1 ]] || fail "snapshot rollback did not preserve original exit status for a nonempty subvolume"
 [[ -f "$NONEMPTY_SNAPSHOT/user-data" ]] || fail 'rollback removed data from a nonempty snapshot subvolume'
 printf 'OK: installer rollback removes only a newly-created empty snapshot subvolume and retains nonempty content.\n'
+
+# A caught signal must become a non-zero exit before EXIT rollback evaluates its status.
+# The harness sources the actual transaction functions and trap lines from install.sh.
+SIGNAL_HARNESS="$TMP_DIR/signal-rollback-harness.sh"
+cat > "$SIGNAL_HARNESS" <<'BASH'
+set -euo pipefail
+SIGNAL="$1"
+TARGET="$2"
+BACKUP_DIR="$3"
+HELPERS="$4"
+SIGNAL_TRAPS="$5"
+NIXOS_FLAKE_DIR="$(dirname "$TARGET")"
+PATCHED_XML="$TARGET"
+TRANSACTION_PATHS=("$TARGET")
+declare -A TRANSACTION_EXISTED=(["$TARGET"]=1)
+NIXOS_FLAKE_DIR_EXISTED=1
+TRANSACTION_ACTIVE=1
+sudo() {
+  if [[ "${1:-}" == "chown" ]]; then
+    return 0
+  fi
+  command "$@"
+}
+warn() { :; }
+source "$HELPERS"
+source "$SIGNAL_TRAPS"
+kill -s "$SIGNAL" "$"
+printf 'FAIL: signal %s did not terminate the installer harness.\n' "$SIGNAL" >&2
+exit 1
+BASH
+
+for signal in INT TERM HUP; do
+  signal_root="$TMP_DIR/signal-$signal"
+  signal_target_dir="$signal_root/target"
+  signal_backup_dir="$signal_root/backup"
+  mkdir -p "$signal_target_dir" "$signal_backup_dir"
+  signal_target="$signal_target_dir/configuration.nix"
+  printf 'original signal-test configuration\n' > "$signal_target"
+  signal_backup_name="$(printf '%s' "$signal_target" | tr '/' '_')"
+  cp -a -- "$signal_target" "$signal_backup_dir/$signal_backup_name"
+  printf 'partially deployed signal-test configuration\n' > "$signal_target"
+
+  case "$signal" in
+    INT) expected_status=130 ;;
+    TERM) expected_status=143 ;;
+    HUP) expected_status=129 ;;
+    *) fail "unexpected signal in test: $signal" ;;
+  esac
+
+  set +e
+  bash "$SIGNAL_HARNESS" "$signal" "$signal_target" "$signal_backup_dir" "$HELPERS" "$SIGNAL_TRAPS" >/dev/null 2>&1
+  signal_status=$?
+  set -e
+
+  [[ "$signal_status" -eq "$expected_status" ]] \
+    || fail "signal $signal returned $signal_status (expected $expected_status)"
+  [[ "$(cat "$signal_target")" == 'original signal-test configuration' ]] \
+    || fail "signal $signal did not restore the original configuration"
+done
+
+printf 'OK: installer INT/TERM/HUP signals trigger non-zero EXIT rollback and restore the original files.\n'
