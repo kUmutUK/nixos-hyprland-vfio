@@ -1,6 +1,14 @@
 # Historical Change Log Index (English)
 
-## Verification status snapshot — 2026-11-09
+## Audit intake snapshot — 2026-11-10 (historical)
+
+**Audit-intake source snapshot:** GitHub `main` at `a20962f9be065f17c7c2ec143473c47b7a75aae9` (10 November 2026; the reviewed source was unreleased).
+
+**Latest published release at audit intake:** [v1.4.9](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.9), published by [release run #25](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42807672922) from exact commit `ad231d7529721eae343385cca9073790e4e3be61`. Normal CI [#1309](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42807151011) passed all 28 workflow-defined steps on that exact commit. Its canonical source ZIP is 410,138 bytes with SHA-256 `f28f91955d05679b7ff64cb33fbd193a86f87527f856b9801f0e7a197c1f5e61`.
+
+**Validation boundary:** the last completed full-system build remains manual Build #18 on ancestor `c6f4b955475de2ea16bc2b34c59a95dad3a1ae78`. v1.4.9 did not create a new full-system build or physical-hardware result. This audit follow-up does not claim a new host validation. Changes to `install.sh` remain outside the release ancestor-build allowlist and require the normal full-system-build gate or the explicitly documented target-host attestation before a later release.
+
+## Historical verification status snapshot — 2026-11-09
 
 **UUID safety notice:** The committed host Btrfs/LUKS identifiers are intentional for the deployed machine. Do not regenerate or replace them casually; UUID, PARTUUID, and LUKS UUID refer to different storage layers. The Windows libvirt domain UUID/MAC are also persistent identity; only a genuinely new VM receives a fresh pair. See [UUID and machine-identity safeguards](docs/UUID-AND-MACHINE-IDENTITY.md).
 
@@ -125,7 +133,7 @@ This legacy filename now contains an English current-state summary so older link
 - 2026-10-29: LSFG-VK v2 is now the active target. Home Manager emits `version = 2` with `[[profile]]` entries, the flake builds the pinned `.#lsfg-vk-v2` package, and CI validates the v2 schema/package. The installer backup and rollback transaction includes `nixos/lsfg-vk-v2.nix`.
 - Cross-conversation recheck added fail-closed VFIO service-stop verification plus mocked stop/restore failure tests. Installer `stateVersion` source discovery now detects conflicting, duplicate, or non-literal definitions instead of silently selecting one; the tests exercise these paths. `INSTALLATION.md` now invokes VM XML sync with `--domain win10`, and both manual and automated migration docs describe the persistent registered libvirt XML source.
 - CI builds the canonical source ZIP with `scripts/package-source-zip.sh`, verifies tracked-file completeness and executable bits, ensures `.git/` is excluded, and publishes a world-readable artifact. Prefer the validated CI artifact or run the packaging helper rather than creating an arbitrary ZIP export.
-- Release-note ranges are event-specific: a pushed version tag uses git-cliff `--current` because HEAD is that tag; a manual dispatch from `main` uses `--latest` because the new release tag does not exist yet. The workflow's documentation-integrity regression checks this distinction.
+- Release-note ranges are event-specific: a pushed version tag uses git-cliff `--current` because HEAD is that tag; a manual dispatch from `main` uses the explicit previous-tag-to-`HEAD` range with the requested new tag because that tag does not exist yet. The workflow's documentation-integrity regression checks this distinction; `--latest` is not used for the current manual-release path.
 - Source provenance is pinned consistently across clean install, manual migration, and `install.sh`; VM preparation requires a matching, clean checkout and fails closed when the revision marker is absent or incorrect. Canonical ZIPs embed the packaged commit and validate it before publication. Rollback now backs up and restores the marker.
 - Home Snapper checks the live `/home` mount, the `@home` subvolume, target device UUIDs, and any active `/home/.snapshots` mount; the final selected hardware configuration is checked again before hook deployment.
 - Installer profile backups, Home Manager `home.stateVersion` fallback, and `~/` wallpaper paths are pinned to `/home/localhost` even when the script is invoked from a different administrator home.
