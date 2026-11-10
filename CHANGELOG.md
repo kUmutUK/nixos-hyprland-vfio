@@ -5,6 +5,8 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 ## [Unreleased]
 
 - Extend the existing `win10` libvirt domain with a separate optional NixOS VirtIO disk and an initially empty SATA installer tray. Keep the Windows disk and boot priority first, document safe create/attach/install/eject steps, and add regression coverage for the two-OS device layout.
+- Record the immutable v1.5.0 source-archive snapshot and the current GitHub v1.4.9 asset size/digest provenance without rewriting either historical release asset.
+- Replace brittle VM XML diagnostic text matching with a stable error code and test the README bootstrap by executing its extracted command in the mocked VM environment; keep the real dual-guest boot gate open until target validation is recorded.
 
 ## [v1.5.0] - 2026-11-10
 
