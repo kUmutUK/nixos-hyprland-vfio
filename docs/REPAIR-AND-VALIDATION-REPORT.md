@@ -1,10 +1,15 @@
-# Repair and validation report — updated 2026-11-09
+# Repair and validation report — updated 2026-11-10
 
 > **Delivery-scope note:** This report is part of the tracked source tree. The dated “patch-only ZIP” notes below are historical. For a canonical full-source ZIP, use `scripts/package-source-zip.sh` or the CI-uploaded `nixos-hyprland-vfio-source` artifact for the exact commit. The helper verifies tracked-file completeness, excludes `.git/`, preserves executable bits, and makes the finished artifact readable from shared output directories.
 
 ## Chronological navigation (newest first)
 
 The detailed sections remain grouped by subject and source snapshot; this index supplies their date order without rewriting the historical record.
+
+- **2026-11-10 (audit-intake source snapshot):** GitHub `main` at `a20962f9be065f17c7c2ec143473c47b7a75aae9`; this source snapshot was unreleased.
+- **2026-11-10 (latest published release):** v1.4.9, published by release run #25 (run ID `42807672922`) from `ad231d7529721eae343385cca9073790e4e3be61`; normal CI #1309 (run ID `42807151011`) passed all 28 workflow-defined steps on that exact release commit; canonical ZIP 410,138 bytes, SHA-256 `f28f91955d05679b7ff64cb33fbd193a86f87527f856b9801f0e7a197c1f5e61`.
+- **Current validation boundary:** the last completed full-system build remains manual Build #18 on ancestor `c6f4b955475de2ea16bc2b34c59a95dad3a1ae78`. v1.4.9 did not create a new full-system build or physical-hardware result. No new host validation is claimed for the audit-intake source snapshot.
+- **v1.4.6 release-gate correction:** the successful publish job for release run #20 (run ID `42203730895`) reports that normal CI and the full-system build both passed for exact release commit `a6dd4544319fafa7ec517e73b31ad29a1b4010b3`; the job log states `full-system build passed at a6dd4544319fafa7ec517e73b31ad29a1b4010b3`. This contradicts the supplied audit's “no release-gate evidence” finding. The retained log excerpt does not expose the underlying CI/build run IDs, so none are inferred.
 
 - **Last completed full-system build baseline:** manual build #18 on ancestor `c6f4b955475de2ea16bc2b34c59a95dad3a1ae78`, 23 commits before the v1.4.7 release snapshot.
 - **2026-11-09 (v1.4.7 release snapshot):** GitHub `main` and tag `v1.4.7` at `c28250c34de4b4349023681305da99dee75aac9e`; normal CI #1299 passed all 28 workflow-defined steps; release run #23 published the 407,251-byte canonical ZIP (SHA-256 `d33e36df8b8d6891c522fe2b8d27fa3d149da042c9284527d314c2eda89e9a05`).
@@ -14,13 +19,13 @@ The detailed sections remain grouped by subject and source snapshot; this index 
 - **2026-11-09 (HDR policy):** `nixos/home.nix` sets `render.cm_auto_hdr = 0`, disabling automatic fullscreen HDR switching. The recorded host test did not separately validate HDR transitions, 10-bit output, or display flicker.
 - **2026-11-09 (previous reviewed source snapshot; historical):** CI #1285 passed on `f63250a4867105ea1e9e2724c0c47b5ae5e707cb`; superseded by the v1.4.7 release snapshot and CI #1299.
 - **2026-11-06 (previous published release; historical):** v1.4.6, release run #20, from `a6dd4544319fafa7ec517e73b31ad29a1b4010b3`; 402,118-byte ZIP SHA-256 `05ffe97ee342a4b233f56bc7ae0e455f3b91a1c87df86c42e57e0441e9089e76`.
-- **2026-11-05 (previous reviewed snapshot; historical):** CI #1239 (run ID 42032980751) passed on `7f923a2c7aa59721bc00728faccbc073e06c697a`; release run #15 (run ID 42035815458) published v1.4.4 from that snapshot. Its canonical CI artifact was 379,511 bytes (artifact ID `13416329673`; outer GitHub artifact digest `sha256:f9fdf7c3be15b69d032f4965e6765f841fd04f54e9096d2536091f5c01e267ed`); the 388,000-byte release ZIP SHA-256 is retained below.
+- **2026-11-05 (previous reviewed snapshot; historical):** CI #1239 (run ID 42032980751) passed on `7f923a2c7aa59721bc00728faccbc073e06c697a`; release run #15 (run ID 42035815458) published v1.4.4 from that snapshot. Its canonical CI artifact was 379,511 bytes (artifact ID `13416329673`; outer GitHub artifact digest `sha256:f9fdf7c3be15b69d032f4965e6765f841fd04f54e9096d2536091f5c01e267ed`); the 388,000-byte release ZIP SHA-256 is recorded in CHANGELOG.md.
 - **2026-11-05 (release workflow hardening):** explicit previous-tag-to-HEAD note range, requested-tag heading validation, and same-commit duplicate-version-tag guard.
 - **2026-11-05 (earlier configuration update):** conservative Genshin LSFG-VK fallback profile and MAKO-first selection guidance; covered by build #13.
 - **2026-11-04 and earlier:** historical audits, archive reconciliation, Home Manager package de-duplication, VM XML, installer, Pyprland, PCI, cursor, and release-workflow remediation.
 - The historical Game graphics profile guidance, CS2 frame-generation profile, and Source-tree audit hardening sections remain below in the archive of reviewed source records.
 
-## Verified CI and release snapshot — 2026-11-09
+## Historical verified CI and release snapshot — 2026-11-09
 
 **Latest published release at this snapshot:** [v1.4.7](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.7), published by [release run #23](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42685329584) on 9 November 2026 from commit `c28250c34de4b4349023681305da99dee75aac9e`. The canonical ZIP is 407,251 bytes with SHA-256 `d33e36df8b8d6891c522fe2b8d27fa3d149da042c9284527d314c2eda89e9a05`.
 
@@ -64,7 +69,7 @@ For any future release, the changed-path rule remains active: `nixos/configurati
 - **Preserved choices:** `gpu_device = 1` remains pending the target host's live `/sys/class/drm` mapping. VM XML, PCI/USB identities, VFIO runtime behavior, kernel selection, frame-generation settings, and desktop preferences were not changed.
 - **Build-gate disposition:** the gate was OPEN when these `nixos/configuration.nix` and `install.sh` changes were first recorded. It was subsequently closed by exact-HEAD full-system build #13 on `1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b`; normal CI #1233 also passed on that commit. This does not add a new physical VFIO test or saved-state-restore result.
 
-## Last completed full-system build baseline — 2026-11-07
+## Previous full-system build baseline — 2026-11-07 (historical; superseded by #18)
 
 **Reviewed source snapshot:** GitHub `main` at `a6dd4544319fafa7ec517e73b31ad29a1b4010b3`.
 
@@ -72,8 +77,8 @@ For any future release, the changed-path rule remains active: `nixos/configurati
 
 - **Normal CI for the reviewed snapshot:** [run #1251](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42525185215) completed successfully for the exact reviewed snapshot `a6dd4544319fafa7ec517e73b31ad29a1b4010b3`.
 - **Full NixOS system build:** [manual run #16](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42414377307) completed successfully for the **same exact commit** `a6dd4544319fafa7ec517e73b31ad29a1b4010b3`. The complete NixOS toplevel, selected kernel, and unchanged-lock check passed.
-- **Verified full-system build baseline:** GitHub `main` at `a6dd4544319fafa7ec517e73b31ad29a1b4010b3` (7 November 2026).
-- **Build-gate boundary:** the 7.3.3 CachyOS input update, the Rust null-block workaround, the later root Nixpkgs/Home Manager lock updates, and the uploaded host hardware-configuration refresh all occurred after this build. A new full-system build is required before release.
+- **Historical Build #16 baseline (now superseded):** GitHub `main` at `a6dd4544319fafa7ec517e73b31ad29a1b4010b3` (7 November 2026).
+- **Historical build-gate disposition:** at this 7 November snapshot, the listed later kernel/lock/hardware changes post-dated Build #16. Manual Build #18 subsequently completed successfully on 9 November 2026 at `c6f4b955475de2ea16bc2b34c59a95dad3a1ae78`; the current baseline is recorded in the report's chronological navigation.
 - **Hardware boundary:** runner success does not validate the newly uploaded storage mapping on the physical host or add a new VFIO/VM lifecycle or saved-state-restore result.
 
 ## Previous full-system build baseline — 2026-11-05 (historical; superseded by #16)
