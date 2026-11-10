@@ -4,6 +4,15 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+### Audit remediation — 2026-11-10
+
+- Fixed installer signal handling so INT, TERM, and HUP exit with non-zero statuses and reach the existing transactional rollback path; added subprocess regressions for all three signals.
+- Updated the temporary VM diagnostic helper to accept both XML quote styles and added coverage for libvirt's single-quoted `dumpxml` output.
+- Corrected the VM custom-USB test fixture to replace all four template IDs, including the lowercase Apple IDs, and verify each replacement.
+- Made the OptiScaler v0.9.4 repository-pinned digest authoritative when GitHub also supplies an API digest, rejecting mismatches; invalid or empty XDG cache/state paths now fall back to their specified defaults.
+- Corrected the release workflow's documented artifact/tag order and synchronized the literal ancestor-build allowlist for the standalone diagnostic helper and offline regression tests.
+- **Historical gate correction:** the v1.4.6 release run #20 gate log reports that normal CI and the full-system build both passed for exact release commit `a6dd4544319fafa7ec517e73b31ad29a1b4010b3`. The audit's claim that v1.4.6 had no release-gate evidence is withdrawn; no underlying run ID is inferred where the retained log excerpt does not supply one.
+
 ## [v1.4.9] - 2026-11-10
 
 ### Release and validation boundary — 2026-11-10
@@ -62,7 +71,7 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 - **Historical v1.4.5 canonical release ZIP:** 392,212 bytes; SHA-256 `f97fb12bdfbaaff4d32e7ab57bbc9251fababcd126a8ef7644947844924de9e0`; 72 tracked files, nine executable files, and no `.git/` entries.
 - **Previous reviewed snapshot (historical):** `7f923a2c7aa59721bc00728faccbc073e06c697a`; CI #1239 / run ID `42032980751`; v1.4.4 from release run #15 / run ID `42035815458`. The 388,000-byte ZIP SHA-256 was `7621fcdccfe327e9e59f453947b9f7903cd0f477b73cde8f4aa5ee513061e0ff`.
-- The earlier v1.4.4 release description inherited an incorrect `v1.4.3` heading; that remains a historical release-note issue. At the time of this 5 November historical section, v1.4.6 was the then-current published release.
+- The earlier v1.4.4 release description inherited an incorrect `v1.4.3` heading; that remains a historical release-note issue. At the time of this 5 November historical section, v1.4.5 was the then-current published release; v1.4.6 was published on 6 November.
 - That 5 November documentation/test reconciliation added no new physical-hardware or saved-state-restore evidence.
 - The first documentation-only follow-up's normal CI #1243 failed only two documentation-integrity assertions (a missing exact build-baseline index line and missing historical `run #1239` wording); both records are restored in the follow-up. No runtime/NixOS configuration was changed.
 
