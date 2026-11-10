@@ -24,6 +24,47 @@ class OptiScalerManagerTests(unittest.TestCase):
             manager.expected_digest("v0.9.4", asset),
             "575cb4df866116093df75af607e37fd70e10f5163e0f23fd5c804142e80ef0ad",
         )
+        conflicting_api = {
+            **asset,
+            "digest": "sha256:" + ("0" * 64),
+        }
+        with self.assertRaisesRegex(manager.ManagerError, "conflicts with the repository-pinned"):
+            manager.expected_digest("v0.9.4", conflicting_api)
+
+    def test_xdg_paths_must_be_non_empty_and_absolute(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            home = Path(temporary)
+            with patch.object(manager.Path, "home", return_value=home):
+                with patch.dict(
+                    os.environ,
+                    {"XDG_CACHE_HOME": "", "XDG_STATE_HOME": "relative/state"},
+                ):
+                    self.assertEqual(
+                        manager.cache_root(),
+                        home / ".cache" / "optiscaler-manager",
+                    )
+                    self.assertEqual(
+                        manager.state_root(),
+                        home / ".local/state" / "optiscaler-manager",
+                    )
+
+                cache_override = home / "custom-cache"
+                state_override = home / "custom-state"
+                with patch.dict(
+                    os.environ,
+                    {
+                        "XDG_CACHE_HOME": str(cache_override),
+                        "XDG_STATE_HOME": str(state_override),
+                    },
+                ):
+                    self.assertEqual(
+                        manager.cache_root(),
+                        cache_override / "optiscaler-manager",
+                    )
+                    self.assertEqual(
+                        manager.state_root(),
+                        state_override / "optiscaler-manager",
+                    )
 
     def test_unknown_release_fails_closed_without_digest(self):
         with self.assertRaises(manager.ManagerError):
