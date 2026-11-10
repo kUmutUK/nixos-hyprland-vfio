@@ -62,12 +62,21 @@ def main() -> int:
 
         # A deployed XML may intentionally use local USB IDs. Their structure and
         # numeric values remain checked, while the template's exact IDs are optional.
-        custom_xml = (
-            template_xml.replace('id="0x1532"', 'id="0x1234"', 1)
-            .replace('id="0x0098"', 'id="0x5678"', 1)
-            .replace('id="0x05AC"', 'id="0x4321"', 1)
-            .replace('id="0x024F"', 'id="0x8765"', 1)
+        custom_xml = template_xml
+        usb_id_replacements = (
+            ('id="0x1532"', 'id="0x1234"'),
+            ('id="0x0098"', 'id="0x5678"'),
+            ('id="0x05ac"', 'id="0x4321"'),
+            ('id="0x024f"', 'id="0x8765"'),
         )
+        for original_id, custom_id in usb_id_replacements:
+            if custom_xml.count(original_id) != 1:
+                return fail(
+                    f"expected exactly one template USB ID {original_id!r} before replacement"
+                )
+            custom_xml = custom_xml.replace(original_id, custom_id, 1)
+            if custom_xml.count(custom_id) != 1:
+                return fail(f"custom USB ID replacement did not produce {custom_id!r}")
         if custom_xml == template_xml:
             return fail("test fixture could not customize the template USB IDs")
         xml_path.write_text(custom_xml, encoding="utf-8")
