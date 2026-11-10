@@ -597,6 +597,7 @@ verification_metadata_paths = {
     "scripts/check-vm-iso-paths.py",
     "scripts/test-vm-iso-paths.py",
     "scripts/test-vm-xml.py",
+    "scripts/test-vm-xml-structure.py",
     "scripts/extract-embedded-scripts.py",
     "scripts/test-extract-embedded-scripts.py",
     "scripts/prepare-vm-diagnostic.py",
@@ -684,7 +685,8 @@ if git_checkout and current_head and repair_baseline_match:
                 require(reviewed_ancestor.returncode == 0, "reviewed normal-CI source snapshot must be an ancestor of the current checkout HEAD")
             changed = subprocess.run(["git", "diff", "--name-only", verified_sha, current_head], cwd=ROOT, check=True, capture_output=True, text=True).stdout.splitlines()
             full_build_pending_paths = {"nixos/configuration.nix", "nixos/hooks/qemu", "install.sh", "nixos/home.nix", "nixos/flake.nix", "nixos/flake.lock", "nixos/hardware-configuration.nix", "nixos/mako-renderer.nix"}
-            unexpected = sorted(set(changed) - verification_metadata_paths - full_build_pending_paths)
+            vm_xml_pending_paths = {"vm-xml/win10.xml"}
+            unexpected = sorted(set(changed) - verification_metadata_paths - full_build_pending_paths - vm_xml_pending_paths)
             require(
                 not unexpected,
                 "changes after the last successful full-system build must stay within the release/documentation/CI allowlist or an explicitly documented pending-build path; unexpected: "
@@ -695,6 +697,20 @@ if git_checkout and current_head and repair_baseline_match:
                 require(
                     "fresh full-system build is required before release" in REPAIR,
                     "system-affecting pending paths must require a new manual full-system build before release",
+                )
+            vm_xml_pending = sorted(set(changed) & vm_xml_pending_paths)
+            if vm_xml_pending:
+                require(
+                    "`vm-xml/win10.xml`" in REPAIR
+                    and "optional NixOS test disk" in REPAIR
+                    and "libvirt/QEMU semantic validation" in REPAIR
+                    and "real Windows and NixOS guest boot tests" in REPAIR
+                    and "outside the release allowlist" in REPAIR,
+                    "the changed VM XML template must document its separate target-VM validation gate",
+                )
+                require(
+                    "vm-xml/win10.xml" not in RELEASING and "vm-xml/win10.xml" not in RELEASE_WORKFLOW,
+                    "the VM XML template must remain outside the release allowlist until target-VM validation is documented",
                 )
             if "nixos/hooks/qemu" in pending:
                 require(
@@ -1330,8 +1346,8 @@ else:
     documented_release_paths = set()
     workflow_release_paths = set()
 require(
-    documented_release_paths == workflow_release_paths and len(workflow_release_paths) == 40,
-    "RELEASING.md and release.yml must contain the same exhaustive 40-path literal allowlist",
+    documented_release_paths == workflow_release_paths and len(workflow_release_paths) == 41,
+    "RELEASING.md and release.yml must contain the same exhaustive 41-path literal allowlist",
 )
 require(
     "no wildcard rules or blanket exemptions" in RELEASING
