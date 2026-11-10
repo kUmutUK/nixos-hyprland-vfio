@@ -521,7 +521,12 @@ Download the official NixOS x86_64 graphical installer ISO from [nixos.org/downl
 NIXOS_ISO=/var/lib/libvirt/images/nixos-installer-x86_64-linux.iso
 sudo test -f "$NIXOS_ISO"
 sudo virsh change-media win10 sdd "$NIXOS_ISO" --insert --config
-sudo python3 "$REPO/scripts/check-vm-iso-paths.py" /var/lib/libvirt/win10.xml
+
+# Validate libvirt's updated persistent definition, not the older source XML copy.
+CHECK_XML="$(mktemp)"
+trap 'rm -f "$CHECK_XML"' EXIT
+sudo virsh dumpxml --inactive win10 > "$CHECK_XML"
+sudo python3 "$REPO/scripts/check-vm-iso-paths.py" "$CHECK_XML"
 ```
 
 Start the VM from outside the graphical login session, as described above. At the OVMF screen press **Esc**, open **Boot Manager**, and select the NixOS DVD entry. During installation, inspect the disk list with `lsblk -o NAME,SIZE,TYPE,MODEL`: install NixOS only onto `/dev/vdb`. **Do not partition, format, or install onto `/dev/vda`; that is the existing Windows disk.** The VirtIO block driver is included in the NixOS Linux kernel, so the installer should expose the second disk as `/dev/vdb`.
