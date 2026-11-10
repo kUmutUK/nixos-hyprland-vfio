@@ -15,7 +15,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 VIDEO_NONE = re.compile(
-    r"(?P<indent>^[ \t]*)<video>\s*<model\s+type=\"none\"\s*/>\s*</video>",
+    r"(?P<indent>^[ \t]*)<video>\s*<model\s+type=(?P<quote>[\"'])none(?P=quote)\s*/>\s*</video>",
     re.MULTILINE,
 )
 
