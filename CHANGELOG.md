@@ -6,10 +6,16 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ### Remaining audit remediation — 2026-11-10
 
+- Mark `install.sh` experimental in its runtime banner and user/contributor documentation. No end-to-end run of `install.sh` against a live NixOS/libvirt target host has been completed. Syntax, ShellCheck, and mocked regression checks are not live deployment validation; the 9 November clean-install report is not evidence that the helper was used.
+
+- Move NixOS/live-media, root-user, and repository/deployment-overlap rejection ahead of the lock and high-risk warning/acknowledgement prompt; add a regression invariant for the exact ordering.
+- Align the README, CONTRIBUTING, and CI ShellCheck script lists, and assert the same seven embedded-script count in contributor instructions and CI.
+- Reconcile the full-system build run numbers against GitHub Actions history, clarify the 4 November Build #11 / 5 November release date boundary, and correct the v1.4.4 nested artifact-size record.
+- Record the v1.4.3 GitHub Release publication on 10 November 2026, its original tag target, and its byte-identical source ZIP relationship to v1.4.4; the v1.4.4 release-description heading error remains a historical note.
 - Use privileged `sudo cp -a` for installer recovery backups of root-owned or mode-restricted targets.
 - Refuse VM XML template/destination identity, including resolved symlink and hard-link aliases, with regression coverage.
 - Require a real `@home` Btrfs subvolume in all Home Snapper modes; strict manual checks require the existing child `@home/.snapshots`, while the installer uses an explicit allow-missing flag only because its later rollback-protected transaction creates that child. README and INSTALLATION now share the strict checker; regression tests cover both modes.
-- Document the exact 39-path ancestor-build allowlist selection principle and keep `install.sh` gated by a fresh full-system build.
+- Document the exact 40-path ancestor-build allowlist selection principle and keep `install.sh` gated by a fresh full-system build.
 - Make installer PCI updates preserve valid leading indentation, keep preflight and replacement syntax consistent, print named-user tilde errors outside command substitution, and state explicitly that failed variable substitutions abort into transaction rollback.
 - Add regression coverage proving untouched VFIO devices are skipped during rollback, the VM primary disk stays virtio and both CD-ROMs stay SATA, empty/network CD-ROM sources are valid non-file-backed media, CLI checker errors go to stderr, and line-leading Nix `''${` escapes are not mistaken for indented-string terminators.
 - Disambiguate the 4 November configuration/installer cross-check from the separately numbered ninth audit; distinguish the v1.4.4 CI artifact and release ZIP records without inventing an explanation for their size difference.
@@ -80,8 +86,8 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 **Pre-reconciliation main verification (5 November 2026):** GitHub `main` at `4eb6a106d825890a929fe57054a1660da524a458`; normal CI [#1244](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42076151633) passed all 28 workflow-defined steps on this exact commit and uploaded `nixos-hyprland-vfio-source` (artifact ID `13438456860`, 383,949 bytes; outer artifact digest `sha256:f04a477945bc2b47d7f8c7394a8f178895ed950bba2f245fae9b7aecdf553d97`). The preceding documentation-only commit `d35155ce6b9fb089934ee2f15f4208279dc5e2da` had CI #1243 fail at the documentation-integrity gate; commit `4eb6a10` restored the missing historical assertions and CI #1244 passed. This is the last completed validation before this documentation/test reconciliation; this follow-up requires its own exact-commit normal CI before a later release.
 
 - **Historical v1.4.5 canonical release ZIP:** 392,212 bytes; SHA-256 `f97fb12bdfbaaff4d32e7ab57bbc9251fababcd126a8ef7644947844924de9e0`; 72 tracked files, nine executable files, and no `.git/` entries.
-- **Previous reviewed snapshot (historical):** `7f923a2c7aa59721bc00728faccbc073e06c697a`; CI #1239 / run ID `42032980751`; v1.4.4 from release run #15 / run ID `42035815458`. The 388,000-byte ZIP SHA-256 was `7621fcdccfe327e9e59f453947b9f7903cd0f477b73cde8f4aa5ee513061e0ff`.
-- The earlier v1.4.4 release description inherited an incorrect `v1.4.3` heading; that remains a historical release-note issue. At the time of this 5 November historical section, v1.4.5 was the then-current published release; v1.4.6 was published on 6 November.
+- **Previous reviewed snapshot (historical):** `7f923a2c7aa59721bc00728faccbc073e06c697a`; CI #1239 / run ID `42032980751`; v1.4.4 from release run #15 / run ID `42035815458`. The release's canonical inner source ZIP is 388,000 bytes with SHA-256 `7621fcdccfe327e9e59f453947b9f7903cd0f477b73cde8f4aa5ee513061e0ff`. The CI artifact download is a 379,511-byte outer ZIP wrapper (artifact ID `13416329673`, outer digest `sha256:f9fdf7c3be15b69d032f4965e6765f841fd04f54e9096d2536091f5c01e267ed`) containing that same 388,000-byte source ZIP plus its 97-byte SHA-256 manifest; the inner manifest matches the published release ZIP digest.
+- The earlier v1.4.4 release description inherited an incorrect `v1.4.3` heading; that remains a historical release-note issue. The v1.4.3 GitHub Release entry was subsequently published on 10 November 2026 at 11:52:57 UTC (Release ID `440298465`); the old v1.4.4 description was not retroactively rewritten. At the time of this 5 November historical section, v1.4.5 was the then-current published release; v1.4.6 was published on 6 November.
 - That 5 November documentation/test reconciliation added no new physical-hardware or saved-state-restore evidence.
 - The first documentation-only follow-up's normal CI #1243 failed only two documentation-integrity assertions (a missing exact build-baseline index line and missing historical `run #1239` wording); both records are restored in the follow-up. No runtime/NixOS configuration was changed.
 
@@ -109,6 +115,9 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 - This updates `nixos/home.nix`; the earlier full-system build #11 did not cover the change. Exact-HEAD full-system build #13 and normal CI #1233 subsequently passed on `1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b`, closing the build gate for this profile update.
 
 ### Previous exact-HEAD build, CI and v1.4.2 release verification — 2026-11-05 (historical)
+
+The heading date follows the v1.4.2 publication date. Full-system Build #11 itself ran and completed on 4 November 2026 UTC; Release workflow run #7 published v1.4.2 on 5 November. Full-system build run numbers belong to a separate workflow and must not be confused with release run numbers.
+
 - Reconciled the current-state README, root index, repair report, and documentation-integrity regression with the verified 5 November source snapshot `9661091e35aed98b18483ff6d25a54fe0653c877`.
 - Normal CI #1220 passed all 28 workflow-defined steps on that exact commit; manual full-system build #11 also passed on the same commit, including complete NixOS toplevel/selected-kernel build and unchanged-lock verification.
 - Release workflow run #7 published v1.4.2 from the same commit. The canonical release ZIP contains 72 tracked files and nine executable files, excludes `.git/`, expands `SOURCE_REVISION` to the exact commit, and is accompanied by a SHA-256 manifest.

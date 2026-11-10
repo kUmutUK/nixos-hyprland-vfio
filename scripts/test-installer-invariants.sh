@@ -344,8 +344,14 @@ if grep -Fq 'Skipping missing file:' "$INSTALLER"; then
 fi
 os_check_line="$(grep -nF 'if ! grep -qi nixos /etc/os-release 2>/dev/null; then' "$INSTALLER" | cut -d: -f1)"
 live_check_line="$(grep -n '^if is_nixos_live_installer; then' "$INSTALLER" | cut -d: -f1)"
-if [[ -z "$os_check_line" || -z "$live_check_line" ]] || (( os_check_line >= acknowledgement_line || live_check_line >= acknowledgement_line || os_check_line >= live_check_line )); then
-  echo "FAIL: NixOS and live-installer guards must run before the risk acknowledgement." >&2
+root_check_line="$(grep -nF 'if [[ $EUID -eq 0 ]]; then' "$INSTALLER" | cut -d: -f1)"
+repo_guard_line="$(grep -nF 'ensure_repo_outside_deployment_target "$REPO_DIR" "$NIXOS_DIR"' "$INSTALLER" | cut -d: -f1)"
+lock_line="$(grep -nF 'LOCK_HELPER="$REPO_DIR/scripts/installer-lock.sh"' "$INSTALLER" | cut -d: -f1)"
+banner_line="$(grep -nF 'WARNING: ADVANCED, HIGH-RISK MIGRATION SCRIPT' "$INSTALLER" | cut -d: -f1)"
+experimental_banner_line="$(grep -nF 'EXPERIMENTAL: NOT END-TO-END TESTED ON A TARGET HOST' "$INSTALLER" | cut -d: -f1)"
+if [[ -z "$os_check_line" || -z "$live_check_line" || -z "$root_check_line" || -z "$repo_guard_line" || -z "$lock_line" || -z "$banner_line" || -z "$experimental_banner_line" ]] \
+  || (( os_check_line >= live_check_line || live_check_line >= root_check_line || root_check_line >= repo_guard_line || repo_guard_line >= lock_line || lock_line >= banner_line || banner_line >= experimental_banner_line || experimental_banner_line >= acknowledgement_line )); then
+  echo "FAIL: preflight guards must precede the lock; the experimental warning must appear after the risk banner and before acknowledgement." >&2
   exit 1
 fi
 
@@ -932,7 +938,7 @@ helper_call = 'sudo python3 "$REPO/scripts/sync-vm-xml.py"'
 unsafe_copy = 'sudo cp ./vm-xml/win10.xml /var/lib/libvirt/win10.xml'
 if helper_call not in text or 'generates a fresh UUID and MAC' not in text or unsafe_copy in text:
     raise SystemExit("FAIL: README must use the VM XML helper to synchronize PCI addresses and generate fresh identity for a new VM.")
-if text.index('Path B — Manual migration of an existing NixOS installation (recommended)') > text.index('Path C — Optional `install.sh` migration helper (advanced users only; not the default recommendation)'):
+if text.index('Path B — Manual migration of an existing NixOS installation (recommended)') > text.index('Path C — Experimental `install.sh` migration helper (advanced users only; not the default recommendation)'):
     raise SystemExit("FAIL: README must put manual migration before the optional installer script.")
 if 'use the manual installation steps first' not in text:
     raise SystemExit("FAIL: README must recommend manual installation before install.sh.")

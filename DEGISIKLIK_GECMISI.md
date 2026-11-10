@@ -8,6 +8,8 @@
 
 **Validation boundary:** the last completed full-system build remains manual Build #18 on ancestor `c6f4b955475de2ea16bc2b34c59a95dad3a1ae78`. v1.4.9 did not create a new full-system build or physical-hardware result. This audit follow-up does not claim a new host validation. Changes to `install.sh` remain outside the release ancestor-build allowlist and require the normal full-system-build gate or the explicitly documented target-host attestation before a later release.
 
+**Installer status (updated 10 November 2026):** `install.sh` is experimental. No end-to-end run of `install.sh` against a live NixOS/libvirt target host has been completed. CI coverage is limited to syntax, ShellCheck, and mocked regression tests; no live migration/rollback result is claimed. The 9 November clean-install/VM report is not evidence that this helper was used.
+
 ## Historical verification status snapshot — 2026-11-09
 
 **UUID safety notice:** The committed host Btrfs/LUKS identifiers are intentional for the deployed machine. Do not regenerate or replace them casually; UUID, PARTUUID, and LUKS UUID refer to different storage layers. The Windows libvirt domain UUID/MAC are also persistent identity; only a genuinely new VM receives a fresh pair. See [UUID and machine-identity safeguards](docs/UUID-AND-MACHINE-IDENTITY.md).

@@ -65,6 +65,21 @@ update_qemu_hook_pci() {
 }
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+NIXOS_DIR="/etc/nixos"
+NIXOS_FLAKE_DIR="$NIXOS_DIR/nixos"
+
+# Keep cheap, non-mutating environment checks ahead of the lock, risk banner,
+# and acknowledgement prompt. A rejected invocation must not take the lock.
+ensure_repo_outside_deployment_target() {
+  local repo_dir="$1" nixos_dir="$2" nixos_dir_real
+  [[ -d "$nixos_dir" ]] || return 0
+  nixos_dir_real="$(cd "$nixos_dir" && pwd -P)" || error "Could not resolve deployment directory: $nixos_dir"
+  case "$repo_dir" in
+    "$nixos_dir_real"|"$nixos_dir_real"/*)
+      error "Do not run the repository from /etc/nixos itself or any directory beneath it. Keep the checkout outside /etc/nixos (for example ~/nixos-hyprland-vfio) so source files cannot overlap the deployment target."
+      ;;
+  esac
+}
 
 # Reject unsupported/live environments before acquiring a lock or requesting
 # acknowledgement for this high-risk migration helper.
@@ -84,6 +99,10 @@ is_nixos_live_installer() {
 if is_nixos_live_installer; then
   error "A NixOS live installer environment was detected. Do not run this migration script from the live ISO; follow INSTALLATION.md for a fresh install or boot the installed NixOS system first. No system files have been changed."
 fi
+if [[ $EUID -eq 0 ]]; then
+  error "Do not run as root. Use a normal user with sudo privileges."
+fi
+ensure_repo_outside_deployment_target "$REPO_DIR" "$NIXOS_DIR"
 
 # Fail closed if libvirt cannot confirm that the configured Windows VM is stopped.
 # "shut off" is the only accepted state; running/paused/shutting-down/crashed or
@@ -123,8 +142,6 @@ TARGET_USER="localhost"
 TARGET_HOME="/home/$TARGET_USER"
 # Recovery copies stay in the invoking administrator home.
 BACKUP_DIR="$HOME/.nixos-config-backup-$(date +%Y%m%d-%H%M%S)"
-NIXOS_DIR="/etc/nixos"
-NIXOS_FLAKE_DIR="$NIXOS_DIR/nixos"
 PATCHED_XML="/var/lib/libvirt/win10.xml"
 SNAPSHOT_SUBVOL="/home/.snapshots"
 SNAPSHOT_SUBVOL_CREATED=0
@@ -227,6 +244,10 @@ echo -e "${CYAN}==============================================================${
 echo ""
 
 echo -e "${RED}${BOLD}WARNING: ADVANCED, HIGH-RISK MIGRATION SCRIPT${NC}"
+echo -e "${RED}${BOLD}EXPERIMENTAL: NOT END-TO-END TESTED ON A TARGET HOST${NC}"
+echo ""
+warn "No end-to-end run of install.sh against a live NixOS/libvirt target host has been completed."
+warn "CI covers syntax, ShellCheck, and mocked regression tests; it does not validate a live migration or recovery."
 echo ""
 warn "RECOMMENDED APPROACH: Follow the manual migration steps in README.md first."
 warn "This script is not for a first-time NixOS installation or disk partitioning."
@@ -263,25 +284,8 @@ exit 0
 }
 
 step "Preflight checks"
-# The deployment target is /etc/nixos/nixos. A checkout anywhere inside
-# /etc/nixos can overlap its source and deployment paths, not only when the
-# repository root is exactly /etc/nixos. Resolve physical paths before checking
-# the boundary so symlinked paths cannot bypass this guard.
-ensure_repo_outside_deployment_target() {
-  local repo_dir="$1" nixos_dir="$2" nixos_dir_real
-  [[ -d "$nixos_dir" ]] || return 0
-  nixos_dir_real="$(cd "$nixos_dir" && pwd -P)" || error "Could not resolve deployment directory: $nixos_dir"
-  case "$repo_dir" in
-    "$nixos_dir_real"|"$nixos_dir_real"/*)
-      error "Do not run the repository from /etc/nixos itself or any directory beneath it. Keep the checkout outside /etc/nixos (for example ~/nixos-hyprland-vfio) so source files cannot overlap the deployment target."
-      ;;
-  esac
-}
-ensure_repo_outside_deployment_target "$REPO_DIR" "$NIXOS_DIR"
-if [[ $EUID -eq 0 ]]; then
-  error "Do not run as root. Use a normal user with sudo privileges."
-fi
-# Verify now to stop early, then repeat at the transaction boundary to narrow
+# The root-user and checkout-overlap guards already ran before the warning.
+# Verify VM state now, then repeat at the transaction boundary to narrow
 # the window in which another process could start the guest after this check.
 assert_win10_domain_stopped
 if ! command -v lspci &>/dev/null; then

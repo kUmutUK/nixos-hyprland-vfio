@@ -20,6 +20,7 @@ manual-dispatch input; ordinary pushes and pull requests never publish a release
    `DEGISIKLIK_GECMISI.md`,
    `CONTRIBUTING.md`,
    `CHANGELOG.md`,
+   `DISCLAIMER.md`,
    `docs/REPAIR-AND-VALIDATION-REPORT.md`,
    `docs/UUID-AND-MACHINE-IDENTITY.md`,
    `docs/OPTISCALER.md`,

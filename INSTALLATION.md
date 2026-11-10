@@ -6,6 +6,8 @@ This guide walks through an AMD-oriented **NixOS + LUKS2 + Btrfs + Hyprland + VF
 
 > **Recommended approach: install manually.** This guide is for a clean installation. Follow the steps in order and understand each command before running it. `install.sh` is not a clean installer or disk-partitioning tool; it is an optional, higher-risk helper for advanced users migrating an existing NixOS system. Read [`README.md`](README.md) for its risk notice and the alternative manual migration steps.
 >
+> **EXPERIMENTAL — NOT END-TO-END TESTED:** No end-to-end run of `install.sh` against a live NixOS/libvirt target host has been completed. CI covers Bash syntax, ShellCheck, and mocked installer regressions only; it has not run the helper through a real migration on a live target host or verified live rollback. Treat it as experimental and prefer the manual procedure.
+>
 > The migration helper uses a non-blocking per-user process lock before prompting or deployment. A second run by the same user exits rather than overlapping backups and rollback; separately configured lock paths or different user accounts are not coordinated, so run the migration from one account at a time.
 
 > **Windows 10 guest lifecycle:** the default VM template targets Windows 10 22H2, whose standard Home/Pro support ended on 14 October 2025. The repository does not enroll the guest in ESU or verify license eligibility/update status. Confirm that the installed edition and license receive current security updates under an applicable ESU or other supported lifecycle before using the VM online. See [Microsoft's guidance](https://support.microsoft.com/en-us/windows/windows-10-support-has-ended-on-october-14-2025) and [ESU FAQ](https://learn.microsoft.com/en-us/lifecycle/faq/extended-security-updates). The existing XML is not a Windows 11 migration path.
@@ -1164,7 +1166,7 @@ only for startup troubleshooting; it is not a permanent gaming configuration.
 
 ### Target-host validation — 9 November 2026 (owner-reported)
 
-> The project owner reports that NixOS was installed from scratch on the reference hardware without issues. The **Windows 10 VFIO VM** started successfully and shut down normally; GPU control returned to the host and Hyprland resumed. This records the ordinary VM lifecycle only. A libvirt saved-state/managed-save restore, HDR transitions, 10-bit output, and display flicker were not separately validated.
+> The project owner reports that NixOS was installed from scratch on the reference hardware without issues. The **Windows 10 VFIO VM** started successfully and shut down normally; GPU control returned to the host and Hyprland resumed. This records the ordinary VM lifecycle only. A libvirt saved-state/managed-save restore, HDR transitions, 10-bit output, and display flicker were not separately validated. This does not validate `install.sh`; the recorded clean-install report does not establish that the helper was used.
 
 ---
 

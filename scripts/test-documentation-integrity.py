@@ -53,6 +53,21 @@ readme_top = "\n".join(README.splitlines()[:8])
 require("docs/REPAIR-AND-VALIDATION-REPORT.md" in readme_top and "docs/AUDIT-2026-10-28-VM-XML-VFIO.md" not in readme_top, "README must point to the current repair report, not the older audit")
 require("2026-11-04 source-tree cross-checks" in readme_top, "README must identify the current 2026-11-04 source-tree cross-check")
 require(
+    "EXPERIMENTAL: NOT END-TO-END TESTED ON A TARGET HOST" in INSTALLER
+    and "EXPERIMENTAL — NOT END-TO-END TESTED" in README
+    and all(
+        "No end-to-end run of `install.sh` against a live NixOS/libvirt target host has been completed."
+        in document
+        for document in (
+            README, INSTALLATION, CONTRIBUTING, DISCLAIMER,
+            CHANGELOG, STATE_INDEX, REPAIR,
+        )
+    )
+    and "The 9 November owner-reported clean-install/VM result does not establish that `install.sh` was used or tested." in README
+    and "mocked installer-invariant/rollback tests" in README,
+    "install.sh must be labeled experimental and static/mock coverage must not be presented as live target-host validation",
+)
+require(
     "docs/UUID-AND-MACHINE-IDENTITY.md" in README
     and "docs/UUID-AND-MACHINE-IDENTITY.md" in INSTALLATION
     and "[UUID and machine-identity safeguards](docs/UUID-AND-MACHINE-IDENTITY.md)" in STATE_INDEX,
@@ -491,8 +506,12 @@ require(
     "the previous v1.4.4 release must remain recorded as a historical snapshot",
 )
 require(
-    "v1.4.3" in REPAIR and "no GitHub Release" in REPAIR and "incorrect" in REPAIR,
-    "repair report must distinguish the legacy v1.4.3 tag and v1.4.4 heading anomaly",
+    "v1.4.3 GitHub Release restored/published" in REPAIR
+    and "440298465" in REPAIR
+    and "2026-11-10 at 11:52:57 UTC" in REPAIR
+    and "7f923a2c7aa59721bc00728faccbc073e06c697a" in REPAIR
+    and "The older v1.4.4 release description still carries its incorrect v1.4.3 heading" in REPAIR,
+    "repair report must distinguish the republished v1.4.3 Release from the historical v1.4.4 heading anomaly",
 )
 require("manual run #9" in REPAIR and "full-system build baseline" in REPAIR and "ab89f350803d47eb16499c613b110da05a57673f" in REPAIR,
         "repair report must identify the successful exact-HEAD full-system build baseline")
@@ -529,6 +548,7 @@ verification_metadata_paths = {
     ".github/workflows/release.yml",
     "CHANGELOG.md",
     "CONTRIBUTING.md",
+    "DISCLAIMER.md",
     "DEGISIKLIK_GECMISI.md",
     "README.md",
     "INSTALLATION.md",
@@ -903,11 +923,44 @@ contrib_bash_loop = re.search(
     r"(?ms)^  for f in (?P<body>[^;\n]+); do\n    bash -n \"\$f\"",
     CONTRIBUTING,
 )
-require(readme_bash_loop is not None and contrib_bash_loop is not None, "README and CONTRIBUTING must both expose a full Bash syntax-check loop")
-if readme_bash_loop is not None and contrib_bash_loop is not None:
+ci_shellcheck = re.search(r"(?m)^\s+shellcheck -S warning (?P<files>[^\n]+)$", CHECK_WORKFLOW)
+require(
+    readme_bash_loop is not None and contrib_bash_loop is not None and ci_shellcheck is not None,
+    "README, CONTRIBUTING, and CI must expose their complete Bash/ShellCheck script lists",
+)
+if readme_bash_loop is not None and contrib_bash_loop is not None and ci_shellcheck is not None:
     readme_bash_files = {line.strip().removesuffix("\\").strip() for line in readme_bash_loop.group("body").splitlines() if line.strip()}
     contributing_bash_files = set(contrib_bash_loop.group("body").split())
+    ci_shellcheck_files = set(ci_shellcheck.group("files").split())
     require(readme_bash_files == contributing_bash_files, "README and CONTRIBUTING Bash syntax-check file lists have drifted")
+    require(contributing_bash_files == ci_shellcheck_files, "CONTRIBUTING Bash syntax and CI ShellCheck file lists have drifted")
+
+contributing_embedded_count = re.search(r"Expected (\d+) embedded Bash scripts", CONTRIBUTING)
+ci_embedded_count = re.search(r'(?m)^\s+if \[ "\$n" -ne (\d+) \]; then$', CHECK_WORKFLOW)
+require(
+    contributing_embedded_count is not None
+    and ci_embedded_count is not None
+    and contributing_embedded_count.group(1) == ci_embedded_count.group(1) == "7",
+    "CONTRIBUTING and CI must agree on the seven embedded Bash scripts",
+)
+
+require(
+    "Full-system build run-number reconciliation" in REPAIR
+    and "No run #14 record was present in the retrieved Actions history" in REPAIR
+    and "Run #15 and #16 both succeeded on the same exact source commit" in REPAIR,
+    "repair report must reconcile full-system build run numbers with the retrieved workflow history",
+)
+require(
+    "379,511 bytes for the outer GitHub Actions ZIP wrapper" in REPAIR
+    and "388,000-byte canonical inner source ZIP" in REPAIR
+    and "7621fcdccfe327e9e59f453947b9f7903cd0f477b73cde8f4aa5ee513061e0ff" in REPAIR,
+    "v1.4.4 artifact documentation must distinguish the outer artifact from the checksum-verified inner source ZIP",
+)
+require(
+    "Build #11 ran on 4 November 2026 UTC" in REPAIR
+    and "v1.4.2 was released on 5 November 2026" in REPAIR,
+    "Build #11 run date must be distinguished from the next-day v1.4.2 release date",
+)
 require("Current configuration notes — 2026-11-04" in STATE_INDEX, "current-state index date is stale")
 require("2026-10-28 entry" in STATE_INDEX and "2026-10-27 entry" not in STATE_INDEX, "root index must point to the 2026-10-28 CHANGELOG section")
 require("copy all six required Nix/flake files" in README and "copy all five required Nix/flake files" not in README and "four flake files" not in README, "README must describe the six-file migration accurately")
@@ -1228,8 +1281,8 @@ else:
     documented_release_paths = set()
     workflow_release_paths = set()
 require(
-    documented_release_paths == workflow_release_paths and len(workflow_release_paths) == 39,
-    "RELEASING.md and release.yml must contain the same exhaustive 39-path literal allowlist",
+    documented_release_paths == workflow_release_paths and len(workflow_release_paths) == 40,
+    "RELEASING.md and release.yml must contain the same exhaustive 40-path literal allowlist",
 )
 require(
     "no wildcard rules or blanket exemptions" in RELEASING
