@@ -2,6 +2,8 @@
 """Fail-closed verification of Home Snapper's Btrfs mounts and UUIDs."""
 from __future__ import annotations
 
+import argparse
+import os
 import re
 import subprocess
 import sys
@@ -100,6 +102,31 @@ def configured_uuid(device: str) -> str:
     return result.lower()
 
 
+def btrfs_subvolume_name(path: str, accepted_names: set[str]) -> str:
+    try:
+        result = subprocess.run(
+            ["sudo", "btrfs", "subvolume", "show", path],
+            check=False,
+            capture_output=True,
+            text=True,
+            env={**os.environ, "LC_ALL": "C"},
+        )
+    except OSError as error:
+        fail(f"could not run btrfs to verify subvolume {path}: {error}")
+    if result.returncode != 0:
+        fail(f"{path} is not an existing Btrfs subvolume; create/review it manually before continuing")
+    match = re.search(r"(?m)^Name:\s*(.+?)\s*$", result.stdout)
+    if match is None:
+        fail(f"btrfs did not report a subvolume name for {path}")
+    name = match.group(1)
+    if name not in accepted_names:
+        fail(
+            f"{path} must be the expected child subvolume "
+            f"({', '.join(sorted(accepted_names))}); observed Name: {name!r}"
+        )
+    return name
+
+
 def mounted_filesystem(mountpoint: str, required: bool) -> dict[str, str] | None:
     try:
         result = subprocess.run(
@@ -133,7 +160,7 @@ def mounted_subvolume(mount: dict[str, str], mountpoint: str, expected: str) -> 
         fail(f"{mountpoint} must be mounted from subvol={expected}; observed options: {options!r}")
 
 
-def validate(config_path: Path) -> None:
+def validate(config_path: Path, allow_missing_snapshots: bool = False) -> None:
     try:
         text = strip_nix_comments(config_path.read_text(encoding="utf-8"))
     except (OSError, UnicodeError) as error:
@@ -143,6 +170,19 @@ def validate(config_path: Path) -> None:
     snapshots_device = resolve_device(
         parse_filesystem(text, "/home/.snapshots", "@home/.snapshots"), text
     )
+    btrfs_subvolume_name("/home", {"@home"})
+    snapshots_subvolume: str | None
+    try:
+        snapshots_subvolume = btrfs_subvolume_name(
+            "/home/.snapshots", {".snapshots", "@home/.snapshots"}
+        )
+    except RuntimeError:
+        if not allow_missing_snapshots:
+            raise
+        # install.sh performs an immediate lstat/symlink check and rejects an
+        # existing non-subvolume path, then creates and verifies a genuinely
+        # missing child inside its rollback-protected transaction. Do not make
+        # the test result depend on the host runner's /home directory contents.
     home_config_uuid = configured_uuid(home_device)
     snapshots_config_uuid = configured_uuid(snapshots_device)
     if home_config_uuid != snapshots_config_uuid:
@@ -156,21 +196,40 @@ def validate(config_path: Path) -> None:
 
     snapshots_mount = mounted_filesystem("/home/.snapshots", required=False)
     if snapshots_mount is not None:
+        if snapshots_subvolume is None:
+            fail("/home/.snapshots is mounted but its Btrfs subvolume could not be verified")
         mounted_subvolume(snapshots_mount, "/home/.snapshots", "@home/.snapshots")
         if snapshots_mount["uuid"] != home_mount["uuid"]:
             fail("/home/.snapshots is mounted from a different filesystem UUID than /home")
 
 
 def main(argv: list[str]) -> int:
-    if len(argv) != 2:
-        print(f"Usage: {Path(argv[0]).name} TARGET_HARDWARE_CONFIGURATION_NIX", file=sys.stderr)
-        return 2
+    parser = argparse.ArgumentParser(
+        description="Verify the Home Snapper Btrfs mount, UUID, and subvolume layout."
+    )
+    parser.add_argument("target_hardware_configuration_nix", type=Path)
+    parser.add_argument(
+        "--allow-missing-snapshots",
+        action="store_true",
+        help=(
+            "allow /home/.snapshots to be absent so an installer can create the "
+            "required child subvolume later in its transaction; an existing "
+            "non-subvolume path is still rejected"
+        ),
+    )
+    args = parser.parse_args(argv[1:])
     try:
-        validate(Path(argv[1]))
+        validate(
+            args.target_hardware_configuration_nix,
+            allow_missing_snapshots=args.allow_missing_snapshots,
+        )
     except (RuntimeError, AssertionError) as error:
         print(f"ERROR: Home Snapper preflight: {error}", file=sys.stderr)
         return 1
-    print("OK: Home Snapper @home, .snapshots mount, and target UUID layout verified.")
+    if args.allow_missing_snapshots:
+        print("OK: Home Snapper @home mount and target UUID layout verified; install.sh will verify or create the .snapshots child inside its transaction.")
+    else:
+        print("OK: Home Snapper @home and .snapshots subvolumes, mounts, and target UUID layout verified.")
     return 0
 
 

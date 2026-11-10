@@ -28,6 +28,13 @@ manual-dispatch input; ordinary pushes and pull requests never publish a release
    `docs/archive/DEGISIKLIK_GECMISI.md`,
    `docs/archive/README.md`,
    `docs/archive/HISTORICAL-AUDITS.md`,
+   `scripts/check-home-snapper-layout.py`,
+   `scripts/test-home-snapper-layout.py`,
+   `scripts/check-vm-iso-paths.py`,
+   `scripts/test-vm-iso-paths.py`,
+   `scripts/test-vm-xml.py`,
+   `scripts/extract-embedded-scripts.py`,
+   `scripts/test-extract-embedded-scripts.py`,
    `scripts/test-mako-renderer.py`,
    `scripts/optiscaler_manager.py`,
    `scripts/test-optiscaler-manager.py`,
@@ -46,7 +53,9 @@ manual-dispatch input; ordinary pushes and pull requests never publish a release
    `.github/workflows/kernel-build.yml`,
    `.github/workflows/release.yml`
 
-   Any later change outside this exact list, including a documentation or test file not named above, blocks publication by default and requires a new full-system build.
+   The list is intentionally limited to documentation, CI/release metadata, standalone migration helpers, and offline tests that do not change the installed NixOS toplevel or selected kernel. A file is not eligible merely because it lives under `scripts/` or is labelled a test: each accepted path is named explicitly and reviewed against the runtime/build boundary.
+
+   Any later change outside this exact list, including a documentation or test file not named above, blocks publication by default and requires a new full-system build. In particular, changes to `install.sh` remain gated by a new full-system build and are intentionally excluded from this ancestor-build allowlist.
 
    For a manual **Release** dispatch from `main`, the workflow also exposes a
    `target_host_validated` checkbox. This is a narrow maintainer attestation

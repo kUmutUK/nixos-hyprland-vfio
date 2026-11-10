@@ -34,6 +34,39 @@ in {{
 '''
 
 
+def write_fake_btrfs(path: Path) -> None:
+    path.write_text(
+        """#!/bin/sh
+if [ "$1" != subvolume ] || [ "$2" != show ]; then
+  exit 2
+fi
+case "$3" in
+  /home)
+    [ "${TEST_HOME_SUBVOL:-present}" = present ] || exit 1
+    printf 'Name: %s\n' "${TEST_HOME_SUBVOL_NAME:-@home}"
+    ;;
+  /home/.snapshots)
+    [ "${TEST_SNAPSHOT_SUBVOL:-present}" = present ] || exit 1
+    printf 'Name: %s\n' "${TEST_SNAPSHOT_SUBVOL_NAME:-.snapshots}"
+    ;;
+  *)
+    exit 1
+    ;;
+esac
+""",
+        encoding="utf-8",
+    )
+    path.chmod(0o755)
+
+
+def write_fake_sudo(path: Path) -> None:
+    path.write_text(
+        '#!/bin/sh\nexec "$@"\n',
+        encoding="utf-8",
+    )
+    path.chmod(0o755)
+
+
 def write_fake_findmnt(path: Path) -> None:
     path.write_text(
         '''#!/bin/sh
@@ -72,6 +105,7 @@ def run_case(
     config_text: str,
     overrides: dict[str, str],
     expected_success: bool,
+    allow_missing_snapshots: bool = False,
 ) -> None:
     config_path.write_text(config_text, encoding="utf-8")
     environment = os.environ.copy()
@@ -88,11 +122,18 @@ def run_case(
             "TEST_SNAPSHOT_SOURCE": f"/dev/disk/by-uuid/{HOME_UUID}",
             "TEST_SNAPSHOT_FSTYPE": "btrfs",
             "TEST_SNAPSHOT_OPTIONS": "rw,subvol=/@home/.snapshots",
+            "TEST_HOME_SUBVOL": "present",
+            "TEST_HOME_SUBVOL_NAME": "@home",
+            "TEST_SNAPSHOT_SUBVOL": "present",
+            "TEST_SNAPSHOT_SUBVOL_NAME": ".snapshots",
         }
     )
     environment.update(overrides)
+    command = [sys.executable, str(CHECKER), str(config_path)]
+    if allow_missing_snapshots:
+        command.append("--allow-missing-snapshots")
     result = subprocess.run(
-        [sys.executable, str(CHECKER), str(config_path)],
+        command,
         check=False,
         capture_output=True,
         text=True,
@@ -114,11 +155,46 @@ def main() -> int:
         bin_dir = base / "bin"
         bin_dir.mkdir()
         write_fake_findmnt(bin_dir / "findmnt")
+        write_fake_btrfs(bin_dir / "btrfs")
+        write_fake_sudo(bin_dir / "sudo")
         config_path = base / "hardware-configuration.nix"
         valid = fixture_config()
 
-        run_case("valid @home; missing snapshot subvolume may be created later", bin_dir, config_path, valid, {}, True)
+        run_case("valid @home and existing unmounted .snapshots subvolumes", bin_dir, config_path, valid, {}, True)
         run_case("valid separately mounted @home/.snapshots", bin_dir, config_path, valid, {"TEST_SNAPSHOT_MOUNT": "present"}, True)
+        run_case(
+            "reject missing .snapshots Btrfs subvolume in strict manual mode",
+            bin_dir,
+            config_path,
+            valid,
+            {"TEST_SNAPSHOT_SUBVOL": "missing"},
+            False,
+        )
+        run_case(
+            "installer preflight allows a missing child for its later create step",
+            bin_dir,
+            config_path,
+            valid,
+            {"TEST_SNAPSHOT_SUBVOL": "missing"},
+            True,
+            allow_missing_snapshots=True,
+        )
+        run_case(
+            "reject wrong .snapshots Btrfs subvolume name",
+            bin_dir,
+            config_path,
+            valid,
+            {"TEST_SNAPSHOT_SUBVOL_NAME": "@snapshots"},
+            False,
+        )
+        run_case(
+            "reject wrong /home Btrfs subvolume name",
+            bin_dir,
+            config_path,
+            valid,
+            {"TEST_HOME_SUBVOL_NAME": "@"},
+            False,
+        )
         run_case("reject non-Btrfs /home", bin_dir, config_path, valid, {"TEST_HOME_FSTYPE": "ext4"}, False)
         run_case("reject /home without an exact mount", bin_dir, config_path, valid, {"TEST_HOME_MOUNT": "missing"}, False)
         run_case("reject active /home mounted from wrong subvolume", bin_dir, config_path, valid, {"TEST_HOME_OPTIONS": "rw,subvol=/@"}, False)

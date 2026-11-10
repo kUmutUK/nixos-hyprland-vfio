@@ -4,6 +4,16 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+### Remaining audit remediation — 2026-11-10
+
+- Use privileged `sudo cp -a` for installer recovery backups of root-owned or mode-restricted targets.
+- Refuse VM XML template/destination identity, including resolved symlink and hard-link aliases, with regression coverage.
+- Require a real `@home` Btrfs subvolume in all Home Snapper modes; strict manual checks require the existing child `@home/.snapshots`, while the installer uses an explicit allow-missing flag only because its later rollback-protected transaction creates that child. README and INSTALLATION now share the strict checker; regression tests cover both modes.
+- Document the exact 39-path ancestor-build allowlist selection principle and keep `install.sh` gated by a fresh full-system build.
+- Make installer PCI updates preserve valid leading indentation, keep preflight and replacement syntax consistent, print named-user tilde errors outside command substitution, and state explicitly that failed variable substitutions abort into transaction rollback.
+- Add regression coverage proving untouched VFIO devices are skipped during rollback, the VM primary disk stays virtio and both CD-ROMs stay SATA, empty/network CD-ROM sources are valid non-file-backed media, CLI checker errors go to stderr, and line-leading Nix `''${` escapes are not mistaken for indented-string terminators.
+- Disambiguate the 4 November configuration/installer cross-check from the separately numbered ninth audit; distinguish the v1.4.4 CI artifact and release ZIP records without inventing an explanation for their size difference.
+
 ### Audit remediation — 2026-11-10
 
 - Fixed installer signal handling so INT, TERM, and HUP exit with non-zero statuses and reach the existing transactional rollback path; added subprocess regressions for all three signals.

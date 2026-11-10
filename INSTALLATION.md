@@ -826,11 +826,14 @@ lsblk -o NAME,TYPE,FSTYPE,PKNAME,MOUNTPOINTS
 systemctl --failed
 findmnt -T /home/.snapshots -o TARGET,SOURCE,FSTYPE,OPTIONS
 ls -ld /home/.snapshots
+REPO="$HOME/nixos-hyprland-vfio"  # change if your checkout is elsewhere
+python3 "$REPO/scripts/check-home-snapper-layout.py" /etc/nixos/nixos/hardware-configuration.nix
 ```
 
 The kernel release should identify the CachyOS kernel. With random swap encryption,
 `swapon --show` should list the encrypted mapper, not the raw swap partition. The
-Home Snapper path must be mounted from Btrfs subvolume `@home/.snapshots`. Review
+strict Home Snapper checker must pass: `/home` must be the `@home` Btrfs subvolume,
+and `/home/.snapshots` must be its existing `@home/.snapshots` child. Review
 any output from `systemctl --failed` before proceeding; an empty list is the expected
 healthy result. Also verify IOMMU/AMD-Vi in firmware and at runtime before using VFIO.
 

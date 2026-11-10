@@ -25,16 +25,22 @@ update_qemu_hook_pci() {
   [[ "$gpu_audio" =~ ^[[:xdigit:]]{4}:[[:xdigit:]]{2}:[01][[:xdigit:]]\.[0-7]$ ]] || return 1
 
   if ! sudo awk '
-    /^[[:space:]]*GPU_PCI[[:space:]]*=/ { gpu_count++ }
-    /^[[:space:]]*GPU_AUDIO[[:space:]]*=/ { audio_count++ }
-    END { exit !(gpu_count == 1 && audio_count == 1) }
+    /^[[:space:]]*GPU_PCI[[:space:]]*=/ {
+      gpu_count++
+      if ($0 !~ /^[[:space:]]*GPU_PCI="[^"]*"$/) invalid=1
+    }
+    /^[[:space:]]*GPU_AUDIO[[:space:]]*=/ {
+      audio_count++
+      if ($0 !~ /^[[:space:]]*GPU_AUDIO="[^"]*"$/) invalid=1
+    }
+    END { exit !(gpu_count == 1 && audio_count == 1 && !invalid) }
   ' "$hook_path"; then
     return 1
   fi
 
-  if ! sudo sed -i \
-    -e "s|^GPU_PCI=\"[^\"]*\"$|GPU_PCI=\"${gpu_pci}\"|" \
-    -e "s|^GPU_AUDIO=\"[^\"]*\"$|GPU_AUDIO=\"${gpu_audio}\"|" \
+  if ! sudo sed -i -E \
+    -e "s|^([[:space:]]*)GPU_PCI=\"[^\"]*\"$|\\1GPU_PCI=\"${gpu_pci}\"|" \
+    -e "s|^([[:space:]]*)GPU_AUDIO=\"[^\"]*\"$|\\1GPU_AUDIO=\"${gpu_audio}\"|" \
     "$hook_path"; then
     return 1
   fi
@@ -42,8 +48,18 @@ update_qemu_hook_pci() {
   sudo awk -v expected_gpu="GPU_PCI=\"${gpu_pci}\"" \
     -v expected_audio="GPU_AUDIO=\"${gpu_audio}\"" '
       BEGIN { gpu_ok = 1; audio_ok = 1 }
-      /^GPU_PCI=/ { gpu_count++; if ($0 != expected_gpu) gpu_ok = 0 }
-      /^GPU_AUDIO=/ { audio_count++; if ($0 != expected_audio) audio_ok = 0 }
+      /^[[:space:]]*GPU_PCI=/ {
+        gpu_count++
+        value = $0
+        sub(/^[[:space:]]*/, "", value)
+        if (value != expected_gpu) gpu_ok = 0
+      }
+      /^[[:space:]]*GPU_AUDIO=/ {
+        audio_count++
+        value = $0
+        sub(/^[[:space:]]*/, "", value)
+        if (value != expected_audio) audio_ok = 0
+      }
       END { exit !(gpu_count == 1 && gpu_ok && audio_count == 1 && audio_ok) }
     ' "$hook_path"
 }
@@ -190,8 +206,8 @@ require_btrfs_home() {
     error "No readable target hardware-configuration.nix is available for Home Snapper validation: $hardware_config"
     return 1
   fi
-  if ! "$PYTHON3" "$REPO_DIR/scripts/check-home-snapper-layout.py" "$hardware_config"; then
-    error "Home Snapper preflight rejected the active mount or target UUID/subvolume layout. No system files have been changed."
+  if ! "$PYTHON3" "$REPO_DIR/scripts/check-home-snapper-layout.py" "$hardware_config" --allow-missing-snapshots; then
+    error "Home Snapper preflight rejected the active mount, target UUID/subvolume layout, or an invalid existing .snapshots path. No system files have been changed."
     return 1
   fi
   if [[ -L "$SNAPSHOT_SUBVOL" ]]; then
@@ -559,7 +575,7 @@ local tilde_prefix='~/'
   case "$value" in
     '~')                  printf '%s' "$TARGET_HOME" ;;
     "$tilde_prefix"*)    printf '%s/%s' "$TARGET_HOME" "${value:2}" ;;
-    '~'*)                 error "Named-user tilde paths are not supported; use an absolute path or ~/relative/path." ;;
+    '~'*)                 printf '%s\n' "Named-user tilde paths are not supported; use an absolute path or ~/relative/path." >&2; return 1 ;;
     *)                    printf '%s' "$value" ;;
   esac
 }
@@ -643,7 +659,7 @@ for src in "$TARGET_HOME/.config/hypr" "$TARGET_HOME/.config/waybar" "$TARGET_HO
         # preserves symlink identity and metadata in the recovery copy instead
         # of dereferencing links and turning their targets into ordinary files.
         backup_name="$(printf '%s' "$src" | tr '/' '_')"
-        if cp -a -- "$src" "$BACKUP_DIR/$backup_name" 2>/dev/null; then
+        if sudo cp -a -- "$src" "$BACKUP_DIR/$backup_name" 2>/dev/null; then
             log "Backed up: $backup_name"
         else
             warn "Backup FAILED for: $src"
@@ -1115,7 +1131,7 @@ except BaseException:
     raise
 PYEOF
   then
-    warn "Failed to substitute '${var_name}' — home.nix was NOT modified."
+    warn "Failed to substitute '${var_name}'; aborting so the transaction rollback runs (this substitution did not modify home.nix)."
     return 1
   fi
   log "Set ${var_name}."

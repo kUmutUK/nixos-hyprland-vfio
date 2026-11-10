@@ -243,6 +243,21 @@ require(
     "status index must describe the current explicit git-cliff manual-release range",
 )
 require(
+    'sudo cp -a -- "$src" "$BACKUP_DIR/$backup_name"' in INSTALLER,
+    "installer backups must read root-owned deployment targets through sudo",
+)
+require(
+    'python3 "$REPO/scripts/check-home-snapper-layout.py" "$TARGET_HW"' in README
+    and '"$REPO_DIR/scripts/check-home-snapper-layout.py" "$hardware_config" --allow-missing-snapshots' in INSTALLER
+    and "existing child `@home/.snapshots` subvolume" in README
+    and "--allow-missing-snapshots" in INSTALLER,
+    "manual migration must require the existing child subvolume while installer mode permits only a missing child for its later transaction create step",
+)
+require(
+    "check-home-snapper-layout.py" in INSTALLATION and "check-home-snapper-layout.py" in README,
+    "README and INSTALLATION must direct manual checks through the shared Home Snapper validator",
+)
+require(
     all(item in INSTALLER for item in (
         "trap 'exit 130' INT",
         "trap 'exit 143' TERM",
@@ -526,6 +541,13 @@ verification_metadata_paths = {
     "docs/archive/DEGISIKLIK_GECMISI.md",
     "docs/archive/README.md",
     "docs/archive/HISTORICAL-AUDITS.md",
+    "scripts/check-home-snapper-layout.py",
+    "scripts/test-home-snapper-layout.py",
+    "scripts/check-vm-iso-paths.py",
+    "scripts/test-vm-iso-paths.py",
+    "scripts/test-vm-xml.py",
+    "scripts/extract-embedded-scripts.py",
+    "scripts/test-extract-embedded-scripts.py",
     "scripts/prepare-vm-diagnostic.py",
     "scripts/test-vm-diagnostic.py",
     "scripts/test-vm-xml-paths.py",
@@ -1206,8 +1228,8 @@ else:
     documented_release_paths = set()
     workflow_release_paths = set()
 require(
-    documented_release_paths == workflow_release_paths and len(workflow_release_paths) == 32,
-    "RELEASING.md and release.yml must contain the same exhaustive 32-path literal allowlist",
+    documented_release_paths == workflow_release_paths and len(workflow_release_paths) == 39,
+    "RELEASING.md and release.yml must contain the same exhaustive 39-path literal allowlist",
 )
 require(
     "no wildcard rules or blanket exemptions" in RELEASING

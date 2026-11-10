@@ -43,6 +43,21 @@ def main() -> int:
     if extracted is None or not extracted.startswith("#!/usr/bin/env bash\n") or "printf 'OK'" not in extracted:
         raise AssertionError(f"valid script body was not extracted from its own attribute: {extracted!r}")
 
+    # A line-leading Nix interpolation escape is body content, not a closer.
+    escaped_lines = [
+        '  home.file."escaped" = {',
+        "    text = ''",
+        "      ''${pkgs.bash}/bin/bash",
+        "      printf 'OK'",
+        "    '';",
+        "  };",
+    ]
+    escaped = extractor.extract(escaped_lines, 0)
+    if escaped != "/usr/bin/env bash\nprintf 'OK'":
+        raise AssertionError(
+            f"line-leading Nix interpolation escape was not preserved as script content: {escaped!r}"
+        )
+
     # Unterminated indented strings must fail rather than consume the rest of
     # home.nix as if it were script content.
     malformed_blocks = [

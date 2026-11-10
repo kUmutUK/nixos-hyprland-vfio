@@ -81,6 +81,8 @@ def main() -> int:
     disk_one = boot_entries[1]
     if disk_one.get("device") != "disk" or disk_one.find("target") is None:
         return fail("boot order 1 must refer to the virtual system disk")
+    if disk_one.find("target").get("bus") != "virtio":
+        return fail("the primary Windows system disk must use the virtio bus")
 
     # The template has two file-backed CD-ROMs. Their roles are defined by
     # boot priority, not filename conventions: the earlier optical boot entry
@@ -121,8 +123,10 @@ def main() -> int:
         return fail("the virtual system disk must boot before the Windows and VirtIO CD-ROMs")
     # Boot-order uniqueness is checked above, so the second optical entry is
     # guaranteed to have a later boot priority than the first.
-    if windows_iso.find("target") is None or windows_iso.find("target").get("bus") != "sata":
-        return fail("Windows installation ISO should use the SATA CD-ROM device")
+    for role, cdrom in (("Windows installer", cdroms[0]), ("VirtIO driver", cdroms[1])):
+        target = cdrom.find("target")
+        if target is None or target.get("bus") != "sata":
+            return fail(f"{role} CD-ROM must use the SATA CD-ROM device bus")
 
     # The default template intentionally includes two active USB passthrough
     # entries. Keep this invariant in sync with the README: install.sh only

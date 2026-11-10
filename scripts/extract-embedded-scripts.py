@@ -58,7 +58,9 @@ def extract(lines, index, direct=False):
     body = []
     closed = False
     for line in lines[start + 1:]:
-        if line.strip().startswith(CLOSER):
+        # A Nix indented-string terminator is standalone. A line-leading
+        # escape such as ''${ at the start of a script line is body content.
+        if re.fullmatch(r"''\s*;?\s*", line.strip()):
             closed = True
             break
         body.append(line)

@@ -324,6 +324,17 @@ def main() -> int:
     template_path = Path(template_name)
     destination = Path(destination_name)
     try:
+        template_identity = template_path.resolve(strict=True)
+        destination_identity = destination.resolve(strict=False)
+        same_inode = destination.exists() and os.path.samefile(template_path, destination)
+    except OSError as exc:
+        fail(f"could not compare VM XML template and destination paths safely: {exc}")
+    if template_identity == destination_identity or same_inode:
+        fail(
+            "VM XML template and deployed destination resolve to the same file; "
+            "refusing to overwrite the source template."
+        )
+    try:
         template_data = template_path.read_text(encoding="utf-8")
     except OSError as exc:
         fail(f"could not read VM XML template {template_path}: {exc}")

@@ -452,6 +452,7 @@ def validate_state_document(value: object, description: str) -> dict:
             raise ManagerError(f"{description} contains an invalid managed-file path.")
         if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-fA-F]{64}", digest):
             raise ManagerError(f"{description} contains an invalid SHA-256 for {relative!r}.")
+        files[relative] = digest.lower()
     originals = value.get("originals", {})
     if not isinstance(originals, dict):
         raise ManagerError(f"{description} has an invalid original-files map.")
@@ -961,6 +962,16 @@ def command_download(args: argparse.Namespace) -> None:
     print(f"Asset: {asset}")
 
 
+def read_confirmation(prompt: str) -> str:
+    try:
+        return input(prompt)
+    except EOFError as error:
+        raise ManagerError(
+            "Interactive confirmation requires an open terminal; stdin reached EOF. "
+            "Retry the command from a terminal."
+        ) from error
+
+
 def command_install(args: argparse.Namespace) -> None:
     if not args.confirm_offline_singleplayer:
         raise ManagerError(
@@ -971,7 +982,7 @@ def command_install(args: argparse.Namespace) -> None:
     print("WARNING: OptiScaler can trigger anti-cheat and account penalties.")
     print("Continue only for an offline/single-player game whose mod policy permits it.")
     print(f"Target directory: {game_dir}")
-    if input("Type INSTALL to confirm this per-game change: ").strip() != "INSTALL":
+    if read_confirmation("Type INSTALL to confirm this per-game change: ").strip() != "INSTALL":
         raise ManagerError("Installation cancelled.")
     with game_operation_lock(game_dir):
         archive, version, asset = download_release(args.sha256)
@@ -1012,7 +1023,15 @@ def command_status(args: argparse.Namespace) -> None:
             print("Modified: " + ", ".join(mismatches))
         if missing:
             print("Missing: " + ", ".join(missing))
-        print(f"Rollback available: {'yes' if state.get('rollback_available') else 'no'}")
+        rollback_transaction = backup_root(game_dir) / "rollback" / "transaction.json"
+        rollback_available = (
+            state.get("rollback_available") is True
+            and not rollback_transaction.is_symlink()
+            and rollback_transaction.is_file()
+        )
+        print(f"Rollback available: {'yes' if rollback_available else 'no'}")
+        if state.get("rollback_available") is True and not rollback_available:
+            print("WARNING: manager state says rollback is available, but its transaction backup is missing; inspect backups before attempting recovery.")
 
 
 def command_rollback(args: argparse.Namespace) -> None:

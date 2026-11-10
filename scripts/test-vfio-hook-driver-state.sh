@@ -120,6 +120,10 @@ fi
 if device_bound_to_vfio "$DEVICE" "$DEVICES_ROOT"; then
   fail 'unbound device was reported as bound to vfio-pci'
 fi
+before_untouched="${#released_devices[@]}"
+restore_prepare_device "$DEVICE" 0 "$DEVICES_ROOT"
+[[ "${#released_devices[@]}" -eq "$before_untouched" ]] \
+  || fail 'rollback touched a device that was never changed by the prepare phase'
 restore_prepare_device "$DEVICE" 1 "$DEVICES_ROOT"
 [[ "${#released_devices[@]}" -eq 1 && "${released_devices[0]}" == "$DEVICE" ]] \
   || fail 'rollback did not try to restore the host driver for an unbound device'

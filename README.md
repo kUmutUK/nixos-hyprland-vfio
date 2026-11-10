@@ -211,105 +211,16 @@ Verify the resulting mount with `findmnt /mnt/media` before building or activati
 
 **Mandatory Home Snapper preflight — stop before build/switch if any check fails.**
 
-The shipped `configuration.nix` enables Home Snapper for `/home`. Its matching machine-specific hardware configuration must mount a real Btrfs child subvolume `@home/.snapshots` at `/home/.snapshots`, using the same Btrfs device/UUID as `/home` and `neededForBoot = true`. Do not copy the repository's sample UUIDs. Run this check after choosing/merging the target hardware configuration and before the build or activation:
+The shipped configuration requires both a real Btrfs `@home` subvolume and an existing child `@home/.snapshots` subvolume. Their target hardware-configuration entries must use the same Btrfs UUID, the expected `subvol=` values, and `neededForBoot = true` for the snapshot mount. A separately mounted `/home/.snapshots` is optional, but the subvolume itself is not. Do not copy sample UUIDs.
+
+Use the repository checker below in its strict default mode. It validates the configured UUIDs, active `/home` mount, actual Btrfs subvolume names, and the optional exact `/home/.snapshots` mount. The installer calls the same checker with `--allow-missing-snapshots`: a truly absent child is allowed at the early preflight because the installer creates it later inside its rollback-protected transaction; an existing path that is not a Btrfs subvolume is still rejected. The checker uses `sudo` only for privileged `blkid`/Btrfs inspection.
 
 ```bash
 set -Eeuo pipefail
+REPO="$HOME/nixos-hyprland-vfio"   # change this if your checkout is elsewhere
 TARGET_HW=/etc/nixos/nixos/hardware-configuration.nix
-if [[ ! -s "$TARGET_HW" ]]; then
-  echo "ERROR: Missing machine-specific hardware configuration: $TARGET_HW" >&2
-  exit 1
-fi
-
-if ! HOME_FSTYPE="$(findmnt -rn -o FSTYPE --target /home)"; then
-  echo "ERROR: Cannot determine the filesystem covering /home." >&2
-  exit 1
-fi
-if [[ "$HOME_FSTYPE" != "btrfs" ]]; then
-  echo "ERROR: Home Snapper requires Btrfs /home; found $HOME_FSTYPE." >&2
-  exit 1
-fi
-
-if ! HOME_INFO="$(LC_ALL=C sudo btrfs subvolume show /home)"; then
-  echo "ERROR: Cannot verify /home as a Btrfs subvolume." >&2
-  exit 1
-fi
-HOME_NAME="$(awk -F: '/^Name:/ { gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print $2; exit }' <<< "$HOME_INFO")"
-if [[ "$HOME_NAME" != "@home" ]]; then
-  echo "ERROR: Expected /home to be the @home subvolume; found '$HOME_NAME'." >&2
-  echo "Adapt the configuration to the actual layout; do not activate it blindly." >&2
-  exit 1
-fi
-
-if ! SNAPSHOT_INFO="$(LC_ALL=C sudo btrfs subvolume show /home/.snapshots 2>/dev/null)"; then
-  if sudo test -e /home/.snapshots || sudo test -L /home/.snapshots; then
-    echo "ERROR: /home/.snapshots exists but is not verified as a Btrfs subvolume." >&2
-    echo "Inspect its contents and mount state manually; do not delete or convert it automatically." >&2
-  else
-    echo "ERROR: Required Btrfs subvolume /home/.snapshots is missing." >&2
-    echo "Only after confirming /home is the correct @home subvolume and this path is absent, create it with:" >&2
-    echo "  sudo btrfs subvolume create /home/.snapshots" >&2
-    echo "Then rerun this preflight." >&2
-  fi
-  exit 1
-fi
-SNAPSHOT_NAME="$(awk -F: '/^Name:/ { gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print $2; exit }' <<< "$SNAPSHOT_INFO")"
-if [[ "$SNAPSHOT_NAME" != ".snapshots" && "$SNAPSHOT_NAME" != "@home/.snapshots" ]]; then
-  echo "ERROR: /home/.snapshots resolves to subvolume '$SNAPSHOT_NAME', not the expected @home/.snapshots child." >&2
-  echo "Do not use the root @snapshots subvolume here; inspect and correct the layout manually." >&2
-  exit 1
-fi
-
-HOME_BLOCK="$(awk '
-  /fileSystems\."\/home"[[:space:]]*=/ { capture=1 }
-  capture { print }
-  capture && /^[[:space:]]*};[[:space:]]*$/ { exit }
-' "$TARGET_HW")"
-SNAPSHOT_BLOCK="$(awk '
-  /fileSystems\."\/home\/\.snapshots"[[:space:]]*=/ { capture=1 }
-  capture { print }
-  capture && /^[[:space:]]*};[[:space:]]*$/ { exit }
-' "$TARGET_HW")"
-if [[ -z "$HOME_BLOCK" || -z "$SNAPSHOT_BLOCK" ]]; then
-  echo "ERROR: Target hardware configuration must define both /home and /home/.snapshots mounts." >&2
-  exit 1
-fi
-if ! grep -Fq 'fsType = "btrfs";' <<< "$HOME_BLOCK"; then
-  echo "ERROR: The /home mount must use Btrfs." >&2
-  exit 1
-fi
-if ! grep -Fq '"subvol=@home"' <<< "$HOME_BLOCK"; then
-  echo "ERROR: The /home mount must use subvol=@home for this configuration." >&2
-  exit 1
-fi
-if ! grep -Fq 'fsType = "btrfs";' <<< "$SNAPSHOT_BLOCK"; then
-  echo "ERROR: The /home/.snapshots mount must use Btrfs." >&2
-  exit 1
-fi
-if ! grep -Fq '"subvol=@home/.snapshots"' <<< "$SNAPSHOT_BLOCK"; then
-  echo "ERROR: The /home/.snapshots mount must use subvol=@home/.snapshots." >&2
-  exit 1
-fi
-if ! grep -Fq 'neededForBoot = true;' <<< "$SNAPSHOT_BLOCK"; then
-  echo "ERROR: The /home/.snapshots mount must include neededForBoot = true." >&2
-  exit 1
-fi
-HOME_DEVICE="$(sed -n 's/^[[:space:]]*device[[:space:]]*=[[:space:]]*\(.*\);[[:space:]]*$/\1/p' <<< "$HOME_BLOCK" | head -n 1)"
-SNAPSHOT_DEVICE="$(sed -n 's/^[[:space:]]*device[[:space:]]*=[[:space:]]*\(.*\);[[:space:]]*$/\1/p' <<< "$SNAPSHOT_BLOCK" | head -n 1)"
-if [[ -z "$HOME_DEVICE" || "$HOME_DEVICE" != "$SNAPSHOT_DEVICE" ]]; then
-  echo "ERROR: /home and /home/.snapshots must resolve to the same Btrfs device/UUID." >&2
-  echo "Review both device entries and the rootDev definition before continuing." >&2
-  exit 1
-fi
-
-printf 'Verified /home filesystem: %s\n' "$HOME_FSTYPE"
-printf 'Current /home source and options (compare with the target device/UUID):\n'
-findmnt -rn -o SOURCE,OPTIONS --target /home
-printf 'Filesystem UUID inventory for manual comparison with the target device entry:\n'
-lsblk -f
-printf 'Verified /home subvolume: %s; child snapshot subvolume: %s\n' "$HOME_NAME" "$SNAPSHOT_NAME"
-printf 'Target /home mount:\n%s\nTarget /home/.snapshots mount:\n%s\n' "$HOME_BLOCK" "$SNAPSHOT_BLOCK"
-echo "Home Snapper preflight passed. Compare the displayed mounted source, lsblk filesystem UUIDs, and both target device entries before building."
+test -s "$TARGET_HW"
+python3 "$REPO/scripts/check-home-snapper-layout.py" "$TARGET_HW"
 ```
 
 If any test fails, stop. Do not run `nixos-rebuild build`, `dry-activate`, or `switch` until the Btrfs layout and target mount declaration have been corrected and this check passes. If the hardware file uses a different subvolume layout, adapt the mount declarations to the actual machine rather than copying the example literally.

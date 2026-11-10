@@ -78,6 +78,22 @@ if ! bash "$hook_pci_test_dir/harness.sh" "$hook_pci_test_dir/update-hook-pci.sh
 fi
 grep -Fxq 'GPU_PCI="0000:0c:00.0"' "$hook_pci_test_dir/valid-hook"
 grep -Fxq 'GPU_AUDIO="0000:0c:00.1"' "$hook_pci_test_dir/valid-hook"
+
+# Indented assignments are valid shell assignments; preserve their indentation
+# while updating both PCI functions.
+sed 's/^GPU_PCI=/  GPU_PCI=/; s/^GPU_AUDIO=/    GPU_AUDIO=/' "$HOOK" > "$hook_pci_test_dir/indented-hook"
+if ! bash "$hook_pci_test_dir/harness.sh" "$hook_pci_test_dir/update-hook-pci.sh" \
+  "$hook_pci_test_dir/indented-hook" 0000:0d:00.0 0000:0d:00.1; then
+  echo "FAIL: valid indented GPU/audio PCI assignments were not updated." >&2
+  exit 1
+fi
+grep -Fxq '  GPU_PCI="0000:0d:00.0"' "$hook_pci_test_dir/indented-hook"
+grep -Fxq '    GPU_AUDIO="0000:0d:00.1"' "$hook_pci_test_dir/indented-hook"
+
+if ! grep -Fq "aborting so the transaction rollback runs" "$INSTALLER"; then
+  echo "FAIL: apply_var failure must clearly explain that the transaction will roll back." >&2
+  exit 1
+fi
 # Accept the highest legal PCI slot (1f) for both GPU functions.
 cp "$HOOK" "$hook_pci_test_dir/slot-1f-hook"
 if ! bash "$hook_pci_test_dir/harness.sh" "$hook_pci_test_dir/update-hook-pci.sh" \
@@ -205,39 +221,31 @@ if ! grep -Fq 'sha256sum nixos-hyprland-vfio-source.zip > nixos-hyprland-vfio-so
 fi
 echo "OK: partition-count guard and source ZIP checksum artifact contract verified."
 
-# Manual migration must document a fail-closed Home Snapper preflight before rebuild/switch.
-while IFS= read -r expected; do
+# Manual migration must use the shared strict Home Snapper checker; installer mode
+# deliberately permits a missing child because the transaction creates it later.
+for expected in \
+  "Mandatory Home Snapper preflight" \
+  'existing child `@home/.snapshots` subvolume' \
+  'TARGET_HW=/etc/nixos/nixos/hardware-configuration.nix' \
+  'python3 "$REPO/scripts/check-home-snapper-layout.py" "$TARGET_HW"'; do
   if ! grep -Fq -- "$expected" "$README"; then
     echo "FAIL: README Home Snapper preflight is missing: $expected" >&2
     exit 1
   fi
-done <<'EXPECTED'
-Mandatory Home Snapper preflight
-findmnt -rn -o FSTYPE --target /home
-sudo btrfs subvolume show /home
-sudo btrfs subvolume show /home/.snapshots
-TARGET_HW=/etc/nixos/nixos/hardware-configuration.nix
-HOME_BLOCK=
-SNAPSHOT_BLOCK=
-subvol=@home/.snapshots
-neededForBoot = true;
-device/UUID
-lsblk -f
-Compare the displayed mounted source, lsblk filesystem UUIDs, and both target device entries before building.
-EXPECTED
-if ! grep -Fq 'mandatory **Home Snapper preflight**' "$ENGLISH_GUIDE" \
+done
+if ! grep -Fq 'check-home-snapper-layout.py' "$ENGLISH_GUIDE" \
   || ! grep -Fq 'neededForBoot = true' "$ENGLISH_GUIDE"; then
-  echo "FAIL: INSTALLATION.md must direct existing-system migrations through the Home Snapper preflight." >&2
+  echo "FAIL: INSTALLATION.md must use the shared strict Home Snapper preflight for the booted system." >&2
   exit 1
 fi
-echo "OK: manual Home Snapper migration preflight documentation contract verified."
+echo "OK: manual Home Snapper migration guides use the shared strict preflight."
 awk '/^require_btrfs_home\(\) \{/ { capture=1 } capture { print } capture && /^}/ { exit }' "$INSTALLER" \
   > "$home_preflight_test_dir/require-btrfs-home.sh"
 if ! grep -q '^require_btrfs_home() {' "$home_preflight_test_dir/require-btrfs-home.sh"; then
   echo "FAIL: could not locate require_btrfs_home() for its regression test." >&2
   exit 1
 fi
-if ! grep -Fq '"$PYTHON3" "$REPO_DIR/scripts/check-home-snapper-layout.py" "$hardware_config"' "$home_preflight_test_dir/require-btrfs-home.sh" \
+if ! grep -Fq '"$PYTHON3" "$REPO_DIR/scripts/check-home-snapper-layout.py" "$hardware_config" --allow-missing-snapshots' "$home_preflight_test_dir/require-btrfs-home.sh" \
   || ! grep -Fq 'sudo btrfs subvolume show "$SNAPSHOT_SUBVOL"' "$home_preflight_test_dir/require-btrfs-home.sh"; then
   echo "FAIL: Home Snapper preflight must validate mount UUIDs/subvolumes and reject an invalid existing .snapshots path." >&2
   exit 1
@@ -1280,8 +1288,15 @@ export HOME TARGET_HOME
 [ "$(expand_home_prefix '~/Downloads/wallpaper.mp4')" = '/home/localhost/Downloads/wallpaper.mp4' ]
 [ "$(expand_home_prefix '~')" = '/home/localhost' ]
 [ "$(expand_home_prefix '/mnt/media/wallpaper.mp4')" = '/mnt/media/wallpaper.mp4' ]
+set +e
+named_user_output="$(expand_home_prefix '~another-user/wallpaper.mp4' 2>"$WALLPAPER_TEST_DIR/error.log")"
+named_user_status=$?
+set -e
+[ "$named_user_status" -ne 0 ] || { echo "FAIL: named-user tilde path was accepted." >&2; exit 1; }
+[ -z "$named_user_output" ] || { echo "FAIL: rejected tilde path leaked an output value." >&2; exit 1; }
+grep -Fq "Named-user tilde paths are not supported" "$WALLPAPER_TEST_DIR/error.log"
 SH
-bash "$wallpaper_test_dir/path-helper.sh"
+WALLPAPER_TEST_DIR="$wallpaper_test_dir" bash "$wallpaper_test_dir/path-helper.sh"
 rm -rf -- "$wallpaper_test_dir"
 
 if ! grep -Fq 'DISK_REAL=$(readlink -f -- "$DISK")' "$ROOT/INSTALLATION.md" \

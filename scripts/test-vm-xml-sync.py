@@ -197,6 +197,37 @@ def main() -> int:
         if list(temp_path.glob("win10.xml.bak-*")) or list(temp_path.glob("win10.xml.libvirt-*.xml")):
             return fail("VM domain/template mismatch created a recovery backup before refusing")
 
+    # The template must never be used as its own output, even through an alias.
+    with tempfile.TemporaryDirectory(prefix="vm-xml-sync-same-path-") as temp:
+        temp_path = Path(temp)
+        template = temp_path / "template.xml"
+        template.write_text(template_data, encoding="utf-8")
+        original = template.read_text(encoding="utf-8")
+        env = fake_virsh_env(temp_path, "", template_data)
+        result = run_sync(template, template, env=env)
+        if result.returncode == 0 or "resolve to the same file" not in result.stderr:
+            return fail(f"same template/destination path was not rejected: {result.stdout}{result.stderr}")
+        if template.read_text(encoding="utf-8") != original:
+            return fail("same template/destination path modified the source template")
+        if list(temp_path.glob("template.xml.bak-*")) or list(temp_path.glob("template.xml.libvirt-*.xml")):
+            return fail("same template/destination path created a recovery backup")
+
+        hardlink = temp_path / "template-hardlink.xml"
+        os.link(template, hardlink)
+        result = run_sync(template, hardlink, env=env)
+        if result.returncode == 0 or "resolve to the same file" not in result.stderr:
+            return fail(f"hard-link alias to the template was not rejected: {result.stdout}{result.stderr}")
+        if template.read_text(encoding="utf-8") != original:
+            return fail("hard-link alias rejection modified the source template")
+
+        alias = temp_path / "template-alias.xml"
+        alias.symlink_to(template)
+        result = run_sync(template, alias, env=env)
+        if result.returncode == 0 or "resolve to the same file" not in result.stderr:
+            return fail(f"symlink alias to the template was not rejected: {result.stdout}{result.stderr}")
+        if template.read_text(encoding="utf-8") != original:
+            return fail("symlink alias rejection modified the source template")
+
     # A new VM starts from the template but must receive a fresh UUID/MAC.
     with tempfile.TemporaryDirectory(prefix="vm-xml-sync-new-") as temp:
         temp_path = Path(temp)

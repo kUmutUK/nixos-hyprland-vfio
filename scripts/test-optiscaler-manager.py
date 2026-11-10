@@ -2,6 +2,8 @@
 """Offline regression tests for scripts/optiscaler_manager.py."""
 
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import nullcontext
+import argparse
 import hashlib
 import json
 import os
@@ -65,6 +67,49 @@ class OptiScalerManagerTests(unittest.TestCase):
                         manager.state_root(),
                         state_override / "optiscaler-manager",
                     )
+
+    def test_confirmation_reports_closed_stdin_as_manager_error(self):
+        with patch("builtins.input", side_effect=EOFError):
+            with self.assertRaisesRegex(manager.ManagerError, "stdin reached EOF"):
+                manager.read_confirmation("confirm: ")
+
+    def test_status_reports_rollback_only_when_transaction_backup_exists(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            game = root / "game"
+            game.mkdir()
+            (game / "game.exe").write_text("exe", encoding="utf-8")
+            state_file = root / "state.json"
+            state = {
+                "schema": 1,
+                "game_dir": str(game),
+                "version": "v1",
+                "asset": "OptiScaler.7z",
+                "proxy": "dxgi.dll",
+                "files": {},
+                "originals": {},
+                "rollback_available": True,
+            }
+            state_file.write_text(json.dumps(state), encoding="utf-8")
+            backups = root / "backups"
+            args = argparse.Namespace(game_dir=str(game))
+            with patch.object(manager, "select_game_dir", return_value=game), \
+                 patch.object(manager, "game_state_file", return_value=state_file), \
+                 patch.object(manager, "backup_root", return_value=backups), \
+                 patch.object(manager, "game_operation_lock", return_value=nullcontext()):
+                with patch("builtins.print") as printed:
+                    manager.command_status(args)
+                output = " ".join(" ".join(str(x) for x in call.args) for call in printed.call_args_list)
+                self.assertIn("Rollback available: no", output)
+                self.assertIn("transaction backup is missing", output)
+
+                rollback = backups / "rollback"
+                rollback.mkdir(parents=True)
+                (rollback / "transaction.json").write_text("{}", encoding="utf-8")
+                with patch("builtins.print") as printed:
+                    manager.command_status(args)
+                output = " ".join(" ".join(str(x) for x in call.args) for call in printed.call_args_list)
+                self.assertIn("Rollback available: yes", output)
 
     def test_unknown_release_fails_closed_without_digest(self):
         with self.assertRaises(manager.ManagerError):
@@ -647,6 +692,13 @@ class OptiScalerManagerTests(unittest.TestCase):
             path = Path(temporary) / "state.json"
             path.write_text(json.dumps(valid), encoding="utf-8")
             self.assertEqual(manager.load_state(path), valid)
+            uppercase = dict(valid)
+            uppercase["files"] = {"dxgi.dll": "A" * 64}
+            path.write_text(json.dumps(uppercase), encoding="utf-8")
+            self.assertEqual(
+                manager.load_state(path)["files"]["dxgi.dll"],
+                "a" * 64,
+            )
             invalid_documents = []
             for field, value in (("files", []), ("proxy", "steam_api64.dll"), ("rollback_available", "yes"), ("schema", True)):
                 bad = dict(valid)

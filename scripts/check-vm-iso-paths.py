@@ -28,16 +28,24 @@ def validate_vm_iso_paths(xml_path: str | Path, report: Reporter = print) -> int
     devices = root.find("./devices")
     cdroms = devices.findall("./disk[@device='cdrom']") if devices is not None else []
     if not cdroms:
-        report(f"ERROR: No CD-ROM devices found in VM XML: {xml_path}")
-        return 2
+        report("INFO: No CD-ROM devices found; there are no file-backed ISO paths to check.")
+        return 0
 
     errors = 0
     file_sources_checked = 0
     for index, disk in enumerate(cdroms, start=1):
         source = disk.find("source")
-        if source is None:
-            report(f"ERROR: CD-ROM #{index} has no <source> element.")
-            errors += 1
+        if source is None or (not source.attrib and len(source) == 0):
+            report(f"INFO: CD-ROM #{index} is an empty tray; no source path to check.")
+            continue
+
+        source_protocol = source.get("protocol")
+        source_name = source.get("name")
+        if source_protocol and source_name:
+            report(
+                f"INFO: CD-ROM #{index} uses a network-backed source "
+                f"({source_protocol}:{source_name}); local file existence check skipped."
+            )
             continue
 
         source_file = source.get("file")
@@ -93,7 +101,10 @@ def main() -> int:
     )
     parser.add_argument("vm_xml", type=Path, help="Path to the exact VM XML that will be defined")
     args = parser.parse_args()
-    return validate_vm_iso_paths(args.vm_xml)
+    return validate_vm_iso_paths(
+        args.vm_xml,
+        report=lambda message: print(message, file=sys.stderr),
+    )
 
 
 if __name__ == "__main__":

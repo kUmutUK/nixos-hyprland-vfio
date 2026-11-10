@@ -24,12 +24,15 @@ class CheckVmIsoPathsTests(unittest.TestCase):
     def run_checker(self) -> subprocess.CompletedProcess[str]:
         command = [sys.executable, str(CHECKER), str(self.xml)]
         try:
-            return subprocess.run(
+            result = subprocess.run(
                 command,
                 check=False,
                 capture_output=True,
                 text=True,
                 timeout=SUBPROCESS_TIMEOUT_SECONDS,
+            )
+            return subprocess.CompletedProcess(
+                command, result.returncode, result.stdout + result.stderr, ""
             )
         except subprocess.TimeoutExpired as exc:
             stdout = exc.stdout or ""
@@ -110,13 +113,29 @@ class CheckVmIsoPathsTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("root must be <domain>", result.stdout)
 
-    def test_missing_cdrom_fails_closed(self) -> None:
+    def test_missing_cdrom_is_valid_when_no_iso_is_required(self) -> None:
         self.write_xml('<disk device="disk"><source file="/tmp/disk.qcow2"/></disk>')
 
         result = self.run_checker()
 
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("No CD-ROM devices", result.stdout)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("No CD-ROM devices found", result.stdout)
+
+    def test_empty_cdrom_tray_is_valid(self) -> None:
+        self.write_xml('<disk device="cdrom"><target dev="sdb" bus="sata"/></disk>')
+
+        result = self.run_checker()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("empty tray", result.stdout)
+
+    def test_network_backed_cdrom_is_valid_but_not_locally_checked(self) -> None:
+        self.write_xml(self.cdrom('protocol="https" name="images/windows.iso"'))
+
+        result = self.run_checker()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("network-backed source", result.stdout)
 
     def test_host_device_source_is_reported_and_allowed(self) -> None:
         self.write_xml(self.cdrom('dev="/dev/sr0"'))
