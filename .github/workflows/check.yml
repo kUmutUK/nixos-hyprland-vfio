@@ -72,6 +72,10 @@ jobs:
         run: |
           python3 scripts/test-documentation-integrity.py
           python3 scripts/test-mako-renderer.py
+          archive_test_dir="$RUNNER_TEMP/source-archive-test"
+          mkdir -p "$archive_test_dir"
+          unzip -q "$RUNNER_TEMP/nixos-hyprland-vfio-source.zip" -d "$archive_test_dir"
+          python3 "$archive_test_dir/nixos-hyprland-vfio/scripts/test-documentation-integrity.py"
 
       - name: OptiScaler manager safety and rollback tests
         run: python3 scripts/test-optiscaler-manager.py

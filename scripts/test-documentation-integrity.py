@@ -495,6 +495,12 @@ verification_metadata_paths = {
 for path in verification_metadata_paths:
     require(path in RELEASE_WORKFLOW, f"release workflow must keep {path!r} in the full-build ancestor allowlist")
 require("fetch-depth: 0" in CHECK_WORKFLOW, "normal CI must fetch full Git history for the verified-baseline ancestry check")
+require(
+    'archive_test_dir="$RUNNER_TEMP/source-archive-test"' in CHECK_WORKFLOW
+    and 'unzip -q "$RUNNER_TEMP/nixos-hyprland-vfio-source.zip" -d "$archive_test_dir"' in CHECK_WORKFLOW
+    and 'python3 "$archive_test_dir/nixos-hyprland-vfio/scripts/test-documentation-integrity.py"' in CHECK_WORKFLOW,
+    "normal CI must run static documentation checks from the canonical source ZIP without Git metadata",
+)
 try:
     git_root_result = subprocess.run(
         ["git", "rev-parse", "--show-toplevel"],
