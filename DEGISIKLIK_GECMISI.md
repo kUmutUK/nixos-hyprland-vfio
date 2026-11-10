@@ -1,10 +1,18 @@
 # Historical Change Log Index (English)
 
+## Current release status — 2026-11-10
+
+**Latest published release:** [v1.5.0](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.5.0), Release ID `440771489`, published by [Release run #27](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42879152113) from exact commit `8818bd86dd55f8b456708902f16b01bf2052fbd8`. Normal CI [#1351](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42873188122) passed all 28 workflow-defined steps on that same commit. The release ZIP contains 74 tracked files (9 executable), is 423,969 bytes, and has SHA-256 `f886f40b2e6f73ab96dad67ab24d87b0734f955c8b26c6696c8746f6e8894ad0`.
+
+**Build and hardware boundary:** the last completed full-system build remains Build #18 on ancestor `c6f4b955475de2ea16bc2b34c59a95dad3a1ae78`. Release run #27 passed the release gate using that baseline plus explicit `target_host_validated=true` maintainer attestation for subsequent non-allowlisted changes. This is not a new full-system build result or a new physical-hardware test. Saved-state/managed-save restore remains unverified.
+
+**v1.4.9 asset discrepancy:** the historical audit-time record below lists 410,138 bytes / SHA-256 `f28f91955d05679b7ff64cb33fbd193a86f87527f856b9801f0e7a197c1f5e61`; current GitHub Release asset metadata reports 411,239 bytes / SHA-256 `56c3d8dfde3eb0b224803ccefa1b624b831a15eca02aaf62d5c4fd4907ff8a3e`. The two records remain explicitly unreconciled.
+
 ## Audit intake snapshot — 2026-11-10 (historical)
 
 **Audit-intake source snapshot:** GitHub `main` at `a20962f9be065f17c7c2ec143473c47b7a75aae9` (10 November 2026; the reviewed source was unreleased).
 
-**Latest published release at audit intake:** [v1.4.9](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.9), published by [release run #25](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42807672922) from exact commit `ad231d7529721eae343385cca9073790e4e3be61`. Normal CI [#1309](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42807151011) passed all 28 workflow-defined steps on that exact commit. Its canonical source ZIP is 410,138 bytes with SHA-256 `f28f91955d05679b7ff64cb33fbd193a86f87527f856b9801f0e7a197c1f5e61`.
+**Latest published release at audit intake (historical; superseded by v1.5.0):** [v1.4.9](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.9), published by [release run #25](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42807672922) from exact commit `ad231d7529721eae343385cca9073790e4e3be61`. Normal CI [#1309](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42807151011) passed all 28 workflow-defined steps on that exact commit. The audit-time record listed 410,138 bytes / SHA-256 `f28f91955d05679b7ff64cb33fbd193a86f87527f856b9801f0e7a197c1f5e61`; GitHub's current asset metadata lists 411,239 bytes / SHA-256 `56c3d8dfde3eb0b224803ccefa1b624b831a15eca02aaf62d5c4fd4907ff8a3e`, an unresolved discrepancy.
 
 **Validation boundary:** the last completed full-system build remains manual Build #18 on ancestor `c6f4b955475de2ea16bc2b34c59a95dad3a1ae78`. v1.4.9 did not create a new full-system build or physical-hardware result. This audit follow-up does not claim a new host validation. Changes to `install.sh` remain outside the release ancestor-build allowlist and require the normal full-system-build gate or the explicitly documented target-host attestation before a later release.
 

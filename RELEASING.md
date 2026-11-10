@@ -97,8 +97,12 @@ source ZIP and its SHA-256 manifest, creates the annotated tag, and finally
 publishes the GitHub Release.
 
 The history contains a legacy annotated `v1.4.3` tag at the same commit as the
-published `v1.4.4` release; `v1.4.3` has no associated GitHub Release. That is a
-historical tag anomaly, not the current release state.
+published `v1.4.4` release. The `v1.4.3` tag originally had no associated
+GitHub Release, but its release entry was restored and published on 10 November
+2026 at 11:52:57 UTC (Release ID `440298465`): [v1.4.3](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.3).
+This remains a historical tag/release-note anomaly, not an absent current
+release. The older v1.4.4 release description still carries its incorrect
+v1.4.3 heading.
 
 The current published version is intentionally not copied into this guide. Use
 [GitHub Releases](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/latest)

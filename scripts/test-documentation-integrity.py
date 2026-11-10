@@ -400,18 +400,42 @@ require(
     )),
     "previous v1.4.6 release metadata must remain available as historical information",
 )
+v150_heading = CHANGELOG.find("## [v1.5.0] - 2026-11-10")
 v149_heading = CHANGELOG.find("## [v1.4.9] - 2026-11-10")
 v148_heading = CHANGELOG.find("## [v1.4.8] - 2026-11-09")
 v147_heading = CHANGELOG.find("## [v1.4.7] - 2026-11-09")
 require(
-    v149_heading >= 0 and v148_heading > v149_heading and v147_heading > v148_heading
+    v150_heading >= 0 and v149_heading > v150_heading and v148_heading > v149_heading and v147_heading > v148_heading
     and "v1.4.6 is the current published release" not in CHANGELOG,
-    "CHANGELOG must list v1.4.9, v1.4.8, and v1.4.7 newest-first without a stale current-release claim",
+    "CHANGELOG must list v1.5.0, v1.4.9, v1.4.8, and v1.4.7 newest-first without a stale current-release claim",
+)
+require(
+    "## Repository map (selected entry points; non-exhaustive)" in README
+    and "not a complete inventory of the 74 tracked files" in README,
+    "README repository map must be explicitly identified as a curated, non-exhaustive entry-point list",
+)
+require(
+    all(item in (README + CHANGELOG + STATE_INDEX + REPAIR) for item in (
+        "v1.5.0", "440771489", "run #27", "42879152113", "8818bd86dd55f8b456708902f16b01bf2052fbd8",
+        "Normal CI #1351", "42873188122", "423,969 bytes",
+        "f886f40b2e6f73ab96dad67ab24d87b0734f955c8b26c6696c8746f6e8894ad0",
+        "74 tracked files", "9 executable",
+        "target_host_validated=true", "Build #18", "c6f4b955475de2ea16bc2b34c59a95dad3a1ae78",
+    )),
+    "v1.5.0 release identity, source ZIP, CI, and ancestor-build attestation boundary must be recorded across current documentation",
+)
+require(
+    "restored and published on 10 November" in RELEASING
+    and "440298465" in RELEASING
+    and "has no associated GitHub Release" not in RELEASING,
+    "RELEASING must not claim the restored v1.4.3 GitHub Release is still absent",
 )
 require(
     all(item in CHANGELOG for item in (
         "release run [#25]", "42807672922", "ad231d7529721eae343385cca9073790e4e3be61",
         "410,138 bytes", "f28f91955d05679b7ff64cb33fbd193a86f87527f856b9801f0e7a197c1f5e61",
+        "The current GitHub Release asset metadata reports 411,239 bytes",
+        "56c3d8dfde3eb0b224803ccefa1b624b831a15eca02aaf62d5c4fd4907ff8a3e",
         "Normal CI [#1309]", "42807151011",
     )),
     "CHANGELOG must preserve exact v1.4.9 release, CI, source commit, and archive provenance",
@@ -513,10 +537,17 @@ require(
     and "The older v1.4.4 release description still carries its incorrect v1.4.3 heading" in REPAIR,
     "repair report must distinguish the republished v1.4.3 Release from the historical v1.4.4 heading anomaly",
 )
-require("manual run #9" in REPAIR and "full-system build baseline" in REPAIR and "ab89f350803d47eb16499c613b110da05a57673f" in REPAIR,
-        "repair report must identify the successful exact-HEAD full-system build baseline")
-require("run #9" in STATE_INDEX and "69 tracked file blobs" in STATE_INDEX and "ab89f350803d47eb16499c613b110da05a57673f" in STATE_INDEX,
-        "current-state index must match the latest full-system build baseline")
+require(
+    "manual Build #18" in REPAIR and "full-system build baseline" in REPAIR
+    and "c6f4b955475de2ea16bc2b34c59a95dad3a1ae78" in REPAIR
+    and "42597469118" in REPAIR,
+    "repair report must identify Build #18 as the last completed full-system build baseline",
+)
+require(
+    "Build #18" in STATE_INDEX and "42597469118" in STATE_INDEX
+    and "c6f4b955475de2ea16bc2b34c59a95dad3a1ae78" in STATE_INDEX,
+    "current-state index must match the last completed full-system build baseline",
+)
 require("run #1120" in REPAIR and "run #1120" in STATE_INDEX and "8d1e4585c9cd3f690c1df80ee531008c7e9d30ef" in STATE_INDEX,
         "current-state index must preserve the distinct reviewed-snapshot normal-CI record")
 require(

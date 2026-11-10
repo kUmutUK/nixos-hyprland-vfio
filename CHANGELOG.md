@@ -4,6 +4,15 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+## [v1.5.0] - 2026-11-10
+
+### Release and validation boundary — 2026-11-10
+
+- Published [v1.5.0](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.5.0), Release ID `440771489`, with Release workflow run [#27](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42879152113) from exact commit `8818bd86dd55f8b456708902f16b01bf2052fbd8`.
+- Normal CI [#1351](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42873188122) passed all 28 workflow-defined steps on that exact commit; the runner-generated `Set up job` entry is not part of the YAML-defined step count.
+- The canonical source ZIP contains 74 tracked files and 9 executable files; it is 423,969 bytes with SHA-256 `f886f40b2e6f73ab96dad67ab24d87b0734f955c8b26c6696c8746f6e8894ad0`.
+- Release run #27 found successful full-system Build #18 on ancestor `c6f4b955475de2ea16bc2b34c59a95dad3a1ae78` and accepted later non-allowlisted changes using the explicit `target_host_validated=true` maintainer attestation. This is not a new full-system build result or a new independent physical-hardware test; saved-state/managed-save restore remains unverified.
+
 ### Remaining audit remediation — 2026-11-10
 
 - Mark `install.sh` experimental in its runtime banner and user/contributor documentation. No end-to-end run of `install.sh` against a live NixOS/libvirt target host has been completed. Syntax, ShellCheck, and mocked regression checks are not live deployment validation; the 9 November clean-install report is not evidence that the helper was used.
@@ -35,7 +44,7 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 - Published [v1.4.9](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.9) with release run [#25](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42807672922) from exact commit `ad231d7529721eae343385cca9073790e4e3be61`.
 - Normal CI [#1309](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42807151011) passed all 28 workflow-defined steps on that exact commit. The runner-generated `Set up job` entry is not part of the YAML-defined step count.
-- The canonical source ZIP is 410,138 bytes; SHA-256 `f28f91955d05679b7ff64cb33fbd193a86f87527f856b9801f0e7a197c1f5e61`. The release also publishes the matching `.sha256` manifest.
+- The audit-time release record listed the canonical source ZIP as 410,138 bytes with SHA-256 `f28f91955d05679b7ff64cb33fbd193a86f87527f856b9801f0e7a197c1f5e61`. The current GitHub Release asset metadata reports 411,239 bytes and SHA-256 `56c3d8dfde3eb0b224803ccefa1b624b831a15eca02aaf62d5c4fd4907ff8a3e`. These records do not agree; the discrepancy is retained explicitly and must not be silently treated as the same verified artifact.
 - The release notes record the documentation-test file-mode correction, decoupling release documentation from the current version, and source-archive documentation-test coverage.
 - Changes from the v1.4.8 tag are limited to documentation, CI workflow, and regression-test paths; no NixOS module, flake input/lock, hardware mapping, VM XML, or runtime hook was changed. The release workflow's full-system-build prerequisite passed against the existing baseline; v1.4.9 is not a new full-system build or a new physical-hardware test.
 

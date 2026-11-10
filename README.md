@@ -4,6 +4,8 @@ A flake-based NixOS gaming desktop that passes its single AMD Radeon GPU through
 
 **Latest published release:** [GitHub Releases](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/latest). This link always resolves to the latest published GitHub Release; the release version, workflow run, source commit, and asset checksum remain recorded with that release.
 
+**Current published release — [v1.5.0](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.5.0) (10 November 2026):** Release run [#27](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42879152113) (Release ID `440771489`) published exact source commit `8818bd86dd55f8b456708902f16b01bf2052fbd8`. Normal CI [#1351](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42873188122) passed all 28 workflow-defined steps on that same commit. The canonical source ZIP contains 74 tracked files (9 executable files), is 423,969 bytes, and has SHA-256 `f886f40b2e6f73ab96dad67ab24d87b0734f955c8b26c6696c8746f6e8894ad0`. Release run #27 used successful full-system Build #18 on ancestor `c6f4b955475de2ea16bc2b34c59a95dad3a1ae78` plus the explicit maintainer `target_host_validated=true` attestation for the post-build changes; it did not create a new full-system build result or independently establish a new hardware test. Saved-state/managed-save restore remains unverified.
+
 **Historical release-source validation snapshot — v1.4.7 (9 November 2026):** Normal CI [#1299](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42684408581) passed all 28 workflow-defined steps on the exact release commit `c28250c34de4b4349023681305da99dee75aac9e`. The last completed full-system build, manual [#18](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42597469118), passed on ancestor `c6f4b955475de2ea16bc2b34c59a95dad3a1ae78`. The release commit is 23 commits ahead of that build. Those later commits include runtime-affecting changes to `install.sh`, `nixos/configuration.nix`, `nixos/hardware-configuration.nix`, and `nixos/home.nix`; Build #18 must not be described as an exact-release build.
 
 **Historical release-gate boundary for the v1.4.7 snapshot:** Release run #23 succeeded for the exact release commit after the maintainer explicitly set `target_host_validated=true`. GitHub accepted the post-build paths using that maintainer attestation; it did not create a new full-system build result. The owner-reported 9 November clean installation, boot, normal Windows VM start/shutdown, GPU handback, and Hyprland recovery are the hardware evidence recorded for the release. Saved-state/managed-save restore remains unverified.
@@ -664,7 +666,9 @@ The repeated missing `.ko.BTF.1` failure across two different Rust modules shows
 
 > On 3 November 2026, the project owner confirmed that the then-current target configuration rebuilt successfully, the selected RT-Bore-LTO ThinLTO kernel compiled locally, and the Windows 10 VM started and completed a normal shutdown, returning the host display and Hyprland session. The corresponding `nixos/flake.lock` resolved the CachyOS kernel input to `755712deee259ef7efbfe9154038a270c3d75a87`. This is an owner-reported historical physical kernel test, not independent reproduction and not a guarantee for other hardware. It covers the normal VM start/shutdown and host-recovery path; it does not validate libvirt saved-state or managed-save restore, and it must not be attributed to the newer kernel revision currently recorded in `nixos/flake.lock`.
 
-## Repository map
+## Repository map (selected entry points; non-exhaustive)
+
+This is a curated map of selected entry points, not a complete inventory of the 74 tracked files. Use the repository file browser for the full source tree.
 
 ```text
 .
