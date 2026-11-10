@@ -105,6 +105,30 @@ readme_top = "\n".join(README.splitlines()[:8])
 require("docs/REPAIR-AND-VALIDATION-REPORT.md" in readme_top and "docs/AUDIT-2026-10-28-VM-XML-VFIO.md" not in readme_top, "README must point to the current repair report, not the older audit")
 require("2026-11-04 source-tree cross-checks" in readme_top, "README must identify the current 2026-11-04 source-tree cross-check")
 require(
+    "NixOS-only first-start smoke test when the Windows disk is unavailable" in README
+    and "/mnt/media/nixos-test.qcow2" in README
+    and "90 GiB virtual capacity" in README
+    and "/mnt/media/nixos-minimal-26.05.iso" in README
+    and "The source template was not modified" in README
+    and "validation of the unmodified dual-guest" in README,
+    "README must preserve the scope and non-destructive boundary of the 11 November NixOS-only smoke test",
+)
+require(
+    "2026-11-11" in REPAIR
+    and "domxml-to-native qemu-argv" in REPAIR
+    and "virsh define --validate" in REPAIR
+    and "bus 1/device 2" in REPAIR
+    and "installed guest boot" in REPAIR
+    and "real Windows and installed-NixOS guest boot tests" in RELEASING,
+    "the 11 November target test record must retain the tested steps, USB-address caveat, and remaining release gate",
+)
+require(
+    "README.md#nixos-only-first-start-smoke-test-when-the-windows-disk-is-unavailable" in INSTALLATION
+    and "NixOS-only VFIO first-start test" in STATE_INDEX
+    and "NixOS-only VFIO first-start smoke test" in CHANGELOG,
+    "README, installation guide, Turkish status index, and Unreleased changelog must cross-reference the NixOS-only smoke-test record",
+)
+require(
     "v1.5.0 source-archive snapshot note" in README
     and "8818bd86dd55f8b456708902f16b01bf2052fbd8" in README
     and "The v1.5.0 asset will not be rewritten" in README,

@@ -846,6 +846,9 @@ healthy result. Also verify IOMMU/AMD-Vi in firmware and at runtime before using
 The base NixOS installation is complete at this point. Register and prepare the Windows
 VM only after the first successful boot.
 
+> **Reference-host NixOS-only smoke-test alternative (11 November 2026):** the normal procedure below is for a real Windows vda plus optional NixOS vdb. A separate target-host smoke test used a derived win10 XML with Windows vda omitted because no Windows qcow2 was available. That temporary definition exists only to exercise the existing TARGET_VM="win10" VFIO hook while booting NixOS installation media; it replaces the registered win10 definition and must never be used over an existing/recoverable Windows VM. See [README: NixOS-only first-start smoke test when the Windows disk is unavailable](README.md#nixos-only-first-start-smoke-test-when-the-windows-disk-is-unavailable) for its scope, P4-backed qcow2 path, USB address caveat, successful checks, and remaining validation. It does not install NixOS or validate the normal Windows/NixOS dual-guest XML.
+
+
 > **Correction (2026-10-04):** this step was missing from the earlier documentation. If it
 > is skipped, the domain remains undefined; the `if [ "$GUEST" != "$TARGET_VM" ]; then exit 0`
 > filter in `nixos/hooks/qemu` (`TARGET_VM="win10"`) never matches, so the GPU is **never**

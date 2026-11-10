@@ -14,6 +14,9 @@ A flake-based NixOS gaming desktop that passes its single AMD Radeon GPU through
 
 **Target-machine validation (owner-reported, 9 November 2026):** NixOS was installed from scratch on the reference hardware without issues. The Windows 10 VFIO VM started successfully, shut down normally, returned GPU control to the host, and Hyprland resumed. This is the ordinary VM lifecycle only; it is not evidence for saved-state restore or compatibility with other machines.
 
+**Target-machine NixOS-only VFIO first-start test (owner-reported, 11 November 2026):** Because no win10 domain or Windows qcow2 disk was available in the examined host paths, a temporary derived domain kept the hook-required libvirt name win10 but omitted the missing Windows vda disk and Windows/VirtIO CD-ROMs. It used a 90 GiB sparse qcow2 at /mnt/media/nixos-test.qcow2 on the host's ext4 /dev/nvme0n1p4 mounted at /mnt/media, the NixOS Minimal 26.05 ISO at sdd, and a separate NVRAM file. QEMU command-line conversion and virsh define --validate succeeded; the first start launched through systemd-run from a separate SSH session was reported successful without issue. This records an initial start of a derived NixOS-only VM, **not** a completed NixOS installation, boot from the installed vdb disk, Windows guest boot, full shutdown/GPU handback, or validation of the unmodified dual-guest vm-xml/win10.xml. The source template was not modified.
+
+
 **Experimental installer status (10 November 2026):** `install.sh` is an experimental migration helper. No end-to-end run of `install.sh` against a live NixOS/libvirt target host has been completed. CI covers Bash syntax, ShellCheck, and mocked installer-invariant/rollback tests, but does not deploy the script to a live host or verify a real migration/recovery. The 9 November owner-reported clean-install/VM result does not establish that `install.sh` was used or tested. Manual installation/migration remains the recommended route.
 
 **Earlier release (v1.4.6; historical):** [v1.4.6](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.6), release run #20 ([run ID 42203730895](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42203730895)) on 6 November 2026 from commit `a6dd4544319fafa7ec517e73b31ad29a1b4010b3`; ZIP 402,118 bytes, SHA-256 `05ffe97ee342a4b233f56bc7ae0e455f3b91a1c87df86c42e57e0441e9089e76`.
@@ -564,6 +567,45 @@ sudo journalctl -u vmstart.service -b --no-pager
 sudo cat /var/log/libvirt/vfio.log
 sudo journalctl -u libvirtd -f
 ```
+
+### NixOS-only first-start smoke test when the Windows disk is unavailable
+
+This is a **temporary, reference-host-only smoke-test path**, not a replacement for the normal dual-guest procedure above. It is useful only when the original Windows guest disk is unavailable and no win10 domain is registered. On the 11 November 2026 test host, virsh list --all showed no win10 domain, /var/lib/libvirt/images did not exist, and searches of the host's common storage paths and sampled root Snapper snapshots did not find a Windows qcow2 image or existing NVRAM file. Windows and VirtIO installer ISOs were found on the Ventoy USB, but not at the XML's normal libvirt image paths. The NixOS Minimal 26.05 ISO was copied from Ventoy to the P4 media filesystem.
+
+**Keep the libvirt domain name win10.** The deployed QEMU hook filters on TARGET_VM="win10"; a differently named nixos-test domain would bypass the existing GPU handoff. Do not change the hook merely to give this temporary domain a different name unless that is an intentional, separately tested host change.
+
+**Do not use this path over an existing Windows VM.** virsh define of the temporary XML replaces the persistent definition with the same domain name. First confirm that sudo virsh list --all --name contains no win10 entry and that no recoverable Windows disk/definition exists. If a Windows VM or disk exists, use the standard dual-guest path and preserve its UUID, MAC, NVRAM, Windows vda disk, and other settings. Never overwrite vm-xml/win10.xml or /etc/nixos/vm-xml/win10.xml with the temporary XML.
+
+The recorded test used the existing ext4 host partition /dev/nvme0n1p4, mounted at /mnt/media, as **file storage**. It was not passed through to the guest and was not reformatted. The files were:
+
+- /mnt/media/nixos-test.qcow2: sparse qcow2 with 90 GiB virtual capacity (initially about 196 KiB allocated).
+- /mnt/media/nixos-minimal-26.05.iso: copied NixOS Minimal 26.05 installer image (1,746,124,800 bytes; SHA-256 12a6094161082c6e203489ec61a421534c891922c9201769c7ee80b8bc283501).
+
+The guest sees the qcow2 file as **/dev/vdb**. The physical host partition /dev/nvme0n1p4 is only the filesystem containing that file; do not partition or format the host P4 device from inside the VM. Ensure both files are owned/readable by qemu-libvirtd, and that the QEMU account can write the qcow2 image.
+
+The test definition was generated as a separate derived XML under /mnt/media. The VM XML sync helper was used to create a fresh UUID/MAC and refresh the GPU/audio PCI source addresses; the derived NixOS-only XML then removed the missing Windows vda disk and the Windows/VirtIO sdb/sdc CD-ROMs, pointed vdb to /mnt/media/nixos-test.qcow2, inserted the NixOS ISO into SATA tray sdd as boot order 1, and used a separate NVRAM path at /var/lib/libvirt/qemu/nvram/nixos-test_VARS.fd. The original Windows source template remained unchanged. The final host-local test file was /mnt/media/win10-nixos-install-usb.xml; the intermediate win10-nixos-base.xml and final derived XML are not repository templates and must not be committed or used as a replacement for the normal production XML.
+
+**USB host-device addresses are per-host and can change.** The template's USB hostdev entries identify the Razer mouse (1532:0098) and Apple keyboard (05ac:024f). During this test, virsh domxml-to-native qemu-argv initially failed with “USB host device is missing bus/device information” while the generated hostdev entries had vendor/product IDs only. The devices were inspected with lsusb and virsh nodedev-dumpxml, then the temporary XML used the current host addresses (Razer bus 1/device 2; Apple keyboard bus 1/device 3). QEMU conversion then succeeded. Re-check the IDs and bus/device addresses on every host and after USB re-enumeration; do not copy these numeric addresses as universal values. The Ventoy USB was used as the ISO source and was not passed through to the guest.
+
+The libvirt default NAT network was started for the test. Its bridge showed NO-CARRIER before a guest interface attached; guest internet connectivity was not yet verified. The XML was checked with the repository ISO-path checker, converted using the commands below, and registered with virsh define --validate. Both operations succeeded.
+
+~~~fish
+sudo virsh domxml-to-native qemu-argv /mnt/media/win10-nixos-install-usb.xml
+sudo virsh define --validate /mnt/media/win10-nixos-install-usb.xml
+~~~
+
+The VM was then started from an SSH session with:
+
+~~~fish
+sudo systemd-run --unit=nixos-vmstart --collect \
+  /run/current-system/sw/bin/virsh start win10
+~~~
+
+The owner reported that this first VM start ran successfully without issue. Before a single-GPU start, establish a working public-key SSH session from a second trusted device and keep it open; the hook terminates local seat0 graphical sessions. Keep physical recovery access available as well.
+
+**What this test proves:** the derived NixOS-only XML passed the libvirt/QEMU conversion and define --validate checks, and its first target-host VM start was owner-reported successful with the configured win10 VFIO hook path.
+
+**What remains unverified:** installing NixOS onto the guest's /dev/vdb, booting the installed guest from vdb after ejecting the installer, guest network access, full VM shutdown and GPU/display handback to Hyprland, and booting the normal Windows guest from its real vda disk. The standard dual-guest vm-xml/win10.xml remains outside the release allowlist. Complete validation still requires the actual Windows and installed-NixOS guest paths to be tested. A first start of this derived NixOS-only XML does not close that release gate.
 
 ### Temporary VNC diagnostics for the first boot
 

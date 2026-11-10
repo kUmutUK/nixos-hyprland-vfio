@@ -6,7 +6,12 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 - Extend the existing `win10` libvirt domain with a separate optional NixOS VirtIO disk and an initially empty SATA installer tray. Keep the Windows disk and boot priority first, document safe create/attach/install/eject steps, and add regression coverage for the two-OS device layout.
 - Record the immutable v1.5.0 source-archive snapshot and the current GitHub v1.4.9 asset size/digest provenance without rewriting either historical release asset.
-- Replace brittle VM XML diagnostic text matching with a stable error code and test the README bootstrap by executing its extracted command in the mocked VM environment; keep the real dual-guest boot gate open until target validation is recorded.
+- Replace brittle VM XML diagnostic text matching with a stable error code and test the README bootstrap by executing its extracted command in the mocked VM environment; document the 11 November NixOS-only first-start smoke test while keeping the canonical dual-guest boot gate open pending installed-NixOS and Windows guest boots.
+
+### Target-host NixOS-only VFIO first-start smoke test — 2026-11-11
+
+- Record the owner-reported successful first start of a temporary NixOS-only win10 domain using a 90 GiB P4-backed qcow2 disk, NixOS Minimal 26.05 media, a separate NVRAM path, and the existing GPU/audio VFIO hook.
+- Document the derived-XML workflow, QEMU USB bus/device requirement, SSH recovery channel, and exact scope boundary. The installed NixOS vdb boot, guest networking, full host GPU handback, and real Windows guest boot remain unverified; the canonical dual-guest XML release gate stays open.
 
 ## [v1.5.0] - 2026-11-10
 
