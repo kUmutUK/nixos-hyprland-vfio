@@ -709,7 +709,7 @@ if git_checkout and current_head and repair_baseline_match:
                     "the changed VM XML template must document its separate target-VM validation gate",
                 )
                 require(
-                    "vm-xml/win10.xml" not in RELEASING and "vm-xml/win10.xml" not in RELEASE_WORKFLOW,
+                    "vm-xml/win10.xml" not in documented_release_paths and "vm-xml/win10.xml" not in RELEASE_WORKFLOW,
                     "the VM XML template must remain outside the release allowlist until target-VM validation is documented",
                 )
             if "nixos/hooks/qemu" in pending:
