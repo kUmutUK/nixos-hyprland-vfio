@@ -1557,6 +1557,14 @@ require(
     "v1.4.6 release-gate evidence must remain distinguished from the unsupported missing-evidence claim",
 )
 
+host_continuity_note = (
+    "The available records do not establish whether the 9 November clean-install/Windows VM lifecycle test and the 11 November NixOS-only first-start test were performed on the same physical host. The 11 November inventory records only the state observed during that test; it does not establish when or why the Windows domain and disk became unavailable. No host reinstall, disk removal, or machine change is inferred."
+)
+require(
+    all(host_continuity_note in document for document in (README, REPAIR, STATE_INDEX, CHANGELOG)),
+    "README, repair report, status index, and changelog must preserve the unresolved 9–11 November host-continuity boundary without inferring a machine change",
+)
+
 if errors:
     for error in errors:
         print(f"FAIL: {error}", file=sys.stderr)

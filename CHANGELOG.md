@@ -12,6 +12,7 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 - Record the owner-reported successful first start of a temporary NixOS-only win10 domain using a 90 GiB P4-backed qcow2 disk, NixOS Minimal 26.05 media, a separate NVRAM path, and the existing GPU/audio VFIO hook.
 - Document the derived-XML workflow, QEMU USB bus/device requirement, SSH recovery channel, and exact scope boundary. The installed NixOS vdb boot, guest networking, full host GPU handback, and real Windows guest boot remain unverified; the canonical dual-guest XML release gate stays open.
+- Record the unresolved host-continuity boundary: The available records do not establish whether the 9 November clean-install/Windows VM lifecycle test and the 11 November NixOS-only first-start test were performed on the same physical host. The 11 November inventory records only the state observed during that test; it does not establish when or why the Windows domain and disk became unavailable. No host reinstall, disk removal, or machine change is inferred.
 
 ## [v1.5.0] - 2026-11-10
 
