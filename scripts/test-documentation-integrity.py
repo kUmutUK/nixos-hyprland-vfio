@@ -238,6 +238,20 @@ require(
     "tag pushes must use git-cliff --current while manual releases use the explicit previous-tag..HEAD range and requested version",
 )
 require(
+    "manual dispatch from `main` uses the explicit previous-tag-to-`HEAD` range" in STATE_INDEX
+    and "`--latest` is not used for the current manual-release path" in STATE_INDEX,
+    "status index must describe the current explicit git-cliff manual-release range",
+)
+require(
+    all(item in INSTALLER for item in (
+        "trap 'exit 130' INT",
+        "trap 'exit 143' TERM",
+        "trap 'exit 129' HUP",
+        "trap 'rollback_deployment \"$?\"' EXIT",
+    )),
+    "installer must convert INT/TERM/HUP to non-zero exits before EXIT rollback",
+)
+require(
     'git tag --points-at "$GITHUB_SHA"' in RELEASE_WORKFLOW
     and "already has stable release tag(s)" in RELEASE_WORKFLOW,
     "manual releases must refuse a commit that already has another stable version tag",
@@ -383,7 +397,7 @@ require(
 require(
     "Changes from the v1.4.8 tag are limited to documentation, CI workflow, and regression-test paths" in CHANGELOG
     and "v1.4.9 is not a new full-system build" in CHANGELOG
-    and "At the time of this 5 November historical section, v1.4.6 was the then-current published release" in CHANGELOG,
+    and "At the time of this 5 November historical section, v1.4.5 was the then-current published release; v1.4.6 was published on 6 November" in CHANGELOG,
     "CHANGELOG must distinguish the v1.4.9 documentation-only release boundary and date the v1.4.6 status historically",
 )
 require(
@@ -1309,6 +1323,21 @@ require(
     and "preselected default" in RELEASING
     and 'VERSION="vMAJOR.MINOR.PATCH"' in RELEASING,
     "release guide must direct maintainers to choose a new unused version rather than a stale published tag",
+)
+
+require(
+    all(item in RELEASING and item in RELEASE_WORKFLOW for item in (
+        "scripts/prepare-vm-diagnostic.py",
+        "scripts/test-vm-diagnostic.py",
+        "scripts/test-vm-xml-paths.py",
+        "scripts/test-installer-rollback.sh",
+    )),
+    "standalone VM diagnostic and offline regression paths must match in the release guide and workflow allowlist",
+)
+require(
+    "v1.4.6 release run #20 gate log" in CHANGELOG
+    and "full-system build passed at a6dd4544319fafa7ec517e73b31ad29a1b4010b3" in REPAIR,
+    "v1.4.6 release-gate evidence must remain distinguished from the unsupported missing-evidence claim",
 )
 
 if errors:
