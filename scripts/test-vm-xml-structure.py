@@ -138,7 +138,7 @@ class VmXmlStructureTests(unittest.TestCase):
         result = self.run_validator()
 
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("SATA CD-ROM device", result.stderr)
+        self.assertIn("Windows installer CD-ROM must use SATA target sdb", result.stderr)
 
 
 if __name__ == "__main__":
