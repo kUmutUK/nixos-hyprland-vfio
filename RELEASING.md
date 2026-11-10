@@ -4,6 +4,12 @@ This repository uses **git-cliff** for semantic version suggestions and release
 notes. Releases are created from a tag or from the **Release** workflow's
 manual-dispatch input; ordinary pushes and pull requests never publish a release.
 
+## Published artifact immutability
+
+A published tag and its source ZIP are a provenance-bound snapshot of the exact tagged commit. Do not rewrite or replace an existing release asset to add documentation or code merged after publication. Land corrections on `main` under `[Unreleased]`, keep the old release asset unchanged, and include the corrected tree in the next release after all validation gates pass. Record the GitHub release-asset API size and digest; state explicitly whether the ZIP was independently downloaded and re-hashed during review.
+
+The VM definition `vm-xml/win10.xml` remains outside the ancestor-build release allowlist until libvirt/QEMU semantic validation and real Windows and NixOS guest boot tests are documented.
+
 ## Release prerequisites
 
 1. Merge the intended stable code into `main`.

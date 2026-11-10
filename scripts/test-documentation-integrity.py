@@ -40,6 +40,8 @@ OPTISCALER_MANAGER_TEST = (ROOT / "scripts/test-optiscaler-manager.py").read_tex
 VM_XML_SYNC = (ROOT / "scripts/sync-vm-xml.py").read_text(encoding="utf-8")
 VM_XML_SYNC_TEST = (ROOT / "scripts/test-vm-xml-sync.py").read_text(encoding="utf-8")
 MANUAL_VM_BOOTSTRAP_TEST = (ROOT / "scripts/test-manual-vm-bootstrap.sh").read_text(encoding="utf-8")
+VM_XML_VALIDATOR = (ROOT / "scripts/test-vm-xml.py").read_text(encoding="utf-8")
+VM_XML_STRUCTURE_TEST = (ROOT / "scripts/test-vm-xml-structure.py").read_text(encoding="utf-8")
 SOURCE_REVISION_PLACEHOLDER = "$" + "Format:%H" + "$"
 errors = []
 
@@ -49,9 +51,77 @@ def require(condition: bool, message: str) -> None:
         errors.append(message)
 
 
+def extract_release_allowlists(
+    releasing: str, workflow: str
+) -> tuple[list[str], list[str]] | None:
+    """Parse the documented and workflow release path lists exactly once."""
+    marker = "**Exact release allowlist (literal paths only):**"
+    if marker not in releasing:
+        return None
+    documented_block = releasing.partition(marker)[2].partition("\n\n")[0]
+    documented_paths = re.findall(r"`([^`]+)`", documented_block)
+    workflow_match = re.search(
+        r"(?m)^\s*(\S[^\n]*?\.github/workflows/release\.yml)\)\s*$",
+        workflow,
+    )
+    if workflow_match is None:
+        return None
+    workflow_paths = workflow_match.group(1).strip().split("|")
+    if not documented_paths or not workflow_paths or any(not item for item in workflow_paths):
+        return None
+    return documented_paths, workflow_paths
+
+
+
+
+release_allowlists = extract_release_allowlists(RELEASING, RELEASE_WORKFLOW)
+if release_allowlists is None:
+    documented_release_path_list: list[str] = []
+    workflow_release_path_list: list[str] = []
+else:
+    documented_release_path_list, workflow_release_path_list = release_allowlists
+documented_release_paths = set(documented_release_path_list)
+workflow_release_paths = set(workflow_release_path_list)
+require(
+    release_allowlists is not None
+    and len(documented_release_path_list) == len(documented_release_paths)
+    and len(workflow_release_path_list) == len(workflow_release_paths)
+    and documented_release_paths == workflow_release_paths
+    and len(workflow_release_paths) == 41,
+    "RELEASING.md and release.yml must contain the same unique exhaustive 41-path literal allowlist",
+)
+require(
+    "no wildcard rules or blanket exemptions" in RELEASING
+    and "changed path matches the exact literal allowlist documented in RELEASING.md" in RELEASE_WORKFLOW,
+    "release policy must state that documentation/CI labels do not grant blanket path exemptions",
+)
+
+
+
+
+
+
 readme_top = "\n".join(README.splitlines()[:8])
 require("docs/REPAIR-AND-VALIDATION-REPORT.md" in readme_top and "docs/AUDIT-2026-10-28-VM-XML-VFIO.md" not in readme_top, "README must point to the current repair report, not the older audit")
 require("2026-11-04 source-tree cross-checks" in readme_top, "README must identify the current 2026-11-04 source-tree cross-check")
+require(
+    "v1.5.0 source-archive snapshot note" in README
+    and "8818bd86dd55f8b456708902f16b01bf2052fbd8" in README
+    and "The v1.5.0 asset will not be rewritten" in README,
+    "README must distinguish the immutable v1.5.0 release ZIP from later main-branch documentation",
+)
+require(
+    "411,239 bytes" in REPAIR
+    and "56c3d8dfde3eb0b224803ccefa1b624b831a15eca02aaf62d5c4fd4907ff8a3e" in REPAIR
+    and "independent download-and-rehash" in REPAIR
+    and "410,138 bytes" in REPAIR,
+    "v1.4.9 provenance must record the current GitHub asset digest and preserve the unverified historical local copy",
+)
+require(
+    "VMXML-E-CDROM-SATA" in VM_XML_VALIDATOR
+    and "VMXML-E-CDROM-SATA" in VM_XML_STRUCTURE_TEST,
+    "VM XML structural tests must use a stable diagnostic code instead of English-message matching",
+)
 require(
     "EXPERIMENTAL: NOT END-TO-END TESTED ON A TARGET HOST" in INSTALLER
     and "EXPERIMENTAL — NOT END-TO-END TESTED" in README
@@ -708,12 +778,9 @@ if git_checkout and current_head and repair_baseline_match:
                     and "before this VM definition can enter the release allowlist" in REPAIR,
                     "the changed VM XML template must document its separate target-VM validation gate",
                 )
-                vm_release_allowlist_block = RELEASING.partition(
-                    "**Exact release allowlist (literal paths only):**"
-                )[2].partition("\n\n")[0]
-                vm_release_paths = set(re.findall(r"`([^`]+)`", vm_release_allowlist_block))
                 require(
-                    "vm-xml/win10.xml" not in vm_release_paths and "vm-xml/win10.xml" not in RELEASE_WORKFLOW,
+                    "vm-xml/win10.xml" not in documented_release_paths
+                    and "vm-xml/win10.xml" not in workflow_release_paths,
                     "the VM XML template must remain outside the release allowlist until target-VM validation is documented",
                 )
             if "nixos/hooks/qemu" in pending:
@@ -1335,30 +1402,6 @@ require("def pci_class_code" in VM_XML_SYNC and "lspci" in VM_XML_SYNC and '"030
 require('cat > "$MOCK_BIN/lspci"' in MANUAL_VM_BOOTSTRAP_TEST and "class=0300" in MANUAL_VM_BOOTSTRAP_TEST and "class=0403" in MANUAL_VM_BOOTSTRAP_TEST, "manual VM bootstrap regression must mock lspci after the sync helper gained PCI-class checks")
 require("different physical slots" in VM_XML_SYNC_TEST and "gpu_class=gpu_class" in VM_XML_SYNC_TEST and "audio_class=audio_class" in VM_XML_SYNC_TEST, "VM XML sync tests must reject wrong PCI classes and different slots")
 require("scripts/sync-vm-xml.py" in RELEASING and "scripts/test-vm-xml-sync.py" in RELEASING and "scripts/sync-vm-xml.py" in RELEASE_WORKFLOW and "scripts/test-vm-xml-sync.py" in RELEASE_WORKFLOW, "release policy must document the out-of-flake VM XML sync helper and test allowlist")
-release_allowlist_match = re.search(
-    r"(?s)\*\*Exact release allowlist \(literal paths only\):\*\*\s*(.*?)\n\n",
-    RELEASING,
-)
-workflow_allowlist_match = re.search(
-    r"(?m)^\s*(\S[^\n]*?\.github/workflows/release\.yml)\)\s*$",
-    RELEASE_WORKFLOW,
-)
-if release_allowlist_match and workflow_allowlist_match:
-    documented_release_paths = set(re.findall(r"`([^`]+)`", release_allowlist_match.group(1)))
-    workflow_release_paths = set(workflow_allowlist_match.group(1).strip().split("|"))
-else:
-    documented_release_paths = set()
-    workflow_release_paths = set()
-require(
-    documented_release_paths == workflow_release_paths and len(workflow_release_paths) == 41,
-    "RELEASING.md and release.yml must contain the same exhaustive 41-path literal allowlist",
-)
-require(
-    "no wildcard rules or blanket exemptions" in RELEASING
-    and "changed path matches the exact literal allowlist documented in RELEASING.md" in RELEASE_WORKFLOW,
-    "release policy must state that documentation/CI labels do not grant blanket path exemptions",
-)
-
 manual_attestation_input = RELEASE_WORKFLOW.partition("      target_host_validated:")[2].partition("\npermissions:")[0]
 release_guard = RELEASE_WORKFLOW.partition("- name: Require successful CI and a current-enough full-system build")[2].partition("- name: Find previous version tag")[0]
 require(
