@@ -43,14 +43,22 @@ class ManagerError(Exception):
     """An expected, user-actionable manager error."""
 
 
+def xdg_base(variable: str, default: Path) -> Path:
+    """Use an XDG directory only when it is set to a non-empty absolute path."""
+    configured = os.environ.get(variable, "")
+    if configured:
+        candidate = Path(configured)
+        if candidate.is_absolute():
+            return candidate
+    return default
+
+
 def cache_root() -> Path:
-    base = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
-    return base / "optiscaler-manager"
+    return xdg_base("XDG_CACHE_HOME", Path.home() / ".cache") / "optiscaler-manager"
 
 
 def state_root() -> Path:
-    base = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state"))
-    return base / "optiscaler-manager"
+    return xdg_base("XDG_STATE_HOME", Path.home() / ".local/state") / "optiscaler-manager"
 
 
 @contextmanager
@@ -160,10 +168,20 @@ def stable_release() -> tuple[dict, dict]:
 def expected_digest(tag: str, asset: dict, override: str | None = None) -> str:
     asset_name = str(asset.get("name", ""))
     api_digest = asset.get("digest")
+    api_trusted = None
     if isinstance(api_digest, str) and re.fullmatch(r"sha256:[0-9a-fA-F]{64}", api_digest):
-        trusted = api_digest.split(":", 1)[1].lower()
+        api_trusted = api_digest.split(":", 1)[1].lower()
+
+    pinned = PINNED_SHA256.get((tag, asset_name))
+    if pinned is not None:
+        if api_trusted is not None and api_trusted != pinned:
+            raise ManagerError(
+                f"GitHub release metadata SHA-256 conflicts with the repository-pinned "
+                f"digest for {tag} ({asset_name})."
+            )
+        trusted = pinned
     else:
-        trusted = PINNED_SHA256.get((tag, asset_name))
+        trusted = api_trusted
     if override is not None:
         supplied = override.lower().removeprefix("sha256:")
         if not re.fullmatch(r"[0-9a-f]{64}", supplied):
