@@ -108,7 +108,7 @@ PY
 # The documented bootstrap must select the Windows system disk by its stable
 # vda target; the optional NixOS vdb disk must not make setup think the VM has
 # multiple competing primary disks.
-if ! grep -Fq 'target.get("dev") == "vda"' "$PREPARE_SCRIPT" \
+if ! grep -Fq 'disk.find("target").get("dev") == "vda"' "$PREPARE_SCRIPT" \
   || ! grep -Fq 'VirtIO target vda' "$PREPARE_SCRIPT"; then
   echo "FAIL: manual VM bootstrap does not select the Windows vda system disk." >&2
   exit 1
