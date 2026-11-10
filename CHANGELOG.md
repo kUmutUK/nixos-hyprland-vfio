@@ -4,6 +4,26 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+## [v1.4.9] - 2026-11-10
+
+### Release and validation boundary — 2026-11-10
+
+- Published [v1.4.9](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.9) with release run [#25](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42807672922) from exact commit `ad231d7529721eae343385cca9073790e4e3be61`.
+- Normal CI [#1309](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42807151011) passed all 28 workflow-defined steps on that exact commit. The runner-generated `Set up job` entry is not part of the YAML-defined step count.
+- The canonical source ZIP is 410,138 bytes; SHA-256 `f28f91955d05679b7ff64cb33fbd193a86f87527f856b9801f0e7a197c1f5e61`. The release also publishes the matching `.sha256` manifest.
+- The release notes record the documentation-test file-mode correction, decoupling release documentation from the current version, and source-archive documentation-test coverage.
+- Changes from the v1.4.8 tag are limited to documentation, CI workflow, and regression-test paths; no NixOS module, flake input/lock, hardware mapping, VM XML, or runtime hook was changed. The release workflow's full-system-build prerequisite passed against the existing baseline; v1.4.9 is not a new full-system build or a new physical-hardware test.
+
+## [v1.4.8] - 2026-11-09
+
+### Release and validation boundary — 2026-11-09
+
+- Published [v1.4.8](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.8) with release run [#24](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42699056863) from exact commit `31acc15e5f590d67ab9d9ee477c7813e0766fe82`.
+- Normal CI [#1306](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42698412118) passed all 28 workflow-defined steps on that exact commit. The runner-generated `Set up job` entry is not part of the YAML-defined step count.
+- The canonical source ZIP is 410,656 bytes; SHA-256 `4db66f4c856da157b8fc6995aaea7b86d40397868455976b21cb76566b1cadab`. The release also publishes the matching `.sha256` manifest.
+- The documentation changes reconcile kernel/build evidence, record the owner-reported clean-install and normal VFIO VM lifecycle validation, and distinguish current from historical validation claims. The test changes align the kernel-validation assertions and distinguish current and historical hardware evidence.
+- Manual full-system build #18 on ancestor commit `c6f4b955475de2ea16bc2b34c59a95dad3a1ae78` remains the last completed full-system build baseline. The v1.4.8 release gate passed; this release did not create a new full-system build result.
+
 ## [v1.4.7] - 2026-11-09
 
 ### Release and validation boundary — 2026-11-09
@@ -42,7 +62,7 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 - **Historical v1.4.5 canonical release ZIP:** 392,212 bytes; SHA-256 `f97fb12bdfbaaff4d32e7ab57bbc9251fababcd126a8ef7644947844924de9e0`; 72 tracked files, nine executable files, and no `.git/` entries.
 - **Previous reviewed snapshot (historical):** `7f923a2c7aa59721bc00728faccbc073e06c697a`; CI #1239 / run ID `42032980751`; v1.4.4 from release run #15 / run ID `42035815458`. The 388,000-byte ZIP SHA-256 was `7621fcdccfe327e9e59f453947b9f7903cd0f477b73cde8f4aa5ee513061e0ff`.
-- The earlier v1.4.4 release description inherited an incorrect `v1.4.3` heading; that remains a historical release-note issue. v1.4.6 is the current published release.
+- The earlier v1.4.4 release description inherited an incorrect `v1.4.3` heading; that remains a historical release-note issue. At the time of this 5 November historical section, v1.4.6 was the then-current published release.
 - That 5 November documentation/test reconciliation added no new physical-hardware or saved-state-restore evidence.
 - The first documentation-only follow-up's normal CI #1243 failed only two documentation-integrity assertions (a missing exact build-baseline index line and missing historical `run #1239` wording); both records are restored in the follow-up. No runtime/NixOS configuration was changed.
 
