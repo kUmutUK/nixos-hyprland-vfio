@@ -40,6 +40,8 @@ OPTISCALER_MANAGER_TEST = (ROOT / "scripts/test-optiscaler-manager.py").read_tex
 VM_XML_SYNC = (ROOT / "scripts/sync-vm-xml.py").read_text(encoding="utf-8")
 VM_XML_SYNC_TEST = (ROOT / "scripts/test-vm-xml-sync.py").read_text(encoding="utf-8")
 MANUAL_VM_BOOTSTRAP_TEST = (ROOT / "scripts/test-manual-vm-bootstrap.sh").read_text(encoding="utf-8")
+VM_XML_VALIDATOR = (ROOT / "scripts/test-vm-xml.py").read_text(encoding="utf-8")
+VM_XML_STRUCTURE_TEST = (ROOT / "scripts/test-vm-xml-structure.py").read_text(encoding="utf-8")
 SOURCE_REVISION_PLACEHOLDER = "$" + "Format:%H" + "$"
 errors = []
 
@@ -102,6 +104,24 @@ require(
 readme_top = "\n".join(README.splitlines()[:8])
 require("docs/REPAIR-AND-VALIDATION-REPORT.md" in readme_top and "docs/AUDIT-2026-10-28-VM-XML-VFIO.md" not in readme_top, "README must point to the current repair report, not the older audit")
 require("2026-11-04 source-tree cross-checks" in readme_top, "README must identify the current 2026-11-04 source-tree cross-check")
+require(
+    "v1.5.0 source-archive snapshot note" in README
+    and "8818bd86dd55f8b456708902f16b01bf2052fbd8" in README
+    and "The v1.5.0 asset will not be rewritten" in README,
+    "README must distinguish the immutable v1.5.0 release ZIP from later main-branch documentation",
+)
+require(
+    "411,239 bytes" in REPAIR
+    and "56c3d8dfde3eb0b224803ccefa1b624b831a15eca02aaf62d5c4fd4907ff8a3e" in REPAIR
+    and "independent download-and-rehash" in REPAIR
+    and "410,138 bytes" in REPAIR,
+    "v1.4.9 provenance must record the current GitHub asset digest and preserve the unverified historical local copy",
+)
+require(
+    "VMXML-E-CDROM-SATA" in VM_XML_VALIDATOR
+    and "VMXML-E-CDROM-SATA" in VM_XML_STRUCTURE_TEST,
+    "VM XML structural tests must use a stable diagnostic code instead of English-message matching",
+)
 require(
     "EXPERIMENTAL: NOT END-TO-END TESTED ON A TARGET HOST" in INSTALLER
     and "EXPERIMENTAL — NOT END-TO-END TESTED" in README
