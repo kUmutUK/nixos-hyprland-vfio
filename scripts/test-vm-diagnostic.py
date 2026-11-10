@@ -82,6 +82,30 @@ def main() -> int:
             raise AssertionError("valid input did not produce the diagnostic XML")
         if source.read_text(encoding="utf-8") != original:
             raise AssertionError("helper modified the production input XML")
+
+        # libvirt's dumpxml output uses single-quoted attributes; the helper
+        # must accept that canonical form as well as the template's double quotes.
+        libvirt_xml = VALID_XML.replace('type="none"', "type='none'", 1)
+        libvirt_source = write_source(directory, libvirt_xml, "libvirt-output.xml")
+        libvirt_original = libvirt_source.read_text(encoding="utf-8")
+        libvirt_output = directory / "libvirt-diagnostic.xml"
+        libvirt_result = run_helper(libvirt_source, libvirt_output)
+        if libvirt_result.returncode != 0:
+            raise AssertionError(
+                f"libvirt-style single-quoted XML was rejected: "
+                f"{libvirt_result.stdout}{libvirt_result.stderr}"
+            )
+        if libvirt_source.read_text(encoding="utf-8") != libvirt_original:
+            raise AssertionError("helper modified the libvirt production input XML")
+        libvirt_root = ET.parse(libvirt_output).getroot()
+        libvirt_videos = libvirt_root.findall("./devices/video")
+        if (
+            len(libvirt_videos) != 1
+            or libvirt_videos[0].find("model") is None
+            or libvirt_videos[0].find("model").get("type") != "virtio"
+        ):
+            raise AssertionError("single-quoted libvirt XML did not produce one virtio diagnostic video")
+
         if os.stat(output).st_mode & 0o777 != 0o600:
             raise AssertionError("diagnostic XML must be created with mode 0600")
 
