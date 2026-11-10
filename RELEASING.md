@@ -34,6 +34,7 @@ manual-dispatch input; ordinary pushes and pull requests never publish a release
    `scripts/check-vm-iso-paths.py`,
    `scripts/test-vm-iso-paths.py`,
    `scripts/test-vm-xml.py`,
+   `scripts/test-vm-xml-structure.py`,
    `scripts/extract-embedded-scripts.py`,
    `scripts/test-extract-embedded-scripts.py`,
    `scripts/test-mako-renderer.py`,
@@ -54,7 +55,7 @@ manual-dispatch input; ordinary pushes and pull requests never publish a release
    `.github/workflows/kernel-build.yml`,
    `.github/workflows/release.yml`
 
-   The list is intentionally limited to documentation, CI/release metadata, standalone migration helpers, and offline tests that do not change the installed NixOS toplevel or selected kernel. A file is not eligible merely because it lives under `scripts/` or is labelled a test: each accepted path is named explicitly and reviewed against the runtime/build boundary.
+   The list is intentionally limited to documentation, CI/release metadata, standalone migration helpers, and offline tests that do not change the installed NixOS toplevel or selected kernel. The VM XML structural test is included because it is an offline regression test; the live `vm-xml/win10.xml` definition is deliberately excluded until libvirt/QEMU semantic validation and real Windows and NixOS guest boot tests are documented. A file is not eligible merely because it lives under `scripts/` or is labelled a test: each accepted path is named explicitly and reviewed against the runtime/build boundary.
 
    Any later change outside this exact list, including a documentation or test file not named above, blocks publication by default and requires a new full-system build. In particular, changes to `install.sh` remain gated by a new full-system build and are intentionally excluded from this ancestor-build allowlist.
 
