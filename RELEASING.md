@@ -37,6 +37,10 @@ manual-dispatch input; ordinary pushes and pull requests never publish a release
    `scripts/test-vfio-hook-driver-state.sh`,
    `scripts/test-documentation-integrity.py`,
    `scripts/test-lsfg-vk-v2.py`,
+   `scripts/prepare-vm-diagnostic.py`,
+   `scripts/test-vm-diagnostic.py`,
+   `scripts/test-vm-xml-paths.py`,
+   `scripts/test-installer-rollback.sh`,
    `.github/workflows/check.yml`,
    `.github/workflows/kernel-build.yml`,
    `.github/workflows/release.yml`
@@ -55,7 +59,7 @@ manual-dispatch input; ordinary pushes and pull requests never publish a release
    and tag validation, or release-artifact checks. Tag-triggered releases cannot
    use it. GitHub records this as a maintainer assertion; it does not independently
    verify physical hardware testing.
-The UUID identity guide above is documentation-only: it explains existing host storage identifiers and VM identity handling but does not alter either. It is included as one exact path, not as a wildcard documentation exemption. The two VM XML sync Python paths above are narrowly scoped migration-time helpers outside the NixOS flake/derivation graph and are covered by the dedicated mock-backed VM XML sync suite in normal CI. The `scripts/test-manual-vm-bootstrap.sh` and `scripts/test-installer-invariants.sh` paths are CI-only mock regression harnesses; they do not run host mutations or alter the NixOS system closure. NixOS modules/flake outputs/inputs and machine storage configuration (including `nixos/configuration.nix`, `nixos/flake.nix`, `nixos/flake.lock`, `nixos/hardware-configuration.nix`, and `nixos/mako-renderer.nix`), `vm-xml/win10.xml`, `install.sh`, runtime hooks, and other system-closure-affecting paths remain gated by a new full-system build.
+The UUID identity guide above is documentation-only: it explains existing host storage identifiers and VM identity handling but does not alter either. It is included as one exact path, not as a wildcard documentation exemption. The two VM XML sync Python paths above are narrowly scoped migration-time helpers outside the NixOS flake/derivation graph and are covered by the dedicated mock-backed VM XML sync suite in normal CI. The VM diagnostic helper creates a separate temporary XML file and never edits the production input; its dedicated regression test covers libvirt's single-quoted `dumpxml` output. The VM XML path test and installer rollback test are offline regression harnesses. The `scripts/test-manual-vm-bootstrap.sh` and `scripts/test-installer-invariants.sh` paths are CI-only mock regression harnesses; they do not run host mutations or alter the NixOS system closure. NixOS modules/flake outputs/inputs and machine storage configuration (including `nixos/configuration.nix`, `nixos/flake.nix`, `nixos/flake.lock`, `nixos/hardware-configuration.nix`, and `nixos/mako-renderer.nix`), `vm-xml/win10.xml`, `install.sh`, runtime hooks, and other system-closure-affecting paths remain gated by a new full-system build.
 
 5. Review the release version and changelog before publishing.
 
@@ -77,9 +81,9 @@ release when the selected commit already carries another stable version tag.
 It then validates the CI/build prerequisites and generates release notes from
 the explicit previous-tag-to-HEAD commit range while setting the requested
 release version. Before creating any tag, it requires the first release-note
-heading to match `## <requested-tag> - YYYY-MM-DD`. It then creates the annotated
-tag, builds the canonical source ZIP, creates its SHA-256 manifest, and publishes
-the GitHub Release.
+heading to match `## <requested-tag> - YYYY-MM-DD`. It then builds the canonical
+source ZIP and its SHA-256 manifest, creates the annotated tag, and finally
+publishes the GitHub Release.
 
 The history contains a legacy annotated `v1.4.3` tag at the same commit as the
 published `v1.4.4` release; `v1.4.3` has no associated GitHub Release. That is a
