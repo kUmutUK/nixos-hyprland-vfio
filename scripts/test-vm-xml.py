@@ -38,8 +38,9 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def fail(message: str) -> int:
-    print(f"FAIL: {message}", file=sys.stderr)
+def fail(message: str, code: str | None = None) -> int:
+    diagnostic = f" [{code}]" if code else ""
+    print(f"FAIL{diagnostic}: {message}", file=sys.stderr)
     return 1
 
 
@@ -138,7 +139,10 @@ def main() -> int:
     ):
         target = cdrom.find("target")
         if target is None or target.get("bus") != "sata" or target.get("dev") != expected_dev:
-            return fail(f"{role} CD-ROM must use SATA target {expected_dev}")
+            return fail(
+                f"{role} CD-ROM must use SATA target {expected_dev}",
+                code="VMXML-E-CDROM-SATA",
+            )
         source = cdrom.find("source")
         if source is None:
             return fail(f"{role} CD-ROM must declare a file-backed source path")
