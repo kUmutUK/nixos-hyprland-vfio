@@ -41,7 +41,7 @@ class VmXmlStructureTests(unittest.TestCase):
 
     def test_custom_iso_filenames_and_paths_pass(self) -> None:
         cdroms = self.root.findall("./devices/disk[@device='cdrom']")
-        self.assertEqual(len(cdroms), 2)
+        self.assertEqual(len(cdroms), 3)
         cdroms[0].find("source").set("file", "/mnt/install media/WindowsInstall.iso")
         cdroms[1].find("source").set("file", "/srv/iso/virtio.iso")
 
@@ -79,7 +79,7 @@ class VmXmlStructureTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("non-empty source file path", result.stderr)
 
-    def test_exactly_two_cdrom_devices_are_required(self) -> None:
+    def test_exactly_three_cdrom_devices_are_required(self) -> None:
         devices = self.root.find("./devices")
         cdroms = self.root.findall("./devices/disk[@device='cdrom']")
         devices.remove(cdroms[-1])
@@ -87,7 +87,25 @@ class VmXmlStructureTests(unittest.TestCase):
         result = self.run_validator()
 
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("exactly two CD-ROM devices", result.stderr)
+        self.assertIn("exactly three CD-ROM devices", result.stderr)
+
+    def test_nixos_disk_must_be_optional(self) -> None:
+        nixos_disk = self.root.find("./devices/disk[@device='disk'][target/@dev='vdb']")
+        nixos_disk.find("source").attrib.pop("startupPolicy")
+
+        result = self.run_validator()
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("startupPolicy='optional'", result.stderr)
+
+    def test_nixos_cdrom_tray_must_start_empty(self) -> None:
+        nixos_cdrom = self.root.find("./devices/disk[@device='cdrom'][target/@dev='sdd']")
+        ET.SubElement(nixos_cdrom, "source", {"file": "/srv/iso/nixos.iso"})
+
+        result = self.run_validator()
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("tray must start empty", result.stderr)
 
     def test_cdrom_boot_order_must_be_explicit(self) -> None:
         cdrom = self.root.find("./devices/disk[@device='cdrom']")
@@ -98,7 +116,7 @@ class VmXmlStructureTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("boot priorities must be explicit", result.stderr)
 
-    def test_optical_boot_must_follow_virtual_system_disk(self) -> None:
+    def test_optical_boot_must_follow_both_virtual_system_disks(self) -> None:
         first_cdrom = min(
             self.root.findall("./devices/disk[@device='cdrom']"),
             key=lambda disk: int(disk.find("boot").get("order")),
@@ -108,7 +126,7 @@ class VmXmlStructureTests(unittest.TestCase):
         result = self.run_validator()
 
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("system disk must boot before", result.stderr)
+        self.assertIn("after both virtual disks", result.stderr)
 
     def test_earliest_optical_boot_entry_must_use_sata(self) -> None:
         first_cdrom = min(
