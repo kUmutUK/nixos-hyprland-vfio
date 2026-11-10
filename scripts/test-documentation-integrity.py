@@ -887,10 +887,20 @@ sound = vm.find("./devices/sound")
 watchdog = vm.find("./devices/watchdog")
 network_model = vm.find("./devices/interface/model")
 vm_disks = vm.findall("./devices/disk[@device='disk']")
-nixos_guest_disk = vm.find("./devices/disk[@device='disk'][target/@dev='vdb']")
+vm_disk_targets = {
+    disk.find("target").get("dev"): disk
+    for disk in vm_disks
+    if disk.find("target") is not None
+}
+nixos_guest_disk = vm_disk_targets.get("vdb")
 vm_cdroms = vm.findall("./devices/disk[@device='cdrom']")
-nixos_guest_tray = vm.find("./devices/disk[@device='cdrom'][target/@dev='sdd']")
-require(len(vm_disks) == 2 and vm.find("./devices/disk[@device='disk'][target/@dev='vda']") is not None and nixos_guest_disk is not None, "VM XML must preserve the Windows vda disk and add a separate NixOS vdb disk")
+vm_cdrom_targets = {
+    disk.find("target").get("dev"): disk
+    for disk in vm_cdroms
+    if disk.find("target") is not None
+}
+nixos_guest_tray = vm_cdrom_targets.get("sdd")
+require(len(vm_disks) == 2 and vm_disk_targets.get("vda") is not None and nixos_guest_disk is not None, "VM XML must preserve the Windows vda disk and add a separate NixOS vdb disk")
 require(nixos_guest_disk is not None and nixos_guest_disk.find("source") is not None and nixos_guest_disk.find("source").get("startupPolicy") == "optional", "the NixOS qcow2 disk must be optional so the Windows VM can start before it is created")
 require(len(vm_cdroms) == 3 and nixos_guest_tray is not None and nixos_guest_tray.find("source") is None, "VM XML must retain the Windows/VirtIO CD-ROMs and a source-free NixOS sdd tray")
 require("Install NixOS on a separate guest disk" in README and "/dev/vdb" in README and "/dev/vda" in README, "README must document the separate NixOS disk and protect the existing Windows disk during installation")
