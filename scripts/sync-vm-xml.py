@@ -85,16 +85,26 @@ def parse_xml(data: str, description: str) -> ET.Element:
 
 
 def primary_disk_path(root: ET.Element, description: str) -> str:
-    disks = root.findall("./devices/disk[@device='disk']")
-    if len(disks) != 1:
+    # The VM now has multiple file-backed disks: vda is always the Windows
+    # system disk, while vdb is an optional NixOS test disk. Sync must identify
+    # the Windows disk by its stable guest target, not by total disk count.
+    windows_disks = []
+    for disk in root.findall("./devices/disk[@device='disk']"):
+        target = disk.find("target")
+        if target is not None and target.get("dev") == "vda":
+            windows_disks.append(disk)
+    if len(windows_disks) != 1:
         fail(
-            f"expected exactly one primary file-backed disk in {description}; "
+            f"expected exactly one Windows primary disk at VirtIO target vda in {description}; "
             "inspect and synchronize this XML manually."
         )
-    source = disks[0].find("source")
+    target = windows_disks[0].find("target")
+    if target is None or target.get("bus") != "virtio":
+        fail(f"the Windows primary disk in {description} must use VirtIO target vda; no file was written.")
+    source = windows_disks[0].find("source")
     path = source.get("file") if source is not None else None
     if not path:
-        fail(f"the primary disk in {description} is not file-backed; no file was written.")
+        fail(f"the Windows primary disk in {description} is not file-backed; no file was written.")
     return path
 
 

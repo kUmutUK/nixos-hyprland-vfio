@@ -239,6 +239,18 @@ def main() -> int:
             return fail(f"new VM sync failed: {result.stdout}{result.stderr}")
         generated = ET.parse(deployed).getroot()
         original = ET.fromstring(template_data)
+        generated_windows = next(
+            disk for disk in generated.findall("./devices/disk[@device='disk']")
+            if disk.find("target") is not None and disk.find("target").get("dev") == "vda"
+        )
+        generated_nixos = next(
+            disk for disk in generated.findall("./devices/disk[@device='disk']")
+            if disk.find("target") is not None and disk.find("target").get("dev") == "vdb"
+        )
+        if generated_windows.find("source").get("file") != "/var/lib/libvirt/images/win10new.qcow2":
+            return fail("new VM Windows system disk path was changed")
+        if generated_nixos.find("source").get("file") != "/var/lib/libvirt/images/nixos-test.qcow2":
+            return fail("new VM NixOS test disk path was changed")
         if generated.findtext("uuid") == original.findtext("uuid"):
             return fail("new VM must not reuse the template UUID")
         original_mac = original.find("./devices/interface/mac")
@@ -249,6 +261,24 @@ def main() -> int:
         if got != [GPU, AUDIO]:
             return fail(f"new VM GPU/audio PCI addresses were not synchronized in order: {got!r}")
 
+    # A NixOS vdb disk is not a substitute for the Windows vda system disk.
+    with tempfile.TemporaryDirectory(prefix="vm-xml-sync-missing-windows-vda-") as temp:
+        temp_path = Path(temp)
+        template = temp_path / "template.xml"
+        deployed = temp_path / "win10.xml"
+        root = ET.fromstring(template_data)
+        windows_disk = next(
+            disk for disk in root.findall("./devices/disk[@device='disk']")
+            if disk.find("target") is not None and disk.find("target").get("dev") == "vda"
+        )
+        root.find("./devices").remove(windows_disk)
+        ET.ElementTree(root).write(template, encoding="unicode")
+        result = run_sync(template, deployed)
+        if result.returncode == 0 or deployed.exists():
+            return fail("template without the Windows vda disk was not rejected before writing")
+        if "Windows primary disk at VirtIO target vda" not in result.stderr:
+            return fail(f"missing Windows vda disk did not produce a clear error: {result.stderr}")
+
     # Existing VM: preserve every non-PCI customization, identity and disk path.
     with tempfile.TemporaryDirectory(prefix="vm-xml-sync-existing-") as temp:
         temp_path = Path(temp)
@@ -258,6 +288,7 @@ def main() -> int:
         custom_uuid = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
         custom_mac = "52:54:00:aa:bb:cc"
         custom_disk = "/var/lib/libvirt/images/my-existing-windows.qcow2"
+        custom_nixos_disk = "/var/lib/libvirt/images/my-existing-nixos-test.qcow2"
         custom_data = template_data.replace(
             "<uuid>3def90f6-01d9-4640-badb-1488b66bec29</uuid>",
             f"<uuid>{custom_uuid}</uuid>",
@@ -266,6 +297,9 @@ def main() -> int:
         custom_data = custom_data.replace('address="52:54:00:df:49:0b"', f'address="{custom_mac}"', 1)
         custom_data = custom_data.replace(
             "/var/lib/libvirt/images/win10new.qcow2", custom_disk, 1
+        )
+        custom_data = custom_data.replace(
+            "/var/lib/libvirt/images/nixos-test.qcow2", custom_nixos_disk, 1
         )
         custom_data = custom_data.replace(
             '<vcpu placement="static" current="6">6</vcpu>',
@@ -301,9 +335,18 @@ def main() -> int:
         updated_mac = updated.find("./devices/interface/mac")
         if updated_mac is None or updated_mac.get("address") != custom_mac:
             return fail("existing VM MAC address was changed")
-        disk = updated.find("./devices/disk[@device='disk']/source")
-        if disk is None or disk.get("file") != custom_disk:
+        windows_disk = next(
+            disk for disk in updated.findall("./devices/disk[@device='disk']")
+            if disk.find("target") is not None and disk.find("target").get("dev") == "vda"
+        )
+        nixos_disk = next(
+            disk for disk in updated.findall("./devices/disk[@device='disk']")
+            if disk.find("target") is not None and disk.find("target").get("dev") == "vdb"
+        )
+        if windows_disk.find("source").get("file") != custom_disk:
             return fail("existing Windows disk path was changed")
+        if nixos_disk.find("source").get("file") != custom_nixos_disk:
+            return fail("existing NixOS test disk path was changed")
         vcpu = updated.find("vcpu")
         if vcpu is None or vcpu.text != "4" or vcpu.get("current") != "4":
             return fail("custom CPU topology/vCPU configuration was changed")
