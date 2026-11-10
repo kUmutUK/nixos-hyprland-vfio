@@ -708,15 +708,10 @@ if git_checkout and current_head and repair_baseline_match:
                     and "before this VM definition can enter the release allowlist" in REPAIR,
                     "the changed VM XML template must document its separate target-VM validation gate",
                 )
-                vm_release_allowlist_match = re.search(
-                    r"(?s)\\*\\*Exact release allowlist \\(literal paths only\\):\\*\\*\\s*(.*?)\\n\\n",
-                    RELEASING,
-                )
-                vm_release_paths = (
-                    set(re.findall(r"`([^`]+)`", vm_release_allowlist_match.group(1)))
-                    if vm_release_allowlist_match
-                    else set()
-                )
+                vm_release_allowlist_block = RELEASING.partition(
+                    "**Exact release allowlist (literal paths only):**"
+                )[2].partition("\\n\\n")[0]
+                vm_release_paths = set(re.findall(r"`([^`]+)`", vm_release_allowlist_block))
                 require(
                     "vm-xml/win10.xml" not in vm_release_paths and "vm-xml/win10.xml" not in RELEASE_WORKFLOW,
                     "the VM XML template must remain outside the release allowlist until target-VM validation is documented",
