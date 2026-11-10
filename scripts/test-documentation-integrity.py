@@ -705,7 +705,7 @@ if git_checkout and current_head and repair_baseline_match:
                     and "optional NixOS test disk" in REPAIR
                     and "libvirt/QEMU semantic validation" in REPAIR
                     and "real Windows and NixOS guest boot tests" in REPAIR
-                    and "outside the release allowlist" in REPAIR,
+                    and "before this VM definition can enter the release allowlist" in REPAIR,
                     "the changed VM XML template must document its separate target-VM validation gate",
                 )
                 require(
