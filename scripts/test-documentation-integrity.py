@@ -710,7 +710,7 @@ if git_checkout and current_head and repair_baseline_match:
                 )
                 vm_release_allowlist_block = RELEASING.partition(
                     "**Exact release allowlist (literal paths only):**"
-                )[2].partition("\\n\\n")[0]
+                )[2].partition("\n\n")[0]
                 vm_release_paths = set(re.findall(r"`([^`]+)`", vm_release_allowlist_block))
                 require(
                     "vm-xml/win10.xml" not in vm_release_paths and "vm-xml/win10.xml" not in RELEASE_WORKFLOW,
