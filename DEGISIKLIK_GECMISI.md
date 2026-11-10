@@ -8,6 +8,7 @@
 
 **Target-host NixOS-only VFIO first-start test (owner-reported, 11 November 2026):** A temporary derived win10 domain started successfully using a 90 GiB qcow2 file on the existing P4 ext4 filesystem, NixOS Minimal 26.05 media, a separate NVRAM path, and the installed VFIO hook. QEMU conversion and virsh define --validate passed. This is an initial NixOS-only VM start; installing NixOS, booting the installed vdb disk, testing guest networking, full GPU handback, and booting Windows from its real vda remain unverified. The canonical dual-guest XML/release gate remains open.
 
+**Host continuity note (9–11 November 2026):** The available records do not establish whether the 9 November clean-install/Windows VM lifecycle test and the 11 November NixOS-only first-start test were performed on the same physical host. The 11 November inventory records only the state observed during that test; it does not establish when or why the Windows domain and disk became unavailable. No host reinstall, disk removal, or machine change is inferred.
 
 **v1.4.9 asset discrepancy:** the historical audit-time record below lists 410,138 bytes / SHA-256 `f28f91955d05679b7ff64cb33fbd193a86f87527f856b9801f0e7a197c1f5e61`; current GitHub Release asset metadata reports 411,239 bytes / SHA-256 `56c3d8dfde3eb0b224803ccefa1b624b831a15eca02aaf62d5c4fd4907ff8a3e`. The two records remain explicitly unreconciled.
 
