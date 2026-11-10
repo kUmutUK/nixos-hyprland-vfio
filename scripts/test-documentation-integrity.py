@@ -49,6 +49,29 @@ def require(condition: bool, message: str) -> None:
         errors.append(message)
 
 
+def extract_release_allowlists(
+    releasing: str, workflow: str
+) -> tuple[list[str], list[str]] | None:
+    """Parse the documented and workflow release path lists exactly once."""
+    marker = "**Exact release allowlist (literal paths only):**"
+    if marker not in releasing:
+        return None
+    documented_block = releasing.partition(marker)[2].partition("\n\n")[0]
+    documented_paths = re.findall(r"`([^`]+)`", documented_block)
+    workflow_match = re.search(
+        r"(?m)^\s*(\S[^\n]*?\.github/workflows/release\.yml)\)\s*$",
+        workflow,
+    )
+    if workflow_match is None:
+        return None
+    workflow_paths = workflow_match.group(1).strip().split("|")
+    if not documented_paths or not workflow_paths or any(not item for item in workflow_paths):
+        return None
+    return documented_paths, workflow_paths
+
+
+
+
 release_allowlists = extract_release_allowlists(RELEASING, RELEASE_WORKFLOW)
 if release_allowlists is None:
     documented_release_path_list: list[str] = []
@@ -72,27 +95,6 @@ require(
 )
 
 
-
-
-def extract_release_allowlists(
-    releasing: str, workflow: str
-) -> tuple[list[str], list[str]] | None:
-    """Parse the documented and workflow release path lists exactly once."""
-    marker = "**Exact release allowlist (literal paths only):**"
-    if marker not in releasing:
-        return None
-    documented_block = releasing.partition(marker)[2].partition("\n\n")[0]
-    documented_paths = re.findall(r"`([^`]+)`", documented_block)
-    workflow_match = re.search(
-        r"(?m)^\s*(\S[^\n]*?\.github/workflows/release\.yml)\)\s*$",
-        workflow,
-    )
-    if workflow_match is None:
-        return None
-    workflow_paths = workflow_match.group(1).strip().split("|")
-    if not documented_paths or not workflow_paths or any(not item for item in workflow_paths):
-        return None
-    return documented_paths, workflow_paths
 
 
 
