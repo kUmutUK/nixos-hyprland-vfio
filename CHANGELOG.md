@@ -7,7 +7,7 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 ### Release-workflow and documentation audit — 2026-11-11
 
 - Confirmed that the first-release release-notes block in `.github/workflows/release.yml` already uses the valid `body = source[match.end():]` expression on the reviewed `main` snapshot. Add a CI regression that extracts and syntax-compiles every embedded Python heredoc so future workflow-code syntax errors fail the normal check.
-- Replace the incorrect fixed 40-path changelog wording with a reference to the exact literal ancestor-build allowlist; keep the documented path list and release workflow list identical and count-checked.
+- Replace the incorrect fixed path-count wording with a reference to the exact literal ancestor-build allowlist; keep the documented path list and release workflow list identical and count-checked.
 - Remove the orphaned dotted-number prefix from the README Rust/BTF troubleshooting heading and guard against similarly orphaned dotted-number headings.
 - Recheck the v1.4.9 GitHub Release API metadata: the current source ZIP asset is reported as 411,239 bytes with SHA-256 `56c3d8dfde3eb0b224803ccefa1b624b831a15eca02aaf62d5c4fd4907ff8a3e`. Retain the earlier 410,138-byte / `f28f91955d05679b7ff64cb33fbd193a86f87527f856b9801f0e7a197c1f5e61` audit-time measurement as a separate historical record; this API metadata check did not download and independently rehash the ZIP or modify the release asset.
 
