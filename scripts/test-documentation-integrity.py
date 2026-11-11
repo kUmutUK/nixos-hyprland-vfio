@@ -504,16 +504,72 @@ require(
     )),
     "previous v1.4.6 release metadata must remain available as historical information",
 )
+v152_heading = CHANGELOG.find("## [v1.5.2] - 2026-11-11")
 v151_heading = CHANGELOG.find("## [v1.5.1] - 2026-11-11")
 v150_heading = CHANGELOG.find("## [v1.5.0] - 2026-11-10")
 v149_heading = CHANGELOG.find("## [v1.4.9] - 2026-11-10")
 v148_heading = CHANGELOG.find("## [v1.4.8] - 2026-11-09")
 v147_heading = CHANGELOG.find("## [v1.4.7] - 2026-11-09")
 require(
-    v151_heading >= 0 and v150_heading > v151_heading and v149_heading > v150_heading
-    and v148_heading > v149_heading and v147_heading > v148_heading
+    v152_heading >= 0 and v151_heading > v152_heading and v150_heading > v151_heading
+    and v149_heading > v150_heading and v148_heading > v149_heading and v147_heading > v148_heading
     and "v1.4.6 is the current published release" not in CHANGELOG,
     "CHANGELOG must list v1.5.1, v1.5.0, v1.4.9, v1.4.8, and v1.4.7 newest-first without a stale current-release claim",
+)
+require(
+    all(item in CHANGELOG for item in (
+        "418bb687ec4f4d539e3ccc2d839baf242552c018",
+        "Normal Nix Flake Check #1396",
+        "451,101 bytes",
+    )) and "v1.5.2" in STATE_INDEX and "v1.5.2" in README,
+    "v1.5.2 must be recorded as the latest release with its exact tag commit, exact-tag CI result, and canonical ZIP size",
+)
+require(
+    "exact tag commit `a20962f9be065f17c7c2ec143473c47b7a75aae9`" in CHANGELOG
+    and "Normal CI #1309" in CHANGELOG
+    and "410,138-byte" in CHANGELOG and "ad231d7529721eae343385cca9073790e4e3be61" in CHANGELOG,
+    "v1.4.9 must distinguish the published a20962f tag from the preceding ad231d7 archive/CI snapshot",
+)
+require(
+    all(item in CHANGELOG + REPAIR for item in (
+        "ec2482a7ada57917dac37309f58ef29b6e5f0240",
+        "7ea632afcca2daa41a7c88638ce2257f8892968a",
+        "ae175f4999b89a340fbc0cf48ae24a6e41b68ece",
+        "100755",
+        "100644",
+    )) and "#1395" in CHANGELOG and "#1396" in CHANGELOG and "#1397" in CHANGELOG and "#1398" in CHANGELOG,
+    "the latest four main-branch CI outcomes and executable-mode regression must remain documented",
+)
+require(
+    "2 h 24 min 56 s" in CHANGELOG and "2 h 24 min 56 s" in STATE_INDEX
+    and "2 h 24 min 51 s" not in CHANGELOG + STATE_INDEX,
+    "Build #13 duration must match its recorded 09:24:26–11:49:22 UTC interval",
+)
+require(
+    "manual dispatch from `main` uses `--latest`" not in CHANGELOG
+    and "previous note claiming that manual dispatch from `main` used `--latest` was incorrect and is withdrawn" in CHANGELOG
+    and "`--latest` is not used for the current manual-release path" in STATE_INDEX,
+    "git-cliff documentation must not claim that the current manual release path uses --latest",
+)
+require(
+    "f46b8ac8" in CHANGELOG and "fbd105c8" in CHANGELOG
+    and "ed6ca666" in CHANGELOG and "0c035b2c" in CHANGELOG and "91c4d58e" in CHANGELOG
+    and "history does not prove when they were re-enabled" not in CHANGELOG,
+    "USB and IOMMU chronology must agree with the dated commit history in the archive preface",
+)
+require(
+    "Step 8" in INSTALLATION and "A clean install creates and mounts it in Section 6." not in INSTALLATION,
+    "the Home Snapper child subvolume must be referenced to the actual Step 8 mount stage",
+)
+require(
+    "The checked-in CachyOS lock in this tree resolves" not in CHANGELOG
+    and "Historical lock snapshot" in CHANGELOG
+    and "9df32f70be3550911f178b3ba9ad784996a4e80c" in CHANGELOG,
+    "the old CachyOS revision must be dated as historical and kept distinct from the current flake.lock revision",
+)
+require(
+    "## Previous exact-HEAD build and v1.4.2 release verification — 2026-11-05 (historical)\n\n## Previous verification follow-up" not in STATE_INDEX,
+    "the status index must not retain a bodyless historical section heading",
 )
 if (ROOT / ".git").exists():
     tracked_file_list = subprocess.run(
