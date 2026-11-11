@@ -196,6 +196,11 @@ require(
     "installation guide must warn that VM identity is fresh only for a new domain and preserved for existing VMs",
 )
 require("- [License](#license)" in README and "## License" in README, "README contents must link to the License section")
+require(
+    "- [Repository map](#repository-map-selected-entry-points-non-exhaustive)" in README
+    and "## Repository map (selected entry points; non-exhaustive)" in README,
+    "README contents must target the generated Repository map heading anchor",
+)
 require(".git-cliff.toml" in README and "RELEASING.md" in README and ".github/workflows/release.yml" in README, "README repository map must include the release configuration, guide, and workflow")
 require("Normal CI must pass for the exact tagged commit" in README, "README must require successful CI for the exact tagged commit")
 require("successful full NixOS system build must exist for that commit or an ancestor" in README, "README must describe the permitted ancestor full-system build")
@@ -1774,10 +1779,24 @@ require(
     "the current-main CI failure/correction sequence and 79-commit Build #18 boundary must remain documented",
 )
 
+audit_entry_heading = "### Independent audit cross-check and preflight fixes — 2026-11-11"
+audit_entry_position = CHANGELOG.index(audit_entry_heading)
+changelog_sections = [
+    (match.start(), match.group(1).strip())
+    for match in re.finditer(r"(?m)^##\\s+(.+?)\\s*$", CHANGELOG)
+]
+audit_parent_section = next(
+    (
+        section
+        for start, section in reversed(changelog_sections)
+        if start < audit_entry_position
+    ),
+    None,
+)
 require(
-    CHANGELOG.index("### Independent audit cross-check and preflight fixes — 2026-11-11")
-    < CHANGELOG.index("## Historical releases"),
-    "the current 11 November independent-audit/preflight entry must remain in [Unreleased], before Historical releases",
+    audit_parent_section == "[Unreleased]"
+    and audit_entry_position < CHANGELOG.index("## Historical releases"),
+    "the current 11 November independent-audit/preflight entry must belong to [Unreleased], not merely precede Historical releases",
 )
 require(
     "run #20's job log" in README
