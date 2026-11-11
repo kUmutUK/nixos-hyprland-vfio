@@ -153,6 +153,8 @@ def run_case(
 def test_snapshot_path_allow_missing_is_narrow(directory: Path) -> None:
     namespace = runpy.run_path(str(CHECKER))
     validate_path = namespace["snapshots_subvolume_name"]
+    function_globals = validate_path.__globals__
+    original_lookup = function_globals["btrfs_subvolume_name"]
 
     missing = directory / "missing-snapshots"
     if validate_path(missing, True) is not None:
@@ -171,7 +173,7 @@ def test_snapshot_path_allow_missing_is_narrow(directory: Path) -> None:
     def reject_existing_path(*_args: object) -> str:
         raise RuntimeError("existing path is not a Btrfs subvolume")
 
-    namespace["btrfs_subvolume_name"] = reject_existing_path
+    function_globals["btrfs_subvolume_name"] = reject_existing_path
     try:
         validate_path(existing, True)
     except RuntimeError as error:
@@ -185,10 +187,11 @@ def test_snapshot_path_allow_missing_is_narrow(directory: Path) -> None:
             raise AssertionError("snapshots helper passed unexpected Btrfs validation arguments")
         return ".snapshots"
 
-    namespace["btrfs_subvolume_name"] = accept_existing_path
+    function_globals["btrfs_subvolume_name"] = accept_existing_path
     if validate_path(existing, True) != ".snapshots":
         raise AssertionError("installer mode rejected an existing valid snapshots subvolume")
     print("OK: --allow-missing-snapshots permits absence only and still verifies existing paths.")
+
 
 def main() -> int:
     with tempfile.TemporaryDirectory(prefix="home-snapper-test-") as temp:
