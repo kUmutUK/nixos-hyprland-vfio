@@ -4,6 +4,11 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+### CS2 Gamescope launch profile — 2026-11-11
+
+- Document the owner-tested CS2 Steam launch option with Turkish Gamescope keyboard layout, 1440×1440-to-2560×1440 stretch scaling, GameMode, MangoHud, and an external 170 FPS cap.
+- Keep Source 2's in-game FPS cap disabled with `+fps_max 0` to match the documented low-latency-layer frame-pacing workaround. This is documentation-only; no NixOS runtime defaults or existing per-game profiles are changed.
+
 ### VG27AQ1A DisplayPort audio idle-resume fix — 2026-11-11
 
 - Add a device-specific WirePlumber ALSA rule for the reference-host VG27AQ1A DisplayPort sink, setting `session.suspend-timeout-seconds = 0` only on the exact observed node. Other audio sinks retain their existing idle-suspend behavior.
