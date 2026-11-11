@@ -714,6 +714,17 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 
 **CS2 / Source 2 note:** the upstream [`low_latency_layer` v0.2.0 release notes](https://github.com/Korthos-Software/low_latency_layer/releases/tag/v0.2.0) document frame-pacing issues when an in-engine FPS cap is enabled. While the layer is active, use `fps_max 0` in CS2 until upstream resolves the issue; an external cap such as MangoHud's has been reported not to trigger it. If you still see stutter or frame-pacing problems, opt CS2 out with `DISABLE_LOW_LATENCY_LAYER=1 %command%` and compare frametimes.
 
+### CS2 Gamescope launch options
+
+Use this complete line in CS2's Steam launch options on the reference host:
+
+```bash
+MANGOHUD_CONFIG=read_cfg,fps_limit=170 XKB_DEFAULT_LAYOUT=tr gamescope -f -w 1440 -h 1440 -W 2560 -H 1440 -S stretch --force-grab-cursor -- gamemoderun mangohud %command% +fps_max 0
+```
+
+This launches a 1440×1440 game surface in fullscreen and stretches it to a 2560×1440 output, sets Gamescope's keyboard layout to Turkish, grabs the cursor, and runs CS2 through GameMode and MangoHud. MangoHud applies the external 170 FPS cap; `+fps_max 0` intentionally leaves Source 2's in-game cap disabled to avoid the low-latency-layer frame-pacing issue described above. The command does not set monitor refresh rate; configure the display refresh separately.
+
+
 ## Important configuration decisions
 
 - `systemd-boot` is used; UEFI is required.
