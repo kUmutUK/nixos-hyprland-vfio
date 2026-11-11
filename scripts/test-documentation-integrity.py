@@ -1773,7 +1773,7 @@ require(
     "run #20's job log" in README
     and "no manifest asset" in README
     and "397,725-byte reproduction was not independently rerun" in README
-    and "Release #20's job log records" in CHANGELOG
+    and "Release #20's job log instead records" in CHANGELOG
     and "unresolved asset/workflow provenance mismatch" in REPAIR
     and "nixos-hyprland-vfio-source.zip" in REPAIR
     and "nixos-hyprland-vfio.zip" in REPAIR,

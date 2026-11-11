@@ -4,8 +4,8 @@
 >
 > Bu blok 19 Ekim 2026 tarihindeki yapılandırma durumunu kaydeder. Bu tarihsel önsöz, sonraki değişikliklerle geçersiz kalan tercihleri işaretlemek amacıyla 4 Kasım 2026'da güncellenmiştir. Başlıktaki ilk tarih snapshot'ın kapsadığı yapılandırmayı, son güncelleme tarihi ise önsözdeki durum açıklamalarını belirtir; güncel ayarlar için kök `README.md` ve `nixos/configuration.nix` esas alınmalıdır.
 >
-> - Aşağıdaki `[1.3.5]` kaydındaki IOMMU kronolojisi tam commit farklarıyla yeniden
->   doğrulandı: `iommu=pt`, `5a417ef` (19 Nisan 2026) tarihli izlenen yapılandırmada
+> - Aşağıdaki `[1.3.5]` kaydındaki IOMMU değişimi Git geçmişiyle eşleştirildi:
+>   `iommu=pt`, `5a417ef` (19 Nisan 2026) tarihli izlenen yapılandırmada
 >   zaten bulunuyordu ve `ed6ca666` (9 Ekim) ebeveyninde de mevcuttu. `ed6ca666`
 >   yalnızca `amd_iommu=on` ekledi. `0c035b2c` (13 Ekim) her iki IOMMU parametresini
 >   altı başka kernel parametresiyle birlikte `boot.kernelParams` listesinden
