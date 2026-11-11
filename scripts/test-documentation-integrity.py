@@ -1339,8 +1339,10 @@ require(
         "0c035b2cec37192444a8d587520a4a1d8b64ae88",
         "91c4d58e8ece033af76e628b8bdf80c857fb9d9b",
     ))
-    and "removed both from `boot.kernelParams`" in STATE_INDEX,
-    "current-state index must identify the IOMMU parameter addition, removal, and clarification commits",
+    and "`iommu=pt` is present in the tracked configuration by" in STATE_INDEX
+    and "The 9 October `ed6ca666` change adds only `amd_iommu=on`" in STATE_INDEX
+    and "removes both IOMMU parameters together with six other kernel parameters" in STATE_INDEX,
+    "current-state index must distinguish the pre-existing iommu=pt option from the later amd_iommu=on addition and the broader removal",
 )
 require(
     all(sha in STATE_INDEX for sha in (
@@ -1729,12 +1731,14 @@ require(
 require(
     "VG27AQ1A DisplayPort audio resume" in README
     and "session.suspend-timeout-seconds = 0" in README
-    and "NixOS activation and post-reboot persistence still need target-host verification" in README
-    and "temporary user-level rule" in CHANGELOG
-    and "activation through NixOS and persistence after reboot remain to be verified" in CHANGELOG
+    and "activation of this exact rule and its persistence after reboot remain unverified" in README
+    and "TARGET_HOST_VALIDATED=true" in README
+    and "Release #32's job log records `TARGET_HOST_VALIDATED=true`" in CHANGELOG
+    and "rule-specific sink test or post-reboot persistence check" in CHANGELOG
     and "owner-reported VG27AQ1A DisplayPort audio idle-resume fix" in REPAIR
+    and "rule-specific checks remain open" in REPAIR
     and "temporary user-level WirePlumber rule" in STATE_INDEX,
-    "the reference-host audio fix must be documented with its actual evidence and pending activation/reboot boundary",
+    "the VG27AQ1A note must distinguish the general Release #32 attestation from rule-specific activation/persistence evidence",
 )
 require(
     "3c33b8b613c8c1da71263ea998607c11f046f22c" in README
@@ -1759,6 +1763,70 @@ require(
     and "79 commits behind the pre-reconciliation `main` snapshot" in REPAIR,
     "the current-main CI failure/correction sequence and 79-commit Build #18 boundary must remain documented",
 )
+
+require(
+    CHANGELOG.index("### Independent audit cross-check and preflight fixes — 2026-11-11")
+    < CHANGELOG.index("## Historical releases"),
+    "the current 11 November independent-audit/preflight entry must remain in [Unreleased], before Historical releases",
+)
+require(
+    "run #20's job log" in README
+    and "no manifest asset" in README
+    and "397,725-byte reproduction was not independently rerun" in README
+    and "Release #20's job log records" in CHANGELOG
+    and "unresolved asset/workflow provenance mismatch" in REPAIR
+    and "nixos-hyprland-vfio-source.zip" in REPAIR
+    and "nixos-hyprland-vfio.zip" in REPAIR,
+    "v1.4.6 documentation must distinguish the published Release API asset from the workflow's logged canonical output",
+)
+require(
+    "Release #32's job log" in README
+    and "TARGET_HOST_VALIDATED: true" in REPAIR
+    and "five post-Build #18 paths outside the 42-path allowlist" in REPAIR
+    and "does not create Build #19" in REPAIR,
+    "v1.5.2 release documentation must record the confirmed manual target-host attestation and preserve the Build #19 boundary",
+)
+require(
+    "   The UUID identity guide above" in RELEASING
+    and "    The UUID identity guide above" not in RELEASING,
+    "RELEASING step-4 UUID explanation must align with the three-space list continuation",
+)
+
+if (ROOT / ".git").exists():
+    def historical_kernel_params(revision: str) -> str | None:
+        result = subprocess.run(
+            ["git", "show", f"{revision}:nixos/configuration.nix"],
+            cwd=ROOT, text=True, capture_output=True, check=False,
+        )
+        if result.returncode != 0:
+            return None
+        match = re.search(
+            r"(?ms)^\\s*boot\\.kernelParams\\s*=\\s*\\[(.*?)^\\s*\\];",
+            result.stdout,
+        )
+        return match.group(1) if match else None
+
+    ed_parent = historical_kernel_params("ed6ca666^")
+    ed_added = historical_kernel_params("ed6ca666")
+    removal_parent = historical_kernel_params("0c035b2c^")
+    removal_commit = historical_kernel_params("0c035b2c")
+    removed_kernel_options = (
+        "transparent_hugepage=madvise", "iommu=pt", "amd_iommu=on",
+        "usbcore.autosuspend=-1", "video=efifb:off",
+        "amdgpu.ppfeaturemask=0xfffd7fff", "kvm.ignore_msrs=1", "pcie_aspm=off",
+    )
+    require(
+        ed_parent is not None and ed_added is not None
+        and '"iommu=pt"' in ed_parent and '"amd_iommu=on"' not in ed_parent
+        and '"iommu=pt"' in ed_added and '"amd_iommu=on"' in ed_added,
+        "Git history must prove that ed6ca666 added amd_iommu=on while iommu=pt already existed in its parent",
+    )
+    require(
+        removal_parent is not None and removal_commit is not None
+        and all(f'"{option}"' in removal_parent for option in removed_kernel_options)
+        and all(f'"{option}"' not in removal_commit for option in removed_kernel_options),
+        "Git history must prove that 0c035b2c removed both IOMMU flags and the six other recorded kernel parameters",
+    )
 
 if errors:
     for error in errors:

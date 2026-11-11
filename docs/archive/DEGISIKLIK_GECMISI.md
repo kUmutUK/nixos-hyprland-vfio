@@ -4,15 +4,14 @@
 >
 > Bu blok 19 Ekim 2026 tarihindeki yapılandırma durumunu kaydeder. Bu tarihsel önsöz, sonraki değişikliklerle geçersiz kalan tercihleri işaretlemek amacıyla 4 Kasım 2026'da güncellenmiştir. Başlıktaki ilk tarih snapshot'ın kapsadığı yapılandırmayı, son güncelleme tarihi ise önsözdeki durum açıklamalarını belirtir; güncel ayarlar için kök `README.md` ve `nixos/configuration.nix` esas alınmalıdır.
 >
-> - Aşağıdaki `[1.3.5]` kaydındaki IOMMU değişimi Git geçmişiyle eşleştirildi:
->   `ed6ca666` (9 Ekim 2026) `amd_iommu=on` ve `iommu=pt` parametrelerini ekledi;
->   `0c035b2c` (13 Ekim 2026) ikisini de kaldırdı. Kaldırma commit'i,
->   `amd_iommu=on` parametresinin tüm kernel sürümlerinde belgelenmemiş
->   olmasını ve `iommu=pt` seçeneğinin firmware IOMMU etkinliğini kanıtlamamasını
->   gerekçe gösteriyor. `91c4d58e` (15 Ekim) mevcut parametresiz durumu açıkça
->   belgeliyor. Güncel yapılandırma da ikisini etkinleştirmez; IOMMU/AMD-Vi
->   BIOS/UEFI'de açılmalı ve çalışma zamanı `dmesg` ile
->   `/sys/kernel/iommu_groups/` üzerinden doğrulanmalıdır.
+> - Aşağıdaki `[1.3.5]` kaydındaki IOMMU kronolojisi tam commit farklarıyla yeniden
+>   doğrulandı: `iommu=pt`, `5a417ef` (19 Nisan 2026) tarihli izlenen yapılandırmada
+>   zaten bulunuyordu ve `ed6ca666` (9 Ekim) ebeveyninde de mevcuttu. `ed6ca666`
+>   yalnızca `amd_iommu=on` ekledi. `0c035b2c` (13 Ekim) her iki IOMMU parametresini
+>   altı başka kernel parametresiyle birlikte `boot.kernelParams` listesinden
+>   kaldırdı. `91c4d58e` (15 Ekim) parametresiz durumu açıkladı. Güncel yapılandırma
+>   ikisini de etkinleştirmez; IOMMU/AMD-Vi BIOS/UEFI'de açılmalı ve çalışma zamanı
+>   `dmesg` ile `/sys/kernel/iommu_groups/` üzerinden doğrulanmalıdır.
 > - Kernel seçimi, upstream `master` kanalındaki `linuxPackages-cachyos-rt-bore-lto` paketini
 >   kullanır; `flake.nix` içine sabit kernel sürümü yazılmaz. `flake.lock`, tekrar üretilebilir
 >   kurulum için o checkout'ta çözümlenen kaynak revizyonunu kaydeder; upstream'deki yeni sürüme
