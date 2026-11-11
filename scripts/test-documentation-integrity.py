@@ -519,8 +519,13 @@ require(
 require(
     all(item in CHANGELOG for item in (
         "418bb687ec4f4d539e3ccc2d839baf242552c018",
-        "Normal Nix Flake Check #1396",
+        "Release ID `441604359`",
+        "Release workflow run [#32]",
+        "43012396764",
+        "Normal Nix Flake Check [#1396]",
+        "43012004213",
         "451,101 bytes",
+        "11c0b38fc3de7c8f99a089018ad89131e175ca323c6652a19573f13f40b082c6",
     )) and "v1.5.2" in STATE_INDEX and "v1.5.2" in README,
     "v1.5.2 must be recorded as the latest release with its exact tag commit, exact-tag CI result, and canonical ZIP size",
 )
@@ -537,7 +542,10 @@ require(
         "ae175f4999b89a340fbc0cf48ae24a6e41b68ece",
         "100755",
         "100644",
-    )) and "#1395" in CHANGELOG and "#1396" in CHANGELOG and "#1397" in CHANGELOG and "#1398" in CHANGELOG,
+    )) and all(item in CHANGELOG + REPAIR + README + STATE_INDEX for item in (
+        "43011838520", "43012004213", "43022490748", "43022565265", "43033685955",
+        "aebea08f6169190d4df0af5d7a1f20e5e76f18f3",
+    )) and all(f"#{n}" in CHANGELOG for n in (1395,1396,1397,1398,1399)),
     "the latest four main-branch CI outcomes and executable-mode regression must remain documented",
 )
 require(
@@ -644,11 +652,10 @@ require(
 )
 require(
     all(item in CHANGELOG for item in (
-        "release run [#25]", "42807672922", "ad231d7529721eae343385cca9073790e4e3be61",
-        "410,138 bytes", "f28f91955d05679b7ff64cb33fbd193a86f87527f856b9801f0e7a197c1f5e61",
-        "The current GitHub Release asset metadata reports 411,239 bytes",
-        "56c3d8dfde3eb0b224803ccefa1b624b831a15eca02aaf62d5c4fd4907ff8a3e",
-        "Normal CI [#1309]", "42807151011",
+        "Release run [#25]", "42807672922", "exact tag commit `a20962f9be065f17c7c2ec143473c47b7a75aae9`",
+        "410,138-byte", "f28f91955d05679b7ff64cb33fbd193a86f87527f856b9801f0e7a197c1f5e61",
+        "published 411,239-byte asset", "56c3d8dfde3eb0b224803ccefa1b624b831a15eca02aaf62d5c4fd4907ff8a3e",
+        "Normal CI #1309", "42807151011", "preceding commit `ad231d7529721eae343385cca9073790e4e3be61`",
     )),
     "CHANGELOG must preserve exact v1.4.9 release, CI, source commit, and archive provenance",
 )

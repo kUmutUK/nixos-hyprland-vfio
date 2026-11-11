@@ -6,9 +6,9 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ### Independent source-provenance and CI reconciliation — 2026-11-11
 
-- Record v1.5.2 as the latest published release: its tag resolves to exact commit `418bb687ec4f4d539e3ccc2d839baf242552c018`, Normal CI #1396 passed on that commit, and the canonical ZIP is 451,101 bytes. The full SHA-256 remains available in the release's checksum manifest; no truncated digest is copied into this changelog.
+- Record v1.5.2 as the latest published release: Release ID `441604359`, Release run [#32](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43012396764), exact tag commit `418bb687ec4f4d539e3ccc2d839baf242552c018`, Normal CI [#1396](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43012004213), canonical ZIP 451,101 bytes, SHA-256 `11c0b38fc3de7c8f99a089018ad89131e175ca323c6652a19573f13f40b082c6`.
 - Correct v1.4.9 provenance: the `v1.4.9` tag and Release run #25 target `a20962f9be065f17c7c2ec143473c47b7a75aae9`. Normal CI #1309 passed on the preceding `ad231d7529721eae343385cca9073790e4e3be61` commit, not the exact tag target. The 410,138-byte / `f28f9195...` archive is the canonical ZIP for `ad231d7`; the published 411,239-byte / `56c3d8df...` asset is the ZIP for `a20962f`.
-- Reconcile Normal CI #1395–#1398: #1395 passed on `ec2482a`; #1396 passed on the v1.5.2 tag commit `418bb68`; #1397 failed on `7ea632a` when the bootstrap test lost its executable bit; #1398 passed on `ae175f4` after mode `100755` was restored. The commit links and failure cause are recorded in the repair report.
+- Reconcile Normal CI #1395–#1399: [#1395](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43011838520) passed on `ec2482a`; [#1396](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43012004213) passed on the v1.5.2 tag commit `418bb68`; [#1397](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43022490748) failed on `7ea632a` when the bootstrap test lost its executable bit; [#1398](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43022565265) passed on `ae175f4` after mode `100755` was restored; [#1399](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43033685955) failed on `aebea08` because the old v1.4.9 test assertion had not yet been updated to the corrected provenance record. This commit updates that assertion; its own Normal CI result is separate.
 - These are source-history and documentation corrections. They do not add a new full-system build, a new target-host activation result, or saved-state/managed-save evidence.
 
 
@@ -83,8 +83,8 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ### Release and validation boundary — 2026-11-11
 
-- Published [v1.5.2](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.5.2) from exact tag commit `418bb687ec4f4d539e3ccc2d839baf242552c018`.
-- Normal Nix Flake Check #1396 passed on that exact tag commit. The canonical source ZIP is 451,101 bytes; the immutable GitHub Release includes the full checksum manifest.
+- Published [v1.5.2](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.5.2), Release ID `441604359`, with Release workflow run [#32](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43012396764) from exact tag commit `418bb687ec4f4d539e3ccc2d839baf242552c018`.
+- Normal Nix Flake Check [#1396](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43012004213) passed on that exact tag commit. The canonical source ZIP is 451,101 bytes with SHA-256 `11c0b38fc3de7c8f99a089018ad89131e175ca323c6652a19573f13f40b082c6`.
 - The release contains the device-specific VG27AQ1A DisplayPort WirePlumber idle-resume rule. The owner-reported temporary-rule improvement is not evidence that this repository version has been activated through NixOS or verified after reboot.
 - Manual full-system Build #18 remains on ancestor `c6f4b955475de2ea16bc2b34c59a95dad3a1ae78`, 82 commits before this release tag. Build #19 remains outstanding; release publication and Normal CI do not constitute a new full-system build.
 
