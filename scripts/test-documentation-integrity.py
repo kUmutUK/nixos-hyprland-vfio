@@ -1622,6 +1622,34 @@ require(
     "README, repair report, status index, and changelog must preserve the unresolved 9–11 November host-continuity boundary without inferring a machine change",
 )
 
+audio_rule_marker = 'wireplumber.extraConfig."51-vg27aq1a-no-suspend" = {'
+audio_rule = CONFIG.partition(audio_rule_marker)[2].partition('extraConfig.pipewire.')[0]
+require(
+    bool(audio_rule)
+    and '"monitor.alsa.rules"' in audio_rule
+    and "alsa_output.pci-0000_0b_00.1.hdmi-stereo-extra4" in audio_rule
+    and '"session.suspend-timeout-seconds" = 0;' in audio_rule
+    and "~alsa_output.*" not in audio_rule,
+    "WirePlumber idle-suspend workaround must target only the measured VG27AQ1A DP sink and set its suspend timeout to zero",
+)
+require(
+    "VG27AQ1A DisplayPort audio resume" in README
+    and "session.suspend-timeout-seconds = 0" in README
+    and "NixOS activation and post-reboot persistence still need target-host verification" in README
+    and "temporary user-level rule" in CHANGELOG
+    and "activation through NixOS and persistence after reboot remain to be verified" in CHANGELOG
+    and "owner-reported VG27AQ1A DisplayPort audio idle-resume fix" in REPAIR
+    and "temporary user-level WirePlumber rule" in DEGISIKLIK_GECMISI,
+    "the reference-host audio fix must be documented with its actual evidence and pending activation/reboot boundary",
+)
+require(
+    "d135c64944de89ce5f991fdd1911526df33986ea" in README
+    and "43002963707" in README
+    and "d135c64944de89ce5f991fdd1911526df33986ea" in STATE_INDEX
+    and "43002963707" in REPAIR,
+    "current-main CI #1386 must be the recorded baseline before the audio configuration update",
+)
+
 if errors:
     for error in errors:
         print(f"FAIL: {error}", file=sys.stderr)

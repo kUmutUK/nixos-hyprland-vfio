@@ -4,6 +4,12 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+### VG27AQ1A DisplayPort audio idle-resume fix — 2026-11-11
+
+- Add a device-specific WirePlumber ALSA rule for the reference-host VG27AQ1A DisplayPort sink, setting `session.suspend-timeout-seconds = 0` only on the exact observed node. Other audio sinks retain their existing idle-suspend behavior.
+- The owner reported that a temporary user-level rule with the same property removed the 2–3 second audio delay after pausing and resuming video. The repository now carries the rule declaratively; activation through NixOS and persistence after reboot remain to be verified on the target host.
+- The change touches `nixos/configuration.nix`, which remains outside the successful Build #18 ancestor baseline and the literal release allowlist. Build #19 or the documented explicit target-host release attestation is still required; normal CI alone is not a full-system build.
+
 ### Release-workflow and documentation audit — 2026-11-11
 
 - Confirmed that the first-release release-notes block in `.github/workflows/release.yml` already uses the valid `body = source[match.end():]` expression on the reviewed `main` snapshot. Add a CI regression that extracts and syntax-compiles every embedded Python heredoc so future workflow-code syntax errors fail the normal check.

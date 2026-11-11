@@ -397,6 +397,24 @@ in
     pulse.enable = true;
     jack.enable = true;
     wireplumber.enable = true;
+    # Keep the reference-host VG27AQ1A DisplayPort sink open between media streams.
+    # Its idle suspend caused a 2–3 second audio resume delay; scope this to one sink.
+    wireplumber.extraConfig."51-vg27aq1a-no-suspend" = {
+      "monitor.alsa.rules" = [
+        {
+          matches = [
+            {
+              "node.name" = "alsa_output.pci-0000_0b_00.1.hdmi-stereo-extra4";
+            }
+          ];
+          actions = {
+            update-props = {
+              "session.suspend-timeout-seconds" = 0;
+            };
+          };
+        }
+      ];
+    };
     extraConfig.pipewire."99-lowlatency.conf" = ''
       context.properties = {
           default.clock.rate       = 48000
