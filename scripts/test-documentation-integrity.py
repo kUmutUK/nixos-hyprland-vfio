@@ -1639,7 +1639,7 @@ require(
     and "temporary user-level rule" in CHANGELOG
     and "activation through NixOS and persistence after reboot remain to be verified" in CHANGELOG
     and "owner-reported VG27AQ1A DisplayPort audio idle-resume fix" in REPAIR
-    and "temporary user-level WirePlumber rule" in DEGISIKLIK_GECMISI,
+    and "temporary user-level WirePlumber rule" in STATE_INDEX,
     "the reference-host audio fix must be documented with its actual evidence and pending activation/reboot boundary",
 )
 require(
