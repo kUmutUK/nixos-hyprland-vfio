@@ -1643,11 +1643,26 @@ require(
     "the reference-host audio fix must be documented with its actual evidence and pending activation/reboot boundary",
 )
 require(
-    "d135c64944de89ce5f991fdd1911526df33986ea" in README
-    and "43002963707" in README
-    and "d135c64944de89ce5f991fdd1911526df33986ea" in STATE_INDEX
-    and "43002963707" in REPAIR,
-    "current-main CI #1386 must be the recorded baseline before the audio configuration update",
+    "3c33b8b613c8c1da71263ea998607c11f046f22c" in README
+    and "43008843993" in README
+    and "3c33b8b613c8c1da71263ea998607c11f046f22c" in STATE_INDEX
+    and "43008843993" in STATE_INDEX
+    and "3c33b8b613c8c1da71263ea998607c11f046f22c" in REPAIR
+    and "43008843993" in REPAIR,
+    "the current main HEAD and passing Normal CI #1393 must be recorded consistently",
+)
+require(
+    all(
+        run_id in REPAIR
+        for run_id in (
+            "43002384121", "43002963707", "43005017515", "43005111853",
+            "43005218908", "43005306029", "43008833713", "43008838190",
+            "43008843993",
+        )
+    )
+    and "DEGISIKLIK_GECMISI is not defined" in REPAIR
+    and "79 commits behind current" in REPAIR,
+    "the current-main CI failure/correction sequence and 79-commit Build #18 boundary must remain documented",
 )
 
 if errors:

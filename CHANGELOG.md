@@ -4,6 +4,13 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+### Main-branch CI history reconciliation — 2026-11-11
+
+- Reconcile push-triggered Normal CI runs #1385–#1393 against GitHub Actions: #1385 and #1387–#1389 failed at the documentation-integrity step for recorded assertion/name-binding regressions; #1386 and #1390–#1393 passed.
+- Record the #1388/#1389 `DEGISIKLIK_GECMISI` NameError and its #1390 correction to the declared `STATE_INDEX` variable, as well as the #1385/#1387 stale documentation assertions.
+- Confirm current `main` HEAD `3c33b8b613c8c1da71263ea998607c11f046f22c` passed Normal CI #1393. This does not represent a new release or full-system build; Build #19 remains outstanding.
+
+
 ### CS2 Gamescope launch profile — 2026-11-11
 
 - Document the owner-tested CS2 Steam launch option with Turkish Gamescope keyboard layout, 1440×1440-to-2560×1440 stretch scaling, GameMode, MangoHud, and an external 170 FPS cap.
