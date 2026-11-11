@@ -13,7 +13,15 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 - **v1.4.6 asset provenance:** GitHub Release API metadata lists `nixos-hyprland-vfio.zip` (402,118 bytes, SHA-256 `05ffe97e...`) and no manifest asset. Release run #20's successful job log records `scripts/package-source-zip.sh` producing `nixos-hyprland-vfio-source.zip`, validating 73 tracked files and 9 executable files, then creating a separate `.sha256` manifest. The differing name/manifest inventory is verified; the supplied audit's 397,725-byte byte-reproduction result was not rerun here. Preserve the published asset as immutable historical material and do not call its provenance canonical.
 - **v1.5.2 release attestation:** Release run #32 (run ID `43012396764`) completed successfully by `workflow_dispatch` on exact commit `418bb687ec4f4d539e3ccc2d839baf242552c018`. Its publish-job log records `TARGET_HOST_VALIDATED: true`, names the five post-Build #18 paths outside the allowlist, and records the maintainer attestation for that exact SHA. This is an operator assertion, not an independent test or a new full-system build. VG27AQ1A rule-specific activation/persistence remains unverified.
 - **IOMMU history:** `iommu=pt` appears in the tracked configuration by `5a417ef` (19 April 2026) and was already present in the parent of `ed6ca666`; `ed6ca666` added only `amd_iommu=on`. `0c035b2c` later removed both IOMMU options along with six other kernel parameters. A checkout-only Git-diff regression now guards this chronology.
-- Move the 11 November independent-audit/preflight entry into this `[Unreleased]` section; correct the UUID paragraph indentation in `RELEASING.md`.
+
+### Independent audit cross-check and preflight fixes — 2026-11-11
+
+- Correct the v1.4.9 snapshot narrative: the published tag / Release #25 targets `a20962f`; Normal CI #1309 belongs to preceding `ad231d7`. The 410,138-byte archive is reproducible from the latter, while the 411,239-byte published asset belongs to the tag target. Only the original local copy's acquisition history is unknown.
+- Correct the dated repair-report claims about manual git-cliff dispatch and USB-ID chronology; clarify the historical v1.5.1 release note, separate Build #9's commit from the reviewed snapshot, and correct the 42-path allowlist count and Build #19 dispatch instructions.
+- Fix the Home Snapper preflight so installer mode permits only a genuinely absent `/home/.snapshots` path; existing invalid paths and Btrfs verification errors remain fail-closed. Add regression coverage for all three states.
+- Re-indent every line of the temporary VM diagnostic XML block and add a non-default-indentation regression.
+- Strengthen documentation checks: use “five” for CI #1395–#1399, remove an unused placeholder, and compare the lock icon by Unicode code point.
+- Two audit claims were not reproduced: the reported “anual” occurrences are correct “manual” substrings, and the seven omitted paths are deliberately excluded by the exact 42-path allowlist. No runtime NixOS setting, flake lock, VM XML, hardware identity, or published release asset was changed.
 
 ### Independent source-provenance and CI reconciliation — 2026-11-11
 
@@ -531,15 +539,6 @@ This is the date the consolidated note was recorded, not a claim that every list
 - VFIO driver-state and service-state regression tests passed.
 - Installer partial-deployment rollback regression test passed.
 - The project owner reports a successful NixOS rebuild, local RT-Bore-LTO ThinLTO kernel build, Windows VM startup and normal shutdown, and return to the Hyprland host session on the target machine. This is owner-reported hardware validation and was not independently reproduced in the review container; it does not guarantee compatibility on other hardware. The review environment lacked Nix, ShellCheck, and libvirt/QEMU tools, so independent flake evaluation/build, ShellCheck, and semantic VM validation were not performed here. The checked-in `flake.lock` pins the CachyOS `master` input at `02ba4db52e62e1fbece80402d369127ae77cbbeb`; newer upstream revisions still require an intentional input update. RT-Bore-LTO ThinLTO is not published in the upstream binary cache and therefore requires a local build.
-
-### Independent audit cross-check and preflight fixes — 2026-11-11
-
-- Correct the v1.4.9 snapshot narrative: the published tag / Release #25 targets `a20962f`; Normal CI #1309 belongs to preceding `ad231d7`. The 410,138-byte archive is reproducible from the latter, while the 411,239-byte published asset belongs to the tag target. Only the original local copy's acquisition history is unknown.
-- Correct the dated repair-report claims about manual git-cliff dispatch and USB-ID chronology; clarify the historical v1.5.1 release note, separate Build #9's commit from the reviewed snapshot, and correct the 42-path allowlist count and Build #19 dispatch instructions.
-- Fix the Home Snapper preflight so installer mode permits only a genuinely absent `/home/.snapshots` path; existing invalid paths and Btrfs verification errors remain fail-closed. Add regression coverage for all three states.
-- Re-indent every line of the temporary VM diagnostic XML block and add a non-default-indentation regression.
-- Strengthen documentation checks: use “five” for CI #1395–#1399, remove an unused placeholder, and compare the lock icon by Unicode code point.
-- Two audit claims were not reproduced: the reported “anual” occurrences are correct “manual” substrings, and the seven omitted paths are deliberately excluded by the exact 42-path allowlist. No runtime NixOS setting, flake lock, VM XML, hardware identity, or published release asset was changed.
 
 ## Historical releases
 
