@@ -1783,7 +1783,7 @@ audit_entry_heading = "### Independent audit cross-check and preflight fixes —
 audit_entry_position = CHANGELOG.index(audit_entry_heading)
 changelog_sections = [
     (match.start(), match.group(1).strip())
-    for match in re.finditer(r"(?m)^##\\s+(.+?)\\s*$", CHANGELOG)
+    for match in re.finditer(r"(?m)^##\s+(.+?)\s*$", CHANGELOG)
 ]
 audit_parent_section = next(
     (
