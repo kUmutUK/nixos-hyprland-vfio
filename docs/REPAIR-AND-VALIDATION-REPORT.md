@@ -153,7 +153,7 @@ For any future release, the changed-path rule remains active: `nixos/configurati
 **Historical verified full-system build baseline:** GitHub `main` at `1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b` (5 November 2026).
 
 - **Normal CI:** [run #1233](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42001709686) completed successfully for this exact commit. All **28 workflow-defined steps** passed, including canonical source ZIP creation/validation, documentation integrity and MAKO integration, VM XML and installer regressions, Nix formatting/evaluation, LSFG-VK v2 and MAKO package builds, ShellCheck, Statix, and Deadnix.
-- **Full NixOS system build:** [manual run #13](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42002113160) completed successfully for the **same exact commit** `1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b`. It started at 09:24:30 UTC and completed at 11:49:21 UTC on 5 November 2026 (**2 h 24 min 51 s**). Flake evaluation, the complete NixOS toplevel/selected-kernel build, and the unchanged-lock check all passed.
+- **Full NixOS system build:** [manual run #13](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42002113160) completed successfully for the **same exact commit** `1dbb7d5407f5b478cee14da5d52dc0c1822d4e8b`. The GitHub Actions workflow run started at 09:24:26 UTC and completed at 11:49:22 UTC on 5 November 2026 (**2 h 24 min 56 s**); these are the same run-level timestamps used in the build table. Flake evaluation, the complete NixOS toplevel/selected-kernel build, and the unchanged-lock check all passed.
 - **Canonical source artifact:** normal CI uploaded `nixos-hyprland-vfio-source` (artifact ID `13403280716`, **376,179 bytes**, GitHub artifact digest `sha256:d892c0ee1a7227c9e4f593c04ce19fe0e3f69b35b1ae7a2562ed8e0804c3309d`). This digest is for the outer GitHub Actions artifact; it is not presented as the inner source ZIP's SHA-256.
 - **Previously pending source paths:** full-system build #13 includes the 5 November changes to `nixos/configuration.nix`, `install.sh`, and `nixos/home.nix`. The full-system build gate is CLOSED for this exact source snapshot. The current documentation/test follow-up is confined to paths in the release ancestor-build allowlist.
 - **Release status at this historical build baseline:** v1.4.2 was published from the earlier `9661091e35aed98b18483ff6d25a54fe0653c877` snapshot by release run #7. It was superseded by v1.4.4, published by run #15 from the later reviewed source commit `7f923a2c7aa59721bc00728faccbc073e06c697a`.
@@ -982,3 +982,26 @@ The Rev 2 findings were checked against the current release records and source t
 The NixOS modules, flake inputs/lock, VM XML template, storage mapping, QEMU/VFIO runtime hook, kernel settings, and desktop/game preferences were not changed. No live installer test, same-host continuity result, new full-system build, or completed dual-guest VM lifecycle is claimed.
 
 **Validation boundary:** v1.5.1's exact-tag Normal CI #1380 passed on `c77db6f`. The pre-update `main` baseline `edf78e8` passed #1384 after #1383 failed on the README immutability assertion; the preceding `4cef0c5` baseline passed #1382 after #1381 was corrected. The documentation commit carrying this report still requires its own normal CI result; #1384 validates its parent baseline, not this new commit. None of these CI results closes Build #19, the live installer test, host continuity, or the dual-guest installed-OS/Windows boot and GPU-handback gate.
+
+
+## Supplied source-tree audit reconciliation — 2026-11-11
+
+The supplied audit was checked against live `main` at `418bb687ec4f4d539e3ccc2d839baf242552c018`. GitHub's recursive tree contains 75 tracked file blobs (not 74); the reviewed revision is the same commit as the current `main` HEAD.
+
+### Corrected
+
+- `INSTALLATION.md` now uses the same stable Windows-primary-disk selector as README: exactly one VirtIO target `vda` is selected, while the optional `vdb` disk is ignored for the Windows disk-path lookup.
+- `scripts/test-manual-vm-bootstrap.sh` now checks that both documented Python snippets are identical and runs each against the real dual-disk template fixture after temporary path substitution. This closes the README-only test blind spot.
+- `README.md` now states 75 tracked files. `scripts/test-documentation-integrity.py` calculates that count from Git's index in a checkout and from the complete extracted file tree in the canonical ZIP, preventing a stale count from passing.
+- The WirePlumber module link now points to the root system Nixpkgs revision `f4a03c008967841f2a0b3cb7c436fc6fc31671f6`; the old `4d6a01a...` pin belongs to the separate kernel-flake Nixpkgs input.
+- Build #13's consistent workflow-run interval is 09:24:26–11:49:22 UTC (2 h 24 min 56 s), from the run record. The changelog and detailed repair report now use that same interval.
+- The v1.4.5 historical section now says Build #16 was the latest subsequent build **as of 8 November 2026**, avoiding a timeless “latest” claim.
+- The v1.4.9 410,138-byte / `f28f9195...` figure is explicitly retained as the unresolved 10 November audit-intake local-copy measurement. The current published GitHub asset is independently verified at 411,239 bytes / `56c3d8df...`; the old local copy's origin remains unknown.
+- `RELEASING.md` now keeps the UUID explanatory paragraph inside prerequisite step 4 and aligns the one over-indented allowlist entry. The literal release allowlist's paths are unchanged.
+
+### Deliberately unchanged
+
+- The published v1.4.9/v1.5.1 release assets, tags, and historical release descriptions were not rewritten.
+- Historical anomalies (the missing Build #14 evidence, duplicated v1.4.3/v1.4.4 target commit, and the 9–11 November host-continuity uncertainty) remain qualified historical records; no new facts are inferred.
+- The current full-system build boundary remains Build #18; Build #19 is not created by this documentation reconciliation. No NixOS runtime configuration, flake lock, GPU/USB identity, VM XML template, kernel choice, or user desktop preference was changed.
+

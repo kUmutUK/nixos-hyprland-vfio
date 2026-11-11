@@ -105,6 +105,43 @@ block = block.replace("/etc/nixos", etc_nixos)
 Path(output).write_text(block + "\n", encoding="utf-8")
 PY
 
+python3 - "$ROOT/README.md" "$ROOT/INSTALLATION.md" "$REPO/vm-xml/win10.xml" "$LIBVIRT_ROOT/images/win10new.qcow2" <<'PY'
+from pathlib import Path
+import re
+import subprocess
+import sys
+
+readme, installation, vm_xml, expected_path = sys.argv[1:]
+pattern = re.compile(r"""python3 - "\$BOOTSTRAP_XML" <<'PY'\n(.*?)\nPY""", re.DOTALL)
+
+snippets = []
+for document in (readme, installation):
+    matches = pattern.findall(Path(document).read_text(encoding="utf-8"))
+    if len(matches) != 1:
+        raise SystemExit(
+            f"Expected exactly one documented Windows-disk Python snippet in {document}; found {len(matches)}."
+        )
+    snippets.append(matches[0])
+
+if snippets[0] != snippets[1]:
+    raise SystemExit("README and INSTALLATION VM bootstrap Python snippets have drifted.")
+
+for document, snippet in zip((readme, installation), snippets, strict=True):
+    result = subprocess.run(
+        [sys.executable, "-c", snippet, vm_xml],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0 or result.stdout.strip() != expected_path:
+        raise SystemExit(
+            f"{document} Windows vda lookup failed against the dual-disk XML: "
+            f"exit={result.returncode}, stdout={result.stdout!r}, stderr={result.stderr!r}"
+        )
+
+print("OK: README and INSTALLATION bootstrap snippets match and both select the Windows vda disk.")
+PY
+
 VM_XML="$LIBVIRT_ROOT/win10.xml"
 DISK_PATH="$LIBVIRT_ROOT/images/win10new.qcow2"
 WIN_ISO="$LIBVIRT_ROOT/images/Win10_22H2_English_x64v1.iso"

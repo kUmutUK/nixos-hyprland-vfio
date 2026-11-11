@@ -983,13 +983,19 @@ import sys
 import xml.etree.ElementTree as ET
 
 root = ET.parse(sys.argv[1]).getroot()
-disks = root.findall("./devices/disk[@device='disk']")
-if len(disks) != 1:
-    raise SystemExit("Expected exactly one primary disk; inspect the VM XML manually.")
-source = disks[0].find("source")
+windows_disks = [
+    disk for disk in root.findall("./devices/disk[@device='disk']")
+    if disk.find("target") is not None and disk.find("target").get("dev") == "vda"
+]
+if len(windows_disks) != 1:
+    raise SystemExit("Expected exactly one Windows primary disk at VirtIO target vda; inspect the VM XML manually.")
+target = windows_disks[0].find("target")
+if target is None or target.get("bus") != "virtio":
+    raise SystemExit("The Windows primary disk must use VirtIO target vda; inspect the VM XML manually.")
+source = windows_disks[0].find("source")
 path = source.get("file") if source is not None else None
 if not path or not path.startswith("/"):
-    raise SystemExit("The primary disk has no absolute file path; inspect the VM XML manually.")
+    raise SystemExit("The Windows primary disk has no absolute file path; inspect the VM XML manually.")
 print(path)
 PY
 )"

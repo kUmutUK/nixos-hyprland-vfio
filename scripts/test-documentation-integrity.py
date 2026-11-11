@@ -515,10 +515,33 @@ require(
     and "v1.4.6 is the current published release" not in CHANGELOG,
     "CHANGELOG must list v1.5.1, v1.5.0, v1.4.9, v1.4.8, and v1.4.7 newest-first without a stale current-release claim",
 )
+if (ROOT / ".git").exists():
+    tracked_file_list = subprocess.run(
+        ["git", "-C", str(ROOT), "ls-files", "--cached", "-z"],
+        check=True,
+        stdout=subprocess.PIPE,
+    ).stdout
+    tracked_source_file_count = sum(bool(path) for path in tracked_file_list.split(b"\0"))
+else:
+    # Canonical source ZIPs intentionally omit .git metadata. Their extracted
+    # regular files are the complete tracked-source inventory.
+    tracked_source_file_count = sum(
+        1
+        for path in ROOT.rglob("*")
+        if path.is_file()
+        and ".git" not in path.parts
+        and "__pycache__" not in path.parts
+        and path.suffix != ".pyc"
+    )
+repo_map_count = re.search(
+    r"not a complete inventory of the (\d+) tracked files",
+    README,
+)
 require(
     "## Repository map (selected entry points; non-exhaustive)" in README
-    and "not a complete inventory of the 74 tracked files" in README,
-    "README repository map must be explicitly identified as a curated, non-exhaustive entry-point list",
+    and repo_map_count is not None
+    and int(repo_map_count.group(1)) == tracked_source_file_count,
+    "README repository-map tracked-file count must match the complete source tree (checkout and canonical ZIP)",
 )
 require(
     all(item in (README + CHANGELOG + STATE_INDEX + REPAIR) for item in (
