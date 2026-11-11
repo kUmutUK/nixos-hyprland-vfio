@@ -42,7 +42,6 @@ VM_XML_SYNC_TEST = (ROOT / "scripts/test-vm-xml-sync.py").read_text(encoding="ut
 MANUAL_VM_BOOTSTRAP_TEST = (ROOT / "scripts/test-manual-vm-bootstrap.sh").read_text(encoding="utf-8")
 VM_XML_VALIDATOR = (ROOT / "scripts/test-vm-xml.py").read_text(encoding="utf-8")
 VM_XML_STRUCTURE_TEST = (ROOT / "scripts/test-vm-xml-structure.py").read_text(encoding="utf-8")
-SOURCE_REVISION_PLACEHOLDER = "$" + "Format:%H" + "$"
 errors = []
 
 
@@ -546,7 +545,7 @@ require(
         "43011838520", "43012004213", "43022490748", "43022565265", "43033685955",
         "aebea08f6169190d4df0af5d7a1f20e5e76f18f3",
     )) and all(f"#{n}" in CHANGELOG for n in (1395,1396,1397,1398,1399)),
-    "the latest four main-branch CI outcomes and executable-mode regression must remain documented",
+    "the latest five main-branch CI outcomes and executable-mode regression must remain documented",
 )
 require(
     "2 h 24 min 56 s" in CHANGELOG and "2 h 24 min 56 s" in STATE_INDEX
@@ -558,6 +557,14 @@ require(
     and "previous note claiming that manual dispatch from `main` used `--latest` was incorrect and is withdrawn" in CHANGELOG
     and "`--latest` is not used for the current manual-release path" in STATE_INDEX,
     "git-cliff documentation must not claim that the current manual release path uses --latest",
+)
+require(
+    "this is also the exact target of the published v1.4.9 tag, not an unreleased snapshot" in REPAIR
+    and "42-path list" in REPAIR
+    and "the earlier statement that manual dispatch from `main` used `--latest` was incorrect and is withdrawn" in REPAIR
+    and "f46b8ac8" in REPAIR and "fbd105c8" in REPAIR
+    and "the full-system-build workflow exposes only `workflow_dispatch` and declares no inputs for an arbitrary commit SHA" in REPAIR,
+    "the independent audit reconciliation must keep release provenance, allowlist count, USB chronology, git-cliff history, and Build #19 dispatch semantics aligned",
 )
 require(
     "f46b8ac8" in CHANGELOG and "fbd105c8" in CHANGELOG
@@ -1269,7 +1276,7 @@ require("2026-10-28 entry" in STATE_INDEX and "2026-10-27 entry" not in STATE_IN
 require("copy all six required Nix/flake files" in README and "copy all five required Nix/flake files" not in README and "four flake files" not in README, "README must describe the six-file migration accurately")
 require("approximately lines 8–16" in INSTALLATION, "INSTALLATION must point to the actual Home Manager customization block")
 require(
-    "text = ;" in HOME_NIX
+    f"text = {chr(0xF023)};" in HOME_NIX
     and "N I X O S   /   K I N G   G R E Y" not in HOME_NIX
     and "ENTER PASSWORD TO UNLOCK" not in HOME_NIX
     and "text =   $USER" not in HOME_NIX

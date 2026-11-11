@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import runpy
 import subprocess
 import sys
 import tempfile
@@ -149,6 +150,46 @@ def run_case(
     print(f"OK: {name}")
 
 
+def test_snapshot_path_allow_missing_is_narrow(directory: Path) -> None:
+    namespace = runpy.run_path(str(CHECKER))
+    validate_path = namespace["snapshots_subvolume_name"]
+
+    missing = directory / "missing-snapshots"
+    if validate_path(missing, True) is not None:
+        raise AssertionError("installer mode must return None for a genuinely absent snapshots path")
+
+    try:
+        validate_path(missing, False)
+    except RuntimeError:
+        pass
+    else:
+        raise AssertionError("strict mode accepted a genuinely absent snapshots path")
+
+    existing = directory / "existing-non-subvolume"
+    existing.mkdir()
+
+    def reject_existing_path(*_args: object) -> str:
+        raise RuntimeError("existing path is not a Btrfs subvolume")
+
+    namespace["btrfs_subvolume_name"] = reject_existing_path
+    try:
+        validate_path(existing, True)
+    except RuntimeError as error:
+        if "existing path is not a Btrfs subvolume" not in str(error):
+            raise
+    else:
+        raise AssertionError("installer mode swallowed a failed Btrfs check for an existing path")
+
+    def accept_existing_path(path: str, accepted_names: set[str]) -> str:
+        if path != str(existing) or accepted_names != {".snapshots", "@home/.snapshots"}:
+            raise AssertionError("snapshots helper passed unexpected Btrfs validation arguments")
+        return ".snapshots"
+
+    namespace["btrfs_subvolume_name"] = accept_existing_path
+    if validate_path(existing, True) != ".snapshots":
+        raise AssertionError("installer mode rejected an existing valid snapshots subvolume")
+    print("OK: --allow-missing-snapshots permits absence only and still verifies existing paths.")
+
 def main() -> int:
     with tempfile.TemporaryDirectory(prefix="home-snapper-test-") as temp:
         base = Path(temp)
@@ -157,6 +198,7 @@ def main() -> int:
         write_fake_findmnt(bin_dir / "findmnt")
         write_fake_btrfs(bin_dir / "btrfs")
         write_fake_sudo(bin_dir / "sudo")
+        test_snapshot_path_allow_missing_is_narrow(base)
         config_path = base / "hardware-configuration.nix"
         valid = fixture_config()
 

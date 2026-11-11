@@ -28,6 +28,14 @@ GRAPHICS = '''    <!-- TEMPORARY DIAGNOSTICS ONLY: VNC is loopback-only. Re-defi
     </video>'''
 
 
+def reindent_graphics_block(indent: str) -> str:
+    """Apply the video node's base indentation to every inserted XML line."""
+    return "\n".join(
+        indent + line[4:] if line.startswith("    ") else line
+        for line in GRAPHICS.splitlines()
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", required=True, type=Path, help="deployed production domain XML")
@@ -82,7 +90,7 @@ def main() -> int:
         parser.error('the single <video> block must contain <model type="none"/>')
 
     updated, count = VIDEO_NONE.subn(
-        lambda match: GRAPHICS.replace("    ", match.group("indent"), 1), original
+        lambda match: reindent_graphics_block(match.group("indent")), original
     )
     if count != 1:
         parser.error(

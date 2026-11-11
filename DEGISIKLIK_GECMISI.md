@@ -181,3 +181,20 @@ This legacy filename now contains an English current-state summary so older link
 ## Original detailed historical record
 
 The Turkish release-by-release history is retained at [`docs/archive/DEGISIKLIK_GECMISI.md`](docs/archive/DEGISIKLIK_GECMISI.md); a dated status preface was added at the top to flag settings later superseded. It is an archival source, not the current configuration reference. For current and maintained entries, use [`CHANGELOG.md`](CHANGELOG.md).
+
+**Independent audit follow-up (11 November 2026):** The v1.4.9 published tag / Release #25 targets
+`a20962f`; Normal CI #1309 ran on preceding `ad231d7`. The 410,138-byte audit-intake
+archive is reproducible from `ad231d7`, while the 411,239-byte published asset belongs
+to the tag target; only the original local copy's acquisition/custody history is unknown.
+The manual git-cliff explanation and dated USB-ID chronology in the repair report were
+corrected. The allowlist contains 42 unique literal paths, exactly matching the workflow;
+the alleged “anual” typos are valid “manual” substrings and the seven omitted paths remain
+intentionally outside the ancestor-build exception.
+
+The Home Snapper preflight now accepts installer-mode absence only when
+`/home/.snapshots` truly does not exist, with regressions for missing, invalid, and valid
+paths. The temporary VM diagnostic generator now re-indents its entire inserted XML block.
+Documentation checks now describe five CI outcomes, remove an unused placeholder, and
+compare the lock icon by Unicode code point. These changes are limited to allowlisted
+documentation, helpers, and tests; they do not change NixOS runtime configuration,
+hardware mappings, the VM template, kernel inputs, or published release assets.

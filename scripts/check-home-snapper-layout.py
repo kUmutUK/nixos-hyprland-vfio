@@ -127,6 +127,19 @@ def btrfs_subvolume_name(path: str, accepted_names: set[str]) -> str:
     return name
 
 
+def snapshots_subvolume_name(path: Path, allow_missing_snapshots: bool) -> str | None:
+    """Allow an absent installer target, but never swallow an invalid existing path."""
+    try:
+        path.lstat()
+    except FileNotFoundError:
+        if allow_missing_snapshots:
+            return None
+        fail(f"{path} is missing; create/review it manually before continuing")
+    except OSError as error:
+        fail(f"could not inspect {path}: {error}")
+    return btrfs_subvolume_name(str(path), {".snapshots", "@home/.snapshots"})
+
+
 def mounted_filesystem(mountpoint: str, required: bool) -> dict[str, str] | None:
     try:
         result = subprocess.run(
@@ -171,18 +184,9 @@ def validate(config_path: Path, allow_missing_snapshots: bool = False) -> None:
         parse_filesystem(text, "/home/.snapshots", "@home/.snapshots"), text
     )
     btrfs_subvolume_name("/home", {"@home"})
-    snapshots_subvolume: str | None
-    try:
-        snapshots_subvolume = btrfs_subvolume_name(
-            "/home/.snapshots", {".snapshots", "@home/.snapshots"}
-        )
-    except RuntimeError:
-        if not allow_missing_snapshots:
-            raise
-        # install.sh performs an immediate lstat/symlink check and rejects an
-        # existing non-subvolume path, then creates and verifies a genuinely
-        # missing child inside its rollback-protected transaction. Do not make
-        # the test result depend on the host runner's /home directory contents.
+    snapshots_subvolume = snapshots_subvolume_name(
+        Path("/home/.snapshots"), allow_missing_snapshots
+    )
     home_config_uuid = configured_uuid(home_device)
     snapshots_config_uuid = configured_uuid(snapshots_device)
     if home_config_uuid != snapshots_config_uuid:

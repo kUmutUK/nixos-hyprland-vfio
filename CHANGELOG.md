@@ -45,7 +45,7 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 - Confirmed that the first-release release-notes block in `.github/workflows/release.yml` already uses the valid `body = source[match.end():]` expression on the reviewed `main` snapshot. Add a CI regression that extracts and syntax-compiles every embedded Python heredoc so future workflow-code syntax errors fail the normal check.
 - Replace the incorrect fixed path-count wording with a reference to the exact literal ancestor-build allowlist; keep the documented path list and release workflow list identical and count-checked.
 - Remove the orphaned dotted-number prefix from the README Rust/BTF troubleshooting heading and guard against similarly orphaned dotted-number headings.
-- The current GitHub Release asset metadata reports 411,239 bytes and SHA-256 `56c3d8dfde3eb0b224803ccefa1b624b831a15eca02aaf62d5c4fd4907ff8a3e`. The owner subsequently reported an independent download-and-rehash confirming the published asset's size and digest. The earlier 410,138-byte / `f28f91955d05679b7ff64cb33fbd193a86f87527f856b9801f0e7a197c1f5e61` local-copy measurement is superseded for the published asset; its source-copy provenance remains unknown. No published release asset was modified.
+- The current GitHub Release asset metadata reports 411,239 bytes and SHA-256 `56c3d8dfde3eb0b224803ccefa1b624b831a15eca02aaf62d5c4fd4907ff8a3e`. The owner subsequently reported an independent download-and-rehash confirming the published asset's size and digest. The earlier 410,138-byte / `f28f91955d05679b7ff64cb33fbd193a86f87527f856b9801f0e7a197c1f5e61` audit-intake archive is reproducible from `ad231d7`; only the acquisition/custody history of the original local copy remains unknown. No published release asset was modified.
 
 ### Home Snapper preflight parsing — 2026-11-11
 
@@ -524,3 +524,12 @@ This is the date the consolidated note was recorded, not a claim that every list
 ## Historical releases
 
 The historical Turkish release entries are retained below a dated status preface in [`docs/archive/DEGISIKLIK_GECMISI.md`](docs/archive/DEGISIKLIK_GECMISI.md); the combined file is not a byte-for-byte unchanged copy of the original changelog. This English index intentionally avoids restating historical claims as if they were re-tested against the current tree; consult the Turkish file for the release entries it actually contains.
+
+### Independent audit cross-check and preflight fixes — 2026-11-11
+
+- Correct the v1.4.9 snapshot narrative: the published tag / Release #25 targets `a20962f`; Normal CI #1309 belongs to preceding `ad231d7`. The 410,138-byte archive is reproducible from the latter, while the 411,239-byte published asset belongs to the tag target. Only the original local copy's acquisition history is unknown.
+- Correct the dated repair-report claims about manual git-cliff dispatch and USB-ID chronology; clarify the historical v1.5.1 release note, separate Build #9's commit from the reviewed snapshot, and correct the 42-path allowlist count and Build #19 dispatch instructions.
+- Fix the Home Snapper preflight so installer mode permits only a genuinely absent `/home/.snapshots` path; existing invalid paths and Btrfs verification errors remain fail-closed. Add regression coverage for all three states.
+- Re-indent every line of the temporary VM diagnostic XML block and add a non-default-indentation regression.
+- Strengthen documentation checks: use “five” for CI #1395–#1399, remove an unused placeholder, and compare the lock icon by Unicode code point.
+- Two audit claims were not reproduced: the reported “anual” occurrences are correct “manual” substrings, and the seven omitted paths are deliberately excluded by the exact 42-path allowlist. No runtime NixOS setting, flake lock, VM XML, hardware identity, or published release asset was changed.

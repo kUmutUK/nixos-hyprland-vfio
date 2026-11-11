@@ -83,6 +83,40 @@ def main() -> int:
         if source.read_text(encoding="utf-8") != original:
             raise AssertionError("helper modified the production input XML")
 
+
+        # The inserted block must follow the existing video node's indentation,
+        # including every nested line (not only the first replacement).
+        shallow_xml = VALID_XML.replace("    <video>", "  <video>", 1).replace(
+            '      <model type="none"/>', '    <model type="none"/>', 1
+        )
+        shallow_source = write_source(directory, shallow_xml, "shallow-indent.xml")
+        shallow_output = directory / "shallow-indent-diagnostic.xml"
+        shallow_result = run_helper(shallow_source, shallow_output)
+        if shallow_result.returncode != 0:
+            raise AssertionError(
+                f"non-default video indentation was rejected: "
+                f"{shallow_result.stdout}{shallow_result.stderr}"
+            )
+        shallow_lines = shallow_output.read_text(encoding="utf-8").splitlines()
+        expected_indents = {
+            "<!-- TEMPORARY DIAGNOSTICS": 2,
+            '<graphics type="vnc"': 2,
+            '<listen type="address"': 4,
+            "<video>": 2,
+            '<model type="virtio"': 4,
+        }
+        for marker, expected_indent in expected_indents.items():
+            line = next((line for line in shallow_lines if marker in line), None)
+            if line is None:
+                raise AssertionError(f"diagnostic XML is missing inserted line {marker!r}")
+            actual_indent = len(line) - len(line.lstrip(" "))
+            if actual_indent != expected_indent:
+                raise AssertionError(
+                    f"{marker!r}: expected {expected_indent} leading spaces, "
+                    f"found {actual_indent}: {line!r}"
+                )
+        ET.parse(shallow_output)
+
         # libvirt's dumpxml output uses single-quoted attributes; the helper
         # must accept that canonical form as well as the template's double quotes.
         libvirt_xml = VALID_XML.replace('type="none"', "type='none'", 1)
