@@ -1801,7 +1801,7 @@ if (ROOT / ".git").exists():
         if result.returncode != 0:
             return None
         match = re.search(
-            r"(?ms)^\\s*boot\\.kernelParams\\s*=\\s*\\[(.*?)^\\s*\\];",
+            r"(?ms)^\s*boot\.kernelParams\s*=\s*\[(.*?)^\s*\];",
             result.stdout,
         )
         return match.group(1) if match else None
