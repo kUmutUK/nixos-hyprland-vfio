@@ -634,6 +634,16 @@ require(
     )),
     "v1.5.1 release metadata and outstanding Build #19 must be recorded across current documentation",
 )
+
+require(
+    "owner-reported current-system build verification" in REPAIR
+    and "current NixOS system build was checked successfully" in REPAIR
+    and "GitHub Actions Build #19 was not dispatched" in REPAIR
+    and "Owner-reported target-system build verification" in CHANGELOG
+    and "current NixOS system build was checked successfully" in README
+    and "current NixOS system build was checked successfully" in STATE_INDEX,
+    "latest owner-reported system build confirmation must close the local-build action item without inventing a Build #19 Actions run or source SHA",
+)
 require(
     "4cef0c5f02bb2a466070b6a2c9b5468fd59af7da" in README
     and "42993935944" in README

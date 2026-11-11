@@ -4,6 +4,10 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+### Owner-reported target-system build verification — 2026-11-11
+
+- The owner confirms that the current NixOS system build was checked successfully on the target machine. The practical local-build action is closed on this owner-reported basis. GitHub Actions Build #19 was not dispatched; Build #18 remains the latest recorded full-system workflow run. The local check's exact source SHA/derivation was not supplied, so this result is not mapped to a specific Git ref or represented as a CI run.
+
 ### Rev 2 audit provenance corrections — 2026-11-11
 
 - **v1.4.6 asset provenance:** GitHub Release API metadata lists `nixos-hyprland-vfio.zip` (402,118 bytes, SHA-256 `05ffe97e...`) and no manifest asset. Release run #20's successful job log records `scripts/package-source-zip.sh` producing `nixos-hyprland-vfio-source.zip`, validating 73 tracked files and 9 executable files, then creating a separate `.sha256` manifest. The differing name/manifest inventory is verified; the supplied audit's 397,725-byte byte-reproduction result was not rerun here. Preserve the published asset as immutable historical material and do not call its provenance canonical.
