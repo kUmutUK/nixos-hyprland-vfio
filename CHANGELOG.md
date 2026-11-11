@@ -9,7 +9,7 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 - Confirmed that the first-release release-notes block in `.github/workflows/release.yml` already uses the valid `body = source[match.end():]` expression on the reviewed `main` snapshot. Add a CI regression that extracts and syntax-compiles every embedded Python heredoc so future workflow-code syntax errors fail the normal check.
 - Replace the incorrect fixed path-count wording with a reference to the exact literal ancestor-build allowlist; keep the documented path list and release workflow list identical and count-checked.
 - Remove the orphaned dotted-number prefix from the README Rust/BTF troubleshooting heading and guard against similarly orphaned dotted-number headings.
-- Recheck the v1.4.9 GitHub Release API metadata: the current source ZIP asset is reported as 411,239 bytes with SHA-256 `56c3d8dfde3eb0b224803ccefa1b624b831a15eca02aaf62d5c4fd4907ff8a3e`. Retain the earlier 410,138-byte / `f28f91955d05679b7ff64cb33fbd193a86f87527f856b9801f0e7a197c1f5e61` audit-time measurement as a separate historical record; this API metadata check did not download and independently rehash the ZIP or modify the release asset.
+- The current GitHub Release asset metadata reports 411,239 bytes and SHA-256 `56c3d8dfde3eb0b224803ccefa1b624b831a15eca02aaf62d5c4fd4907ff8a3e`. The owner subsequently reported an independent download-and-rehash confirming the published asset's size and digest. The earlier 410,138-byte / `f28f91955d05679b7ff64cb33fbd193a86f87527f856b9801f0e7a197c1f5e61` local-copy measurement is superseded for the published asset; its source-copy provenance remains unknown. No published release asset was modified.
 
 ### Home Snapper preflight parsing — 2026-11-11
 
@@ -33,6 +33,27 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 - Record the owner-reported successful first start of a temporary NixOS-only win10 domain using a 90 GiB P4-backed qcow2 disk, NixOS Minimal 26.05 media, a separate NVRAM path, and the existing GPU/audio VFIO hook.
 - Document the derived-XML workflow, QEMU USB bus/device requirement, SSH recovery channel, and exact scope boundary. The installed NixOS vdb boot, guest networking, full host GPU handback, and real Windows guest boot remain unverified; the canonical dual-guest XML release gate stays open.
 - Record the unresolved host-continuity boundary: The available records do not establish whether the 9 November clean-install/Windows VM lifecycle test and the 11 November NixOS-only first-start test were performed on the same physical host. The 11 November inventory records only the state observed during that test; it does not establish when or why the Windows domain and disk became unavailable. No host reinstall, disk removal, or machine change is inferred.
+
+### Rev 2 audit and validation boundaries — 2026-11-11
+
+- Build #18 on `c6f4b955475de2ea16bc2b34c59a95dad3a1ae78` is 23 commits before v1.4.7, 58 before v1.5.0, and 66 before v1.5.1. Runtime-affecting paths changed in the intervening range; Build #19 remains outstanding.
+- Keep the live `install.sh` migration/rollback test open. Bash syntax, ShellCheck, and mocked regressions do not replace an end-to-end run against an isolated, disposable NixOS/libvirt target with a verified recovery path.
+- Preserve 9–11 November host continuity as unknown. Any reference-host inventory containing MAC addresses, serials, machine IDs, filesystem UUIDs, or PARTUUIDs belongs in a private local record, not this public repository.
+- Clarify the GPU/audio IOMMU split: `0000:0b:00.0` was recorded in group 18 and `0000:0b:00.1` in group 19. Different group numbers alone do not prove an isolation defect or establish intra-device isolation; group membership and PCIe/ACS topology require separate review.
+- H1 is already corrected in the archived [1.2.2] entry and dated preface: pinned Nixpkgs defines Hyprland `0.56.2` / hyprlock `0.9.6`; `0.54.3 / 0.9.5` is marked as the incorrect earlier statement. H3 and H4 remain documented historical anomalies; no old release description is rewritten and no missing Build #14 event is inferred.
+
+## [v1.5.1] - 2026-11-11
+
+### Release and validation boundary — 2026-11-11
+
+- Published [v1.5.1](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.5.1), Release ID `441417217`, with Release workflow run [#31](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42988284472) from exact tag commit `c77db6f76f48ffc2640a7b242964a7b9b984bc0d`.
+- Normal CI [#1380](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42987182911) passed on the exact release commit. The source ZIP is 437,544 bytes with SHA-256 `7a37d0687ff8580aed0cb34eb4f4479cf2918fff0e65433e3e264e5b6787272f`.
+- Release run #31 accepted later non-allowlisted post-build paths through the explicit `target_host_validated=true` maintainer attestation. The last completed full-system build remained #18 on ancestor `c6f4b955475de2ea16bc2b34c59a95dad3a1ae78`, 66 commits before the v1.5.1 tag; the attestation did not create a new full-system build result. Build #19 remains outstanding.
+- The v1.5.1 source archive is immutable; subsequent `main` changes do not rewrite the published ZIP.
+
+### Current main CI follow-up — 2026-11-11
+
+- `main` at `4cef0c5f02bb2a466070b6a2c9b5468fd59af7da` passed Nix Flake Check [#1382](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42993935944). This is an unreleased documentation/CI follow-up, not a new release or full-system build.
 
 ## [v1.5.0] - 2026-11-10
 

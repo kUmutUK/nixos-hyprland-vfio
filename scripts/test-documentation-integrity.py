@@ -147,8 +147,9 @@ require(
     "411,239 bytes" in REPAIR
     and "56c3d8dfde3eb0b224803ccefa1b624b831a15eca02aaf62d5c4fd4907ff8a3e" in REPAIR
     and "independent download-and-rehash" in REPAIR
-    and "410,138 bytes" in REPAIR,
-    "v1.4.9 provenance must record the current GitHub asset digest and preserve the unverified historical local copy",
+    and "owner subsequently reported" in REPAIR
+    and "410,138-byte local-copy measurement is superseded" in REPAIR,
+    "v1.4.9 provenance must record the current GitHub asset digest and the owner-reported independent rehash while preserving the old local-copy boundary",
 )
 require(
     "VMXML-E-CDROM-SATA" in VM_XML_VALIDATOR
@@ -503,14 +504,16 @@ require(
     )),
     "previous v1.4.6 release metadata must remain available as historical information",
 )
+v151_heading = CHANGELOG.find("## [v1.5.1] - 2026-11-11")
 v150_heading = CHANGELOG.find("## [v1.5.0] - 2026-11-10")
 v149_heading = CHANGELOG.find("## [v1.4.9] - 2026-11-10")
 v148_heading = CHANGELOG.find("## [v1.4.8] - 2026-11-09")
 v147_heading = CHANGELOG.find("## [v1.4.7] - 2026-11-09")
 require(
-    v150_heading >= 0 and v149_heading > v150_heading and v148_heading > v149_heading and v147_heading > v148_heading
+    v151_heading >= 0 and v150_heading > v151_heading and v149_heading > v150_heading
+    and v148_heading > v149_heading and v147_heading > v148_heading
     and "v1.4.6 is the current published release" not in CHANGELOG,
-    "CHANGELOG must list v1.5.0, v1.4.9, v1.4.8, and v1.4.7 newest-first without a stale current-release claim",
+    "CHANGELOG must list v1.5.1, v1.5.0, v1.4.9, v1.4.8, and v1.4.7 newest-first without a stale current-release claim",
 )
 require(
     "## Repository map (selected entry points; non-exhaustive)" in README
@@ -526,6 +529,33 @@ require(
         "target_host_validated=true", "Build #18", "c6f4b955475de2ea16bc2b34c59a95dad3a1ae78",
     )),
     "v1.5.0 release identity, source ZIP, CI, and ancestor-build attestation boundary must be recorded across current documentation",
+)
+require(
+    all(item in (README + CHANGELOG + STATE_INDEX + REPAIR) for item in (
+        "v1.5.1", "441417217", "run #31", "42988284472", "c77db6f76f48ffc2640a7b242964a7b9b984bc0d",
+        "Normal CI #1380", "42987182911", "437,544 bytes",
+        "7a37d0687ff8580aed0cb34eb4f4479cf2918fff0e65433e3e264e5b6787272f",
+        "66 commits", "Build #19",
+    )),
+    "v1.5.1 release metadata and outstanding Build #19 must be recorded across current documentation",
+)
+require(
+    "4cef0c5f02bb2a466070b6a2c9b5468fd59af7da" in README
+    and "42993935944" in README
+    and "4cef0c5f02bb2a466070b6a2c9b5468fd59af7da" in STATE_INDEX
+    and "42993935944" in REPAIR,
+    "current-main CI #1382 must be distinguished from the published v1.5.1 tag",
+)
+require(
+    "MAC addresses, serial numbers, machine IDs, filesystem UUIDs, or PARTUUIDs must remain in a private local record" in REPAIR
+    and "private local record" in README,
+    "reference-host identity inventory must remain private and must not be committed to this repository",
+)
+require(
+    "group 18" in REPAIR and "group 19" in REPAIR
+    and "Different group numbers alone do not prove a security weakness" in REPAIR
+    and "Linux VFIO documentation" in README,
+    "the GPU/audio IOMMU split must be documented without overclaiming an isolation defect",
 )
 require(
     "restored and published on 10 November" in RELEASING
