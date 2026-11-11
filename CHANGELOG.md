@@ -4,6 +4,11 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+### Home Snapper preflight parsing — 2026-11-11
+
+- Fix the Btrfs subvolume-name parser to accept the horizontal indentation emitted by `btrfs subvolume show`, without relaxing the expected `@home` and `.snapshots` name checks.
+- Make the Home Snapper regression fixture emit tab-indented, aligned `Name:` fields so the test matches real command output.
+
 - Extend the existing `win10` libvirt domain with a separate optional NixOS VirtIO disk and an initially empty SATA installer tray. Keep the Windows disk and boot priority first, document safe create/attach/install/eject steps, and add regression coverage for the two-OS device layout.
 - Record the immutable v1.5.0 source-archive snapshot and the current GitHub v1.4.9 asset size/digest provenance without rewriting either historical release asset.
 - Replace brittle VM XML diagnostic text matching with a stable error code and test the README bootstrap by executing its extracted command in the mocked VM environment; document the 11 November NixOS-only first-start smoke test while keeping the canonical dual-guest boot gate open pending installed-NixOS and Windows guest boots.

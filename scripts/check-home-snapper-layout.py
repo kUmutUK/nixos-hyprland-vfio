@@ -115,7 +115,7 @@ def btrfs_subvolume_name(path: str, accepted_names: set[str]) -> str:
         fail(f"could not run btrfs to verify subvolume {path}: {error}")
     if result.returncode != 0:
         fail(f"{path} is not an existing Btrfs subvolume; create/review it manually before continuing")
-    match = re.search(r"(?m)^Name:\s*(.+?)\s*$", result.stdout)
+    match = re.search(r"(?m)^[ \t]*Name:[ \t]*(.+?)[ \t]*$", result.stdout)
     if match is None:
         fail(f"btrfs did not report a subvolume name for {path}")
     name = match.group(1)

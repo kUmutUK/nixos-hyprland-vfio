@@ -43,11 +43,11 @@ fi
 case "$3" in
   /home)
     [ "${TEST_HOME_SUBVOL:-present}" = present ] || exit 1
-    printf 'Name: %s\n' "${TEST_HOME_SUBVOL_NAME:-@home}"
+    printf '\tName: \t\t%s\n' "${TEST_HOME_SUBVOL_NAME:-@home}"
     ;;
   /home/.snapshots)
     [ "${TEST_SNAPSHOT_SUBVOL:-present}" = present ] || exit 1
-    printf 'Name: %s\n' "${TEST_SNAPSHOT_SUBVOL_NAME:-.snapshots}"
+    printf '\tName: \t\t%s\n' "${TEST_SNAPSHOT_SUBVOL_NAME:-.snapshots}"
     ;;
   *)
     exit 1
