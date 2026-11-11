@@ -4,6 +4,16 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+### Independent audit cross-check and preflight fixes — 2026-11-11
+
+- Correct the v1.4.9 snapshot narrative: the published tag / Release #25 targets `a20962f`; Normal CI #1309 belongs to preceding `ad231d7`. The 410,138-byte archive is reproducible from the latter, while the 411,239-byte published asset belongs to the tag target. Only the original local copy's acquisition history is unknown.
+- Correct the dated repair-report claims about manual git-cliff dispatch and USB-ID chronology; clarify the historical v1.5.1 release note, separate Build #9's commit from the reviewed snapshot, and correct the 42-path allowlist count and Build #19 dispatch instructions.
+- Fix the Home Snapper preflight so installer mode permits only a genuinely absent `/home/.snapshots` path; existing invalid paths and Btrfs verification errors remain fail-closed. Add regression coverage for all three states.
+- Re-indent every line of the temporary VM diagnostic XML block and add a non-default-indentation regression.
+- Strengthen documentation checks: use “five” for CI #1395–#1399, remove an unused placeholder, and compare the lock icon by Unicode code point.
+- Two audit claims were not reproduced: the reported “anual” occurrences are correct “manual” substrings, and the seven omitted paths are deliberately excluded by the exact 42-path allowlist. No runtime NixOS setting, flake lock, VM XML, hardware identity, or published release asset was changed.
+- Reconcile the 12 November source-tree audit: keep this entry under `[Unreleased]`, assert its containing section, and validate every README contents anchor against generated GitHub heading anchors.
+
 ### Owner-reported target-system build verification — 2026-11-11
 
 - The owner confirms that the current NixOS system build was checked successfully on the target machine. The practical local-build action is closed on this owner-reported basis. GitHub Actions Build #19 was not dispatched; Build #18 remains the latest recorded full-system workflow run. The local check's exact source SHA/derivation was not supplied, so this result is not mapped to a specific Git ref or represented as a CI run.
@@ -532,14 +542,6 @@ This is the date the consolidated note was recorded, not a claim that every list
 - Installer partial-deployment rollback regression test passed.
 - The project owner reports a successful NixOS rebuild, local RT-Bore-LTO ThinLTO kernel build, Windows VM startup and normal shutdown, and return to the Hyprland host session on the target machine. This is owner-reported hardware validation and was not independently reproduced in the review container; it does not guarantee compatibility on other hardware. The review environment lacked Nix, ShellCheck, and libvirt/QEMU tools, so independent flake evaluation/build, ShellCheck, and semantic VM validation were not performed here. The checked-in `flake.lock` pins the CachyOS `master` input at `02ba4db52e62e1fbece80402d369127ae77cbbeb`; newer upstream revisions still require an intentional input update. RT-Bore-LTO ThinLTO is not published in the upstream binary cache and therefore requires a local build.
 
-### Independent audit cross-check and preflight fixes — 2026-11-11
-
-- Correct the v1.4.9 snapshot narrative: the published tag / Release #25 targets `a20962f`; Normal CI #1309 belongs to preceding `ad231d7`. The 410,138-byte archive is reproducible from the latter, while the 411,239-byte published asset belongs to the tag target. Only the original local copy's acquisition history is unknown.
-- Correct the dated repair-report claims about manual git-cliff dispatch and USB-ID chronology; clarify the historical v1.5.1 release note, separate Build #9's commit from the reviewed snapshot, and correct the 42-path allowlist count and Build #19 dispatch instructions.
-- Fix the Home Snapper preflight so installer mode permits only a genuinely absent `/home/.snapshots` path; existing invalid paths and Btrfs verification errors remain fail-closed. Add regression coverage for all three states.
-- Re-indent every line of the temporary VM diagnostic XML block and add a non-default-indentation regression.
-- Strengthen documentation checks: use “five” for CI #1395–#1399, remove an unused placeholder, and compare the lock icon by Unicode code point.
-- Two audit claims were not reproduced: the reported “anual” occurrences are correct “manual” substrings, and the seven omitted paths are deliberately excluded by the exact 42-path allowlist. No runtime NixOS setting, flake lock, VM XML, hardware identity, or published release asset was changed.
 
 ## Historical releases
 
