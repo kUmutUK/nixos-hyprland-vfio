@@ -52,6 +52,7 @@ The dual-guest VM definition `vm-xml/win10.xml` remains outside the ancestor-bui
    `scripts/test-installer-invariants.sh`,
    `scripts/test-vfio-hook-driver-state.sh`,
    `scripts/test-documentation-integrity.py`,
+    `scripts/test-release-workflow-python.py`,
    `scripts/test-lsfg-vk-v2.py`,
    `scripts/prepare-vm-diagnostic.py`,
    `scripts/test-vm-diagnostic.py`,

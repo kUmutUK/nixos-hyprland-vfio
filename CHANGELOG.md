@@ -4,14 +4,29 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+### Release-workflow and documentation audit — 2026-11-11
+
+- Confirmed that the first-release release-notes block in `.github/workflows/release.yml` already uses the valid `body = source[match.end():]` expression on the reviewed `main` snapshot. Add a CI regression that extracts and syntax-compiles every embedded Python heredoc so future workflow-code syntax errors fail the normal check.
+- Replace the incorrect fixed 40-path changelog wording with a reference to the exact literal ancestor-build allowlist; keep the documented path list and release workflow list identical and count-checked.
+- Remove the orphaned dotted-number prefix from the README Rust/BTF troubleshooting heading and guard against similarly orphaned dotted-number headings.
+- Recheck the v1.4.9 GitHub Release API metadata: the current source ZIP asset is reported as 411,239 bytes with SHA-256 `56c3d8dfde3eb0b224803ccefa1b624b831a15eca02aaf62d5c4fd4907ff8a3e`. Retain the earlier 410,138-byte / `f28f91955d05679b7ff64cb33fbd193a86f87527f856b9801f0e7a197c1f5e61` audit-time measurement as a separate historical record; this API metadata check did not download and independently rehash the ZIP or modify the release asset.
+
 ### Home Snapper preflight parsing — 2026-11-11
 
 - Fix the Btrfs subvolume-name parser to accept the horizontal indentation emitted by `btrfs subvolume show`, without relaxing the expected `@home` and `.snapshots` name checks.
 - Make the Home Snapper regression fixture emit tab-indented, aligned `Name:` fields so the test matches real command output.
 
+### Dual-guest VM disk layout — 2026-11-10
+
 - Extend the existing `win10` libvirt domain with a separate optional NixOS VirtIO disk and an initially empty SATA installer tray. Keep the Windows disk and boot priority first, document safe create/attach/install/eject steps, and add regression coverage for the two-OS device layout.
-- Record the immutable v1.5.0 source-archive snapshot and the current GitHub v1.4.9 asset size/digest provenance without rewriting either historical release asset.
-- Replace brittle VM XML diagnostic text matching with a stable error code and test the README bootstrap by executing its extracted command in the mocked VM environment; document the 11 November NixOS-only first-start smoke test while keeping the canonical dual-guest boot gate open pending installed-NixOS and Windows guest boots.
+
+### v1.5.0 source archive and v1.4.9 asset provenance — 2026-11-10
+
+- Record the immutable v1.5.0 source-archive snapshot and the GitHub v1.4.9 asset size/digest provenance without rewriting either historical release asset.
+
+### VM XML diagnostics and README bootstrap regression — 2026-11-10
+
+- Replace brittle VM XML diagnostic text matching with a stable error code and test the README bootstrap by executing its extracted command in the mocked VM environment.
 
 ### Target-host NixOS-only VFIO first-start smoke test — 2026-11-11
 
@@ -39,7 +54,7 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 - Use privileged `sudo cp -a` for installer recovery backups of root-owned or mode-restricted targets.
 - Refuse VM XML template/destination identity, including resolved symlink and hard-link aliases, with regression coverage.
 - Require a real `@home` Btrfs subvolume in all Home Snapper modes; strict manual checks require the existing child `@home/.snapshots`, while the installer uses an explicit allow-missing flag only because its later rollback-protected transaction creates that child. README and INSTALLATION now share the strict checker; regression tests cover both modes.
-- Document the exact 40-path ancestor-build allowlist selection principle and keep `install.sh` gated by a fresh full-system build.
+- Document the exact literal ancestor-build allowlist selection principle and keep `install.sh` gated by a fresh full-system build.
 - Make installer PCI updates preserve valid leading indentation, keep preflight and replacement syntax consistent, print named-user tilde errors outside command substitution, and state explicitly that failed variable substitutions abort into transaction rollback.
 - Add regression coverage proving untouched VFIO devices are skipped during rollback, the VM primary disk stays virtio and both CD-ROMs stay SATA, empty/network CD-ROM sources are valid non-file-backed media, CLI checker errors go to stderr, and line-leading Nix `''${` escapes are not mistaken for indented-string terminators.
 - Disambiguate the 4 November configuration/installer cross-check from the separately numbered ninth audit; distinguish the v1.4.4 CI artifact and release ZIP records without inventing an explanation for their size difference.

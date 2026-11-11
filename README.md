@@ -727,7 +727,7 @@ VK_LOADER_DEBUG=layer vulkaninfo 2>&1 | grep -iE 'korthos|lsl'
 
 - **RT-Bore-LTO validation:** the upstream source does not publish the ThinLTO variant in its binary cache, so each newly selected upstream revision needs a local build. The current `nixos/flake.lock` resolves the CachyOS kernel input to `9df32f70be3550911f178b3ba9ad784996a4e80c`. Manual full-system **Build #18** [#18](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42597469118) used this same locked kernel input and passed on ancestor source commit `c6f4b955475de2ea16bc2b34c59a95dad3a1ae78`; this confirms the build at that baseline, not an exact v1.4.7 build or target-host boot/VM behavior for this precise kernel SHA. The 3 November physical kernel/VM test used the older revision `755712deee259ef7efbfe9154038a270c3d75a87` (historical section below). The owner-reported 9 November clean installation and ordinary VM lifecycle are recorded above, but the exact kernel SHA booted for that test was not recorded, so this README does not attribute that hardware result to `9df32f70be3550911f178b3ba9ad784996a4e80c`. Saved-state/managed-save restore remains unverified. Real-time preemption does not guarantee higher FPS or better frametimes. Retain a known-good boot generation when testing future kernel revisions.
 
-### 7.3.3 Rust/BTF build failure — diagnosis and workaround (2026-11-09)
+### Rust/BTF build failure — diagnosis and workaround (2026-11-09)
 
 The CachyOS RT-Bore-LTO 7.3.3 module build exposed the same BTF finalization failure in two optional Rust drivers. The first failure was:
 
@@ -793,7 +793,8 @@ This is a curated map of selected entry points, not a complete inventory of the 
 │   ├── optiscaler_manager.py
 │   ├── test-optiscaler-manager.py
 │   ├── test-vm-xml-paths.py
-│   └── test-documentation-integrity.py
+│   ├── test-documentation-integrity.py
+│   └── test-release-workflow-python.py
 └── docs/
     ├── AUDIT-2026-10-28-VM-XML-VFIO.md
     ├── OPTISCALER-MANAGER.md
@@ -806,7 +807,7 @@ The root files provide the project entry point, installation guidance, contribut
 - `nixos/lsfg-vk-v2.nix`: pinned LSFG-VK v2 package definition; `nixos/mako-renderer.nix`: optional MAKO Renderer package.
 - `nixos/hooks/qemu` and `vm-xml/win10.xml`: VFIO handoff hook and Windows guest template.
 - `scripts/optiscaler_manager.py` and `scripts/test-optiscaler-manager.py`: optional per-game manager and its offline regression suite; see [the manager guide](docs/OPTISCALER-MANAGER.md).
-- `scripts/test-vm-xml-paths.py`, `scripts/test-documentation-integrity.py`, and the other `scripts/test-*.py` files: focused regression checks.
+- `scripts/test-vm-xml-paths.py`, `scripts/test-documentation-integrity.py`, `scripts/test-release-workflow-python.py`, and the other `scripts/test-*.py` files: focused regression checks.
 - `docs/AUDIT-2026-10-28-VM-XML-VFIO.md`: dated historical audit; [the repair and validation report](docs/REPAIR-AND-VALIDATION-REPORT.md) is the current verification record.
 - `.git-cliff.toml`, `RELEASING.md`, and `.github/workflows/release.yml`: release-note generation, release procedure, and automated release workflow.
 
@@ -854,6 +855,7 @@ Run the focused regression checks before proposing a change:
 
 ```bash
 python3 scripts/test-documentation-integrity.py
+python3 scripts/test-release-workflow-python.py
 bash scripts/test-installer-lock.sh
 python3 scripts/test-optiscaler-manager.py
 python3 scripts/test-lsfg-vk-v2.py

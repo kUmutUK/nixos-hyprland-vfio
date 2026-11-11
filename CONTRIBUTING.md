@@ -38,6 +38,7 @@ nix develop ./nixos --command bash -euo pipefail -c '
   python3 scripts/test-lsfg-vk-v2.py
   python3 scripts/test-mako-renderer.py
   python3 scripts/test-documentation-integrity.py
+  python3 scripts/test-release-workflow-python.py
   python3 scripts/test-optiscaler-manager.py
   python3 scripts/test-home-snapper-layout.py
   python3 scripts/test-vm-iso-paths.py
@@ -70,7 +71,7 @@ nix develop ./nixos --command bash -euo pipefail -c '
 '
 ```
 
-The `scripts/pci-address.sh` helper is included in ShellCheck because the installer sources it. The local checks also mirror CI's pinned Actionlint command, ShellCheck of the Nix-generated VFIO hook, and `luac -p` validation of the generated Hyprland Lua configuration. `statix check .` and `deadnix .` are required CI gates; `statix.toml` disables only the style-only repeated-key lint, not actionable static-analysis findings.
+The `scripts/test-release-workflow-python.py` helper extracts and syntax-compiles every embedded Python heredoc in `.github/workflows/release.yml`; this covers workflow code that Actionlint does not parse. The `scripts/pci-address.sh` helper is included in ShellCheck because the installer sources it. The local checks also mirror CI's pinned Actionlint command, ShellCheck of the Nix-generated VFIO hook, and `luac -p` validation of the generated Hyprland Lua configuration. `statix check .` and `deadnix .` are required CI gates; `statix.toml` disables only the style-only repeated-key lint, not actionable static-analysis findings.
 
 ## Target-host GameMode GPU index
 

@@ -87,13 +87,22 @@ require(
     and len(documented_release_path_list) == len(documented_release_paths)
     and len(workflow_release_path_list) == len(workflow_release_paths)
     and documented_release_paths == workflow_release_paths
-    and len(workflow_release_paths) == 41,
-    "RELEASING.md and release.yml must contain the same unique exhaustive 41-path literal allowlist",
+    and len(workflow_release_paths) == 42,
+    "RELEASING.md and release.yml must contain the same unique exhaustive 42-path literal allowlist",
 )
 require(
     "no wildcard rules or blanket exemptions" in RELEASING
     and "changed path matches the exact literal allowlist documented in RELEASING.md" in RELEASE_WORKFLOW,
     "release policy must state that documentation/CI labels do not grant blanket path exemptions",
+)
+require(
+    "40-path" not in CHANGELOG
+    and "scripts/test-release-workflow-python.py" in CHECK_WORKFLOW
+    and "scripts/test-release-workflow-python.py" in RELEASING
+    and "scripts/test-release-workflow-python.py" in RELEASE_WORKFLOW
+    and "scripts/test-release-workflow-python.py" in CONTRIBUTING
+    and "scripts/test-release-workflow-python.py" in README,
+    "the changelog must avoid a stale fixed path count and the release Python syntax test must be wired into CI, contributor docs, and both allowlists",
 )
 
 
@@ -708,6 +717,7 @@ verification_metadata_paths = {
     "scripts/test-installer-invariants.sh",
     "scripts/test-vfio-hook-driver-state.sh",
     "scripts/test-documentation-integrity.py",
+    "scripts/test-release-workflow-python.py",
     "scripts/test-lsfg-vk-v2.py",
 }
 for path in verification_metadata_paths:
@@ -1059,9 +1069,26 @@ require("/run/libvirt/nix-emulators/qemu-system-x86_64" in README and "/run/libv
 
 require("## [Unreleased]" in CHANGELOG, "CHANGELOG must use the undated [Unreleased] heading")
 require(
+    not re.search(r"(?m)^#{1,6}\s+\d+(?:\.\d+){2,}\b", README),
+    "README must not use an orphaned dotted-number heading without its parent section hierarchy",
+)
+require(
     "Dated third-level headings under `[Unreleased]` are editorial event labels" in CHANGELOG
     and "the top-level `[Unreleased]` bucket itself remains undated" in CHANGELOG,
     "CHANGELOG must distinguish dated editorial subheadings from dated release sections",
+)
+home_snapper_section = (
+    CHANGELOG.partition("### Home Snapper preflight parsing — 2026-11-11")[2]
+    .partition("\n### ")[0]
+)
+require(
+    "separate optional NixOS VirtIO disk" not in home_snapper_section
+    and "immutable v1.5.0 source-archive snapshot" not in home_snapper_section
+    and "Replace brittle VM XML diagnostic text matching" not in home_snapper_section
+    and "### Dual-guest VM disk layout — 2026-11-10" in CHANGELOG
+    and "### v1.5.0 source archive and v1.4.9 asset provenance — 2026-11-10" in CHANGELOG
+    and "### VM XML diagnostics and README bootstrap regression — 2026-11-10" in CHANGELOG,
+    "Unreleased changelog workstreams must have separate dated headings rather than appearing under the unrelated Home Snapper heading",
 )
 require("update_qemu_hook_pci()" in INSTALLER and "if ! update_qemu_hook_pci" in INSTALLER, "installer must use the checked QEMU hook PCI updater and fail closed on error")
 require(not re.search(r"(?m)^## (?:Unreleased|Previous unreleased changes)\s*[—-]\s*\d{4}-\d{2}-\d{2}", CHANGELOG), "CHANGELOG still gives an Unreleased heading a date")
