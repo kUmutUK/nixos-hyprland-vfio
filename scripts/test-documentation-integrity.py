@@ -1341,7 +1341,7 @@ require(
     ))
     and "`iommu=pt` is present in the tracked configuration by" in STATE_INDEX
     and "The 9 October `ed6ca666` change adds only `amd_iommu=on`" in STATE_INDEX
-    and "removes both IOMMU parameters together with six other kernel parameters" in STATE_INDEX,
+    and "removed both from `boot.kernelParams` together with six other kernel parameters" in STATE_INDEX,
     "current-state index must distinguish the pre-existing iommu=pt option from the later amd_iommu=on addition and the broader removal",
 )
 require(
