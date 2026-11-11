@@ -795,6 +795,15 @@ until the installed system profile exists and the root password has been set.
 
 **CS2 / Source 2 low-latency note:** the [low_latency_layer v0.2.0 upstream release notes](https://github.com/Korthos-Software/low_latency_layer/releases/tag/v0.2.0) describe in-game FPS caps causing frame-pacing problems while the layer is enabled. Until the upstream issue is fixed, use `fps_max 0` in the CS2 console. External limiters such as MangoHud have not been reported to cause the same issue. If stuttering persists, compare frame times after disabling the layer only for CS2 with `DISABLE_LOW_LATENCY_LAYER=1 %command%` in Steam launch options.
 
+**CS2 / Gamescope Steam launch options:** Use this complete line in CS2's Steam launch options on the reference host:
+
+```bash
+MANGOHUD_CONFIG=read_cfg,fps_limit=170 XKB_DEFAULT_LAYOUT=tr gamescope -f -w 1440 -h 1440 -W 2560 -H 1440 -S stretch --force-grab-cursor -- gamemoderun mangohud %command% +fps_max 0
+```
+
+It uses a 1440×1440 game surface stretched to a 2560×1440 output, Turkish Gamescope keyboard layout, fullscreen/cursor grab, GameMode, MangoHud, and an external 170 FPS cap. `+fps_max 0` keeps Source 2's in-game cap disabled for the low-latency-layer frame-pacing workaround above. The command does not choose the monitor refresh rate; set that separately.
+
+
 **OBS Vulkan capture compatibility:** upstream `low_latency_layer` v0.2.0 also documents an incompatibility with the `obs_vkcapture` Vulkan layer. If capture or recording fails, test the game with `DISABLE_LOW_LATENCY_LAYER=1 %command%` and compare behavior.
 
 **Optional Proton upscaler integration:** OptiScaler remains outside the NixOS and Home Manager package sets. The repository provides a manually invoked helper for verified, user-confirmed installation into one selected offline/single-player game directory. See [`docs/OPTISCALER.md`](docs/OPTISCALER.md) and [`docs/OPTISCALER-MANAGER.md`](docs/OPTISCALER-MANAGER.md); nothing is installed or enabled during NixOS installation.
