@@ -1660,7 +1660,7 @@ require(
             "43008843993", "43011231703",
         )
     )
-    and "DEGISIKLIK_GECISI is not defined" not in REPAIR
+    and "DEGISIKLIK_GECMISI is not defined" in REPAIR
     and "also failed #1394" in REPAIR
     and "79 commits behind the pre-reconciliation `main` snapshot" in REPAIR,
     "the current-main CI failure/correction sequence and 79-commit Build #18 boundary must remain documented",
