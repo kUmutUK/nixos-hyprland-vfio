@@ -46,7 +46,7 @@ case "$3" in
     [ "${TEST_HOME_SUBVOL:-present}" = present ] || exit 1
     printf '\tName: \t\t%s\n' "${TEST_HOME_SUBVOL_NAME:-@home}"
     ;;
-  /home/.snapshots)
+  "${TEST_SNAPSHOT_PATH:-/home/.snapshots}")
     [ "${TEST_SNAPSHOT_SUBVOL:-present}" = present ] || exit 1
     printf '\tName: \t\t%s\n' "${TEST_SNAPSHOT_SUBVOL_NAME:-.snapshots}"
     ;;
@@ -85,7 +85,7 @@ case "$mountpoint" in
     [ "${TEST_HOME_MOUNT:-present}" = "present" ] || exit 1
     printf '%s %s %s %s\n' "${TEST_HOME_SOURCE:-/dev/disk/by-uuid/$TEST_HOME_UUID}" "$TEST_HOME_UUID" "${TEST_HOME_FSTYPE:-btrfs}" "${TEST_HOME_OPTIONS:-rw,subvol=/@home}"
     ;;
-  /home/.snapshots)
+  "${TEST_SNAPSHOT_PATH:-/home/.snapshots}")
     [ "${TEST_SNAPSHOT_MOUNT:-none}" != "none" ] || exit 1
     printf '%s %s %s %s\n' "${TEST_SNAPSHOT_SOURCE:-/dev/disk/by-uuid/$TEST_SNAPSHOT_UUID}" "$TEST_SNAPSHOT_UUID" "${TEST_SNAPSHOT_FSTYPE:-btrfs}" "${TEST_SNAPSHOT_OPTIONS:-rw,subvol=/@home/.snapshots}"
     ;;
@@ -109,6 +109,13 @@ def run_case(
     allow_missing_snapshots: bool = False,
 ) -> None:
     config_path.write_text(config_text, encoding="utf-8")
+    snapshots_path = config_path.parent / "snapshots-fixture"
+    snapshots_path_exists = overrides.get("TEST_SNAPSHOT_PATH_EXISTS", "present") == "present"
+    if snapshots_path_exists:
+        snapshots_path.mkdir(exist_ok=True)
+    elif snapshots_path.exists():
+        snapshots_path.rmdir()
+
     environment = os.environ.copy()
     environment.update(
         {
@@ -123,6 +130,7 @@ def run_case(
             "TEST_SNAPSHOT_SOURCE": f"/dev/disk/by-uuid/{HOME_UUID}",
             "TEST_SNAPSHOT_FSTYPE": "btrfs",
             "TEST_SNAPSHOT_OPTIONS": "rw,subvol=/@home/.snapshots",
+            "TEST_SNAPSHOT_PATH": str(snapshots_path),
             "TEST_HOME_SUBVOL": "present",
             "TEST_HOME_SUBVOL_NAME": "@home",
             "TEST_SNAPSHOT_SUBVOL": "present",
@@ -130,7 +138,13 @@ def run_case(
         }
     )
     environment.update(overrides)
-    command = [sys.executable, str(CHECKER), str(config_path)]
+    command = [
+        sys.executable,
+        str(CHECKER),
+        str(config_path),
+        "--snapshots-path",
+        str(snapshots_path),
+    ]
     if allow_missing_snapshots:
         command.append("--allow-missing-snapshots")
     result = subprocess.run(
@@ -220,7 +234,7 @@ def main() -> int:
             bin_dir,
             config_path,
             valid,
-            {"TEST_SNAPSHOT_SUBVOL": "missing"},
+            {"TEST_SNAPSHOT_SUBVOL": "missing", "TEST_SNAPSHOT_PATH_EXISTS": "missing"},
             True,
             allow_missing_snapshots=True,
         )

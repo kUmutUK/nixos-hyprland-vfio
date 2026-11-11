@@ -173,7 +173,11 @@ def mounted_subvolume(mount: dict[str, str], mountpoint: str, expected: str) -> 
         fail(f"{mountpoint} must be mounted from subvol={expected}; observed options: {options!r}")
 
 
-def validate(config_path: Path, allow_missing_snapshots: bool = False) -> None:
+def validate(
+    config_path: Path,
+    allow_missing_snapshots: bool = False,
+    snapshots_path: Path = Path("/home/.snapshots"),
+) -> None:
     try:
         text = strip_nix_comments(config_path.read_text(encoding="utf-8"))
     except (OSError, UnicodeError) as error:
@@ -185,7 +189,7 @@ def validate(config_path: Path, allow_missing_snapshots: bool = False) -> None:
     )
     btrfs_subvolume_name("/home", {"@home"})
     snapshots_subvolume = snapshots_subvolume_name(
-        Path("/home/.snapshots"), allow_missing_snapshots
+        snapshots_path, allow_missing_snapshots
     )
     home_config_uuid = configured_uuid(home_device)
     snapshots_config_uuid = configured_uuid(snapshots_device)
@@ -198,13 +202,13 @@ def validate(config_path: Path, allow_missing_snapshots: bool = False) -> None:
     if home_mount["uuid"] != home_config_uuid:
         fail("active /home mount UUID does not match the target hardware configuration")
 
-    snapshots_mount = mounted_filesystem("/home/.snapshots", required=False)
+    snapshots_mount = mounted_filesystem(str(snapshots_path), required=False)
     if snapshots_mount is not None:
         if snapshots_subvolume is None:
-            fail("/home/.snapshots is mounted but its Btrfs subvolume could not be verified")
-        mounted_subvolume(snapshots_mount, "/home/.snapshots", "@home/.snapshots")
+            fail(f"{snapshots_path} is mounted but its Btrfs subvolume could not be verified")
+        mounted_subvolume(snapshots_mount, str(snapshots_path), "@home/.snapshots")
         if snapshots_mount["uuid"] != home_mount["uuid"]:
-            fail("/home/.snapshots is mounted from a different filesystem UUID than /home")
+            fail(f"{snapshots_path} is mounted from a different filesystem UUID than /home")
 
 
 def main(argv: list[str]) -> int:
@@ -221,11 +225,18 @@ def main(argv: list[str]) -> int:
             "non-subvolume path is still rejected"
         ),
     )
+    parser.add_argument(
+        "--snapshots-path",
+        type=Path,
+        default=Path("/home/.snapshots"),
+        help=argparse.SUPPRESS,
+    )
     args = parser.parse_args(argv[1:])
     try:
         validate(
             args.target_hardware_configuration_nix,
             allow_missing_snapshots=args.allow_missing_snapshots,
+            snapshots_path=args.snapshots_path,
         )
     except (RuntimeError, AssertionError) as error:
         print(f"ERROR: Home Snapper preflight: {error}", file=sys.stderr)
