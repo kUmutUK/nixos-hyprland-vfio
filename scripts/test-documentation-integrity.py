@@ -147,7 +147,8 @@ require(
     and "56c3d8dfde3eb0b224803ccefa1b624b831a15eca02aaf62d5c4fd4907ff8a3e" in REPAIR
     and "independent download-and-rehash" in REPAIR
     and "owner subsequently reported" in REPAIR
-    and "410,138-byte local-copy measurement is superseded" in REPAIR,
+    and "410,138-byte / SHA-256" in REPAIR
+    and "Only the acquisition/custody history of the original audit-time local copy remains unknown" in REPAIR,
     "v1.4.9 provenance must record the current GitHub asset digest and the owner-reported independent rehash while preserving the old local-copy boundary",
 )
 require(
@@ -563,7 +564,7 @@ require(
     and "42-path list" in REPAIR
     and "the earlier statement that manual dispatch from `main` used `--latest` was incorrect and is withdrawn" in REPAIR
     and "f46b8ac8" in REPAIR and "fbd105c8" in REPAIR
-    and "the full-system-build workflow exposes only `workflow_dispatch` and declares no inputs for an arbitrary commit SHA" in REPAIR,
+    and "The full-system-build workflow exposes only `workflow_dispatch` and declares no inputs for an arbitrary commit SHA" in REPAIR,
     "the independent audit reconciliation must keep release provenance, allowlist count, USB chronology, git-cliff history, and Build #19 dispatch semantics aligned",
 )
 require(
