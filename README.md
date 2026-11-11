@@ -44,7 +44,7 @@ A flake-based NixOS gaming desktop that passes its single AMD Radeon GPU through
 - [OptiScaler for Proton games](#optiscaler-for-proton-games)
 - [Important configuration decisions](#important-configuration-decisions)
 - [Known limitations](#known-limitations)
-- [Repository map](#repository-map)
+- [Repository map](#repository-map-selected-entry-points-non-exhaustive)
 - [Validation](#validation)
 - [Releasing](#releasing)
 - [License](#license)
