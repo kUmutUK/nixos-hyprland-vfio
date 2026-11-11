@@ -41,6 +41,7 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 - Preserve 9–11 November host continuity as unknown. Any reference-host inventory containing MAC addresses, serials, machine IDs, filesystem UUIDs, or PARTUUIDs belongs in a private local record, not this public repository.
 - Clarify the GPU/audio IOMMU split: `0000:0b:00.0` was recorded in group 18 and `0000:0b:00.1` in group 19. Different group numbers alone do not prove an isolation defect or establish intra-device isolation; group membership and PCIe/ACS topology require separate review.
 - H1 is already corrected in the archived [1.2.2] entry and dated preface: pinned Nixpkgs defines Hyprland `0.56.2` / hyprlock `0.9.6`; `0.54.3 / 0.9.5` is marked as the incorrect earlier statement. H3 and H4 remain documented historical anomalies; no old release description is rewritten and no missing Build #14 event is inferred.
+- **Second reconciliation CI failure:** Nix Flake Check [#1383](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42998196145) failed on `36c13be1558d70822edf9432fe6cca3507f6d8e5` at the documentation-integrity assertion `README must distinguish the immutable v1.5.0 release ZIP from later main-branch documentation`. Commit `edf78e8` restored `The v1.5.0 asset will not be rewritten`; [#1384](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42998456098) then passed on exact commit `edf78e8559a289dda5da01467ce0082da2c38188`.
 
 ## [v1.5.1] - 2026-11-11
 
@@ -51,9 +52,12 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 - Release run #31 accepted later non-allowlisted post-build paths through the explicit `target_host_validated=true` maintainer attestation. The last completed full-system build remained #18 on ancestor `c6f4b955475de2ea16bc2b34c59a95dad3a1ae78`, 66 commits before the v1.5.1 tag; the attestation did not create a new full-system build result. Build #19 remains outstanding.
 - The v1.5.1 source archive is immutable; subsequent `main` changes do not rewrite the published ZIP.
 
-### Current main CI follow-up — 2026-11-11
+### Main-branch CI reconciliation — 2026-11-11
 
-- `main` at `4cef0c5f02bb2a466070b6a2c9b5468fd59af7da` passed Nix Flake Check [#1382](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42993935944). This is an unreleased documentation/CI follow-up, not a new release or full-system build.
+- The last CI-verified `main` baseline before this documentation update was `edf78e8559a289dda5da01467ce0082da2c38188`; Nix Flake Check [#1384](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42998456098) passed on that exact commit.
+- Its predecessor `36c13be1558d70822edf9432fe6cca3507f6d8e5` failed [#1383](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42998196145) in the documentation-integrity step because the README no longer contained the required sentence distinguishing the immutable v1.5.0 ZIP from later `main` documentation. Commit `edf78e8` restored `The v1.5.0 asset will not be rewritten`; #1384 then passed.
+- The preceding baseline `4cef0c5f02bb2a466070b6a2c9b5468fd59af7da` passed [#1382](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42993935944). Earlier #1381 failed on `f63e5b5e9f3df6d00b3d6b2f6889540ab5f35b2a` and was corrected by `4cef0c5`. These runs are documentation/normal-CI history, not a new release or full-system build; Build #19 remains outstanding.
+- For live branch state, use the [main commit history](https://github.com/kUmutUK/nixos-hyprland-vfio/commits/main) and [Nix Flake Check workflow runs](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/workflows/check.yml).
 
 ## [v1.5.0] - 2026-11-10
 
