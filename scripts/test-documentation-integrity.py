@@ -1657,11 +1657,12 @@ require(
         for run_id in (
             "43002384121", "43002963707", "43005017515", "43005111853",
             "43005218908", "43005306029", "43008833713", "43008838190",
-            "43008843993",
+            "43008843993", "43011231703",
         )
     )
-    and "DEGISIKLIK_GECMISI is not defined" in REPAIR
-    and "79 commits behind current" in REPAIR,
+    and "DEGISIKLIK_GECISI is not defined" not in REPAIR
+    and "also failed #1394" in REPAIR
+    and "79 commits behind the pre-reconciliation `main` snapshot" in REPAIR,
     "the current-main CI failure/correction sequence and 79-commit Build #18 boundary must remain documented",
 )
 
