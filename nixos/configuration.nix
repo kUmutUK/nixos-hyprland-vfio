@@ -427,6 +427,7 @@ in
 
   programs.kdeconnect.enable = true;
   virtualisation.waydroid.enable = true;
+  virtualisation.waydroid.package = pkgs.waydroid-nftables;
   security.polkit.enable = true;
   services.udisks2.enable = true;
   services.gvfs.enable = true;

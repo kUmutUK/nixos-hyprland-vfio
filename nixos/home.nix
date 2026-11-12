@@ -256,9 +256,6 @@ let
         dwindle = {
             smart_resizing = true,
         },
-        render = {
-            cm_auto_hdr = 0,
-        },
         decoration = {
             rounding = 12,
             rounding_power = 2,
@@ -277,6 +274,9 @@ let
                 noise = 0.05,
                 vibrancy = 0.25,
             },
+        },
+        render = {
+            cm_auto_hdr = 0,
         },
         misc = {
             vrr = 2,
@@ -1677,7 +1677,7 @@ in
           # Do not call hyprlock here: it blocks in the foreground until the password is entered,
           # so a following `systemctl suspend` would never execute. `general.before_sleep_cmd`
           # already locks the screen; this command should only suspend.
-          timeout = 900;
+          timeout = 3600;
           on-timeout = "${pkgs.systemd}/bin/systemctl suspend";
         }
       ];
