@@ -192,7 +192,7 @@ zram_priority_match = (
     if zram_block_match else None
 )
 zram_percent_match = (
-    re.search(r"(?m)^\\s*memoryPercent\\s*=\\s*(\\d+)\\s*;", zram_block_match.group(1))
+    re.search(r"(?m)^\s*memoryPercent\s*=\s*(\d+)\s*;", zram_block_match.group(1))
     if zram_block_match else None
 )
 require(
