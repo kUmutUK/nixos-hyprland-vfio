@@ -716,12 +716,16 @@ git -C /tmp/repo show "$SOURCE_REVISION:nixos/flake.lock" |
 > the two-symbol Rust/BTF workaround. This was not a build of the later v1.4.7 release
 > snapshot.
 >
-> **Kernel input distinction:** the current `nixos/flake.lock` resolves CachyOS to
-> `9df32f70be3550911f178b3ba9ad784996a4e80c`, and Build #18 used that same kernel
-> input revision. The 3 November physical kernel/VM test used the older
-> `755712deee259ef7efbfe9154038a270c3d75a87` revision. The exact kernel SHA booted
-> during the 9 November clean-install/VM check was not recorded, so do not treat that
-> host result as explicit hardware validation of the current locked kernel SHA.
+> **Kernel input distinction (updated 14 November 2026):** the current
+> `nixos/flake.lock` resolves CachyOS to
+> `f5e1fb8f1185cb51ef6d433e27ab7b60f54cd0e0`. Manual Build #18 used the preceding
+> revision `9df32f70be3550911f178b3ba9ad784996a4e80c` on ancestor source commit
+> `c6f4b955475de2ea16bc2b34c59a95dad3a1ae78`; it does not validate the current lock
+> revision or the x86-64-v3-derived RT-Bore-LTO kernel. The 3 November physical
+> kernel/VM test used the older `755712deee259ef7efbfe9154038a270c3d75a87` revision.
+> The exact kernel SHA booted during the 9 November clean-install/VM check was not
+> recorded, so that host result is not explicit hardware validation of the current
+> locked kernel SHA.
 >
 > **v1.4.7 release snapshot:** `c28250c34de4b4349023681305da99dee75aac9e`. Normal CI
 > [#1299](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42684408581)
