@@ -250,13 +250,15 @@ restore_prepare_device "$DEVICE" 1 "$DEVICES_ROOT" \
 # reprobe must invoke the configured fallback and remain visibly unsuccessful
 # unless both expected host drivers are present afterward.
 rm -f -- "$DEVICES_ROOT/$DEVICE/driver" "$DEVICES_ROOT/$AUDIO_DEVICE/driver"
+# These assignments feed rollback_prepare extracted dynamically from the QEMU hook.
+# shellcheck disable=SC2034
 PREPARE_GPU_PCI_TOUCHED=1
+# shellcheck disable=SC2034
 PREPARE_GPU_AUDIO_TOUCHED=1
+# shellcheck disable=SC2034
 PREPARE_DISPLAY_DETACH_ATTEMPTED=0
+# shellcheck disable=SC2034
 PREPARE_DESKTOP_TOUCHED=1
-# These flags are consumed by rollback_prepare extracted from the QEMU hook above.
-: "$PREPARE_GPU_PCI_TOUCHED" "$PREPARE_GPU_AUDIO_TOUCHED" \
-  "$PREPARE_DISPLAY_DETACH_ATTEMPTED" "$PREPARE_DESKTOP_TOUCHED"
 MOCK_RELEASE_FAIL_FOR="$DEVICE"
 MOCK_FALLBACK_RECOVERS=0
 MOCK_FALLBACK_CALLS=0
