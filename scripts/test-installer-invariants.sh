@@ -766,6 +766,12 @@ if ! grep -Fq 'check_local_password_hash "$NIXOS_DIR/hashedPassword"' "$INSTALLE
   echo "FAIL: installer must describe hashedPassword as a local-account hash and keep SSH public-key-only." >&2
   exit 1
 fi
+if ! grep -Fq 'if ! check_local_password_hash "$NIXOS_DIR/hashedPassword"; then' "$INSTALLER" \
+  || ! grep -Fq 'error "Required /etc/nixos/hashedPassword is missing, empty, or not root:root mode 0600.' "$INSTALLER" \
+  || grep -Fq 'warn "Fix /etc/nixos/hashedPassword' "$INSTALLER"; then
+  echo "FAIL: an absent or insecure password hash must stop install.sh before system mutation." >&2
+  exit 1
+fi
 
 assignment_line="$(awk '/^PATCHED_XML="\/var\/lib\/libvirt\/win10\.xml"$/ { print NR; exit }' "$INSTALLER")"
 first_use_line="$(awk '/\$PATCHED_XML/ { print NR; exit }' "$INSTALLER")"

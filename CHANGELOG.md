@@ -19,6 +19,15 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 - Remove the Nix-generated VFIO hook derivation/ShellCheck step from routine CI: building that wrapper pulled in the x86-64-v3 dependency closure (multi-GiB) solely to lint generated shell. Keep ShellCheck on the source `nixos/hooks/qemu` and the VFIO driver-state regression test; Nix flake evaluation and package checks remain. The current workflow defines all 27 workflow-defined steps. Historical run records correctly retain their former 28-step counts.
 
+### Supplied source-tree audit reconciliation — 2026-11-14
+
+- Bind the 14 November source snapshot `e068b1e5626900d586ba60c8ce83910d32b7ce12` to its exact Normal CI [#1519](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43620026886), which passed on that SHA. The workflow's canonical packager validated 75 tracked files, 9 executable files, the embedded source revision, and exclusion of `.git`; this corrects the supplied report's claim that no exact-commit CI record exists.
+- The supplied audit reports a separate 472,243-byte intake ZIP / SHA-256 `ee0a8e9136013f7357e9eada973e12d646af1b46ca26885a415f1217c1854cbc`. That binary was not attached to this review, so its byte count, digest, and `create_system=0` metadata were not independently remeasured here. The canonical helper now checks Unix creator metadata and expected 0644/0755 permissions for every tracked file, not only executables.
+- The `v1.5.4` annotated tag points to the same `e068b1e` commit and Release workflow [#37](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43620383782) completed successfully. Its job log records a successful `gh release create` command, but the GitHub Releases collection and `/releases/tags/v1.5.4` lookup currently do not return a release object (404). Until the release object/assets are retrievable, the latest confirmed published release is [v1.5.3](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.5.3), not v1.5.4.
+- Release #37 accepted later system-affecting changes to `nixos/configuration.nix`, `nixos/flake.lock`, `nixos/flake.nix`, and `nixos/home.nix` through the explicit maintainer `target_host_validated=true` attestation. This is not a new full-system build. Manual Build #18 remains the last recorded full-system Actions build; Build #19 was not dispatched.
+- Add explicit `v1.4.0`–`v1.4.6` release headings using the published tag/release metadata. Clarify that `.git-cliff.toml`'s `initial_tag` is a fallback when no matching SemVer tag exists, not a filter that hides existing tags. Clarify the archive's 19 October state-snapshot date versus its older [1.0.0]–[1.3.8] release-history span.
+- Make the LSFG-VK DLL path derive from `config.home.homeDirectory` while retaining the intentional `localhost` account identity. Make the installer stop before backups or writes when `hashedPassword` is missing, empty, or not root:root/0600. Clarify the historical 7.3.3 BTF issue versus the current 7.3.4 lock; no kernel option or hardware identity is changed by that comment-only edit.
+- Existing Home Snapper ordering remains: `@home` must be mounted before creating `@home/.snapshots`; the shared strict checker and installer-specific allow-missing transaction path remain covered by existing regressions. The live installer and fresh full-system build are still unverified.
 ### Independent audit cross-check and preflight fixes — 2026-11-11
 
 - Correct the v1.4.9 snapshot narrative: the published tag / Release #25 targets `a20962f`; Normal CI #1309 belongs to preceding `ad231d7`. The 410,138-byte archive is reproducible from the latter, while the 411,239-byte published asset belongs to the tag target. Only the original local copy's acquisition history is unknown.
@@ -42,7 +51,7 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ### Independent source-provenance and CI reconciliation — 2026-11-11
 
-- Record v1.5.2 as the latest published release: Release ID `441604359`, Release run [#32](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43012396764), exact tag commit `418bb687ec4f4d539e3ccc2d839baf242552c018`, Normal CI [#1396](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43012004213), canonical ZIP 451,101 bytes, SHA-256 `11c0b38fc3de7c8f99a089018ad89131e175ca323c6652a19573f13f40b082c6`.
+- At the 11 November 2026 snapshot, v1.5.2 was the latest published release: Release ID `441604359`, Release run [#32](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43012396764), exact tag commit `418bb687ec4f4d539e3ccc2d839baf242552c018`, Normal CI [#1396](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43012004213), canonical ZIP 451,101 bytes, SHA-256 `11c0b38fc3de7c8f99a089018ad89131e175ca323c6652a19573f13f40b082c6`.
 - Correct v1.4.9 provenance: the `v1.4.9` tag and Release run #25 target `a20962f9be065f17c7c2ec143473c47b7a75aae9`. Normal CI #1309 passed on the preceding `ad231d7529721eae343385cca9073790e4e3be61` commit, not the exact tag target. The 410,138-byte / `f28f9195...` archive is the canonical ZIP for `ad231d7`; the published 411,239-byte / `56c3d8df...` asset is the ZIP for `a20962f`.
 - Reconcile Normal CI #1395–#1399: [#1395](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43011838520) passed on `ec2482a`; [#1396](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43012004213) passed on the v1.5.2 tag commit `418bb68`; [#1397](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43022490748) failed on `7ea632a` when the bootstrap test lost its executable bit; [#1398](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43022565265) passed on `ae175f4` after mode `100755` was restored; [#1399](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43033685955) failed on `aebea08` because the old v1.4.9 test assertion had not yet been updated to the corrected provenance record. This commit updates that assertion; its own Normal CI result is separate.
 - These are source-history and documentation corrections. They do not add a new full-system build, a new target-host activation result, or saved-state/managed-save evidence.
@@ -114,6 +123,14 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 - Clarify the GPU/audio IOMMU split: `0000:0b:00.0` was recorded in group 18 and `0000:0b:00.1` in group 19. Different group numbers alone do not prove an isolation defect or establish intra-device isolation; group membership and PCIe/ACS topology require separate review.
 - H1 is already corrected in the archived [1.2.2] entry and dated preface: pinned Nixpkgs defines Hyprland `0.56.2` / hyprlock `0.9.6`; `0.54.3 / 0.9.5` is marked as the incorrect earlier statement. H3 and H4 remain documented historical anomalies; no old release description is rewritten and no missing Build #14 event is inferred.
 - **Second reconciliation CI failure:** Nix Flake Check [#1383](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42998196145) failed on `36c13be1558d70822edf9432fe6cca3507f6d8e5` at the documentation-integrity assertion `README must distinguish the immutable v1.5.0 release ZIP from later main-branch documentation`. Commit `edf78e8` restored `The v1.5.0 asset will not be rewritten`; [#1384](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42998456098) then passed on exact commit `edf78e8559a289dda5da01467ce0082da2c38188`.
+
+## [v1.5.3] - 2026-11-12
+
+### Release and validation boundary — 2026-11-12
+
+- Published [v1.5.3](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.5.3), Release ID `442930112`, from exact tag commit `a6e538b5d5a7b3328255e37adbfa4965b6dfd954`; Release workflow [#35](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43219936790) completed successfully.
+- Normal Nix Flake Check [#1420](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43219426864) passed on that exact commit. GitHub Release metadata records the canonical source ZIP as 468,376 bytes with SHA-256 `15b1ec380a7ec2a636cf9aa1da4b7bd80218daac8844f722fe0d8f57669b745b`.
+- This is the latest release object currently returned by the GitHub Releases API. The later v1.5.4 tag / Release #37 visibility discrepancy is documented under [Unreleased]; no v1.5.4 asset digest is inferred.
 
 ## [v1.5.2] - 2026-11-11
 
@@ -193,6 +210,34 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 - The canonical source ZIP is 410,656 bytes; SHA-256 `4db66f4c856da157b8fc6995aaea7b86d40397868455976b21cb76566b1cadab`. The release also publishes the matching `.sha256` manifest.
 - The documentation changes reconcile kernel/build evidence, record the owner-reported clean-install and normal VFIO VM lifecycle validation, and distinguish current from historical validation claims. The test changes align the kernel-validation assertions and distinguish current and historical hardware evidence.
 - Manual full-system build #18 on ancestor commit `c6f4b955475de2ea16bc2b34c59a95dad3a1ae78` remains the last completed full-system build baseline. The v1.4.8 release gate passed; this release did not create a new full-system build result.
+
+## [v1.4.6] - 2026-11-06
+
+- Published Release ID `436371622` from tag commit `a6dd4544319fafa7ec517e73b31ad29a1b4010b3`. GitHub Release API lists a 402,118-byte asset with SHA-256 `05ffe97ee342a4b233f56bc7ae0e455f3b91a1c87df86c42e57e0441e9089e76`; the asset name/manifest differs from the helper output retained in Release #20's job log, so canonical asset provenance remains qualified.
+
+## [v1.4.5] - 2026-11-05
+
+- Published Release ID `435306537` from tag commit `994b05c888fbb52295d93e8ef74e41bac66c5e65`. The listed asset is 392,212 bytes, SHA-256 `f97fb12bdfbaaff4d32e7ab57bbc9251fababcd126a8ef7644947844924de9e0`.
+
+## [v1.4.4] - 2026-11-05
+
+- Published Release ID `435237316`; its tag points to `7f923a2c7aa59721bc00728faccbc073e06c697a`. The listed 388,000-byte asset has SHA-256 `7621fcdccfe327e9e59f453947b9f7903cd0f477b73cde8f4aa5ee513061e0ff`, identical to v1.4.3. The generated release-body heading also says v1.4.3; retain that as a historical notes-generation anomaly rather than attributing a different source snapshot.
+
+## [v1.4.3] - 2026-11-05
+
+- Published Release ID `440298465` on 10 November 2026 (the annotated tag was created on 5 November) from the same `7f923a2c7aa59721bc00728faccbc073e06c697a` target as v1.4.4. Its 388,000-byte asset digest is identical to v1.4.4; this release entry was restored/published later and is not a new source snapshot.
+
+## [v1.4.2] - 2026-11-05
+
+- Published Release ID `434925955` from tag commit `9661091e35aed98b18483ff6d25a54fe0653c877`. The listed asset is 380,135 bytes, SHA-256 `ef3b430ccff66f3c1905516be018991585e5945ceccdd2b06eaaf1545fdd06fd`. Its generated release-body heading starts at v1.4.1, a retained version-heading mismatch.
+
+## [v1.4.1] - 2026-11-04
+
+- Published Release ID `433672805` from tag commit `480972a235655f6d1e9ec6137f85ad3f30b8655a`. The listed asset is 354,216 bytes, SHA-256 `c430c3f339ee98559ae6f9599782c39e1ee371ba4c021ab7837523f8e8152f6e`. Its generated release-body heading starts at v1.4.0, a retained version-heading mismatch.
+
+## [v1.4.0] - 2026-11-01
+
+- Published Release ID `430849590` from tag commit `ca6edf2a381118fbd81aeccb82287f234f44a257`. The listed asset is 301,189 bytes, SHA-256 `2bd2c437ed10bb78468067cce6b49757368d8d4cee1e2b41b5e299fa65b86ee0`. Its generated release-body heading starts at v1.3.9, a retained version-heading mismatch.
 
 ## [v1.4.7] - 2026-11-09
 

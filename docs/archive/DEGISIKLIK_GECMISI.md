@@ -1,8 +1,8 @@
 # 📜 Changelog
 
-> **Tarihsel anlık görüntü notu — ilk snapshot: 2026-10-19; önsöz son güncelleme: 2026-11-04 (güncel yapılandırma kaynağı değildir)**
+> **Tarihsel yapılandırma snapshot'ı — kayıtlı durum tarihi: 2026-10-19; arşivdeki sürüm geçmişi: [1.0.0] (2026-05-12)–[1.3.8] (2026-10-12); önsöz son güncelleme: 2026-11-14 (güncel yapılandırma kaynağı değildir)**
 >
-> Bu blok 19 Ekim 2026 tarihindeki yapılandırma durumunu kaydeder. Bu tarihsel önsöz, sonraki değişikliklerle geçersiz kalan tercihleri işaretlemek amacıyla 4 Kasım 2026'da güncellenmiştir. Başlıktaki ilk tarih snapshot'ın kapsadığı yapılandırmayı, son güncelleme tarihi ise önsözdeki durum açıklamalarını belirtir; güncel ayarlar için kök `README.md` ve `nixos/configuration.nix` esas alınmalıdır.
+> 19 Ekim 2026 tarihi bu dosyanın tarihsel yapılandırma durumunu belirtir; projenin veya sürüm geçmişinin başlangıç tarihi değildir. Bu arşiv, daha eski sürüm kayıtlarını [1.0.0] / 12 Mayıs 2026'ya kadar korur ve bu bölüm [1.3.8] / 12 Ekim 2026'da sona erer. [v1.4.0] ve sonrası sürüm başlıkları ve yayın varlıkları kök `CHANGELOG.md` içinde tutulur. Önsöz, sonraki değişikliklerle geçersiz kalan tercihleri işaretlemek amacıyla 14 Kasım 2026'da güncellenmiştir; güncel ayarlar için kök `README.md` ve `nixos/configuration.nix` esas alınmalıdır.
 >
 > - Aşağıdaki `[1.3.5]` kaydındaki IOMMU değişimi Git geçmişiyle eşleştirildi:
 >   `iommu=pt`, `5a417ef` (19 Nisan 2026) tarihli izlenen yapılandırmada
@@ -20,9 +20,11 @@
 >   `--accept-flake-config` ile otomatik atlamayın. Fish `nup` kısayolu aynı hedefli güncellemeyi
 >   yapar. RT-Bore-LTO LTO upstream binary cache'te yoktur; yerel derleme gerekir. Önceki başarılı
 >   test standart BORE-LTO içindi ve RT varyantını doğrulamaz.
-> - `install.sh` ön kontrolü `/etc/nixos/hashedPassword` dosyasının varlığını, boş olmadığını
->   ve `root:root`/`0600` izinlerini denetler. Eksik/uygunsuzsa uyarı verir; kullanıcıya
->   kurulumu tamamlamadan önce dosyayı düzeltmesi gerektiğini söyler.
+> - Bu 19 Ekim snapshot'ındaki `install.sh` ön kontrolü `/etc/nixos/hashedPassword`
+>   dosyasının varlığını, boş olmadığını ve `root:root`/`0600` izinlerini denetler; o
+>   tarihte eksik/uygunsuz dosyada uyarı sonrası devam ediyordu. **14 Kasım 2026 düzeltmesi:**
+>   güncel installer aynı kontrol başarısızsa yedekleme/değişiklik başlamadan `error` ile
+>   durur. Bu not yalnızca tarihsel snapshot davranışını açıklar.
 > - Aşağıdaki `[1.3.8]` ICH9 kaldırma kaydı Git geçmişiyle doğrulandı ve tamamlandı:
 >   `6e8d6cfe` (12 Ekim 2026) `<sound model="ich9">` ile `audio type="none"`
 >   tanımlarını kaldırdı; `46bf9015` (23 Ekim 2026) ikisini yeniden ekledi.

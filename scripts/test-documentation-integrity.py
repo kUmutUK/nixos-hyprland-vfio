@@ -42,6 +42,7 @@ VM_XML_SYNC_TEST = (ROOT / "scripts/test-vm-xml-sync.py").read_text(encoding="ut
 MANUAL_VM_BOOTSTRAP_TEST = (ROOT / "scripts/test-manual-vm-bootstrap.sh").read_text(encoding="utf-8")
 VM_XML_VALIDATOR = (ROOT / "scripts/test-vm-xml.py").read_text(encoding="utf-8")
 VM_XML_STRUCTURE_TEST = (ROOT / "scripts/test-vm-xml-structure.py").read_text(encoding="utf-8")
+SOURCE_ZIP_HELPER = (ROOT / "scripts/package-source-zip.sh").read_text(encoding="utf-8")
 errors = []
 
 
@@ -562,31 +563,82 @@ require(
     )),
     "previous v1.4.6 release metadata must remain available as historical information",
 )
+v153_heading = CHANGELOG.find("## [v1.5.3] - 2026-11-12")
 v152_heading = CHANGELOG.find("## [v1.5.2] - 2026-11-11")
 v151_heading = CHANGELOG.find("## [v1.5.1] - 2026-11-11")
 v150_heading = CHANGELOG.find("## [v1.5.0] - 2026-11-10")
 v149_heading = CHANGELOG.find("## [v1.4.9] - 2026-11-10")
 v148_heading = CHANGELOG.find("## [v1.4.8] - 2026-11-09")
 v147_heading = CHANGELOG.find("## [v1.4.7] - 2026-11-09")
+v146_heading = CHANGELOG.find("## [v1.4.6] - 2026-11-06")
+v145_heading = CHANGELOG.find("## [v1.4.5] - 2026-11-05")
+v144_heading = CHANGELOG.find("## [v1.4.4] - 2026-11-05")
+v143_heading = CHANGELOG.find("## [v1.4.3] - 2026-11-05")
+v142_heading = CHANGELOG.find("## [v1.4.2] - 2026-11-05")
+v141_heading = CHANGELOG.find("## [v1.4.1] - 2026-11-04")
+v140_heading = CHANGELOG.find("## [v1.4.0] - 2026-11-01")
 require(
-    v152_heading >= 0 and v151_heading > v152_heading and v150_heading > v151_heading
-    and v149_heading > v150_heading and v148_heading > v149_heading and v147_heading > v148_heading
-    and "v1.4.6 is the current published release" not in CHANGELOG,
-    "CHANGELOG must list v1.5.1, v1.5.0, v1.4.9, v1.4.8, and v1.4.7 newest-first without a stale current-release claim",
+    v153_heading >= 0 and v152_heading > v153_heading and v151_heading > v152_heading
+    and v150_heading > v151_heading and v149_heading > v150_heading
+    and v148_heading > v149_heading and v147_heading > v148_heading
+    and v146_heading > v147_heading and v145_heading > v146_heading
+    and v144_heading > v145_heading and v143_heading > v144_heading
+    and v142_heading > v143_heading and v141_heading > v142_heading
+    and v140_heading > v141_heading,
+    "CHANGELOG must include the v1.5.3 release and all v1.4.0-v1.4.6 headings newest-first",
 )
 require(
     all(item in CHANGELOG for item in (
-        "418bb687ec4f4d539e3ccc2d839baf242552c018",
-        "Release ID `441604359`",
-        "Release workflow run [#32]",
-        "43012396764",
-        "Normal Nix Flake Check [#1396]",
-        "43012004213",
-        "451,101 bytes",
-        "11c0b38fc3de7c8f99a089018ad89131e175ca323c6652a19573f13f40b082c6",
-    )) and "v1.5.2" in STATE_INDEX and "v1.5.2" in README,
-    "v1.5.2 must be recorded as the latest release with its exact tag commit, exact-tag CI result, and canonical ZIP size",
+        "a6e538b5d5a7b3328255e37adbfa4965b6dfd954",
+        "Release ID `442930112`",
+        "Release workflow [#35]",
+        "43219936790",
+        "Normal Nix Flake Check [#1420]",
+        "43219426864",
+        "468,376 bytes",
+        "15b1ec380a7ec2a636cf9aa1da4b7bd80218daac8844f722fe0d8f57669b745b",
+    )) and "v1.5.3" in STATE_INDEX and "v1.5.3" in README,
+    "v1.5.3 must be recorded as the latest confirmed published release with its exact commit, CI, and ZIP metadata",
 )
+require(
+    all(item in CHANGELOG + REPAIR + README + STATE_INDEX for item in (
+        "e068b1e5626900d586ba60c8ce83910d32b7ce12",
+        "43620026886",
+        "#1519",
+        "43620383782",
+        "v1.5.4",
+        "75 tracked files",
+        "9 executable files",
+    )) and "404" in REPAIR and "Build #19 was not dispatched" in REPAIR,
+    "14 November main HEAD, exact Normal CI, v1.5.4 release visibility, canonical ZIP, and full-build boundary must be recorded",
+)
+require(
+    "initial_tag" in CLIFF_CONFIG
+    and "does not filter or hide earlier tags" in CLIFF_CONFIG
+    and all(f"## [v1.4.{version}]" in CHANGELOG for version in range(0, 7)),
+    "git-cliff fallback semantics and the missing v1.4.0-v1.4.6 release headings must remain explicit",
+)
+require(
+    "for name in sorted(tracked_files):" in SOURCE_ZIP_HELPER
+    and "entry.create_system != 3" in SOURCE_ZIP_HELPER
+    and "expected_mode = 0o755 if name in tracked_executables else 0o644" in SOURCE_ZIP_HELPER,
+    "canonical source packaging must validate Unix creator and exact permissions for every tracked file",
+)
+require(
+    'if ! check_local_password_hash "$NIXOS_DIR/hashedPassword"; then' in INSTALLER
+    and 'error "Required /etc/nixos/hashedPassword is missing, empty, or not root:root mode 0600.' in INSTALLER
+    and 'warn "Fix /etc/nixos/hashedPassword' not in INSTALLER
+    and 'config.home.homeDirectory}/.local/share/Steam/steamapps/common/Lossless Scaling/lsfg-vk.dll' in HOME_NIX
+    and '/home/localhost/.local/share/Steam/steamapps/common/Lossless Scaling/lsfg-vk.dll' not in HOME_NIX,
+    "installer must fail closed on an unsafe account hash and LSFG DLL path must follow the configured home directory",
+)
+require(
+    "19 Ekim 2026 tarihi bu dosyanın tarihsel yapılandırma durumunu belirtir" in ARCHIVE
+    and "[1.0.0] / 12 Mayıs 2026" in ARCHIVE
+    and "[v1.4.0] ve sonrası" in ARCHIVE,
+    "Turkish archive preface must distinguish the state snapshot from the full release-history range",
+)
+
 require(
     "exact tag commit `a20962f9be065f17c7c2ec143473c47b7a75aae9`" in CHANGELOG
     and "Normal CI #1309" in CHANGELOG
@@ -1444,6 +1496,7 @@ wallpaper = re.search(r'(?m)^\s*wallpaperVideo\s*=\s*"\$\{config\.home\.homeDire
 require(wallpaper is not None and f"~/Downloads/{wallpaper.group(1)}" in INSTALLATION, "INSTALLATION wallpaper default must match the exact home.nix filename")
 require("installer backups are not automatically pruned" in CHANGELOG, "CHANGELOG must describe current backup retention rather than the historical five-backup policy")
 require("verified current kernel defaults" in CHANGELOG and "0c035b2c" in CHANGELOG and "91c4d58e" in CHANGELOG, "CHANGELOG must distinguish current kernel parameters and record the historical IOMMU transition")
+require("7.3.3" in CONFIG and "historical" in CONFIG and "current flake.lock resolves 7.3.4" in CONFIG, "kernel comments must distinguish the historical 7.3.3 BTF failure from the current 7.3.4 lock")
 require("amdgpu.ppfeaturemask" in CHANGELOG and "amdgpu.featuremask" not in CHANGELOG, "CHANGELOG must use the documented amdgpu.ppfeaturemask parameter name")
 require("older `[1.2.0]` archive entry" in CHANGELOG and "`2a7a:8a47` is absent" in CHANGELOG and "f46b8ac8" in CHANGELOG and "fbd105c8" in CHANGELOG, "CHANGELOG must state current USB passthrough IDs and trace their history")
 require("561,513 bytes" in REPAIR and "c905b5036d04bf1e" in REPAIR and "116 entries" in REPAIR, "repair report must record the supplied ZIP measurements")

@@ -1,6 +1,7 @@
 # Release-note generation and semantic version calculation.
-# The historical Turkish changelog records 1.3.8; use it only as the fallback
-# starting point when no matching version tag exists in Git.
+# `initial_tag` is only a fallback boundary when no valid SemVer tag exists.
+# It does not filter or hide earlier tags; real v1.3.9+ tags remain authoritative
+# for version ranges. The Turkish archive is a historical document, not the tag index.
 [changelog]
 header = """
 # Release notes

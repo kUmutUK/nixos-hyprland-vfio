@@ -300,8 +300,8 @@ PYTHON3="$(command -v python3)"
 log "Environment OK (Python: ${PYTHON3})."
 
 # This hash is for the local `localhost` account, not SSH password
-# authentication. Check it before system mutation, but do not abort: the manual
-# checklist can create/fix it before the new configuration is activated.
+# authentication. It is a required precondition: do not create backups or modify
+# system configuration until the file is present, non-empty, and root-owned 0600.
 check_local_password_hash() {
   local hash_file="$1" metadata
   if [[ ! -s "$hash_file" ]]; then
@@ -321,7 +321,7 @@ check_local_password_hash() {
 }
 
 if ! check_local_password_hash "$NIXOS_DIR/hashedPassword"; then
-  warn "Fix /etc/nixos/hashedPassword using the manual checklist before rebuilding; this file supplies the local localhost account password and does not enable SSH password login. SSH remains public-key-only."
+  error "Required /etc/nixos/hashedPassword is missing, empty, or not root:root mode 0600. Fix it using the manual checklist and rerun install.sh; no system files have been changed."
 fi
 
 # Validate the proposed host mount layout and UUIDs before backups or any mutation.

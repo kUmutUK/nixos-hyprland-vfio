@@ -112,13 +112,15 @@ with zipfile.ZipFile(archive_path) as bundle:
         raise SystemExit("ERROR: ZIP contents do not match the committed source tree.")
 
     entries_by_name = {entry.filename: entry for entry in entries}
-    for name in sorted(tracked_executables):
+    for name in sorted(tracked_files):
         entry = entries_by_name[name]
         mode = (entry.external_attr >> 16) & 0o777
-        if entry.create_system != 3 or not (mode & 0o111):
+        expected_mode = 0o755 if name in tracked_executables else 0o644
+        if entry.create_system != 3 or mode != expected_mode:
             raise SystemExit(
-                "ERROR: ZIP lost an executable permission: "
-                f"{name} (create_system={entry.create_system}, mode={mode:04o})."
+                "ERROR: ZIP has non-canonical Unix permission metadata: "
+                f"{name} (create_system={entry.create_system}, "
+                f"mode={mode:04o}, expected={expected_mode:04o})."
             )
 
 print(

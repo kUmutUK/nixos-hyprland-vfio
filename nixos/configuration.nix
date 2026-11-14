@@ -191,9 +191,11 @@ in
     # host grace periods and works against the low-jitter goal of this configuration.
   ];
 
-  # These optional Rust drivers are not used by this x86_64 host.
-  # CachyOS RT-Bore-LTO 7.3.3 fails module BTF finalization for Rust modules
-  # (first rnull_mod.ko, then rcpufreq_dt.ko). Keep general Rust, BTF, and ThinLTO.
+  # These optional Rust drivers are not used by this x86_64 host. The 7.3.3
+  # CachyOS RT-Bore-LTO BTF failures (rnull_mod.ko, then rcpufreq_dt.ko) are
+  # historical; the current flake.lock resolves 7.3.4. Keep this narrow workaround
+  # until a later exact-lock full-system build justifies removing it. General Rust,
+  # BTF, and ThinLTO remain enabled.
   boot.kernelPatches = [
     {
       name = "disable-unused-rust-drivers-for-btf-lto";
