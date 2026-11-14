@@ -16,6 +16,10 @@ The supplied cross-distribution performance guide was reconciled with the actual
 
 **Validation/build boundary:** this update changes `nixos/configuration.nix`, `nixos/flake.nix`, and `nixos/flake.lock`. A fresh full-system build is required before release. The change does not include a completed NixOS toplevel/kernel build, target-host activation, FPS/frametime benchmark, or VM lifecycle result. The full-system workflow remains manual-only and was not dispatched as part of this change; retain a known-good boot generation when applying the new configuration.
 
+### Normal CI runtime reduction — 2026-11-14
+
+The routine Nix Flake Check no longer builds the Nix-generated VFIO hook derivation solely to run ShellCheck. That derivation pulled in the x86-64-v3 dependency closure and materially increased CI download/build time. The source hook remains covered by the existing ShellCheck gate, and `scripts/test-vfio-hook-driver-state.sh` remains a separate required regression test. The Nix evaluation and package-build gates are unchanged. The current workflow defines all 27 workflow-defined steps; historical run records retain their accurate 28-step counts.
+
 ### Supplied source-tree audit reconciliation — 2026-11-12 (reviewed baseline `6d4b898d1cbb391b96525deff25e40fd87be1d01`)
 
 The supplied 12 November report identifies a 75-file source archive with embedded revision `6d4b898d1cbb391b96525deff25e40fd87be1d01`, 466,457 bytes, and SHA-256 `e181ccf57ea44f4433fd10a3052918033c5e61648145ebca820ea733436d58c`. The embedded revision matches the `main` HEAD observed at the start of this reconciliation. The archive bytes were not attached for an independent size/hash recomputation in this GitHub-only pass; those measurements are therefore attributed to the supplied report. The follow-up commits below are later revisions and need their own CI results.
