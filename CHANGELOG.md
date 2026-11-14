@@ -4,6 +4,13 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+### Repository documentation cleanup — 2026-11-15
+
+- Remove nine superseded one-off audit and fix snapshots from `docs/archive/`; preserve the detailed Turkish release history and consolidated historical retraction register.
+- Keep all active CI regression tests. Update the README repository map to the current 66 tracked files; the earlier 75-file count remains only in dated historical snapshots.
+- Permit those nine archived paths in the release ancestor-build gate only when Git reports them as deleted, never when edited or reintroduced.
+
+
 ### VFIO preparation rollback driver verification — 2026-11-15
 
 - Verify that each touched GPU/audio PCI function is actually bound to its expected host driver after a failed VM preparation; a successful reprobe command alone is not treated as recovery.
