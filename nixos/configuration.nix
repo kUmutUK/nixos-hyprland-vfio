@@ -310,7 +310,7 @@ in
     config.default_sched = "scx_bpfland";
   };
 
-  # Three components now affect CPU policy for distinct purposes:
+  # Three components can change CPU scheduling/priority for distinct purposes:
   # power-profiles-daemon controls the governor, sched_ext selects the normal-task
   # scheduler, and GameMode's renice = 10 is negated to nice value (-10), raising
   # CPU scheduling priority when GameMode successfully applies it.
