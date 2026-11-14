@@ -129,13 +129,48 @@ jobs:
       - name: VFIO hook driver-state regression tests
         run: bash scripts/test-vfio-hook-driver-state.sh
 
+      - name: Verify runner supports x86-64-v3
+        # The NixOS reference host intentionally builds userland for x86-64-v3.
+        # Do not advertise this Nix system feature unless the physical runner CPU
+        # exposes the complete v3 instruction set.
+        run: |
+          set -euo pipefail
+          flags="$(awk -F: '/^flags[[:space:]]*:/ { print $2; exit }' /proc/cpuinfo)"
+          has_cpu_flag() {
+            [[ " ${flags} " == *" $1 "* ]]
+          }
+          for flag in cx16 lahf_lm popcnt pni ssse3 sse4_1 sse4_2 avx avx2 bmi1 bmi2 f16c fma movbe xsave; do
+            if ! has_cpu_flag "$flag"; then
+              echo "::error::GitHub runner CPU lacks required x86-64-v3 flag: $flag"
+              exit 1
+            fi
+          done
+          # AMD exposes LZCNT as ABM; Intel exposes the lzcnt flag.
+          if ! has_cpu_flag lzcnt && ! has_cpu_flag abm; then
+            echo "::error::GitHub runner CPU lacks x86-64-v3 LZCNT/ABM support"
+            exit 1
+          fi
+          echo "  runner CPU supports x86-64-v3"
+
       - name: ShellCheck of the Nix-generated VFIO hook
         # The source hooks/qemu was checked separately; this also checks the
         # Nix-interpolated writeShellScript wrapper from configuration.nix.
         # Only the small hook derivation is built, not the full NixOS system.
+        # Nix does not infer gccarch-x86-64-v3 from /proc/cpuinfo; advertise it
+        # for this build only, after the CPU-feature gate above has passed.
         working-directory: nixos
         run: |
-          hook_path="$(nix build --no-link --no-update-lock-file --print-out-paths \
+          set -euo pipefail
+          system_features="$(nix show-config | sed -n 's/^system-features = //p')"
+          if [[ -z "$system_features" ]]; then
+            echo "::error::Could not read Nix system-features"
+            exit 1
+          fi
+          if [[ " $system_features " != *" gccarch-x86-64-v3 "* ]]; then
+            system_features+=" gccarch-x86-64-v3"
+          fi
+          hook_path="$(nix build --no-link --no-update-lock-file \
+            --option system-features "$system_features" --print-out-paths \
             .#nixosConfigurations.nixos.config.virtualisation.libvirtd.hooks.qemu.vfio)"
           test -f "$hook_path"
           shellcheck -S warning "$hook_path"
