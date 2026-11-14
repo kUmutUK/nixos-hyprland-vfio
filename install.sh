@@ -300,8 +300,9 @@ PYTHON3="$(command -v python3)"
 log "Environment OK (Python: ${PYTHON3})."
 
 # This hash is for the local `localhost` account, not SSH password
-# authentication. It is a required precondition: do not create backups or modify
-# system configuration until the file is present, non-empty, and root-owned 0600.
+# authentication. This local-account hash does not enable SSH password login.
+# SSH remains public-key-only. It is a required precondition: do not create backups
+# or modify system configuration until the file is present, non-empty, and root-owned 0600.
 check_local_password_hash() {
   local hash_file="$1" metadata
   if [[ ! -s "$hash_file" ]]; then
