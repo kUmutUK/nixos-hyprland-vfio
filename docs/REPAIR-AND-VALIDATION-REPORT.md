@@ -2,14 +2,14 @@
 
 ### Release-gate hardening and source-review chronology — 2026-11-15
 
-The 15 November live source review began from \`13f3c2e9d6c85517e5da658523a2ba3f0f36e17c\`. The reviewed follow-up commits then advanced \`main\` to \`322d0d7caa7cd2c99a53ebc06c733ae28d850cc1\`; Normal Nix Flake Check [#1554](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43645881692) passed all 27 workflow-defined steps on that exact commit. Preceding run #1553 failed because the README's tracked-file inventory was stale after the archive cleanup; the inventory was refreshed before #1554 passed.
+The 15 November live source review began from `13f3c2e9d6c85517e5da658523a2ba3f0f36e17c`. The reviewed follow-up commits then advanced `main` to `322d0d7caa7cd2c99a53ebc06c733ae28d850cc1`; Normal Nix Flake Check [#1554](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43645881692) passed all 27 workflow-defined steps on that exact commit. Preceding run #1553 failed because the README's tracked-file inventory was stale after the archive cleanup; the inventory was refreshed before #1554 passed.
 
 This follow-up fixes the release-policy inconsistency identified during that review:
 
-- The release workflow now runs a dedicated \`install.sh\` diff check after selecting the successful full-system build baseline and before the maintainer-attestation fallback.
-- If \`install.sh\` changed after that build, release publication fails. \`target_host_validated=true\` cannot waive the installer-specific build requirement.
-- The documentation-integrity regression executes the exact marked Bash block from \`release.yml\` in a temporary Git repository. It proves that an installer change is rejected even with the manual attestation environment enabled, while a documentation-only change passes this specific gate.
-- The existing exact 52-path ancestor-build allowlist is unchanged; \`install.sh\` remains excluded.
+- The release workflow now runs a dedicated `install.sh` diff check after selecting the successful full-system build baseline and before the maintainer-attestation fallback.
+- If `install.sh` changed after that build, release publication fails. `target_host_validated=true` cannot waive the installer-specific build requirement.
+- The documentation-integrity regression executes the exact marked Bash block from `release.yml` in a temporary Git repository. It proves that an installer change is rejected even with the manual attestation environment enabled, while a documentation-only change passes this specific gate.
+- The existing exact 52-path ancestor-build allowlist is unchanged; `install.sh` remains excluded.
 
 **Validation boundary:** #1554 predates this follow-up and is not a CI result for the new guard/test. The current source change needs its own Normal CI run. This is a release-workflow and regression-test change, not a NixOS system build, selected-kernel build, target-host activation, or physical GPU test. Full-system Build #19 remains the last confirmed build and predates the current x86-64-v3 kernel-only profile and CachyOS lock revision. The fresh full-system build and target-host boot validation remain open.
 
