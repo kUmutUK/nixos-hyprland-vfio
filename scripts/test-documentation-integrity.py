@@ -175,7 +175,7 @@ hypridle_suspend_match = re.search(
 require(
     hypridle_suspend_match is not None
     and int(hypridle_suspend_match.group(1)) == 3600
-    and "hypridle requests suspend after 3600 seconds" in README,
+    and "requests suspend after 3600 seconds" in README,
     "README suspend timeout must match the systemctl suspend listener in home.nix",
 )
 

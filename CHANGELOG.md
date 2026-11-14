@@ -6,7 +6,7 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ### 14 November audit follow-up — release and build records
 
-- Confirm that the supplied source archive's embedded revision `f6689bcd5234f29a7cfcfc4151d161727b0658bc` is the exact commit targeted by the annotated `v1.5.4` tag. Normal Nix Flake Check #1526 passed on that commit, and Release workflow #38 published Release ID `445492077`.
+- Confirm that the supplied source archive's embedded revision `f6689bcd5234f29a7cfcfc4151d161727b0658bc` is the exact commit targeted by the annotated `v1.5.4` tag. Normal Nix Flake Check #1526 (run ID `43624282232`) passed on that commit, and Release workflow #38 (run ID `43625112235`) published Release ID `445492077`.
 - The published canonical source ZIP is recorded by GitHub as 477,863 bytes with SHA-256 `dca1f4ccd365df64d416a029f13ea821a58e4e05cf21a81c4d5bc3d2d65b5e6c`, matching the supplied audit's values. These are GitHub asset metadata values; no independent binary re-hash is claimed.
 - Correct the earlier v1.5.4 visibility note: the release object and both source ZIP/checksum assets are now retrievable. v1.5.4, not v1.5.3, is the latest confirmed published release.
 - Correct the Build #19 history: Full NixOS System Build #19 (run ID `43101226875`) completed successfully on exact source commit `6242439da7e944d297dbe5f44fdff8e79fe4689c` on 11 November. It built the complete NixOS system and selected kernel using CachyOS input `9df32f70be3550911f178b3ba9ad784996a4e80c`.
