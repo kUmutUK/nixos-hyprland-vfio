@@ -101,6 +101,7 @@ released_devices=()
 MOCK_RELEASE_FAIL_FOR=""
 MOCK_FALLBACK_RECOVERS=0
 MOCK_FALLBACK_CALLS=0
+MOCK_FALLBACK_ARGS=()
 START_HYPRLAND_CALLS=0
 MOCK_LOG=()
 log() { MOCK_LOG+=("$*"); }
@@ -125,6 +126,7 @@ release_host_driver() {
 }
 suspend_rescan_recovery() {
   MOCK_FALLBACK_CALLS=$((MOCK_FALLBACK_CALLS + 1))
+  MOCK_FALLBACK_ARGS=("$@")
   if [[ "$MOCK_FALLBACK_RECOVERS" == "1" ]]; then
     for dev in "$@"; do
       bind_mock_expected_host_driver "$dev"
@@ -262,6 +264,8 @@ if rollback_prepare; then
 fi
 [[ "$MOCK_FALLBACK_CALLS" -eq 1 ]] \
   || fail 'incomplete ordinary rollback did not invoke the recovery fallback'
+[[ "${MOCK_FALLBACK_ARGS[*]}" == "$DEVICE" ]] \
+  || fail 'fallback included an audio function that ordinary reprobe had already restored'
 [[ "$START_HYPRLAND_CALLS" -eq 1 ]] \
   || fail 'rollback did not attempt recorded desktop-service restoration'
 [[ "${MOCK_LOG[*]}" == *"CRITICAL: VFIO preparation rollback is incomplete"* ]] \
@@ -277,6 +281,8 @@ rollback_prepare \
   || fail 'rollback_prepare rejected devices after the fallback restored both expected drivers'
 [[ "$MOCK_FALLBACK_CALLS" -eq 1 ]] \
   || fail 'fallback recovery was not retried for the second rollback attempt'
+[[ "${MOCK_FALLBACK_ARGS[*]}" == "$DEVICE" ]] \
+  || fail 'successful fallback included an already-restored audio function'
 [[ "$(readlink -e -- "$DEVICES_ROOT/$DEVICE/driver")" == "$DRIVERS_ROOT/amdgpu" ]] \
   || fail 'fallback did not restore the GPU to amdgpu'
 [[ "$(readlink -e -- "$DEVICES_ROOT/$AUDIO_DEVICE/driver")" == "$DRIVERS_ROOT/snd_hda_intel" ]] \
@@ -286,6 +292,33 @@ rollback_prepare \
 
 MOCK_RELEASE_FAIL_FOR=""
 MOCK_FALLBACK_RECOVERS=0
+
+# If only the audio function fails to reprobe, pass only that function to the
+# fallback; the healthy display GPU must remain untouched.
+PREPARE_GPU_PCI_TOUCHED=0
+PREPARE_GPU_AUDIO_TOUCHED=1
+PREPARE_DISPLAY_DETACH_ATTEMPTED=0
+PREPARE_DESKTOP_TOUCHED=0
+rm -f -- "$DEVICES_ROOT/$AUDIO_DEVICE/driver"
+bind_mock_expected_host_driver "$DEVICE"
+MOCK_RELEASE_FAIL_FOR="$AUDIO_DEVICE"
+MOCK_FALLBACK_RECOVERS=1
+MOCK_FALLBACK_CALLS=0
+MOCK_FALLBACK_ARGS=()
+rollback_prepare \
+  || fail 'audio-only rollback did not recover with its configured fallback'
+[[ "${MOCK_FALLBACK_ARGS[*]}" == "$AUDIO_DEVICE" ]] \
+  || fail 'audio-only recovery fallback touched the healthy GPU'
+[[ "$(readlink -e -- "$DEVICES_ROOT/$DEVICE/driver")" == "$DRIVERS_ROOT/amdgpu" ]] \
+  || fail 'audio-only recovery changed the healthy GPU driver'
+[[ "$(readlink -e -- "$DEVICES_ROOT/$AUDIO_DEVICE/driver")" == "$DRIVERS_ROOT/snd_hda_intel" ]] \
+  || fail 'audio-only fallback did not restore snd_hda_intel'
+
+MOCK_RELEASE_FAIL_FOR=""
+MOCK_FALLBACK_RECOVERS=0
+PREPARE_GPU_PCI_TOUCHED=0
+PREPARE_GPU_AUDIO_TOUCHED=0
+PREPARE_DESKTOP_TOUCHED=0
 
 # Previously inactive Ollama must remain stopped after the VM closes. Active greetd
 # and polkit must return to active state. This models the prepare/release process split.

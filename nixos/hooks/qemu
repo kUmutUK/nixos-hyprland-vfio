@@ -463,20 +463,30 @@ restore_prepare_device() {
 # Rollback restores only state changed by `prepare`. If `stop_hyprland` fails early,
 # the GPU driver should not have been changed.
 rollback_prepare() {
-  local recovery_needed=0 recovery_failed=0
+  local recovery_failed=0
+  local -a recovery_devices=()
 
   # Prevent a signal during rollback from starting nested recovery operations.
   trap - HUP INT TERM
   log "ERROR: prepare failed; attempting rollback based on the current device state..."
 
-  restore_prepare_device "$GPU_PCI" "$PREPARE_GPU_PCI_TOUCHED" || recovery_needed=1
-  restore_prepare_device "$GPU_AUDIO" "$PREPARE_GPU_AUDIO_TOUCHED" || recovery_needed=1
+  restore_prepare_device "$GPU_PCI" "$PREPARE_GPU_PCI_TOUCHED" || true
+  restore_prepare_device "$GPU_AUDIO" "$PREPARE_GPU_AUDIO_TOUCHED" || true
 
-  # Use the same explicitly opt-in Navi 2x fallback as the normal release path
-  # when ordinary host-driver reprobe did not restore every touched function.
-  if [ "$recovery_needed" -eq 1 ]; then
-    log "WARNING: Ordinary VFIO rollback did not restore every touched PCI function; trying the configured recovery fallback."
-    suspend_rescan_recovery "$GPU_AUDIO" "$GPU_PCI" || true
+  # Only pass functions that still lack their expected host driver to the
+  # disruptive, explicitly opt-in fallback. Do not remove/rescan a function
+  # that ordinary reprobe has already restored successfully.
+  if [ "$PREPARE_GPU_PCI_TOUCHED" -eq 1 ] &&
+    ! device_has_expected_host_driver "$GPU_PCI"; then
+    recovery_devices+=("$GPU_PCI")
+  fi
+  if [ "$PREPARE_GPU_AUDIO_TOUCHED" -eq 1 ] &&
+    ! device_has_expected_host_driver "$GPU_AUDIO"; then
+    recovery_devices+=("$GPU_AUDIO")
+  fi
+  if [ "${#recovery_devices[@]}" -gt 0 ]; then
+    log "WARNING: Ordinary VFIO rollback did not restore every touched PCI function; trying the configured recovery fallback only for the failed function(s): ${recovery_devices[*]}."
+    suspend_rescan_recovery "${recovery_devices[@]}" || true
   fi
 
   if [ "$PREPARE_GPU_PCI_TOUCHED" -eq 1 ] &&
