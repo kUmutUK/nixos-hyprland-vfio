@@ -7,6 +7,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -127,6 +128,96 @@ def extract_release_allowlists(
 
 
 
+
+
+def test_release_installer_gate_behavior() -> None:
+    """Execute the exact release-workflow guard against controlled Git histories."""
+    match = re.search(
+        r"(?ms)^          # BEGIN non-waivable install\.sh full-build gate\n(?P<body>.*?)^          # END non-waivable install\.sh full-build gate$",
+        RELEASE_WORKFLOW,
+    )
+    require(match is not None, "release workflow must expose the non-waivable install.sh build-gate block for regression testing")
+    require(
+        match is not None
+        and RELEASE_WORKFLOW.index("# BEGIN non-waivable install.sh full-build gate")
+        < RELEASE_WORKFLOW.index("manual_host_attestation=0"),
+        "the install.sh build gate must run before the maintainer-attestation fallback",
+    )
+    if match is None:
+        return
+
+    with tempfile.TemporaryDirectory(prefix="release-installer-gate-") as temporary:
+        fixture = Path(temporary)
+
+        def git(*args: str) -> str:
+            result = subprocess.run(
+                ["git", *args],
+                cwd=fixture,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            return result.stdout.strip()
+
+        git("init", "-q")
+        git("config", "user.name", "Release Gate Regression")
+        git("config", "user.email", "release-gate@example.invalid")
+        (fixture / "README.md").write_text("baseline\n", encoding="utf-8")
+        git("add", "README.md")
+        git("commit", "-q", "-m", "baseline")
+        build_sha = git("rev-parse", "HEAD")
+
+        (fixture / "install.sh").write_text("#!/usr/bin/env bash\necho changed\n", encoding="utf-8")
+        git("add", "install.sh")
+        git("commit", "-q", "-m", "change installer")
+        installer_sha = git("rev-parse", "HEAD")
+
+        # Reproduce the bypass attempt: manual Release with host attestation enabled.
+        environment = os.environ.copy()
+        environment.update({
+            "build_sha": build_sha,
+            "GITHUB_SHA": installer_sha,
+            "GITHUB_EVENT_NAME": "workflow_dispatch",
+            "GITHUB_REF": "refs/heads/main",
+            "TARGET_HOST_VALIDATED": "true",
+        })
+        installer_result = subprocess.run(
+            ["bash", "-e", "-u", "-o", "pipefail", "-c", match.group("body")],
+            cwd=fixture,
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        require(
+            installer_result.returncode != 0
+            and "target_host_validated cannot waive this gate" in (
+                installer_result.stdout + installer_result.stderr
+            ),
+            "the actual release-workflow guard must reject install.sh changes even when target_host_validated=true",
+        )
+
+        git("reset", "--hard", build_sha)
+        (fixture / "README.md").write_text("documentation-only change\n", encoding="utf-8")
+        git("add", "README.md")
+        git("commit", "-q", "-m", "documentation-only change")
+        documentation_sha = git("rev-parse", "HEAD")
+        environment["GITHUB_SHA"] = documentation_sha
+        documentation_result = subprocess.run(
+            ["bash", "-e", "-u", "-o", "pipefail", "-c", match.group("body")],
+            cwd=fixture,
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        require(
+            documentation_result.returncode == 0,
+            "the hard install.sh gate must not reject an unrelated documentation-only change",
+        )
+
+
+test_release_installer_gate_behavior()
 
 release_allowlists = extract_release_allowlists(RELEASING, RELEASE_WORKFLOW)
 if release_allowlists is None:
@@ -1248,8 +1339,11 @@ if git_checkout and current_head and repair_baseline_match:
                     "installer changes must be documented as requiring a fresh full-system build",
                 )
                 require(
-                    "install.sh" in RELEASING and "remain gated by a new full-system build" in RELEASING and "install.sh" not in RELEASE_WORKFLOW,
-                    "install.sh must remain outside the ancestor-build release allowlist while the release guide documents its full-build gate",
+                    "install.sh" in RELEASING
+                    and "remain gated by a new full-system build" in RELEASING
+                    and "target_host_validated cannot waive this gate" in RELEASE_WORKFLOW
+                    and "BEGIN non-waivable install.sh full-build gate" in RELEASE_WORKFLOW,
+                    "install.sh must remain outside the allowlist and be rejected before the maintainer-attestation fallback",
                 )
             if "nixos/home.nix" in pending:
                 require(

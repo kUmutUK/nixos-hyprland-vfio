@@ -4,6 +4,12 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+### Non-waivable installer release-build gate — 2026-11-15
+
+- Prevent the manual `target_host_validated` attestation from waiving a post-build `install.sh` change. Release publication now stops until a successful Full NixOS System Build covers the changed installer.
+- Add a behavior regression to `scripts/test-documentation-integrity.py` that executes the exact marked Bash block from `release.yml` against temporary Git histories: an installer change is rejected with the attestation enabled, while a documentation-only change passes this specific gate.
+- Reconcile the 15 November source-review chronology: main commit `322d0d7` passed Normal CI #1554 with 27 workflow-defined steps after the earlier README inventory failure in #1553 was fixed. This follow-up is newer than that CI run and must receive its own result.
+
 ### Repository documentation cleanup — 2026-11-15
 
 - Remove nine superseded one-off audit and fix snapshots from `docs/archive/`; preserve the detailed Turkish release history and consolidated historical retraction register.

@@ -160,6 +160,14 @@ jobs:
             esac
           done < <(git diff --no-renames --name-status "$build_sha" "$GITHUB_SHA")
 
+          # BEGIN non-waivable install.sh full-build gate
+          installer_changes="$(git diff --no-renames --name-only "$build_sha" "$GITHUB_SHA" -- install.sh)"
+          if [[ -n "$installer_changes" ]]; then
+            echo "::error::install.sh changed after the full-system build. A new successful Full NixOS System Build is required; target_host_validated cannot waive this gate."
+            exit 1
+          fi
+          # END non-waivable install.sh full-build gate
+
           manual_host_attestation=0
           if [[ "$unexpected" -ne 0 ]]; then
             if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" \

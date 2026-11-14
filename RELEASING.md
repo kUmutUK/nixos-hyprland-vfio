@@ -76,7 +76,7 @@ The dual-guest VM definition `vm-xml/win10.xml` remains outside the ancestor-bui
 
    The list is intentionally limited to documentation, CI/release metadata, the canonical source-archive packaging/validation helper, standalone migration helpers, and offline tests that do not change the installed NixOS toplevel or selected kernel. The VM XML structural test is included because it is an offline regression test; the live `vm-xml/win10.xml` definition is deliberately excluded until libvirt/QEMU semantic validation and real Windows and NixOS guest boot tests are documented. A file is not eligible merely because it lives under `scripts/` or is labelled a test: each accepted path is named explicitly and reviewed against the runtime/build boundary.
 
-   Any later change outside this exact list, including a documentation or test file not named above, blocks publication by default and requires a new full-system build. In particular, changes to `install.sh` remain gated by a new full-system build and are intentionally excluded from this ancestor-build allowlist.
+   Any later change outside this exact list, including a documentation or test file not named above, blocks publication by default and requires a new full-system build. In particular, changes to `install.sh` remain gated by a new full-system build and are intentionally excluded from this ancestor-build allowlist. The workflow applies an additional hard check before considering the maintainer-attestation option: if `install.sh` differs from the selected full-system build commit, publication fails. `target_host_validated` cannot waive this installer-specific requirement; run a new successful full-system build that includes the changed installer.
 
    For a manual **Release** dispatch from `main`, the workflow also exposes a
    `target_host_validated` checkbox. This is a narrow maintainer attestation
@@ -84,8 +84,8 @@ The dual-guest VM definition `vm-xml/win10.xml` remains outside the ancestor-bui
    the reference host. Select it only after the current source has been applied,
    the host has booted successfully, and the Windows VM has completed a normal
    start/shutdown cycle with GPU handback and Hyprland recovery. A clean install
-   is suitable evidence when it used the current source. The attestation bypasses
-   only the post-build changed-path rejection; it does **not** bypass exact-commit
+   is suitable evidence when it used the current source. The attestation can waive the remaining post-build changed-path rejection
+   only after the non-waivable `install.sh` build check has passed; it does **not** bypass exact-commit
    normal CI, the existence of a successful ancestor full-system build, version
    and tag validation, or release-artifact checks. Tag-triggered releases cannot
    use it. GitHub records this as a maintainer assertion; it does not independently

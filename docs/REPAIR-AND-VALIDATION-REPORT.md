@@ -1,8 +1,21 @@
 # Repair and validation report — updated 2026-11-15 (latest confirmed published release v1.5.4)
 
-### Current main-branch review and VFIO rollback correction — 2026-11-15
+### Release-gate hardening and source-review chronology — 2026-11-15
 
-The reviewed starting point was `main` HEAD `13f3c2e9d6c85517e5da658523a2ba3f0f36e17c`. Normal Nix Flake Check [#1543](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43641743130) completed successfully on that exact commit with all 27 current workflow-defined steps. The latest confirmed published release remains v1.5.4; its release ZIP is an immutable snapshot of its tag commit and is not rewritten by this follow-up.
+The 15 November live source review began from \`13f3c2e9d6c85517e5da658523a2ba3f0f36e17c\`. The reviewed follow-up commits then advanced \`main\` to \`322d0d7caa7cd2c99a53ebc06c733ae28d850cc1\`; Normal Nix Flake Check [#1554](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43645881692) passed all 27 workflow-defined steps on that exact commit. Preceding run #1553 failed because the README's tracked-file inventory was stale after the archive cleanup; the inventory was refreshed before #1554 passed.
+
+This follow-up fixes the release-policy inconsistency identified during that review:
+
+- The release workflow now runs a dedicated \`install.sh\` diff check after selecting the successful full-system build baseline and before the maintainer-attestation fallback.
+- If \`install.sh\` changed after that build, release publication fails. \`target_host_validated=true\` cannot waive the installer-specific build requirement.
+- The documentation-integrity regression executes the exact marked Bash block from \`release.yml\` in a temporary Git repository. It proves that an installer change is rejected even with the manual attestation environment enabled, while a documentation-only change passes this specific gate.
+- The existing exact 52-path ancestor-build allowlist is unchanged; \`install.sh\` remains excluded.
+
+**Validation boundary:** #1554 predates this follow-up and is not a CI result for the new guard/test. The current source change needs its own Normal CI run. This is a release-workflow and regression-test change, not a NixOS system build, selected-kernel build, target-host activation, or physical GPU test. Full-system Build #19 remains the last confirmed build and predates the current x86-64-v3 kernel-only profile and CachyOS lock revision. The fresh full-system build and target-host boot validation remain open.
+
+### Initial main-branch review snapshot and VFIO rollback correction — 2026-11-15
+
+The review intake was `main` HEAD `13f3c2e9d6c85517e5da658523a2ba3f0f36e17c`. Normal Nix Flake Check [#1543](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43641743130) completed successfully on that exact intake commit with 27 workflow-defined steps. This is the initial review snapshot, not the final state at the end of the review: the follow-up reached `322d0d7caa7cd2c99a53ebc06c733ae28d850cc1`, and Normal CI #1554 passed on that exact commit. The latest confirmed published release remains v1.5.4; its release ZIP is an immutable snapshot of its tag commit and is not rewritten by this follow-up.
 
 This follow-up addresses the VFIO preparation rollback gap found during the 15 November source review:
 
@@ -12,7 +25,7 @@ This follow-up addresses the VFIO preparation rollback gap found during the 15 N
 - Mock-backed VFIO regressions now cover failed reprobe, incomplete rollback, fallback invocation, successful fallback recovery, and the final driver identities. This does not replace a real target-host failure-injection or GPU handback test.
 - MAKO documentation now distinguishes its default Home Manager installation from optional per-game activation. No package default or game profile was changed.
 
-**Validation boundary:** the 15 November changes modify the runtime QEMU/VFIO hook, which is outside the literal release ancestor-build allowlist. Normal CI and the mocked regressions do not replace a new manual Full NixOS System Build. The current kernel-only x86-64-v3 profile also remains pending a fresh full-system build and target-host boot validation. No physical GPU lifecycle, saved-state restore, or live installer test is claimed by this source update. The update commit requires its own Normal CI run.
+**Validation boundary:** the VFIO rollback correction modifies the runtime QEMU/VFIO hook, which is outside the literal release ancestor-build allowlist. Normal CI and mocked regressions do not replace a new manual Full NixOS System Build. The current kernel-only x86-64-v3 profile also remains pending a fresh full-system build and target-host boot validation. No physical GPU lifecycle, saved-state restore, or live installer test is claimed by that source update. Normal CI #1554 later passed on the exact follow-up source commit `322d0d7caa7cd2c99a53ebc06c733ae28d850cc1`; the separate release-gate hardening described above is newer and needs its own CI result.
 
 
 > **Delivery-scope note:** This report is part of the tracked source tree. The dated “patch-only ZIP” notes below are historical. For a canonical full-source ZIP, use `scripts/package-source-zip.sh` or the CI-uploaded `nixos-hyprland-vfio-source` artifact for the exact commit. The helper verifies tracked-file completeness, excludes `.git/`, preserves executable bits, and makes the finished artifact readable from shared output directories.
