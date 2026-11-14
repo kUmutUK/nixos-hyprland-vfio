@@ -76,20 +76,22 @@ The dual-guest VM definition `vm-xml/win10.xml` remains outside the ancestor-bui
 
    The list is intentionally limited to documentation, CI/release metadata, the canonical source-archive packaging/validation helper, standalone migration helpers, and offline tests that do not change the installed NixOS toplevel or selected kernel. The VM XML structural test is included because it is an offline regression test; the live `vm-xml/win10.xml` definition is deliberately excluded until libvirt/QEMU semantic validation and real Windows and NixOS guest boot tests are documented. A file is not eligible merely because it lives under `scripts/` or is labelled a test: each accepted path is named explicitly and reviewed against the runtime/build boundary.
 
-   Any later change outside this exact list, including a documentation or test file not named above, blocks publication by default and requires a new full-system build. In particular, changes to `install.sh` remain gated by a new full-system build and are intentionally excluded from this ancestor-build allowlist. The workflow applies an additional hard check before considering the maintainer-attestation option: if `install.sh` differs from the selected full-system build commit, publication fails. `target_host_validated` cannot waive this installer-specific requirement; run a new successful full-system build that includes the changed installer.
+   Any later change outside this exact list, including a documentation or test file not named above, blocks publication by default and requires a new full-system build unless the explicit manual-attestation path below is used. The `install.sh` installer intentionally remains outside the automatic ancestor-build allowlist: a post-build installer change is treated as a non-allowlisted change, not as a release-only change. A fresh successful full-system build always satisfies this path check; alternatively, a manual **Release** dispatch from `main` may accept it only with `target_host_validated=true` and the clean-install and target-host validation described below.
 
-   For a manual **Release** dispatch from `main`, the workflow also exposes a
+   For a manual **Release** dispatch from `main`, the workflow exposes a
    `target_host_validated` checkbox. This is a narrow maintainer attestation
    for post-build changes that have actually been deployed to and validated on
-   the reference host. Select it only after the current source has been applied,
-   the host has booted successfully, and the Windows VM has completed a normal
-   start/shutdown cycle with GPU handback and Hyprland recovery. A clean install
-   is suitable evidence when it used the current source. The attestation can waive the remaining post-build changed-path rejection
-   only after the non-waivable `install.sh` build check has passed; it does **not** bypass exact-commit
-   normal CI, the existence of a successful ancestor full-system build, version
-   and tag validation, or release-artifact checks. Tag-triggered releases cannot
-   use it. GitHub records this as a maintainer assertion; it does not independently
-   verify physical hardware testing.
+   the reference host. Select it only after the exact current source has been
+   used for a clean installation, the host has booted successfully, and the
+   Windows VM has completed a normal start/shutdown cycle with GPU handback and
+   Hyprland recovery. This clean-install requirement explicitly includes the
+   current `install.sh` whenever that file changed after the build baseline.
+   The attestation can waive the remaining non-allowlisted post-build changed-path
+   rejection, including an `install.sh` change, but it does **not** bypass
+   exact-commit normal CI, the existence of a successful ancestor full-system
+   build, version and tag validation, or release-artifact checks. Tag-triggered
+   releases cannot use it. GitHub records this as a maintainer assertion; it
+   does not independently verify physical hardware testing.
    The UUID identity guide above is documentation-only: it explains existing host storage identifiers and VM identity handling but does not alter either. It is included as one exact path, not as a wildcard documentation exemption. The two VM XML sync Python paths above are narrowly scoped migration-time helpers outside the NixOS flake/derivation graph and are covered by the dedicated mock-backed VM XML sync suite in normal CI. The VM diagnostic helper creates a separate temporary XML file and never edits the production input; its dedicated regression test covers libvirt's single-quoted `dumpxml` output. The VM XML path test and installer rollback test are offline regression harnesses. The `scripts/test-manual-vm-bootstrap.sh` and `scripts/test-installer-invariants.sh` paths are CI-only mock regression harnesses; they do not run host mutations or alter the NixOS system closure. NixOS modules/flake outputs/inputs and machine storage configuration (including `nixos/configuration.nix`, `nixos/flake.nix`, `nixos/flake.lock`, `nixos/hardware-configuration.nix`, and `nixos/mako-renderer.nix`), `vm-xml/win10.xml`, `install.sh`, runtime hooks, and other system-closure-affecting paths remain gated by a new full-system build.
 
 5. Review the release version and changelog before publishing.

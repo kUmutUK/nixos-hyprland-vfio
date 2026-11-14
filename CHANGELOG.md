@@ -9,10 +9,12 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 - Refresh `nixos/flake.lock`: CachyOS advances from the 14 November snapshot `f5e1fb8f1185cb51ef6d433e27ab7b60f54cd0e0` to `c9620070e884d55c5b5566e3fd46611ee24c4d3b`, and root Nixpkgs advances from `ac9af266ee64ddb2eafeb4b250cac6a88147b43a` to `82566dfe91ca5e12bc10b36272280628142f651d`.
 - Record the validation boundary: Full-system Build #19 used CachyOS `9df32f70be3550911f178b3ba9ad784996a4e80c` and root Nixpkgs `4d6a01a11146f4691c0991682885ad9e4686e3ee`, so it does not validate the refreshed kernel/package inputs or the kernel-only x86-64-v3 derivation. A new manual full-system build and target-host boot validation are still required.
 - Make the documentation-integrity regression compare the current locked revisions with README, CONTRIBUTING, INSTALLATION, and the repair report, preventing stale “current input” claims after future lock updates. Normal CI #1557 caught the stale documentation; it did not run a full-system build.
-### Non-waivable installer release-build gate — 2026-11-15
+### Manual target-host attestation includes validated installer changes — 2026-11-15
 
-- Prevent the manual `target_host_validated` attestation from waiving a post-build `install.sh` change. Release publication now stops until a successful Full NixOS System Build covers the changed installer.
-- Add a behavior regression to `scripts/test-documentation-integrity.py` that executes the exact marked Bash block from `release.yml` against temporary Git histories: an installer change is rejected with the attestation enabled, while a documentation-only change passes this specific gate.
+- Keep `install.sh` outside the automatic ancestor-build allowlist, so post-build installer changes remain non-allowlisted rather than being mistaken for release-only changes.
+- Restore the intended manual override: a **manual Release from `main`** with `target_host_validated=true` may waive the post-build changed-path rejection, including an `install.sh` change, only when the exact current source (including the installer) was used for a clean installation and the host boot, Windows VM start/shutdown, GPU handback, and Hyprland recovery were verified.
+- Preserve the hard boundaries: exact-commit Normal CI and a successful ancestor full-system build are still mandatory; an unchecked box or tag-triggered release still requires a new full-system build for a post-build installer change.
+- Replace the installer-gate regression with a behavioral test of the actual changed-path/attestation block: manual main-branch attestation accepts the installer change, while no attestation and tag-triggered execution reject it; allowlisted documentation-only changes continue to pass.
 - Reconcile the 15 November source-review chronology: main commit `322d0d7` passed Normal CI #1554 with 27 workflow-defined steps after the earlier README inventory failure in #1553 was fixed. This follow-up is newer than that CI run and must receive its own result.
 
 ### Repository documentation cleanup — 2026-11-15

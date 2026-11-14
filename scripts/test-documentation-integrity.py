@@ -134,23 +134,20 @@ def extract_release_allowlists(
 
 
 
-def test_release_installer_gate_behavior() -> None:
-    """Execute the exact release-workflow guard against controlled Git histories."""
+def test_release_manual_attestation_gate_behavior() -> None:
+    """Exercise the exact post-build changed-path gate from release.yml."""
     match = re.search(
-        r"(?ms)^          # BEGIN non-waivable install\.sh full-build gate\n(?P<body>.*?)^          # END non-waivable install\.sh full-build gate$",
+        r"(?ms)^          # BEGIN post-build change and manual host-attestation gate\n(?P<body>.*?)^          # END post-build change and manual host-attestation gate$",
         RELEASE_WORKFLOW,
     )
-    require(match is not None, "release workflow must expose the non-waivable install.sh build-gate block for regression testing")
     require(
-        match is not None
-        and RELEASE_WORKFLOW.index("# BEGIN non-waivable install.sh full-build gate")
-        < RELEASE_WORKFLOW.index("manual_host_attestation=0"),
-        "the install.sh build gate must run before the maintainer-attestation fallback",
+        match is not None,
+        "release workflow must expose the exact post-build/attestation gate for regression testing",
     )
     if match is None:
         return
 
-    with tempfile.TemporaryDirectory(prefix="release-installer-gate-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="release-manual-attestation-") as temporary:
         fixture = Path(temporary)
 
         def git(*args: str) -> str:
@@ -167,61 +164,92 @@ def test_release_installer_gate_behavior() -> None:
         git("config", "user.name", "Release Gate Regression")
         git("config", "user.email", "release-gate@example.invalid")
         (fixture / "README.md").write_text("baseline\n", encoding="utf-8")
-        git("add", "README.md")
-        git("commit", "-q", "-m", "baseline")
+        (fixture / "install.sh").write_text(
+            "#!/usr/bin/env bash\necho baseline\n", encoding="utf-8"
+        )
+        git("add", "README.md", "install.sh")
+        git("commit", "-q", "-m", "successful full-system build baseline")
         build_sha = git("rev-parse", "HEAD")
 
-        (fixture / "install.sh").write_text("#!/usr/bin/env bash\necho changed\n", encoding="utf-8")
+        def run_gate(sha: str, event: str, ref: str, attested: str) -> subprocess.CompletedProcess[str]:
+            environment = os.environ.copy()
+            environment.update({
+                "build_sha": build_sha,
+                "GITHUB_SHA": sha,
+                "GITHUB_EVENT_NAME": event,
+                "GITHUB_REF": ref,
+                "TARGET_HOST_VALIDATED": attested,
+            })
+            return subprocess.run(
+                ["bash", "-e", "-u", "-o", "pipefail", "-c", match.group("body")],
+                cwd=fixture,
+                env=environment,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+        (fixture / "install.sh").write_text(
+            "#!/usr/bin/env bash\necho changed\n", encoding="utf-8"
+        )
         git("add", "install.sh")
         git("commit", "-q", "-m", "change installer")
         installer_sha = git("rev-parse", "HEAD")
 
-        # Reproduce the bypass attempt: manual Release with host attestation enabled.
-        environment = os.environ.copy()
-        environment.update({
-            "build_sha": build_sha,
-            "GITHUB_SHA": installer_sha,
-            "GITHUB_EVENT_NAME": "workflow_dispatch",
-            "GITHUB_REF": "refs/heads/main",
-            "TARGET_HOST_VALIDATED": "true",
-        })
-        installer_result = subprocess.run(
-            ["bash", "-e", "-u", "-o", "pipefail", "-c", match.group("body")],
-            cwd=fixture,
-            env=environment,
-            capture_output=True,
-            text=True,
-            check=False,
+        # The checkbox must allow this path only on manual Release from main.
+        accepted = run_gate(
+            installer_sha, "workflow_dispatch", "refs/heads/main", "true"
         )
         require(
-            installer_result.returncode != 0
-            and "target_host_validated cannot waive this gate" in (
-                installer_result.stdout + installer_result.stderr
-            ),
-            "the actual release-workflow guard must reject install.sh changes even when target_host_validated=true",
+            accepted.returncode == 0
+            and "including install.sh when changed" in accepted.stdout
+            and "current source was clean-installed" in accepted.stdout,
+            "manual main-branch host attestation must accept a post-build install.sh change",
         )
 
+        rejected_without_attestation = run_gate(
+            installer_sha, "workflow_dispatch", "refs/heads/main", "false"
+        )
+        require(
+            rejected_without_attestation.returncode != 0
+            and "Run a new full-system build" in (
+                rejected_without_attestation.stdout
+                + rejected_without_attestation.stderr
+            ),
+            "a post-build install.sh change must still require a new build when the checkbox is off",
+        )
+
+        rejected_tag_event = run_gate(
+            installer_sha, "push", "refs/tags/v9.9.9", "true"
+        )
+        require(
+            rejected_tag_event.returncode != 0
+            and "Run a new full-system build" in (
+                rejected_tag_event.stdout + rejected_tag_event.stderr
+            ),
+            "tag-triggered releases must not use the manual target-host attestation",
+        )
+
+        # A literal allowlisted documentation-only change needs no attestation.
         git("reset", "--hard", build_sha)
-        (fixture / "README.md").write_text("documentation-only change\n", encoding="utf-8")
+        (fixture / "README.md").write_text(
+            "documentation-only change\n", encoding="utf-8"
+        )
         git("add", "README.md")
         git("commit", "-q", "-m", "documentation-only change")
         documentation_sha = git("rev-parse", "HEAD")
-        environment["GITHUB_SHA"] = documentation_sha
-        documentation_result = subprocess.run(
-            ["bash", "-e", "-u", "-o", "pipefail", "-c", match.group("body")],
-            cwd=fixture,
-            env=environment,
-            capture_output=True,
-            text=True,
-            check=False,
+        documentation_result = run_gate(
+            documentation_sha, "workflow_dispatch", "refs/heads/main", "false"
         )
         require(
-            documentation_result.returncode == 0,
-            "the hard install.sh gate must not reject an unrelated documentation-only change",
+            documentation_result.returncode == 0
+            and "changes since that build match the exact release-only allowlist"
+            in documentation_result.stdout,
+            "an allowlisted documentation-only change must remain releasable without host attestation",
         )
 
 
-test_release_installer_gate_behavior()
+test_release_manual_attestation_gate_behavior()
 
 release_allowlists = extract_release_allowlists(RELEASING, RELEASE_WORKFLOW)
 if release_allowlists is None:
@@ -1321,8 +1349,9 @@ if git_checkout and current_head and repair_baseline_match:
             pending = sorted(set(changed) & full_build_pending_paths)
             if pending:
                 require(
-                    "fresh full-system build is required before release" in REPAIR,
-                    "system-affecting pending paths must require a new manual full-system build before release",
+                    "full-system build is the default release-verification path" in REPAIR
+                    and "manual Release from `main` can use the explicit target-host attestation" in REPAIR,
+                    "system-affecting pending paths must document the full-build default and the constrained manual-attestation alternative",
                 )
             vm_xml_pending = sorted(set(changed) & vm_xml_pending_paths)
             if vm_xml_pending:
@@ -1350,15 +1379,17 @@ if git_checkout and current_head and repair_baseline_match:
                 )
             if "install.sh" in pending:
                 require(
-                    "install.sh" in REPAIR and "fresh full-system build is required before release" in REPAIR,
-                    "installer changes must be documented as requiring a fresh full-system build",
+                    "install.sh" in REPAIR
+                    and "exact current `install.sh` was used for a clean installation" in REPAIR,
+                    "installer changes must remain outside the automatic allowlist and require real clean-install evidence for manual attestation",
                 )
                 require(
                     "install.sh" in RELEASING
-                    and "remain gated by a new full-system build" in RELEASING
-                    and "target_host_validated cannot waive this gate" in RELEASE_WORKFLOW
-                    and "BEGIN non-waivable install.sh full-build gate" in RELEASE_WORKFLOW,
-                    "install.sh must remain outside the allowlist and be rejected before the maintainer-attestation fallback",
+                    and "outside the automatic ancestor-build allowlist" in RELEASING
+                    and "including an `install.sh` change" in RELEASING
+                    and "BEGIN post-build change and manual host-attestation gate" in RELEASE_WORKFLOW
+                    and "END post-build change and manual host-attestation gate" in RELEASE_WORKFLOW,
+                    "install.sh must remain outside the automatic allowlist while being covered by the explicit manual-attestation path",
                 )
             if "nixos/home.nix" in pending:
                 require(
@@ -1992,6 +2023,9 @@ require(
     and '"refs/heads/main"' in release_guard
     and 'TARGET_HOST_VALIDATED" == "true"' in release_guard
     and "manual target-host validation attestation" in release_guard
+    and "including install.sh when changed" in manual_attestation_input
+    and "including an `install.sh` change" in RELEASING
+    and "non-allowlisted post-build changed-path" in RELEASING
     and release_guard.index("--workflow check.yml") < release_guard.index('if [[ -z "$build_sha" ]]')
     and release_guard.index('if [[ -z "$build_sha" ]]') < release_guard.index("manual_host_attestation=0")
     and "target_host_validated" in RELEASING

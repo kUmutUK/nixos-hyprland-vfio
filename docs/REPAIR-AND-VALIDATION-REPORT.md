@@ -1,17 +1,18 @@
 # Repair and validation report — updated 2026-11-15 (latest confirmed published release v1.5.4)
 
-### Release-gate hardening and source-review chronology — 2026-11-15
+### Manual installer attestation semantics and source-review chronology — 2026-11-15
 
 The 15 November live source review began from `13f3c2e9d6c85517e5da658523a2ba3f0f36e17c`. The reviewed follow-up commits then advanced `main` to `322d0d7caa7cd2c99a53ebc06c733ae28d850cc1`; Normal Nix Flake Check [#1554](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43645881692) passed all 27 workflow-defined steps on that exact commit. Preceding run #1553 failed because the README's tracked-file inventory was stale after the archive cleanup; the inventory was refreshed before #1554 passed.
 
-This follow-up fixes the release-policy inconsistency identified during that review:
+This follow-up restores the intended scope of the manual `target_host_validated` option:
 
-- The release workflow now runs a dedicated `install.sh` diff check after selecting the successful full-system build baseline and before the maintainer-attestation fallback.
-- If `install.sh` changed after that build, release publication fails. `target_host_validated=true` cannot waive the installer-specific build requirement.
-- The documentation-integrity regression executes the exact marked Bash block from `release.yml` in a temporary Git repository. It proves that an installer change is rejected even with the manual attestation environment enabled, while a documentation-only change passes this specific gate.
-- The existing exact 52-path ancestor-build allowlist is unchanged; `install.sh` remains excluded.
+- Keep `install.sh` outside the exact automatic ancestor-build allowlist. A change after the selected build is therefore still classified as non-allowlisted; it is not silently treated as release-only metadata.
+- Remove the separate installer-only abort. A manual **Release** dispatch from `main` with `target_host_validated=true` can now accept that changed path, but only after the exact current `install.sh` was used for a clean installation and the reference host passed boot, Windows VM start/shutdown, GPU handback, and Hyprland recovery checks.
+- An unchecked option and tag-triggered release still reject a post-build installer change until a new successful full-system build covers it. Exact-commit Normal CI and a successful ancestor full-system build remain mandatory in every case.
+- The documentation-integrity regression executes the actual marked changed-path/attestation block from `release.yml` against temporary Git histories. It checks that manual main-branch attestation accepts an installer change, while an unchecked option and tag-triggered execution reject it; allowlisted documentation-only changes still pass.
+- The exact 52-path automatic ancestor-build allowlist is unchanged; `install.sh` remains excluded.
 
-**Validation boundary:** #1554 predates this follow-up and is not a CI result for the new guard/test. The current source change needs its own Normal CI run. This is a release-workflow and regression-test change, not a NixOS system build, selected-kernel build, target-host activation, or physical GPU test. Full-system Build #19 remains the last confirmed build and predates the current x86-64-v3 kernel-only profile and CachyOS lock revision. The fresh full-system build and target-host boot validation remain open.
+**Validation boundary:** #1554 predates this follow-up and is not a CI result for the new workflow/test. The current source change needs its own Normal CI run. This is a release-workflow, documentation, and regression-test change, not a NixOS system build, selected-kernel build, target-host activation, or physical GPU test. `install.sh` remains experimental; the repository still records no end-to-end migration/rollback run using the current installer on a live NixOS/libvirt target host. The manual checkbox must not be selected for an installer change unless that exact current installer was actually used for the clean installation and the stated host lifecycle checks were completed. Full-system Build #19 remains the last confirmed GitHub build and predates the current x86-64-v3 kernel-only profile and CachyOS lock revision. A new full-system build and target-host boot validation remain outstanding as the default verification path.
 
 ### Flake-lock refresh and documentation-integrity regression — 2026-11-15
 
@@ -123,7 +124,7 @@ The supplied cross-distribution performance guide was reconciled with the actual
 
 - **14 November CachyOS lock snapshot (superseded 15 November):** that snapshot resolved CachyOS to `f5e1fb8f1185cb51ef6d433e27ab7b60f54cd0e0`. Builds #18 and #19 used the preceding input revision `9df32f70be3550911f178b3ba9ad784996a4e80c`. The 15 November refresh now resolves CachyOS to `c9620070e884d55c5b5566e3fd46611ee24c4d3b` and root Nixpkgs to `82566dfe91ca5e12bc10b36272280628142f651d`; neither current input nor the x86-64-v3-derived RT-Bore-LTO kernel has a matching full-system build. The target-host kernel SHA from the 9 November owner-reported test remains unrecorded.
 
-**Validation/build boundary:** this update changes `nixos/configuration.nix`, `nixos/flake.nix`, and `nixos/flake.lock`. A fresh full-system build is required before release. The change does not include a completed NixOS toplevel/kernel build, target-host activation, FPS/frametime benchmark, or VM lifecycle result. The full-system workflow remains manual-only and was not dispatched as part of this change; retain a known-good boot generation when applying the new configuration.
+**Validation/build boundary:** this update changes `nixos/configuration.nix`, `nixos/flake.nix`, and `nixos/flake.lock`. A fresh full-system build is the default release-verification path; alternatively, manual Release from `main` can use the explicit target-host attestation only after the exact current source has been clean-installed and the documented host boot/Windows VM/GPU-handback/Hyprland checks have passed. This record does not include a completed NixOS toplevel/kernel build, target-host activation, FPS/frametime benchmark, or VM lifecycle result. The full-system workflow remains manual-only and was not dispatched as part of this change; retain a known-good boot generation when applying the new configuration.
 
 ### Normal CI runtime reduction — 2026-11-14
 

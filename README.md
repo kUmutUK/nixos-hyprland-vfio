@@ -937,7 +937,7 @@ Normal CI also runs the archive, installer, VM, VFIO hook, generated Lua, ShellC
 
 ## Releasing
 
-See [`RELEASING.md`](RELEASING.md) for the semantic-versioning process, release prerequisites, and GitHub Releases workflow. Normal CI must pass for the exact tagged commit. A successful full NixOS system build must exist for that commit or an ancestor; an ancestor build is accepted only when every intervening change is limited to the release/documentation/CI metadata paths explicitly allowlisted in `.github/workflows/release.yml`. A change to `install.sh` is a hard exception: the release workflow rejects it whenever it differs from the selected full-system build, and `target_host_validated` cannot waive that requirement. A new successful full-system build must include the changed installer before release.
+See [`RELEASING.md`](RELEASING.md) for the semantic-versioning process, release prerequisites, and GitHub Releases workflow. Normal CI must pass for the exact commit to be released, and a successful full NixOS system build must exist for that commit or an ancestor. An ancestor build is accepted automatically only when every intervening change is in the literal allowlist in `.github/workflows/release.yml`. `install.sh` remains outside that automatic allowlist; a post-build installer change normally requires a new full-system build, but a manual Release from `main` can accept it with `target_host_validated` only after the exact current installer was used for a clean installation and the documented boot/Windows VM/GPU-handback/Hyprland checks passed. The checkbox does not bypass exact-commit Normal CI or the requirement for a successful ancestor full-system build.
 
 ## License
 

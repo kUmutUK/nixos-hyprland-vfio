@@ -12,10 +12,11 @@ on:
         type: string
       target_host_validated:
         description: >-
-          I confirm that the post-build system changes are deployed on the
-          reference host and that a clean installation, boot, Windows VM
-          start/shutdown, GPU handback, and Hyprland recovery were verified.
-          This is a maintainer attestation, not a GitHub build result.
+          I confirm that the current source, including install.sh when changed,
+          was used for a clean installation on the reference host and that the
+          system boot, Windows VM start/shutdown, GPU handback, and Hyprland
+          recovery were verified. This is a maintainer attestation, not a
+          GitHub build result.
         required: false
         default: false
         type: boolean
@@ -138,7 +139,10 @@ jobs:
           fi
 
           # A previous full-system build remains valid only when every later
-          # changed path matches the exact literal allowlist documented in RELEASING.md.
+          # changed path matches the exact literal allowlist documented in RELEASING.md,
+          # unless a manual main-branch target-host attestation accepts the changes.
+          # install.sh intentionally stays outside the automatic allowlist.
+          # BEGIN post-build change and manual host-attestation gate
           unexpected=0
           while read -r status path; do
             [[ -z "$path" ]] && continue
@@ -160,27 +164,20 @@ jobs:
             esac
           done < <(git diff --no-renames --name-status "$build_sha" "$GITHUB_SHA")
 
-          # BEGIN non-waivable install.sh full-build gate
-          installer_changes="$(git diff --no-renames --name-only "$build_sha" "$GITHUB_SHA" -- install.sh)"
-          if [[ -n "$installer_changes" ]]; then
-            echo "::error::install.sh changed after the full-system build. A new successful Full NixOS System Build is required; target_host_validated cannot waive this gate."
-            exit 1
-          fi
-          # END non-waivable install.sh full-build gate
-
           manual_host_attestation=0
           if [[ "$unexpected" -ne 0 ]]; then
             if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" \
               && "$GITHUB_REF" == "refs/heads/main" \
               && "$TARGET_HOST_VALIDATED" == "true" ]]; then
               manual_host_attestation=1
-              echo "::warning::Non-allowlisted post-build changes accepted by explicit target-host validation attestation."
-              echo "::notice::Maintainer attested target-host validation for exact commit $GITHUB_SHA."
+              echo "::warning::Non-allowlisted post-build changes (including install.sh when changed) accepted by explicit target-host validation attestation."
+              echo "::notice::Maintainer attested that the current source was clean-installed and target-host validated for exact commit $GITHUB_SHA."
             else
-              echo "::error::Run a new full-system build after the system-affecting changes, or use manual Release on main with target-host validation attested."
+              echo "::error::Run a new full-system build after the non-allowlisted changes, or use manual Release on main with target-host validation attested after clean-install and host-lifecycle verification."
               exit 1
             fi
           fi
+          # END post-build change and manual host-attestation gate
 
           echo "  successful full-system build baseline: $build_sha"
           if [[ "$manual_host_attestation" -eq 1 ]]; then
