@@ -167,8 +167,8 @@ require(
 
 # Keep current source-derived values and release attestations aligned with documentation.
 hypridle_suspend_match = re.search(
-    r"services\\.hypridle\\s*=\\s*\\{.*?timeout\\s*=\\s*(\\d+)\\s*;"
-    r"\\s*on-timeout\\s*=\\s*\\"[^\\n]*systemctl suspend",
+    r"services\.hypridle\s*=\s*\{.*?timeout\s*=\s*(\d+)\s*;"
+    r"\s*on-timeout\s*=\s*\"[^\n]*systemctl suspend",
     HOME_NIX,
     re.DOTALL,
 )
@@ -180,15 +180,15 @@ require(
 )
 
 zram_block_match = re.search(
-    r"(?ms)^\\s*zramSwap\\s*=\\s*\\{(.*?)^\\s*\\};",
+    r"(?ms)^\s*zramSwap\s*=\s*\{(.*?)^\s*\};",
     CONFIG,
 )
 zram_algorithm_match = (
-    re.search(r'(?m)^\\s*algorithm\\s*=\\s*"([^"]+)"\\s*;', zram_block_match.group(1))
+    re.search(r'(?m)^\s*algorithm\s*=\s*"([^"]+)"\s*;', zram_block_match.group(1))
     if zram_block_match else None
 )
 zram_priority_match = (
-    re.search(r"(?m)^\\s*priority\\s*=\\s*(\\d+)\\s*;", zram_block_match.group(1))
+    re.search(r"(?m)^\s*priority\s*=\s*(\d+)\s*;", zram_block_match.group(1))
     if zram_block_match else None
 )
 require(
@@ -238,7 +238,7 @@ require(
 require(
     "43101226875" in README
     and "6242439da7e944d297dbe5f44fdff8e79fe4689c" in README
-    and "Full-system Build #19" in REPAIR
+    and "Build #19 chronology" in REPAIR
     and "f5e1fb8f" in REPAIR,
     "README and repair report must distinguish successful Build #19 from the unbuilt 14 November profile",
 )
@@ -694,7 +694,7 @@ require(
         "75 tracked files",
         "9 executable files",
     )) and "Earlier main-source verification snapshot" in README
-    and "returned a v1.5.4 release object" in REPAIR,
+    and "now returns v1.5.4 Release ID" in REPAIR,
     "14 November source identity, v1.5.4 visibility, and the successful Build #19 chronology must be explicit",
 )
 require(
@@ -835,7 +835,7 @@ require(
 require(
     "owner-reported current-system build verification" in REPAIR
     and "current NixOS system build was checked successfully" in REPAIR
-    and "Full-system Build #19" in REPAIR
+    and "Build #19 chronology" in REPAIR
     and "43101226875" in REPAIR
     and "Owner-reported target-system build verification" in CHANGELOG
     and "current NixOS system build was checked successfully" in README
@@ -976,7 +976,7 @@ require(
     "manual Build #18" in REPAIR and "full-system build baseline" in REPAIR
     and "c6f4b955475de2ea16bc2b34c59a95dad3a1ae78" in REPAIR
     and "42597469118" in REPAIR
-    and "Full-system Build #19" in REPAIR
+    and "Build #19 chronology" in REPAIR
     and "43101226875" in REPAIR
     and "6242439da7e944d297dbe5f44fdff8e79fe4689c" in REPAIR,
     "repair report must retain Build #18 as historical and identify Build #19 as the later successful full-system baseline",
