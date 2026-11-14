@@ -440,25 +440,55 @@ restore_prepare_device() {
 
   if device_has_expected_host_driver "$dev" "$devices_root"; then
     drv="$(device_driver_name "$dev" "$devices_root")"
-    log "Rollback: $dev is bound to its expected host driver $drv; it will not be unbound."
+    log "Rollback: $dev is already bound to its expected host driver $drv."
     echo "" > "${devices_root}/${dev}/driver_override" 2>/dev/null || true
-  else
-    # Unbound devices, vfio-pci, pci-stub, and all unexpected drivers must be
-    # reprobed; none is evidence that the expected host driver has been restored.
-    log "Rollback: $dev is not bound to its expected host driver; attempting host-driver recovery."
-    release_host_driver "$dev"
+    return 0
   fi
+
+  # A successful drivers_probe command is not proof that the expected driver
+  # actually claimed the device. Verify the resulting binding before reporting
+  # rollback success to the caller.
+  log "Rollback: $dev is not bound to its expected host driver; attempting host-driver recovery."
+  release_host_driver "$dev"
+  if device_has_expected_host_driver "$dev" "$devices_root"; then
+    drv="$(device_driver_name "$dev" "$devices_root")"
+    log "Rollback: verified $dev is restored to host driver $drv."
+    return 0
+  fi
+
+  log "ERROR: Rollback could not restore $dev to its expected host driver."
+  return 1
 }
 
 # Rollback restores only state changed by `prepare`. If `stop_hyprland` fails early,
 # the GPU driver should not have been changed.
 rollback_prepare() {
+  local recovery_needed=0 recovery_failed=0
+
   # Prevent a signal during rollback from starting nested recovery operations.
   trap - HUP INT TERM
   log "ERROR: prepare failed; attempting rollback based on the current device state..."
 
-  restore_prepare_device "$GPU_PCI" "$PREPARE_GPU_PCI_TOUCHED"
-  restore_prepare_device "$GPU_AUDIO" "$PREPARE_GPU_AUDIO_TOUCHED"
+  restore_prepare_device "$GPU_PCI" "$PREPARE_GPU_PCI_TOUCHED" || recovery_needed=1
+  restore_prepare_device "$GPU_AUDIO" "$PREPARE_GPU_AUDIO_TOUCHED" || recovery_needed=1
+
+  # Use the same explicitly opt-in Navi 2x fallback as the normal release path
+  # when ordinary host-driver reprobe did not restore every touched function.
+  if [ "$recovery_needed" -eq 1 ]; then
+    log "WARNING: Ordinary VFIO rollback did not restore every touched PCI function; trying the configured recovery fallback."
+    suspend_rescan_recovery "$GPU_AUDIO" "$GPU_PCI" || true
+  fi
+
+  if [ "$PREPARE_GPU_PCI_TOUCHED" -eq 1 ] &&
+    ! device_has_expected_host_driver "$GPU_PCI"; then
+    log "ERROR: Rollback verification failed: $GPU_PCI is not bound to expected host driver amdgpu."
+    recovery_failed=1
+  fi
+  if [ "$PREPARE_GPU_AUDIO_TOUCHED" -eq 1 ] &&
+    ! device_has_expected_host_driver "$GPU_AUDIO"; then
+    log "ERROR: Rollback verification failed: $GPU_AUDIO is not bound to expected host driver snd_hda_intel."
+    recovery_failed=1
+  fi
 
   if [ "$PREPARE_DISPLAY_DETACH_ATTEMPTED" -eq 1 ]; then
     echo 1 > /sys/class/vtconsole/vtcon0/bind 2>/dev/null || true
@@ -466,9 +496,18 @@ rollback_prepare() {
     echo efi-framebuffer.0 > /sys/bus/platform/drivers/efi-framebuffer/bind 2>/dev/null || true
   fi
 
+  if [ "$recovery_failed" -eq 1 ]; then
+    log "CRITICAL: VFIO preparation rollback is incomplete. The graphical display may not recover; inspect /var/log/libvirt/vfio.log and both PCI driver bindings. Keep SSH/recovery access available."
+  fi
+
   if [ "$PREPARE_DESKTOP_TOUCHED" -eq 1 ]; then
+    if [ "$recovery_failed" -eq 1 ]; then
+      log "WARNING: Restoring the recorded services despite incomplete GPU recovery; the graphical session may remain unavailable."
+    fi
     start_hyprland
   fi
+
+  return "$recovery_failed"
 }
 
 GUEST="$1"

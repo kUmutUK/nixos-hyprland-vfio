@@ -1,6 +1,6 @@
 # MAKO Renderer on NixOS
 
-This repository pins the official **MAKO Renderer v4.6.0** Linux archive as an optional Home Manager package. It uses the desktop Renderer archive, not the separate MAKO Decky ZIP or the automatically generated source archive.
+This repository pins the official **MAKO Renderer v4.6.0** Linux archive as a Home Manager package. It is included unconditionally in `home.packages`, so it is installed by default when this Home Manager configuration is activated. Using MAKO inside a game remains optional and is enabled per game through its Steam launch option. The package uses the desktop Renderer archive, not the separate MAKO Decky ZIP or the automatically generated source archive.
 
 - Upstream project: https://github.com/eugeniosegala/MAKO
 - Pinned release: https://github.com/eugeniosegala/MAKO/releases/tag/render-v4.6.0

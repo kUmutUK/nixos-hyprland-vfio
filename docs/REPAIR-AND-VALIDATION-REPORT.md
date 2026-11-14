@@ -1,4 +1,19 @@
-# Repair and validation report — updated 2026-11-14 (latest confirmed published release v1.5.4)
+# Repair and validation report — updated 2026-11-15 (latest confirmed published release v1.5.4)
+
+### Current main-branch review and VFIO rollback correction — 2026-11-15
+
+The reviewed starting point was `main` HEAD `13f3c2e9d6c85517e5da658523a2ba3f0f36e17c`. Normal Nix Flake Check [#1543](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43641743130) completed successfully on that exact commit with all 27 current workflow-defined steps. The latest confirmed published release remains v1.5.4; its release ZIP is an immutable snapshot of its tag commit and is not rewritten by this follow-up.
+
+This follow-up addresses the VFIO preparation rollback gap found during the 15 November source review:
+
+- `restore_prepare_device` now checks the actual driver binding after `release_host_driver`; command completion alone is not considered proof of recovery.
+- `rollback_prepare` now checks every PCI function touched by preparation, invokes the existing suspend/remove/rescan fallback only when ordinary reprobe did not restore all touched devices, and verifies the expected GPU (`amdgpu`) and audio (`snd_hda_intel`) drivers again afterward.
+- If recovery remains incomplete, the hook emits a critical log diagnostic and returns failure while still attempting to restore the previously recorded desktop/service state. The fallback remains disabled unless the operator explicitly sets `VFIO_ALLOW_SUSPEND_RECOVERY=1`.
+- Mock-backed VFIO regressions now cover failed reprobe, incomplete rollback, fallback invocation, successful fallback recovery, and the final driver identities. This does not replace a real target-host failure-injection or GPU handback test.
+- MAKO documentation now distinguishes its default Home Manager installation from optional per-game activation. No package default or game profile was changed.
+
+**Validation boundary:** the 15 November changes modify the runtime QEMU/VFIO hook, which is outside the literal release ancestor-build allowlist. Normal CI and the mocked regressions do not replace a new manual Full NixOS System Build. The current kernel-only x86-64-v3 profile also remains pending a fresh full-system build and target-host boot validation. No physical GPU lifecycle, saved-state restore, or live installer test is claimed by this source update. The update commit requires its own Normal CI run.
+
 
 > **Delivery-scope note:** This report is part of the tracked source tree. The dated “patch-only ZIP” notes below are historical. For a canonical full-source ZIP, use `scripts/package-source-zip.sh` or the CI-uploaded `nixos-hyprland-vfio-source` artifact for the exact commit. The helper verifies tracked-file completeness, excludes `.git/`, preserves executable bits, and makes the finished artifact readable from shared output directories.
 

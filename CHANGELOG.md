@@ -4,6 +4,13 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+### VFIO preparation rollback driver verification — 2026-11-15
+
+- Verify that each touched GPU/audio PCI function is actually bound to its expected host driver after a failed VM preparation; a successful reprobe command alone is not treated as recovery.
+- If ordinary rollback does not restore a touched function, invoke the existing suspend/remove/rescan recovery path, which remains disabled unless explicitly enabled with `VFIO_ALLOW_SUSPEND_RECOVERY=1`. Recheck both expected drivers before returning the rollback result and log a critical diagnostic when recovery remains incomplete.
+- Extend the VFIO regression suite with failed-reprobe, fallback-recovery, and final driver-binding assertions. These are mocked tests; they do not establish a physical GPU lifecycle result.
+
+
 ### Main-branch hardening and documentation policy — 2026-11-15
 
 - Remove the catch-all `allowInsecurePredicate = _: true` from the separately imported CachyOS package set. No specific insecure dependency has been established; Nixpkgs' default rejection remains in force instead of silently permitting every insecure package in that set. Add a future exception only for a named dependency with a documented reason and regression coverage.

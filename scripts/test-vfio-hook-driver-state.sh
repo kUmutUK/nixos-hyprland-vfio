@@ -42,7 +42,7 @@ extract_function() {
 
 FUNCTIONS_FILE="$TMP_DIR/functions.sh"
 : > "$FUNCTIONS_FILE"
-for function_name in device_driver_name device_has_expected_host_driver device_bound_to_vfio restore_prepare_device save_service_state stop_saved_service restore_saved_services restore_vfio_state; do
+for function_name in device_driver_name device_has_expected_host_driver device_bound_to_vfio restore_prepare_device rollback_prepare save_service_state stop_saved_service restore_saved_services restore_vfio_state; do
   function_text="$(extract_function "$function_name")"
   [[ "$function_text" == *"${function_name}()"* ]] || fail "could not extract $function_name from hook"
   printf '%s\n\n' "$function_text" >> "$FUNCTIONS_FILE"
@@ -98,8 +98,42 @@ systemctl() {
 
 # Mock side effects from rollback; no real /sys files are touched.
 released_devices=()
-log() { :; }
-release_host_driver() { released_devices+=("$1"); }
+MOCK_RELEASE_FAIL_FOR=""
+MOCK_FALLBACK_RECOVERS=0
+MOCK_FALLBACK_CALLS=0
+START_HYPRLAND_CALLS=0
+MOCK_LOG=()
+log() { MOCK_LOG+=("$*"); }
+bind_mock_expected_host_driver() {
+  local dev="$1" expected
+  case "$dev" in
+    "$GPU_PCI") expected="amdgpu" ;;
+    "$GPU_AUDIO") expected="snd_hda_intel" ;;
+    *) fail "unexpected mock PCI function: $dev" ;;
+  esac
+  rm -f -- "$DEVICES_ROOT/$dev/driver"
+  ln -s "$DRIVERS_ROOT/$expected" "$DEVICES_ROOT/$dev/driver"
+}
+release_host_driver() {
+  local dev="$1"
+  released_devices+=("$dev")
+  if [[ "$MOCK_RELEASE_FAIL_FOR" != "$dev" ]]; then
+    bind_mock_expected_host_driver "$dev"
+  else
+    rm -f -- "$DEVICES_ROOT/$dev/driver"
+  fi
+}
+suspend_rescan_recovery() {
+  MOCK_FALLBACK_CALLS=$((MOCK_FALLBACK_CALLS + 1))
+  if [[ "$MOCK_FALLBACK_RECOVERS" == "1" ]]; then
+    for dev in "$@"; do
+      bind_mock_expected_host_driver "$dev"
+    done
+  fi
+}
+start_hyprland() {
+  START_HYPRLAND_CALLS=$((START_HYPRLAND_CALLS + 1))
+}
 
 DEVICES_ROOT="$TMP_DIR/sys/bus/pci/devices"
 DRIVERS_ROOT="$TMP_DIR/sys/bus/pci/drivers"
@@ -199,6 +233,59 @@ ln -s "$DRIVERS_ROOT/missing-driver" "$DEVICES_ROOT/$DEVICE/driver"
 if device_driver_name "$DEVICE" "$DEVICES_ROOT" >/dev/null 2>&1; then
   fail 'broken driver symlink was treated as a valid driver'
 fi
+
+# A successful reprobe command is not enough: rollback must reject a device
+# that remains unbound and return failure to its caller.
+MOCK_RELEASE_FAIL_FOR="$DEVICE"
+if restore_prepare_device "$DEVICE" 1 "$DEVICES_ROOT"; then
+  fail 'rollback accepted a GPU that remained unbound after host-driver reprobe'
+fi
+MOCK_RELEASE_FAIL_FOR=""
+restore_prepare_device "$DEVICE" 1 "$DEVICES_ROOT" \
+  || fail 'rollback did not accept the GPU after the expected host driver was restored'
+
+# Exercise rollback_prepare with both PCI functions touched. A failed ordinary
+# reprobe must invoke the configured fallback and remain visibly unsuccessful
+# unless both expected host drivers are present afterward.
+rm -f -- "$DEVICES_ROOT/$DEVICE/driver" "$DEVICES_ROOT/$AUDIO_DEVICE/driver"
+PREPARE_GPU_PCI_TOUCHED=1
+PREPARE_GPU_AUDIO_TOUCHED=1
+PREPARE_DISPLAY_DETACH_ATTEMPTED=0
+PREPARE_DESKTOP_TOUCHED=1
+MOCK_RELEASE_FAIL_FOR="$DEVICE"
+MOCK_FALLBACK_RECOVERS=0
+MOCK_FALLBACK_CALLS=0
+START_HYPRLAND_CALLS=0
+MOCK_LOG=()
+if rollback_prepare; then
+  fail 'rollback_prepare reported success while the GPU remained unbound'
+fi
+[[ "$MOCK_FALLBACK_CALLS" -eq 1 ]] \
+  || fail 'incomplete ordinary rollback did not invoke the recovery fallback'
+[[ "$START_HYPRLAND_CALLS" -eq 1 ]] \
+  || fail 'rollback did not attempt recorded desktop-service restoration'
+[[ "${MOCK_LOG[*]}" == *"CRITICAL: VFIO preparation rollback is incomplete"* ]] \
+  || fail 'incomplete rollback did not emit a critical recovery diagnostic'
+
+# If the opt-in fallback really restores both PCI functions, the final driver
+# checks must accept the recovered state and return success.
+MOCK_FALLBACK_RECOVERS=1
+MOCK_FALLBACK_CALLS=0
+START_HYPRLAND_CALLS=0
+MOCK_LOG=()
+rollback_prepare \
+  || fail 'rollback_prepare rejected devices after the fallback restored both expected drivers'
+[[ "$MOCK_FALLBACK_CALLS" -eq 1 ]] \
+  || fail 'fallback recovery was not retried for the second rollback attempt'
+[[ "$(readlink -e -- "$DEVICES_ROOT/$DEVICE/driver")" == "$DRIVERS_ROOT/amdgpu" ]] \
+  || fail 'fallback did not restore the GPU to amdgpu'
+[[ "$(readlink -e -- "$DEVICES_ROOT/$AUDIO_DEVICE/driver")" == "$DRIVERS_ROOT/snd_hda_intel" ]] \
+  || fail 'fallback did not restore the audio function to snd_hda_intel'
+[[ "$START_HYPRLAND_CALLS" -eq 1 ]] \
+  || fail 'successful rollback did not attempt recorded desktop-service restoration'
+
+MOCK_RELEASE_FAIL_FOR=""
+MOCK_FALLBACK_RECOVERS=0
 
 # Previously inactive Ollama must remain stopped after the VM closes. Active greetd
 # and polkit must return to active state. This models the prepare/release process split.
