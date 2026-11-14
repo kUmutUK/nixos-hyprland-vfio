@@ -264,7 +264,7 @@ MOCK_FALLBACK_RECOVERS=0
 MOCK_FALLBACK_CALLS=0
 START_HYPRLAND_CALLS=0
 MOCK_LOG=()
-if rollback_prepare; then
+if rollback_prepare "$DEVICES_ROOT"; then
   fail 'rollback_prepare reported success while the GPU remained unbound'
 fi
 [[ "$MOCK_FALLBACK_CALLS" -eq 1 ]] \
@@ -282,7 +282,7 @@ MOCK_FALLBACK_RECOVERS=1
 MOCK_FALLBACK_CALLS=0
 START_HYPRLAND_CALLS=0
 MOCK_LOG=()
-rollback_prepare \
+rollback_prepare "$DEVICES_ROOT" \
   || fail 'rollback_prepare rejected devices after the fallback restored both expected drivers'
 [[ "$MOCK_FALLBACK_CALLS" -eq 1 ]] \
   || fail 'fallback recovery was not retried for the second rollback attempt'
@@ -315,7 +315,7 @@ MOCK_RELEASE_FAIL_FOR="$AUDIO_DEVICE"
 MOCK_FALLBACK_RECOVERS=1
 MOCK_FALLBACK_CALLS=0
 MOCK_FALLBACK_ARGS=()
-rollback_prepare \
+rollback_prepare "$DEVICES_ROOT" \
   || fail 'audio-only rollback did not recover with its configured fallback'
 [[ "${MOCK_FALLBACK_ARGS[*]}" == "$AUDIO_DEVICE" ]] \
   || fail 'audio-only recovery fallback touched the healthy GPU'
