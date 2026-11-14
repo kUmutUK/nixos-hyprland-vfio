@@ -31,6 +31,7 @@ CONFIG = (ROOT / "nixos/configuration.nix").read_text(encoding="utf-8")
 FLAKE = (ROOT / "nixos/flake.nix").read_text(encoding="utf-8")
 FLAKE_LOCK = json.loads((ROOT / "nixos/flake.lock").read_text(encoding="utf-8"))
 HOME_NIX = (ROOT / "nixos/home.nix").read_text(encoding="utf-8")
+VM_XML_TEXT = (ROOT / "vm-xml/win10.xml").read_text(encoding="utf-8")
 REPAIR = (ROOT / "docs/REPAIR-AND-VALIDATION-REPORT.md").read_text(encoding="utf-8")
 UUID_GUIDE = (ROOT / "docs/UUID-AND-MACHINE-IDENTITY.md").read_text(encoding="utf-8")
 OPTISCALER_DOC = (ROOT / "docs/OPTISCALER.md").read_text(encoding="utf-8")
@@ -162,6 +163,85 @@ require(
 
 
 
+
+
+# Keep current source-derived values and release attestations aligned with documentation.
+hypridle_suspend_match = re.search(
+    r"services\\.hypridle\\s*=\\s*\\{.*?timeout\\s*=\\s*(\\d+)\\s*;"
+    r"\\s*on-timeout\\s*=\\s*\\"[^\\n]*systemctl suspend",
+    HOME_NIX,
+    re.DOTALL,
+)
+require(
+    hypridle_suspend_match is not None
+    and int(hypridle_suspend_match.group(1)) == 3600
+    and "hypridle requests suspend after 3600 seconds" in README,
+    "README suspend timeout must match the systemctl suspend listener in home.nix",
+)
+
+zram_block_match = re.search(
+    r"(?ms)^\\s*zramSwap\\s*=\\s*\\{(.*?)^\\s*\\};",
+    CONFIG,
+)
+zram_algorithm_match = (
+    re.search(r'(?m)^\\s*algorithm\\s*=\\s*"([^"]+)"\\s*;', zram_block_match.group(1))
+    if zram_block_match else None
+)
+zram_priority_match = (
+    re.search(r"(?m)^\\s*priority\\s*=\\s*(\\d+)\\s*;", zram_block_match.group(1))
+    if zram_block_match else None
+)
+require(
+    zram_algorithm_match is not None
+    and zram_algorithm_match.group(1) == "lz4"
+    and zram_priority_match is not None
+    and zram_priority_match.group(1) == "100"
+    and "explicitly selects LZ4" in README
+    and "algorithm default is ZSTD" in README
+    and "priority `100`" in README,
+    "README must distinguish the configured LZ4/priority-100 choices from NixOS ZRAM defaults",
+)
+
+vm_xml_root = ET.parse(ROOT / "vm-xml/win10.xml").getroot()
+usb_hostdevs = [
+    node for node in vm_xml_root.findall("./devices/hostdev")
+    if node.get("type") == "usb"
+]
+require(
+    'profile name="default-v1"' in VM_XML_TEXT
+    and "libvirt 10.10.0 or newer" in README
+    and len(usb_hostdevs) == 2
+    and all(node.find("address") is None for node in usb_hostdevs)
+    and "USB `hostdev` entries omit explicit guest-side addresses" in README,
+    "README must document the checked-in TPM profile version floor and USB hostdev address caveat",
+)
+require(
+    "brave-browser" in HOME_NIX
+    and "repository does not install Brave" in README
+    and "GameMode behavior is unchanged" in README,
+    "README must identify Brave as optional without disabling the GameMode watchdog path",
+)
+require(
+    "f5e1fb8f1185cb51ef6d433e27ab7b60f54cd0e0" in CONTRIBUTING
+    and "9df32f70be3550911f178b3ba9ad784996a4e80c" in CONTRIBUTING
+    and "same kernel input used by Build #18" not in CONTRIBUTING,
+    "CONTRIBUTING must distinguish the current CachyOS lock from historical build inputs",
+)
+require(
+    "f6689bcd5234f29a7cfcfc4151d161727b0658bc" in README
+    and "445492077" in README
+    and "43625112235" in README
+    and "477,863 bytes" in README
+    and "dca1f4ccd365df64d416a029f13ea821a58e4e05cf21a81c4d5bc3d2d65b5e6c" in README,
+    "README must record the exact published v1.5.4 source/tag/release-asset provenance",
+)
+require(
+    "43101226875" in README
+    and "6242439da7e944d297dbe5f44fdff8e79fe4689c" in README
+    and "Full-system Build #19" in REPAIR
+    and "f5e1fb8f" in REPAIR,
+    "README and repair report must distinguish successful Build #19 from the unbuilt 14 November profile",
+)
 
 readme_top = "\n".join(README.splitlines()[:8])
 require("docs/REPAIR-AND-VALIDATION-REPORT.md" in readme_top and "docs/AUDIT-2026-10-28-VM-XML-VFIO.md" not in readme_top, "README must point to the current repair report, not the older audit")
@@ -589,16 +669,16 @@ require(
 )
 require(
     all(item in CHANGELOG for item in (
-        "a6e538b5d5a7b3328255e37adbfa4965b6dfd954",
-        "Release ID `442930112`",
-        "Release workflow [#35]",
-        "43219936790",
-        "Normal Nix Flake Check [#1420]",
-        "43219426864",
-        "468,376 bytes",
-        "15b1ec380a7ec2a636cf9aa1da4b7bd80218daac8844f722fe0d8f57669b745b",
-    )) and "v1.5.3" in STATE_INDEX and "v1.5.3" in README,
-    "v1.5.3 must be recorded as the latest confirmed published release with its exact commit, CI, and ZIP metadata",
+        "f6689bcd5234f29a7cfcfc4151d161727b0658bc",
+        "Release ID `445492077`",
+        "Release workflow #38",
+        "43625112235",
+        "Normal Nix Flake Check #1526",
+        "43624282232",
+        "477,863 bytes",
+        "dca1f4ccd365df64d416a029f13ea821a58e4e05cf21a81c4d5bc3d2d65b5e6c",
+    )) and "v1.5.4" in STATE_INDEX and "v1.5.4" in README and "v1.5.3" in CHANGELOG,
+    "v1.5.4 must be recorded as the latest confirmed published release with exact tag, CI, release, and ZIP metadata",
 )
 require(
     all(item in CHANGELOG + REPAIR + README + STATE_INDEX for item in (
@@ -607,10 +687,15 @@ require(
         "#1519",
         "43620383782",
         "v1.5.4",
+        "f6689bcd5234f29a7cfcfc4151d161727b0658bc",
+        "Build #19",
+        "43101226875",
+        "6242439da7e944d297dbe5f44fdff8e79fe4689c",
         "75 tracked files",
         "9 executable files",
-    )) and "404" in REPAIR and "Build #19 was not dispatched" in REPAIR,
-    "14 November main HEAD, exact Normal CI, v1.5.4 release visibility, canonical ZIP, and full-build boundary must be recorded",
+    )) and "Earlier main-source verification snapshot" in README
+    and "returned a v1.5.4 release object" in REPAIR,
+    "14 November source identity, v1.5.4 visibility, and the successful Build #19 chronology must be explicit",
 )
 require(
     "initial_tag" in CLIFF_CONFIG
@@ -750,11 +835,12 @@ require(
 require(
     "owner-reported current-system build verification" in REPAIR
     and "current NixOS system build was checked successfully" in REPAIR
-    and "GitHub Actions Build #19 was not dispatched" in REPAIR
+    and "Full-system Build #19" in REPAIR
+    and "43101226875" in REPAIR
     and "Owner-reported target-system build verification" in CHANGELOG
     and "current NixOS system build was checked successfully" in README
-    and "current NixOS system build was checked successfully" in STATE_INDEX,
-    "latest owner-reported system build confirmation must close the local-build action item without inventing a Build #19 Actions run or source SHA",
+    and "local system-build check" in STATE_INDEX,
+    "owner-reported host build and successful GitHub Build #19 must remain separate, correctly attributed records",
 )
 require(
     "4cef0c5f02bb2a466070b6a2c9b5468fd59af7da" in README
@@ -889,13 +975,16 @@ require(
 require(
     "manual Build #18" in REPAIR and "full-system build baseline" in REPAIR
     and "c6f4b955475de2ea16bc2b34c59a95dad3a1ae78" in REPAIR
-    and "42597469118" in REPAIR,
-    "repair report must identify Build #18 as the last completed full-system build baseline",
+    and "42597469118" in REPAIR
+    and "Full-system Build #19" in REPAIR
+    and "43101226875" in REPAIR
+    and "6242439da7e944d297dbe5f44fdff8e79fe4689c" in REPAIR,
+    "repair report must retain Build #18 as historical and identify Build #19 as the later successful full-system baseline",
 )
 require(
-    "Build #18" in STATE_INDEX and "42597469118" in STATE_INDEX
-    and "c6f4b955475de2ea16bc2b34c59a95dad3a1ae78" in STATE_INDEX,
-    "current-state index must match the last completed full-system build baseline",
+    "Build #19" in STATE_INDEX and "43101226875" in STATE_INDEX
+    and "6242439da7e944d297dbe5f44fdff8e79fe4689c" in STATE_INDEX,
+    "current-state index must match the latest successful full-system Build #19 baseline",
 )
 require("run #1120" in REPAIR and "run #1120" in STATE_INDEX and "8d1e4585c9cd3f690c1df80ee531008c7e9d30ef" in STATE_INDEX,
         "current-state index must preserve the distinct reviewed-snapshot normal-CI record")
