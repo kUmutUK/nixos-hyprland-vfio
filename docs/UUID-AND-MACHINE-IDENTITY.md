@@ -12,6 +12,8 @@ The committed `nixos/hardware-configuration.nix` is specific to the currently de
 
 **A filesystem UUID, a PARTUUID, and a LUKS UUID are different identifiers.** Never copy one into a field expecting another. Do not edit, regenerate, swap, or replace the committed host identifiers on this machine simply to silence a warning or standardize the file. A mismatch can prevent the encrypted root from opening or the filesystem from mounting.
 
+**Public-repository disclosure:** The root Btrfs UUID, LUKS UUID, EFI filesystem UUID, swap PARTUUID, and optional `/mnt/media` filesystem UUID are intentionally published in this public repository because they are the storage references used by the committed, machine-specific NixOS configuration; they are not authentication credentials. Keep MAC addresses, serial numbers, machine IDs, and broader host inventories in a private local record; do not add them to this repository. This is a deliberate disclosure of machine-specific storage metadata, not an anonymized or portable template. Do not copy the published identifiers to another machine; use that machine's generated configuration.
+
 For a different physical machine, use that machine's own `nixos-generate-config` output and verify each layer against `lsblk -f`, `blkid`, and `findmnt` before building or activating. Do not copy this repository's host-specific identifiers to another machine. When reinstalling the same machine on unchanged disks, preserve the existing mapping; only update identifiers after an intentional disk replacement, repartition, re-encryption, or filesystem recreation and after confirming the new mapping. Run the documented Home Snapper preflight before activation.
 
 ## 2. Windows VM domain UUID — preserve an existing VM's identity

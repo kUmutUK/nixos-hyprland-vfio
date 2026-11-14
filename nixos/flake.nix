@@ -41,12 +41,13 @@
       pkgs = nixpkgs.legacyPackages.${system};
       # Keep kernel and out-of-tree module derivations on the exact Nixpkgs revision
       # used by nix-cachyos-kernel's pinned overlay.
+      # Keep unfree kernel dependencies enabled, but retain Nixpkgs' default
+      # rejection of insecure packages. If the pinned kernel closure ever needs
+      # an insecure dependency, add a named, justified exception rather than a
+      # catch-all predicate for the entire CachyOS package set.
       cachyosPkgs = import cachyos-nixpkgs {
         inherit system;
-        config = {
-          allowUnfree = true;
-          allowInsecurePredicate = _: true;
-        };
+        config.allowUnfree = true;
       };
       cachyosKernelHelpers = cachyosPkgs.callPackage "${cachyos-kernel}/helpers.nix" { };
       rtBoreLtoV3Kernel = cachyos-kernel.legacyPackages.${system}.linux-cachyos-rt-bore-lto.override {

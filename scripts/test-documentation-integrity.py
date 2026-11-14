@@ -227,10 +227,16 @@ require(
     "README must document read-only live checks for swap, ZSwap, oomd, sched_ext, and boot critical chain",
 )
 require(
+    "Initial Linux performance-guide application — superseded intermediate state" in CHANGELOG
+    and "superseded by the later Release workflow [#38]" in CHANGELOG,
+    "Unreleased changelog must label superseded x86-64-v3 and v1.5.4 visibility observations as historical",
+)
+require(
     'nixpkgs.hostPlatform = system;' in FLAKE
     and 'arch = "x86-64-v3";' not in FLAKE
     and 'tune = "znver3"' not in FLAKE
     and 'processorOpt = "x86_64-v3"' in FLAKE
+    and 'allowInsecurePredicate = _: true;' not in FLAKE
     and "NixOS userland stays on the generic `x86_64-linux` host-platform baseline" in README
     and 'applied **only to the CachyOS RT-Bore-LTO kernel**' in README
     and 'config.default_sched = "scx_bpfland"' in CONFIG
@@ -891,9 +897,17 @@ require(
     "current-main CI #1382 must be distinguished from the published v1.5.1 tag",
 )
 require(
-    "MAC addresses, serial numbers, machine IDs, filesystem UUIDs, or PARTUUIDs must remain in a private local record" in REPAIR
-    and "private local record" in README,
-    "reference-host identity inventory must remain private and must not be committed to this repository",
+    all(
+        "The root Btrfs UUID, LUKS UUID, EFI filesystem UUID, swap PARTUUID, and optional `/mnt/media` filesystem UUID are intentionally published in this public repository" in document
+        for document in (README, REPAIR, STATE_INDEX, UUID_GUIDE, CHANGELOG)
+    )
+    and all(
+        "MAC addresses, serial numbers, machine IDs, and broader host inventories" in document
+        and "private local record" in document
+        for document in (README, REPAIR, STATE_INDEX, UUID_GUIDE, CHANGELOG)
+    )
+    and "filesystem UUIDs, or PARTUUIDs must remain in a private local record" not in REPAIR,
+    "public storage-UUID disclosure must be explicit while other host inventory stays private",
 )
 require(
     "group 18" in REPAIR and "group 19" in REPAIR
