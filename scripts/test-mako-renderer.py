@@ -46,7 +46,6 @@ require("makoRenderer = pkgs.callPackage ./mako-renderer.nix { };" in HOME,
         "Home Manager must instantiate the pinned MAKO package")
 require("included unconditionally in `home.packages`" in DOC and "installed by default" in DOC,
         "MAKO documentation must distinguish default package installation from per-game opt-in")
-#
 require("home.packages = with pkgs; [" in HOME and "    makoRenderer" in HOME,
         "MAKO must be available through the existing Home Manager package set")
 require('makoRendererPackage = pkgs.callPackage ./mako-renderer.nix { };' in FLAKE
