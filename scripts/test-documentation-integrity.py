@@ -227,7 +227,7 @@ require(
     "README must document read-only live checks for swap, ZSwap, oomd, sched_ext, and boot critical chain",
 )
 require(
-    'gcc.arch = "x86-64-v3"' in FLAKE
+    'arch = "x86-64-v3";' in FLAKE
     and 'tune = "znver3"' in FLAKE
     and 'processorOpt = "x86_64-v3"' in FLAKE
     and 'config.default_sched = "scx_bpfland"' in CONFIG
