@@ -210,6 +210,35 @@ require(
     "README must match configured 100%-RAM ZRAM capacity, LZ4, and priority-100 choices without implying eager RAM allocation",
 )
 
+performance_check = README.partition("### Verify the active performance configuration")[2].partition("\n## ")[0]
+require(
+    all(command in performance_check for command in (
+        "uname -r", "swapon --show", "zramctl",
+        "cat /sys/module/zswap/parameters/enabled",
+        "systemctl is-active systemd-oomd",
+        "cat /sys/kernel/sched_ext/state",
+        "cat /sys/kernel/sched_ext/root/ops",
+        "systemd-analyze", "systemd-analyze blame | head",
+        "systemd-analyze critical-chain",
+    ))
+    and "read-only" in performance_check
+    and "does not reserve 32 GB" in performance_check
+    and "scxctl stop" in performance_check,
+    "README must document read-only live checks for swap, ZSwap, oomd, sched_ext, and boot critical chain",
+)
+require(
+    'gcc.arch = "x86-64-v3"' in FLAKE
+    and 'tune = "znver3"' in FLAKE
+    and 'processorOpt = "x86_64-v3"' in FLAKE
+    and 'config.default_sched = "scx_bpfland"' in CONFIG
+    and "enableRootSlice = true;" in CONFIG
+    and "enableUserSlices = true;" in CONFIG
+    and '"zswap.enabled=0"' in CONFIG
+    and '"vm.swappiness" =' not in CONFIG
+    and "systemd.services.NetworkManager-wait-online.enable = false;" in CONFIG,
+    "NixOS performance configuration must retain the x86-64-v3, BPF-Land, oomd, no-ZSwap, default-swappiness, and local-boot choices from the guide",
+)
+
 vm_xml_root = ET.parse(ROOT / "vm-xml/win10.xml").getroot()
 usb_hostdevs = [
     node for node in vm_xml_root.findall("./devices/hostdev")

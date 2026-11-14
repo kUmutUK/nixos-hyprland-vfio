@@ -4,6 +4,14 @@
 
 ## Chronological navigation (newest first)
 
+### Linux performance-guide reconciliation and host checks — 2026-11-14
+
+The cross-distribution guide was compared against the NixOS reference system rather than applying commands intended for Ubuntu, Debian, Fedora, or Arch. The NixOS equivalents are already present: x86-64-v3 / Zen 3 Nixpkgs C/C++ target and x86-64-v3 RT-Bore-LTO kernel; LZ4 ZRAM with a 100%-of-detected-RAM logical capacity and priority 100; ZSwap disabled and encrypted disk swap priority 10; no forced swappiness override; systemd-oomd on root/user slices without EarlyOOM; BPF-Land via `scx-loader`; Ananicy-cpp disabled; and NetworkManager-wait-online disabled for the local-filesystem host.
+
+The README now provides read-only commands to inspect those live settings and use `systemd-analyze critical-chain` to locate boot dependencies. A documentation-integrity regression checks both the commands and the key source configuration choices. No additional NixOS runtime setting, kernel input/lock, VM XML, PCI identity, or desktop preference was changed in this reconciliation.
+
+Normal CI #1534 passed on the pre-existing source configuration and the ZRAM test correction. The current commit will require its own Normal CI result. CI's flake evaluation is not a complete NixOS toplevel/kernel build; the current x86-64-v3-derived RT-Bore-LTO kernel still requires a fresh manual Full NixOS System Build and target-host activation/boot test. No performance gain or live runtime state is claimed by adding these read-only checks.
+
 ### ZRAM capacity increase — 2026-11-14
 
 The reference host has 32 GB physical RAM. `nixos/configuration.nix` now explicitly sets `zramSwap.memoryPercent = 100`, so the logical zram swap device can store up to 100% of detected physical RAM (approximately 32 GB on this host). This option defines the maximum amount of uncompressed data storable in the zram swap device; it does not allocate or reserve the full amount of physical RAM when the system starts. Physical RAM backs the device as pages are swapped in and compressed. The configured LZ4 compressor, ZRAM priority 100, encrypted disk swap priority 10, and disabled ZSwap are unchanged. The NixOS module's pinned option documentation describes `memoryPercent` this way: [nixpkgs zram.nix at the locked nixpkgs revision](https://github.com/NixOS/nixpkgs/blob/ac9af266ee64ddb2eafeb4b250cac6a88147b43a/nixos/modules/config/zram.nix).

@@ -4,6 +4,10 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+### Linux performance-guide verification — 2026-11-14
+
+- Add a read-only README checklist for checking the running kernel, ZRAM/disk-swap order, ZSwap state, systemd-oomd, active sched_ext policy, and systemd boot critical chain. The NixOS-equivalent configuration choices from the supplied guide were already present; this adds verification guidance, not new runtime settings.
+
 ### ZRAM capacity — 2026-11-14
 
 - Set `zramSwap.memoryPercent = 100`, allowing logical ZRAM swap capacity up to all detected RAM (about 32 GB on the 32 GB reference host). This is a capacity limit, not an eager reservation of 32 GB physical RAM; backing memory is consumed as compressed pages are stored. Keep LZ4, ZRAM priority 100, encrypted disk swap priority 10, and disabled ZSwap unchanged.

@@ -26,6 +26,8 @@ The `v1.5.4` annotated tag resolves to `f6689bcd5234f29a7cfcfc4151d161727b0658bc
 
 **Low-latency ZRAM follow-up (14 November 2026):** the selected compressor is LZ4 (not the initial ZSTD choice); `memoryPercent = 100` now allows logical ZRAM swap capacity up to all detected RAM (about 32 GB on this host), without pre-allocating that physical RAM. Priority 100 and encrypted disk swap priority 10 are unchanged, and ZSwap remains disabled. The exact current CachyOS input revision is maintained only in `nixos/flake.lock`; Builds #18 and #19 used the preceding `9df32f70` revision and do not validate the current `f5e1fb8f` lock.
 
+**Linux performance-guide verification (14 November 2026):** the README now includes read-only checks for the running kernel, swap/ZRAM layout, ZSwap, systemd-oomd, sched_ext/BPF-Land, and boot critical chain. These commands verify the already-configured NixOS equivalents; they do not change runtime settings. The current x86-64-v3 kernel/system closure still needs a fresh full-system build and target-host boot test.
+
 **Current Normal CI scope (14 November 2026): the check workflow now defines all 27 workflow-defined steps. The Nix-generated VFIO wrapper is no longer built solely for ShellCheck in routine CI; ShellCheck of the source `nixos/hooks/qemu` and `scripts/test-vfio-hook-driver-state.sh` remain. Historical records of earlier 28-step workflows are unchanged.
 
 ## Audit intake snapshot — 2026-11-10 (historical)

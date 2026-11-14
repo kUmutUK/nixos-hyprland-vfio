@@ -746,6 +746,25 @@ This launches a 1440×1440 game surface in fullscreen and stretches it to a 2560
 - Ananicy-cpp is not enabled; avoid stacking another per-process priority policy over sched_ext and GameMode.
 - `NetworkManager-wait-online.service` is disabled because the reference host has no network-mounted filesystems. Re-enable it if a future remote mount or service needs network-online ordering.
 - `hypridle` requests suspend after 3600 seconds (one hour); the configured `before_sleep_cmd` invokes Hyprlock before suspension.
+
+### Verify the active performance configuration
+
+The following commands are read-only. Run them after boot to inspect the running kernel and confirm that the live system matches the checked-in performance choices; a configuration file or successful CI evaluation alone does not prove activation:
+
+```bash
+uname -r
+swapon --show
+zramctl
+cat /sys/module/zswap/parameters/enabled
+systemctl is-active systemd-oomd
+cat /sys/kernel/sched_ext/state
+cat /sys/kernel/sched_ext/root/ops
+systemd-analyze
+systemd-analyze blame | head
+systemd-analyze critical-chain
+```
+
+For this reference configuration, ZRAM should have priority 100 ahead of encrypted disk swap at priority 10, with a logical capacity up to about 32 GB; that capacity does not reserve 32 GB of physical RAM at boot. The ZSwap parameter should report `N`, `systemd-oomd` should be active, and sched_ext should report `enabled` with BPF-Land (`scx_bpfland`) as the active ops. Use `scxctl stop` only when intentionally comparing against the RT-Bore/BORE kernel fallback; stopping sched_ext does not remove the kernel scheduler. In boot analysis, `blame` timings can overlap, so use `critical-chain` to identify dependencies that actually delay the boot target.
 - **Optional Brave integration:** Waybar's title rule/MPRIS player list and `mpvpaper-watchdog` recognize the `brave-browser` window/player class, but this repository does not install Brave. Those Brave-specific rules are active only when Brave is installed separately; without it, they are inert. The watchdog's independent GameMode behavior is unchanged.
 - **VG27AQ1A DisplayPort audio resume:** `services.pipewire.wireplumber.extraConfig` matches only the reference-host sink `alsa_output.pci-0000_0b_00.1.hdmi-stereo-extra4` and sets `session.suspend-timeout-seconds = 0`. The reference-host owner reported that the 2–3 second audio delay after pausing and resuming media disappeared with this rule in a temporary user-level WirePlumber drop-in. The declaration is in `nixos/configuration.nix`. Release #32's general `TARGET_HOST_VALIDATED=true` target-host attestation does not log a rule-specific check of this sink; activation of this exact rule and its persistence after reboot remain unverified. This leaves other sinks' idle-suspend behavior unchanged. See the [pinned NixOS WirePlumber module](https://github.com/NixOS/nixpkgs/blob/f4a03c008967841f2a0b3cb7c436fc6fc31671f6/nixos/modules/services/desktops/pipewire/wireplumber.nix) and [WirePlumber ALSA rules documentation](https://pipewire.pages.freedesktop.org/wireplumber/daemon/configuration/modifying_configuration.html).
 - `render.cm_auto_hdr = 0` disables Hyprland's automatic switch to HDR when a fullscreen application needs it; it does not force HDR or 10-bit output. This is a deliberate Home Manager runtime setting. The v1.4.7 clean-install/VM validation did not separately measure HDR transitions, 10-bit output, or display-switch flicker; see [Hyprland's render options](https://wiki.hypr.land/configuring/core/config-options/).
