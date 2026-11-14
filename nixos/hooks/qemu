@@ -463,6 +463,9 @@ restore_prepare_device() {
 # Rollback restores only state changed by `prepare`. If `stop_hyprland` fails early,
 # the GPU driver should not have been changed.
 rollback_prepare() {
+  # An optional sysfs root keeps rollback verification testable without touching
+  # the runner/host PCI devices. Normal libvirt calls omit this argument.
+  local devices_root="${1:-/sys/bus/pci/devices}"
   local recovery_failed=0
   local -a recovery_devices=()
 
@@ -470,18 +473,18 @@ rollback_prepare() {
   trap - HUP INT TERM
   log "ERROR: prepare failed; attempting rollback based on the current device state..."
 
-  restore_prepare_device "$GPU_PCI" "$PREPARE_GPU_PCI_TOUCHED" || true
-  restore_prepare_device "$GPU_AUDIO" "$PREPARE_GPU_AUDIO_TOUCHED" || true
+  restore_prepare_device "$GPU_PCI" "$PREPARE_GPU_PCI_TOUCHED" "$devices_root" || true
+  restore_prepare_device "$GPU_AUDIO" "$PREPARE_GPU_AUDIO_TOUCHED" "$devices_root" || true
 
   # Only pass functions that still lack their expected host driver to the
   # disruptive, explicitly opt-in fallback. Do not remove/rescan a function
   # that ordinary reprobe has already restored successfully.
   if [ "$PREPARE_GPU_PCI_TOUCHED" -eq 1 ] &&
-    ! device_has_expected_host_driver "$GPU_PCI"; then
+    ! device_has_expected_host_driver "$GPU_PCI" "$devices_root"; then
     recovery_devices+=("$GPU_PCI")
   fi
   if [ "$PREPARE_GPU_AUDIO_TOUCHED" -eq 1 ] &&
-    ! device_has_expected_host_driver "$GPU_AUDIO"; then
+    ! device_has_expected_host_driver "$GPU_AUDIO" "$devices_root"; then
     recovery_devices+=("$GPU_AUDIO")
   fi
   if [ "${#recovery_devices[@]}" -gt 0 ]; then
