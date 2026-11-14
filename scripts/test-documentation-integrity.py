@@ -321,14 +321,14 @@ require("scripts/test-vm-xml-structure.py" in CHECK_WORKFLOW, "CI must continue 
 workflow_defined_step_count = len(re.findall(r"(?m)^      - (?:name|uses|run):", CHECK_WORKFLOW))
 workflow_step_note = f"all {workflow_defined_step_count} workflow-defined steps"
 require(
-    workflow_defined_step_count == 28
+    workflow_defined_step_count == 27
     and workflow_step_note in CHANGELOG
     and workflow_step_note in STATE_INDEX
     and workflow_step_note in REPAIR
     and "runner-generated `Set up job` entry" in CHANGELOG
     and "runner-generated `Set up job` entry" in STATE_INDEX
     and "runner-generated `Set up job` entry" in REPAIR,
-    "CI documentation must match the YAML-defined step count and distinguish GitHub's generated setup entry",
+    "CI documentation must match the current 27-step YAML workflow and distinguish GitHub's generated setup entry; historical counts remain dated",
 )
 require(
     "`nixos-unstable`" in INSTALLATION
