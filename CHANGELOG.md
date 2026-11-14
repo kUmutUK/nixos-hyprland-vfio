@@ -11,6 +11,10 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 - Preserve ZSTD ZRAM at priority 100 and encrypted disk swap at priority 10; do not enable ZSwap, remove the explicit swappiness=180 override, disable Ananicy-cpp, and disable NetworkManager-wait-online because the host has no network filesystems.
 - Record the x86-64-v3 CPU portability boundary and the required fresh manual full-system build. This commit does not claim a completed kernel build, host activation, benchmark, or VM lifecycle test.
 
+### Normal CI runtime reduction — 2026-11-14
+
+- Remove the Nix-generated VFIO hook derivation/ShellCheck step from routine CI: building that wrapper pulled in the x86-64-v3 dependency closure (multi-GiB) solely to lint generated shell. Keep ShellCheck on the source `nixos/hooks/qemu` and the VFIO driver-state regression test; Nix flake evaluation and package checks remain. The current workflow defines all 27 workflow-defined steps. Historical run records correctly retain their former 28-step counts.
+
 ### Independent audit cross-check and preflight fixes — 2026-11-11
 
 - Correct the v1.4.9 snapshot narrative: the published tag / Release #25 targets `a20962f`; Normal CI #1309 belongs to preceding `ad231d7`. The 410,138-byte archive is reproducible from the latter, while the 411,239-byte published asset belongs to the tag target. Only the original local copy's acquisition history is unknown.
