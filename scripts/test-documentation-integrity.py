@@ -31,6 +31,10 @@ STATE_INDEX = (ROOT / "DEGISIKLIK_GECMISI.md").read_text(encoding="utf-8")
 CONFIG = (ROOT / "nixos/configuration.nix").read_text(encoding="utf-8")
 FLAKE = (ROOT / "nixos/flake.nix").read_text(encoding="utf-8")
 FLAKE_LOCK = json.loads((ROOT / "nixos/flake.lock").read_text(encoding="utf-8"))
+cachyos_locked = FLAKE_LOCK.get("nodes", {}).get("cachyos-kernel", {}).get("locked", {})
+cachyos_revision = cachyos_locked.get("rev")
+root_nixpkgs_locked = FLAKE_LOCK.get("nodes", {}).get("nixpkgs", {}).get("locked", {})
+root_nixpkgs_revision = root_nixpkgs_locked.get("rev")
 HOME_NIX = (ROOT / "nixos/home.nix").read_text(encoding="utf-8")
 VM_XML_TEXT = (ROOT / "vm-xml/win10.xml").read_text(encoding="utf-8")
 REPAIR = (ROOT / "docs/REPAIR-AND-VALIDATION-REPORT.md").read_text(encoding="utf-8")
@@ -499,10 +503,6 @@ require(
     and "CPUFREQ_DT_RUST = lib.kernel.no;" in CONFIG,
     "the CachyOS RT-Bore-LTO workaround must keep both unused Rust modules out of the failing module-BTF path",
 )
-cachyos_locked = FLAKE_LOCK.get("nodes", {}).get("cachyos-kernel", {}).get("locked", {})
-cachyos_revision = cachyos_locked.get("rev")
-root_nixpkgs_locked = FLAKE_LOCK.get("nodes", {}).get("nixpkgs", {}).get("locked", {})
-root_nixpkgs_revision = root_nixpkgs_locked.get("rev")
 require(
     isinstance(cachyos_revision, str) and re.fullmatch(r"[0-9a-f]{40}", cachyos_revision) is not None,
     "flake.lock must contain a full resolved CachyOS kernel revision",
