@@ -399,10 +399,15 @@ for step_name in ("Find previous version tag", "Generate release notes with git-
 require("actionlint" in CHECK_WORKFLOW and "go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7" in CHECK_WORKFLOW, "normal CI must run the pinned actionlint validator")
 require(
     "go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7" in CONTRIBUTING
-    and "nixosConfigurations.nixos.config.virtualisation.libvirtd.hooks.qemu.vfio" in CONTRIBUTING
-    and 'shellcheck -S warning "$hook_path"' in CONTRIBUTING
-    and "luac -p" in CONTRIBUTING,
-    "CONTRIBUTING local validation must mirror Actionlint, generated-hook ShellCheck, and generated-Lua syntax CI gates",
+    and "nixos/hooks/qemu" in CONTRIBUTING
+    and "bash scripts/test-vfio-hook-driver-state.sh" in CONTRIBUTING
+    and "luac -p" in CONTRIBUTING
+    and "does not build the Nix-generated VFIO wrapper solely to lint it" in CONTRIBUTING
+    and "ShellCheck of the source VFIO hook" in CONTRIBUTING
+    and "ShellCheck of the Nix-generated VFIO hook" not in CHECK_WORKFLOW
+    and "bash scripts/test-vfio-hook-driver-state.sh" in CHECK_WORKFLOW
+    and "nixos/hooks/qemu" in CHECK_WORKFLOW,
+    "CONTRIBUTING and CI must agree on source-hook ShellCheck and VFIO regression coverage without a generated-hook derivation build",
 )
 require(
     "format('{0}..{1} --tag {2} --strip header', steps.previous.outputs.tag, github.sha, steps.release.outputs.tag)" in RELEASE_WORKFLOW
