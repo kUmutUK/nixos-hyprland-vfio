@@ -250,15 +250,71 @@ if ! grep -Fq '"$PYTHON3" "$REPO_DIR/scripts/check-home-snapper-layout.py" "$har
   echo "FAIL: Home Snapper preflight must validate mount UUIDs/subvolumes and reject an invalid existing .snapshots path." >&2
   exit 1
 fi
+if grep -Fq 'REPO_DIR/nixos/hardware-configuration.nix' "$home_preflight_test_dir/require-btrfs-home.sh"; then
+  echo "FAIL: Home Snapper validation must never fall back to the repository's machine-specific hardware template." >&2
+  exit 1
+fi
+
+# The initial selector must accept only machine-generated host files, prefer the
+# top-level generated file, and reject the repository template as a fallback.
+awk '/^select_home_snapper_hardware_config\(\) \{/ { capture=1 } capture { print } capture && /^}/ { exit }' "$INSTALLER" \
+  > "$home_preflight_test_dir/select-hardware-config.sh"
+if ! grep -q '^select_home_snapper_hardware_config() {' "$home_preflight_test_dir/select-hardware-config.sh"; then
+  echo "FAIL: could not locate select_home_snapper_hardware_config() for regression tests." >&2
+  exit 1
+fi
+cat > "$home_preflight_test_dir/select-hardware-harness.sh" <<'BASH'
+set -euo pipefail
+NIXOS_DIR="$1"
+NIXOS_FLAKE_DIR="$2"
+REPO_DIR="$3"
+HOME_SNAPPER_HW_CONFIG=""
+error() { printf '%s\n' "$*" >&2; return 1; }
+source "$4"
+select_home_snapper_hardware_config
+printf '%s\n' "$HOME_SNAPPER_HW_CONFIG"
+BASH
+mkdir -p "$home_preflight_test_dir/etc-nixos" "$home_preflight_test_dir/etc-nixos-nixos" "$home_preflight_test_dir/repo/nixos"
+printf 'maintainer template\n' > "$home_preflight_test_dir/repo/nixos/hardware-configuration.nix"
+if bash "$home_preflight_test_dir/select-hardware-harness.sh" \
+  "$home_preflight_test_dir/etc-nixos" "$home_preflight_test_dir/etc-nixos-nixos" \
+  "$home_preflight_test_dir/repo" "$home_preflight_test_dir/select-hardware-config.sh" \
+  > "$home_preflight_test_dir/selector.stdout" 2> "$home_preflight_test_dir/selector.stderr"; then
+  echo "FAIL: installer accepted the repository hardware template without a machine-generated host file." >&2
+  exit 1
+fi
+if ! grep -Fq 'Do not use the repository template' "$home_preflight_test_dir/selector.stderr"; then
+  echo "FAIL: missing machine hardware configuration did not produce an actionable error." >&2
+  exit 1
+fi
+printf 'machine top-level hardware config\n' > "$home_preflight_test_dir/etc-nixos/hardware-configuration.nix"
+printf 'flake hardware config\n' > "$home_preflight_test_dir/etc-nixos-nixos/hardware-configuration.nix"
+selected_hw_config="$(bash "$home_preflight_test_dir/select-hardware-harness.sh" \
+  "$home_preflight_test_dir/etc-nixos" "$home_preflight_test_dir/etc-nixos-nixos" \
+  "$home_preflight_test_dir/repo" "$home_preflight_test_dir/select-hardware-config.sh")"
+if [[ "$selected_hw_config" != "$home_preflight_test_dir/etc-nixos/hardware-configuration.nix" ]]; then
+  echo "FAIL: installer did not prefer the machine-generated top-level hardware configuration." >&2
+  exit 1
+fi
+rm -f "$home_preflight_test_dir/etc-nixos/hardware-configuration.nix"
+selected_hw_config="$(bash "$home_preflight_test_dir/select-hardware-harness.sh" \
+  "$home_preflight_test_dir/etc-nixos" "$home_preflight_test_dir/etc-nixos-nixos" \
+  "$home_preflight_test_dir/repo" "$home_preflight_test_dir/select-hardware-config.sh")"
+if [[ "$selected_hw_config" != "$home_preflight_test_dir/etc-nixos-nixos/hardware-configuration.nix" ]]; then
+  echo "FAIL: installer did not accept the existing machine-generated flake hardware configuration." >&2
+  exit 1
+fi
 python3 "$ROOT/scripts/test-home-snapper-layout.py"
+selector_call_line="$(grep -n '^select_home_snapper_hardware_config$' "$INSTALLER" | cut -d: -f1)"
 home_preflight_call_line="$(grep -nF 'require_btrfs_home "$HOME_SNAPPER_HW_CONFIG"' "$INSTALLER" | cut -d: -f1)"
 final_home_preflight_line="$(grep -nF 'require_btrfs_home "$NIXOS_FLAKE_DIR/hardware-configuration.nix"' "$INSTALLER" | cut -d: -f1)"
 first_mutation_line="$(grep -n '^mkdir -m 700' "$INSTALLER" | head -n 1 | cut -d: -f1)"
 hook_mutation_line="$(grep -nF 'if [ -d "$REPO_DIR/nixos/hooks" ]; then' "$INSTALLER" | cut -d: -f1)"
-if [[ -z "$home_preflight_call_line" || -z "$final_home_preflight_line" || -z "$first_mutation_line" || -z "$hook_mutation_line" ]] \
+if [[ -z "$selector_call_line" || -z "$home_preflight_call_line" || -z "$final_home_preflight_line" || -z "$first_mutation_line" || -z "$hook_mutation_line" ]] \
+  || (( selector_call_line >= home_preflight_call_line )) \
   || (( home_preflight_call_line >= first_mutation_line )) \
   || (( final_home_preflight_line >= hook_mutation_line )); then
-  echo "FAIL: Home Snapper preflight must run before backup mutations and re-check the final hardware file before hook deployment." >&2
+  echo "FAIL: machine hardware selection and Home Snapper preflight must run before backup mutations and re-check the final hardware file before hook deployment." >&2
   exit 1
 fi
 if ! grep -Fq '"$TARGET_HOME/.config/hypr"' "$INSTALLER" \

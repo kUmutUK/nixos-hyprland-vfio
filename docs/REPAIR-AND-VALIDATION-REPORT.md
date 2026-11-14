@@ -2,6 +2,14 @@
 
 > **Delivery-scope note:** This report is part of the tracked source tree. The dated “patch-only ZIP” notes below are historical. For a canonical full-source ZIP, use `scripts/package-source-zip.sh` or the CI-uploaded `nixos-hyprland-vfio-source` artifact for the exact commit. The helper verifies tracked-file completeness, excludes `.git/`, preserves executable bits, and makes the finished artifact readable from shared output directories.
 
+### Installer machine-specific hardware preflight — 2026-11-14
+
+The initial Home Snapper preflight previously fell back to the repository's committed `nixos/hardware-configuration.nix` when neither `/etc/nixos/hardware-configuration.nix` nor `/etc/nixos/nixos/hardware-configuration.nix` existed. That template contains reference-host storage identifiers. It could therefore cause a misleading preflight against maintainer UUIDs and defer the missing-target-file failure until later in the migration flow.
+
+The installer now selects only one of the two machine-generated host files. If neither exists, it stops with instructions to generate and place the target's own hardware configuration. `require_btrfs_home` no longer has an implicit repository-template fallback and requires an explicit file path. The new mock-backed regression checks reject a repository-template-only checkout, verify the actionable failure, and confirm selection of both supported host locations.
+
+This is a fail-closed migration-helper correction. It does not change storage UUIDs, the NixOS system configuration, kernel selection, VM identity, or any physical-host state. `install.sh` remains experimental and still has no live end-to-end migration/rollback validation.
+
 ## Chronological navigation (newest first)
 
 ### VFIO saved-state restore output-failure rollback — 2026-11-14

@@ -204,6 +204,20 @@ fi
 # shellcheck source=scripts/pci-address.sh
 source "$PCI_ADDRESS_HELPERS"
 
+select_home_snapper_hardware_config() {
+  # Only accept a file generated for this machine. The repository's hardware
+  # configuration contains maintainer-specific storage identifiers and must
+  # never be used as a fallback for a live host's Home Snapper preflight.
+  if [[ -s "$NIXOS_DIR/hardware-configuration.nix" ]]; then
+    HOME_SNAPPER_HW_CONFIG="$NIXOS_DIR/hardware-configuration.nix"
+  elif [[ -s "$NIXOS_FLAKE_DIR/hardware-configuration.nix" ]]; then
+    HOME_SNAPPER_HW_CONFIG="$NIXOS_FLAKE_DIR/hardware-configuration.nix"
+  else
+    error "No machine-generated hardware-configuration.nix was found. Generate it with 'sudo nixos-generate-config --show-hardware-config' and save it as /etc/nixos/hardware-configuration.nix (or /etc/nixos/nixos/hardware-configuration.nix). Do not use the repository template: its storage UUIDs belong to the reference host. No backups or system files have been changed."
+    return 1
+  fi
+}
+
 require_btrfs_home() {
   local hardware_config="${1:-}"
   if ! command -v findmnt >/dev/null 2>&1; then
@@ -211,16 +225,11 @@ require_btrfs_home() {
     return 1
   fi
   if [[ -z "$hardware_config" ]]; then
-    if [[ -s "$NIXOS_DIR/hardware-configuration.nix" ]]; then
-      hardware_config="$NIXOS_DIR/hardware-configuration.nix"
-    elif [[ -s "$NIXOS_FLAKE_DIR/hardware-configuration.nix" ]]; then
-      hardware_config="$NIXOS_FLAKE_DIR/hardware-configuration.nix"
-    else
-      hardware_config="$REPO_DIR/nixos/hardware-configuration.nix"
-    fi
+    error "A machine-generated hardware-configuration.nix path is required for Home Snapper validation; no system files have been changed."
+    return 1
   fi
   if [[ ! -s "$hardware_config" ]]; then
-    error "No readable target hardware-configuration.nix is available for Home Snapper validation: $hardware_config"
+    error "No readable machine-generated hardware-configuration.nix is available for Home Snapper validation: $hardware_config"
     return 1
   fi
   if ! "$PYTHON3" "$REPO_DIR/scripts/check-home-snapper-layout.py" "$hardware_config" --allow-missing-snapshots; then
@@ -327,13 +336,7 @@ fi
 
 # Validate the proposed host mount layout and UUIDs before backups or any mutation.
 HOME_SNAPPER_HW_CONFIG=""
-if [[ -s "$NIXOS_DIR/hardware-configuration.nix" ]]; then
-  HOME_SNAPPER_HW_CONFIG="$NIXOS_DIR/hardware-configuration.nix"
-elif [[ -s "$NIXOS_FLAKE_DIR/hardware-configuration.nix" ]]; then
-  HOME_SNAPPER_HW_CONFIG="$NIXOS_FLAKE_DIR/hardware-configuration.nix"
-else
-  HOME_SNAPPER_HW_CONFIG="$REPO_DIR/nixos/hardware-configuration.nix"
-fi
+select_home_snapper_hardware_config
 require_btrfs_home "$HOME_SNAPPER_HW_CONFIG"
 
 # ─── Hardware detection ───────────────────────────────────

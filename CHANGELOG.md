@@ -4,6 +4,12 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+### Installer machine-specific Home Snapper preflight — 2026-11-14
+
+- Remove the fallback to the repository's reference-host `hardware-configuration.nix` when the target's machine-generated file is missing. The installer now requires a generated file in `/etc/nixos` or the flake directory and stops before backups with an actionable message otherwise.
+- Make the Home Snapper validator require an explicit hardware-configuration path, and add regression cases for missing host files, repository-template rejection, and selection of either valid machine-generated location.
+- Keep `install.sh` experimental: these offline tests do not replace a live migration/rollback test on a disposable NixOS/libvirt host.
+
 ### VFIO saved-state restore output-failure rollback — 2026-11-14
 
 - If libvirt cannot receive the buffered domain XML after VFIO preparation has succeeded, explicitly run the preparation rollback before returning failure. This restores the host-driver/desktop recovery path instead of leaving the host prepared for a restore that libvirt rejected.
