@@ -1196,7 +1196,7 @@ if not re.fullmatch(r"[0-9a-f]{40}", locked.get("rev", "")) or not locked.get("n
 child = lock["nodes"][node["inputs"]["nixpkgs"]]["locked"]
 if not re.fullmatch(r"[0-9a-f]{40}", child.get("rev", "")) or not child.get("narHash"):
     raise SystemExit("FAIL: the CachyOS nested nixpkgs lock revision/hash must be complete.")
-if "linuxPackages-cachyos-rt-bore-lto" not in flake_text:
+if "linux-cachyos-rt-bore-lto" not in flake_text:
     raise SystemExit("FAIL: flake must select the RT-Bore-LTO package.")
 PY
 
