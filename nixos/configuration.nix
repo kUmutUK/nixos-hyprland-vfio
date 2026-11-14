@@ -496,7 +496,7 @@ in
 
   zramSwap = {
     enable = true;
-    algorithm = "zstd";
+    algorithm = "lz4";
     # Higher swap priority is preferred by the kernel. The zram priority is higher
     # than the disk swap priority (10, declared in `hardware-configuration.nix`), so
     # zram is selected first.
