@@ -22,6 +22,8 @@
 
 **Performance configuration update (14 November 2026):** the reference NixOS host now targets x86-64-v3 for Nixpkgs C/C++ builds and the RT-Bore-LTO kernel. The kernel package set is regenerated using the same Nixpkgs revision as the CachyOS kernel flake. `scx-loader` starts `scx_bpfland`; systemd-oomd monitors root and user slices; ZSTD ZRAM and encrypted disk swap remain in their existing priority order, with no ZSwap or forced swappiness=180. Ananicy-cpp is removed and NetworkManager-wait-online is disabled for the local-filesystem host. This new configuration is not yet covered by a full-system build or physical-host activation; a fresh manual build is required before release. The previous Build #18 and the 11 November owner-reported build do not validate this derived x86-64-v3 kernel configuration.
 
+**Current Normal CI scope (14 November 2026):** the check workflow now defines all 27 workflow-defined steps. The Nix-generated VFIO wrapper is no longer built solely for ShellCheck in routine CI; ShellCheck of the source `nixos/hooks/qemu` and `scripts/test-vfio-hook-driver-state.sh` remain. Historical records of earlier 28-step workflows are unchanged.
+
 ## Audit intake snapshot — 2026-11-10 (historical)
 
 **Audit-intake source snapshot:** GitHub `main` at `a20962f9be065f17c7c2ec143473c47b7a75aae9` (10 November 2026); this is also the exact target of the published v1.4.9 tag, not an unreleased snapshot.
