@@ -10,7 +10,7 @@ The restore hook is a libvirt XML filter. It buffers the incoming domain XML, pe
 
 The current patch calls `rollback_prepare` when that final XML output operation fails, then returns failure to libvirt. If rollback itself reports failure, the hook emits an additional diagnostic directing the operator to inspect the VFIO log and host driver state. The temporary XML buffer is removed and its path variable cleared in either case.
 
-`scripts/test-vfio-hook-driver-state.sh` now mocks a failed final `cat` after successful preparation and asserts a non-zero result, exactly one rollback call, no emitted XML in the failed-output fixture, and temporary-buffer cleanup. This covers the previously missing control-flow branch only; it does not validate a real libvirt saved-state/managed-save operation, physical GPU handback, or host graphics recovery.
+`scripts/test-vfio-hook-driver-state.sh` now mocks a failed final `cat` after successful preparation and asserts a non-zero result, exactly one rollback call, no emitted XML in the failed-output fixture, and temporary-buffer cleanup. This covers the previously missing control-flow branch only; it does not validate a real libvirt saved-state/managed-save operation, physical GPU handback, or host graphics recovery. A real saved-state restore and complete graphics lifecycle test on the target host are also still required.
 
 ### Kernel-only x86-64-v3 correction — 2026-11-14
 
