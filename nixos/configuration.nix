@@ -310,8 +310,11 @@ in
     config.default_sched = "scx_bpfland";
   };
 
-  # GameMode retains its existing game-time priority behavior. Ananicy-cpp is not
-  # enabled: avoid stacking a second process-priority policy over sched_ext/GameMode.
+  # Three components now affect CPU policy for distinct purposes:
+  # power-profiles-daemon controls the governor, sched_ext selects the normal-task
+  # scheduler, and GameMode's renice = 10 is negated to nice value (-10), raising
+  # CPU scheduling priority when GameMode successfully applies it.
+  # Ananicy-cpp is intentionally disabled to avoid another overlapping policy.
   # Use a balanced desktop power profile outside games.
   networking.hostName = "nixos";
   networking.networkmanager.enable = true;
