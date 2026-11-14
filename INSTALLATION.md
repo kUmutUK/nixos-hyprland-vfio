@@ -716,16 +716,17 @@ git -C /tmp/repo show "$SOURCE_REVISION:nixos/flake.lock" |
 > the two-symbol Rust/BTF workaround. This was not a build of the later v1.4.7 release
 > snapshot.
 >
-> **Kernel input distinction (updated 14 November 2026):** the current
+> **Kernel input distinction (updated 15 November 2026):** the current
 > `nixos/flake.lock` resolves CachyOS to
-> `f5e1fb8f1185cb51ef6d433e27ab7b60f54cd0e0`. Manual Build #18 used the preceding
-> revision `9df32f70be3550911f178b3ba9ad784996a4e80c` on ancestor source commit
-> `c6f4b955475de2ea16bc2b34c59a95dad3a1ae78`; it does not validate the current lock
-> revision or the x86-64-v3-derived RT-Bore-LTO kernel. The 3 November physical
-> kernel/VM test used the older `755712deee259ef7efbfe9154038a270c3d75a87` revision.
-> The exact kernel SHA booted during the 9 November clean-install/VM check was not
-> recorded, so that host result is not explicit hardware validation of the current
-> locked kernel SHA.
+> `c9620070e884d55c5b5566e3fd46611ee24c4d3b` and root Nixpkgs to `82566dfe91ca5e12bc10b36272280628142f651d`. Full-system Build #19
+> completed on 11 November on exact source commit
+> `6242439da7e944d297dbe5f44fdff8e79fe4689c`, using CachyOS revision `9df32f70be3550911f178b3ba9ad784996a4e80c` and root Nixpkgs `4d6a01a11146f4691c0991682885ad9e4686e3ee`.
+> It predates the 14 November kernel-only x86-64-v3 profile and the 15 November
+> lock refresh, so it does not validate the current locked inputs or the derived
+> RT-Bore-LTO kernel. The 3 November physical kernel/VM test used the older
+> `755712deee259ef7efbfe9154038a270c3d75a87` revision. The exact kernel SHA
+> booted during the 9 November clean-install/VM check was not recorded, so that
+> host result is not explicit hardware validation of the current locked kernel SHA.
 >
 > **v1.4.7 release snapshot:** `c28250c34de4b4349023681305da99dee75aac9e`. Normal CI
 > [#1299](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42684408581)

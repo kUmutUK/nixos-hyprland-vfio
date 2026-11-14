@@ -375,10 +375,17 @@ require(
     "README must identify Brave as optional without disabling the GameMode watchdog path",
 )
 require(
-    "f5e1fb8f1185cb51ef6d433e27ab7b60f54cd0e0" in CONTRIBUTING
+    f"`{cachyos_revision}`" in CONTRIBUTING
+    and f"`{root_nixpkgs_revision}`" in CONTRIBUTING
     and "9df32f70be3550911f178b3ba9ad784996a4e80c" in CONTRIBUTING
     and "same kernel input used by Build #18" not in CONTRIBUTING,
-    "CONTRIBUTING must distinguish the current CachyOS lock from historical build inputs",
+    "CONTRIBUTING must distinguish both current flake inputs from historical build inputs",
+)
+require(
+    f"`{cachyos_revision}`" in INSTALLATION
+    and f"`{root_nixpkgs_revision}`" in INSTALLATION
+    and "Build #19" in INSTALLATION,
+    "INSTALLATION must identify the current locked inputs and the older Build #19 baseline",
 )
 require(
     "f6689bcd5234f29a7cfcfc4151d161727b0658bc" in README
@@ -392,8 +399,9 @@ require(
     "43101226875" in README
     and "6242439da7e944d297dbe5f44fdff8e79fe4689c" in README
     and "Build #19 chronology" in REPAIR
-    and "f5e1fb8f" in REPAIR,
-    "README and repair report must distinguish successful Build #19 from the unbuilt 14 November profile",
+    and f"`{cachyos_revision}`" in REPAIR
+    and f"`{root_nixpkgs_revision}`" in REPAIR,
+    "README and repair report must distinguish successful Build #19 from the refreshed, unbuilt flake inputs",
 )
 
 readme_top = "\n".join(README.splitlines()[:8])
@@ -493,14 +501,21 @@ require(
 )
 cachyos_locked = FLAKE_LOCK.get("nodes", {}).get("cachyos-kernel", {}).get("locked", {})
 cachyos_revision = cachyos_locked.get("rev")
+root_nixpkgs_locked = FLAKE_LOCK.get("nodes", {}).get("nixpkgs", {}).get("locked", {})
+root_nixpkgs_revision = root_nixpkgs_locked.get("rev")
 require(
     isinstance(cachyos_revision, str) and re.fullmatch(r"[0-9a-f]{40}", cachyos_revision) is not None,
     "flake.lock must contain a full resolved CachyOS kernel revision",
+)
+require(
+    isinstance(root_nixpkgs_revision, str) and re.fullmatch(r"[0-9a-f]{40}", root_nixpkgs_revision) is not None,
+    "flake.lock must contain a full resolved root Nixpkgs revision",
 )
 historical_kernel_revision = "755712deee259ef7efbfe9154038a270c3d75a87"
 kernel_limitations = README.split("## Known limitations", 1)[1].split("\n### ", 1)[0]
 require(
     f"`{cachyos_revision}`" in kernel_limitations
+    and f"`{root_nixpkgs_revision}`" in kernel_limitations
     and "Build #18" in kernel_limitations
     and "ancestor source commit" in kernel_limitations
     and "does not validate the current locked revision" in kernel_limitations
