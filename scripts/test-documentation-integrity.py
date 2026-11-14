@@ -205,7 +205,7 @@ require(
     and "memoryPercent = 100" in README
     and "does **not** reserve 32 GB" in README
     and "explicitly selects LZ4" in README
-    and "algorithm default is ZSTD" in README
+    and "module default is ZSTD" in README
     and "priority `100`" in README,
     "README must match configured 100%-RAM ZRAM capacity, LZ4, and priority-100 choices without implying eager RAM allocation",
 )
