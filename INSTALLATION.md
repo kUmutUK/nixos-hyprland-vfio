@@ -62,19 +62,36 @@ sudo systemctl start sshd
 ip -br addr
 ```
 
-From another device, connect with:
+From another computer, connect with:
 
 ```bash
 ssh nixos@LIVE-ISO-IP
 ```
 
-If SSH reports that the host key changed because the Live ISO was restarted, remove only the old key for that IP and reconnect:
+**Android / Termux:** install the SSH client in Termux and keep the phone awake
+for the remote session:
+
+```bash
+pkg update
+pkg install openssh
+termux-wake-lock
+ssh nixos@LIVE-ISO-IP
+```
+
+In Android settings, set Termux battery usage to **Unrestricted** (or disable
+battery optimization for Termux; menu names vary by Android vendor). A wake
+lock helps prevent the phone from sleeping, while the server-side tmux session
+keeps installation commands running if the SSH connection drops.
+
+If SSH reports that the host key changed because the Live ISO was restarted,
+remove only the old key for that exact IP on the client and reconnect:
 
 ```bash
 ssh-keygen -R LIVE-ISO-IP
 ```
 
-Keep long-running installation commands in tmux so they survive an SSH disconnect:
+Keep long-running installation commands in tmux on the Live ISO so they survive
+an SSH disconnect:
 
 ```bash
 nix-shell -p tmux --run 'tmux new -A -s nixos-install'
@@ -86,7 +103,10 @@ After reconnecting, reattach to the same session:
 nix-shell -p tmux --run 'tmux attach -t nixos-install'
 ```
 
-The password set with `passwd` here belongs only to the temporary Live ISO account. It is not the installed `localhost` or root password. SSH is not required for the installation.
+The password set with `passwd` here belongs only to the temporary Live ISO
+account. It is not the installed `localhost` or root password. SSH is not
+required for the installation. After all remote installation work is complete,
+release the Android wake lock in Termux with `termux-wake-unlock`.
 
 ---
 
@@ -701,6 +721,19 @@ grep -n -A9 '"cachyos-kernel"' flake.lock
 nix flake metadata --json --no-update-lock-file . | jq -r '.locks.nodes["cachyos-kernel"].locked.rev'
 ```
 
+Also verify that the two intentional Rust kernel symbols remain disabled in
+the selected configuration. This is a read-only check; do not change the values
+just to make the output match:
+
+```bash
+grep -n -A4 'structuredExtraConfig' /mnt/etc/nixos/nixos/configuration.nix
+```
+
+The block must include both `BLK_DEV_RUST_NULL = lib.kernel.no;` and
+`CPUFREQ_DT_RUST = lib.kernel.no;`. If either is absent, stop and compare the
+checked-out source revision rather than copying settings from an unrelated
+configuration.
+
 If the lock file was accidentally changed during setup, restore it from the exact
 source commit recorded in Step 9, not from a SHA copied from an old message:
 
@@ -763,7 +796,15 @@ path before `#nixos` must include that subdirectory:
 
 ```bash
 # On the first run, review and accept the configured binary cache if trusted.
-sudo nixos-install --flake /mnt/etc/nixos/nixos#nixos
+# pipefail ensures a failed nixos-install is not hidden by a successful tee.
+set -o pipefail
+if ! sudo nixos-install --flake /mnt/etc/nixos/nixos#nixos \
+    --option extra-experimental-features 'nix-command flakes' \
+    2>&1 | tee /tmp/install.log; then
+  echo "nixos-install failed; inspect the final errors in /tmp/install.log." >&2
+  grep -nEi 'FAILED|error' /tmp/install.log | tail -n 20 || true
+  exit 1
+fi
 ```
 After the installation command returns successfully, continue to Step 15. Do not reboot
 until the installed system profile exists and the root password has been set.
@@ -851,7 +892,23 @@ The kernel release should identify the CachyOS kernel. With random swap encrypti
 strict Home Snapper checker must pass: `/home` must be the `@home` Btrfs subvolume,
 and `/home/.snapshots` must be its existing `@home/.snapshots` child. Review
 any output from `systemctl --failed` before proceeding; an empty list is the expected
-healthy result. Also verify IOMMU/AMD-Vi in firmware and at runtime before using VFIO.
+healthy result.
+
+When the optional ext4 media partition was created, verify that it is mounted
+before changing its ownership. Do not run `chown` against the unmounted directory
+under the root filesystem:
+
+```bash
+if findmnt --mountpoint /mnt/media >/dev/null 2>&1; then
+  sudo chown localhost:users /mnt/media
+  ls -ld /mnt/media
+else
+  echo "/mnt/media is not mounted; check whether the optional media partition was configured."
+fi
+```
+
+Skip this step when `CREATE_MEDIA_PARTITION=no`. Also verify IOMMU/AMD-Vi in
+firmware and at runtime before using VFIO.
 
 ---
 

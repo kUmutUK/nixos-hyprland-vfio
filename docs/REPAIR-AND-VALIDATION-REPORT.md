@@ -1,5 +1,29 @@
 # Repair and validation report — updated 2026-11-15 (latest confirmed published release v1.5.4)
 
+### General clean-install guide refinements — 2026-11-15
+
+The existing 15-step manual clean-install procedure is retained as the canonical
+path; the shorter supplied command sequence is reconciled against its stronger
+disk and machine-identity safeguards rather than copied verbatim.
+
+- Add Android Termux connection instructions, including OpenSSH installation,
+  wake-lock handling, Android battery-optimization guidance, and recovery through
+  the existing server-side tmux session.
+- Add a read-only check for the two intentional kernel symbol settings, make
+  `nixos-install` explicitly enable the flake features and preserve its output
+  plus exit status in `/tmp/install.log`, and document optional media-volume
+  ownership only after an exact mountpoint check.
+- Keep `nixos-generate-config` as the source of the target machine's
+  `hardware-configuration.nix`. Do not transplant the repository's reference
+  UUIDs or use blind `sed` substitutions. Retain the typed disk/LUKS
+  confirmations, active-device/holder checks, separate Home Snapper subvolume,
+  random-key swap behavior, and optional media handling.
+
+**Validation boundary:** documentation and offline regression checks only.
+This does not run a disk wipe/format, a fresh installation, the selected kernel
+build, target-host activation/reboot, or a physical GPU/VM lifecycle test.
+`install.sh` remains an experimental migration helper.
+
 ### Manual installer attestation semantics and source-review chronology — 2026-11-15
 
 The 15 November live source review began from `13f3c2e9d6c85517e5da658523a2ba3f0f36e17c`. The reviewed follow-up commits then advanced `main` to `322d0d7caa7cd2c99a53ebc06c733ae28d850cc1`; Normal Nix Flake Check [#1554](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43645881692) passed all 27 workflow-defined steps on that exact commit. Preceding run #1553 failed because the README's tracked-file inventory was stale after the archive cleanup; the inventory was refreshed before #1554 passed.

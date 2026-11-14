@@ -93,7 +93,13 @@ The active `boot.kernelParams` list does not set `amd_iommu=on` or `iommu=pt`. E
 
 ### Path A — Manual fresh installation (recommended for a new system)
 
-Follow the English [`INSTALLATION.md`](INSTALLATION.md) guide from the NixOS Live ISO. `KURULUM.md` is retained only as an English compatibility pointer for older links. The guides cover partitioning, LUKS2, Btrfs subvolumes, machine-specific hardware configuration, password setup, and installation. The disk steps are **destructive**; do not copy them without substituting and re-checking your own target disk.
+Follow the 15-step [`INSTALLATION.md`](INSTALLATION.md) guide from the NixOS
+Live ISO. It covers partitioning, LUKS2, Btrfs subvolumes, machine-generated
+hardware configuration, UUID verification, password/SSH setup, and first boot.
+Its optional SSH section also documents Android Termux, wake-lock, and
+battery-optimization settings. `KURULUM.md` remains an English compatibility
+pointer for older links. The disk steps are **destructive**; do not copy them
+without substituting and re-checking your own target disk.
 
 The high-level flow is shown below. Perform the steps in [`INSTALLATION.md`](INSTALLATION.md) in order; do not skip the disk identity checks or typed confirmations.
 
@@ -127,7 +133,9 @@ sudo chmod 600 /mnt/etc/nixos/hashedPassword
 sudo test -s /mnt/etc/nixos/hashedPassword || { echo "hashedPassword is missing or empty" >&2; exit 1; }
 [ "$(sudo stat -c '%U:%G:%a' /mnt/etc/nixos/hashedPassword)" = "root:root:600" ] || { echo "hashedPassword must be root:root mode 600" >&2; exit 1; }
 cd /mnt/etc/nixos/nixos
-sudo nixos-install --flake /mnt/etc/nixos/nixos#nixos
+sudo nixos-install --flake /mnt/etc/nixos/nixos#nixos \
+  --option extra-experimental-features 'nix-command flakes' \
+  2>&1 | tee /tmp/install.log
 ```
 
 **Before installing:**

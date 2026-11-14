@@ -4,6 +4,12 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+### General clean-install guide refinements — 2026-11-15
+
+- Extend the optional Live ISO SSH section with Android Termux setup, wake-lock and battery-optimization guidance, while retaining server-side tmux reconnection instructions.
+- Add a read-only check for both intentional kernel configuration workarounds, capture `nixos-install` output in `/tmp/install.log` with `pipefail`, and show how to set optional media-volume ownership only after confirming it is mounted.
+- Keep the clean-install procedure generic: retain the generated machine-specific hardware configuration, UUID mapping checks, and explicit disk/LUKS formatting confirmations. No NixOS runtime configuration, machine UUID, VM XML, or installer behavior is changed.
+
 ### Flake input refresh — 2026-11-15
 
 - Refresh `nixos/flake.lock`: CachyOS advances from the 14 November snapshot `f5e1fb8f1185cb51ef6d433e27ab7b60f54cd0e0` to `c9620070e884d55c5b5566e3fd46611ee24c4d3b`, and root Nixpkgs advances from `ac9af266ee64ddb2eafeb4b250cac6a88147b43a` to `82566dfe91ca5e12bc10b36272280628142f651d`.

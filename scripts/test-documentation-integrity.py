@@ -635,6 +635,36 @@ require(
     and 'fileSystems."/mnt/media"' in CONFIG,
     "installation, README, and migration helper must document the optional fourth ext4 media partition and its machine-specific UUID mapping",
 )
+require(
+    "pkg install openssh" in INSTALLATION
+    and "termux-wake-lock" in INSTALLATION
+    and "termux-wake-unlock" in INSTALLATION
+    and "battery optimization" in INSTALLATION.lower()
+    and "nix-shell -p tmux" in INSTALLATION
+    and "ssh-keygen -R LIVE-ISO-IP" in INSTALLATION,
+    "installation guide must cover Android Termux SSH, wake-lock, battery optimization, host-key recovery, and server-side tmux",
+)
+require(
+    "grep -n -A4 'structuredExtraConfig' /mnt/etc/nixos/nixos/configuration.nix" in INSTALLATION
+    and "BLK_DEV_RUST_NULL = lib.kernel.no;" in CONFIG
+    and "CPUFREQ_DT_RUST = lib.kernel.no;" in CONFIG,
+    "installation guide must verify the two deliberate Rust kernel-symbol workarounds without changing them",
+)
+require(
+    "set -o pipefail" in INSTALLATION
+    and "extra-experimental-features 'nix-command flakes'" in INSTALLATION
+    and "tee /tmp/install.log" in INSTALLATION
+    and "grep -nEi 'FAILED|error' /tmp/install.log" in INSTALLATION
+    and "set -Eeuo pipefail" in README
+    and "tee /tmp/install.log" in README,
+    "the installation command must preserve nixos-install's failure status and log its output",
+)
+require(
+    "findmnt --mountpoint /mnt/media" in INSTALLATION
+    and "chown localhost:users /mnt/media" in INSTALLATION
+    and "CREATE_MEDIA_PARTITION=no" in INSTALLATION,
+    "the first-boot guide must set media ownership only after confirming the optional mount exists",
+)
 require("DEGISIKLIK_GECMISI.md" in RELEASING and "DEGISIKLIK_GECMISI.md" in RELEASE_WORKFLOW and "CONTRIBUTING.md" in RELEASING and "CHANGELOG.md" in RELEASING and "docs/REPAIR-AND-VALIDATION-REPORT.md" in RELEASING and "docs/OPTISCALER.md" in RELEASING and "docs/OPTISCALER.md" in RELEASE_WORKFLOW and "INSTALLATION.md" in RELEASING and "INSTALLATION.md" in RELEASE_WORKFLOW and ".github/workflows/check.yml" in RELEASING and "scripts/test-documentation-integrity.py" in RELEASING, "RELEASING allowlist documentation must match release.yml")
 require("grep -E '^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$' |" in RELEASE_WORKFLOW, "release workflow must use a closed stable-semver regex when finding previous tags")
 require("stable `vMAJOR.MINOR.PATCH` form" in RELEASING and "numeric components must not contain" in RELEASING, "release guide must document the strict stable tag format")
