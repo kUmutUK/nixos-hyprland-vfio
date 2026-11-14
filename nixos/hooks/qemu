@@ -493,12 +493,12 @@ rollback_prepare() {
   fi
 
   if [ "$PREPARE_GPU_PCI_TOUCHED" -eq 1 ] &&
-    ! device_has_expected_host_driver "$GPU_PCI"; then
+    ! device_has_expected_host_driver "$GPU_PCI" "$devices_root"; then
     log "ERROR: Rollback verification failed: $GPU_PCI is not bound to expected host driver amdgpu."
     recovery_failed=1
   fi
   if [ "$PREPARE_GPU_AUDIO_TOUCHED" -eq 1 ] &&
-    ! device_has_expected_host_driver "$GPU_AUDIO"; then
+    ! device_has_expected_host_driver "$GPU_AUDIO" "$devices_root"; then
     log "ERROR: Rollback verification failed: $GPU_AUDIO is not bound to expected host driver snd_hda_intel."
     recovery_failed=1
   fi
