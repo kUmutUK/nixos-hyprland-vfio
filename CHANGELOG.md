@@ -4,6 +4,10 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+### ZRAM capacity — 2026-11-14
+
+- Set `zramSwap.memoryPercent = 100`, allowing logical ZRAM swap capacity up to all detected RAM (about 32 GB on the 32 GB reference host). This is a capacity limit, not an eager reservation of 32 GB physical RAM; backing memory is consumed as compressed pages are stored. Keep LZ4, ZRAM priority 100, encrypted disk swap priority 10, and disabled ZSwap unchanged.
+
 ### 14 November audit follow-up — release and build records
 
 - Confirm that the supplied source archive's embedded revision `f6689bcd5234f29a7cfcfc4151d161727b0658bc` is the exact commit targeted by the annotated `v1.5.4` tag. Normal Nix Flake Check #1526 (run ID `43624282232`) passed on that commit, and Release workflow #38 (run ID `43625112235`) published Release ID `445492077`.

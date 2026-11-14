@@ -191,15 +191,23 @@ zram_priority_match = (
     re.search(r"(?m)^\s*priority\s*=\s*(\d+)\s*;", zram_block_match.group(1))
     if zram_block_match else None
 )
+zram_percent_match = (
+    re.search(r"(?m)^\\s*memoryPercent\\s*=\\s*(\\d+)\\s*;", zram_block_match.group(1))
+    if zram_block_match else None
+)
 require(
     zram_algorithm_match is not None
     and zram_algorithm_match.group(1) == "lz4"
     and zram_priority_match is not None
     and zram_priority_match.group(1) == "100"
+    and zram_percent_match is not None
+    and zram_percent_match.group(1) == "100"
+    and "memoryPercent = 100" in README
+    and "does **not** reserve 32 GB" in README
     and "explicitly selects LZ4" in README
     and "algorithm default is ZSTD" in README
     and "priority `100`" in README,
-    "README must distinguish the configured LZ4/priority-100 choices from NixOS ZRAM defaults",
+    "README must match configured 100%-RAM ZRAM capacity, LZ4, and priority-100 choices without implying eager RAM allocation",
 )
 
 vm_xml_root = ET.parse(ROOT / "vm-xml/win10.xml").getroot()

@@ -498,6 +498,9 @@ in
 
   zramSwap = {
     enable = true;
+    # Allow swap capacity up to 100% of detected RAM (~32 GB on this host).
+    # This is a logical zram limit, not an eager reservation of physical RAM.
+    memoryPercent = 100;
     algorithm = "lz4";
     # Higher swap priority is preferred by the kernel. The zram priority is higher
     # than the disk swap priority (10, declared in `hardware-configuration.nix`), so
