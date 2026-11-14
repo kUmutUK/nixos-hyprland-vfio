@@ -49,10 +49,9 @@
         };
       };
       cachyosKernelHelpers = cachyosPkgs.callPackage "${cachyos-kernel}/helpers.nix" { };
-      rtBoreLtoV3Kernel =
-        cachyos-kernel.legacyPackages.${system}.linux-cachyos-rt-bore-lto.override {
-          processorOpt = "x86_64-v3";
-        };
+      rtBoreLtoV3Kernel = cachyos-kernel.legacyPackages.${system}.linux-cachyos-rt-bore-lto.override {
+        processorOpt = "x86_64-v3";
+      };
       rtBoreLtoV3KernelPackages = cachyosKernelHelpers.kernelModuleLLVMOverride (
         cachyosPkgs.linuxKernel.packagesFor rtBoreLtoV3Kernel
       );
