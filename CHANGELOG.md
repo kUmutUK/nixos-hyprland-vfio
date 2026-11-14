@@ -25,7 +25,7 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 - The supplied audit reports a separate 472,243-byte intake ZIP / SHA-256 `ee0a8e9136013f7357e9eada973e12d646af1b46ca26885a415f1217c1854cbc`. That binary was not attached to this review, so its byte count, digest, and `create_system=0` metadata were not independently remeasured here. The canonical helper now rewrites every archive entry to Unix `create_system=3` metadata with explicit 0644/0755 file modes, then validates the normalized output.
 - The `v1.5.4` annotated tag points to the same `e068b1e` commit and Release workflow [#37](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43620383782) completed successfully. Its job log records a successful `gh release create` command, but the GitHub Releases collection and `/releases/tags/v1.5.4` lookup currently do not return a release object (404). Until the release object/assets are retrievable, the latest confirmed published release is [v1.5.3](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.5.3), not v1.5.4.
 - Release #37 accepted later system-affecting changes to `nixos/configuration.nix`, `nixos/flake.lock`, `nixos/flake.nix`, and `nixos/home.nix` through the explicit maintainer `target_host_validated=true` attestation. This is not a new full-system build. Manual Build #18 remains the last recorded full-system Actions build; Build #19 was not dispatched.
-- Add explicit `v1.4.0`–`v1.4.6` release headings using the published tag/release metadata. Clarify that `.git-cliff.toml`'s `initial_tag` is a fallback when no matching SemVer tag exists, not a filter that hides existing tags. Clarify the archive's 19 October state-snapshot date versus its older [1.0.0]–[1.3.8] release-history span.
+- Add explicit `v1.4.0`–`v1.4.6` release headings using the published tag/release metadata. Clarify that `.git-cliff.toml`'s `initial_tag` is a fallback when no matching SemVer tag exists, not a filter that hides existing tags. Clarify the archive's 19 October state-snapshot date versus its older [1.0.0]–[1.3.8] release-history span. Add the canonical source-packaging helper to the release allowlist: it builds and validates source archives and does not change the installed NixOS toplevel or selected kernel.
 - Make the LSFG-VK DLL path derive from `config.home.homeDirectory` while retaining the intentional `localhost` account identity. Make the installer stop before backups or writes when `hashedPassword` is missing, empty, or not root:root/0600. Clarify the historical 7.3.3 BTF issue versus the current 7.3.4 lock; no kernel option or hardware identity is changed by that comment-only edit.
 - Existing Home Snapper ordering remains: `@home` must be mounted before creating `@home/.snapshots`; the shared strict checker and installer-specific allow-missing transaction path remain covered by existing regressions. The live installer and fresh full-system build are still unverified.
 ### Independent audit cross-check and preflight fixes — 2026-11-11
@@ -210,34 +210,6 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 - The canonical source ZIP is 410,656 bytes; SHA-256 `4db66f4c856da157b8fc6995aaea7b86d40397868455976b21cb76566b1cadab`. The release also publishes the matching `.sha256` manifest.
 - The documentation changes reconcile kernel/build evidence, record the owner-reported clean-install and normal VFIO VM lifecycle validation, and distinguish current from historical validation claims. The test changes align the kernel-validation assertions and distinguish current and historical hardware evidence.
 - Manual full-system build #18 on ancestor commit `c6f4b955475de2ea16bc2b34c59a95dad3a1ae78` remains the last completed full-system build baseline. The v1.4.8 release gate passed; this release did not create a new full-system build result.
-
-## [v1.4.6] - 2026-11-06
-
-- Published Release ID `436371622` from tag commit `a6dd4544319fafa7ec517e73b31ad29a1b4010b3`. GitHub Release API lists a 402,118-byte asset with SHA-256 `05ffe97ee342a4b233f56bc7ae0e455f3b91a1c87df86c42e57e0441e9089e76`; the asset name/manifest differs from the helper output retained in Release #20's job log, so canonical asset provenance remains qualified.
-
-## [v1.4.5] - 2026-11-05
-
-- Published Release ID `435306537` from tag commit `994b05c888fbb52295d93e8ef74e41bac66c5e65`. The listed asset is 392,212 bytes, SHA-256 `f97fb12bdfbaaff4d32e7ab57bbc9251fababcd126a8ef7644947844924de9e0`.
-
-## [v1.4.4] - 2026-11-05
-
-- Published Release ID `435237316`; its tag points to `7f923a2c7aa59721bc00728faccbc073e06c697a`. The listed 388,000-byte asset has SHA-256 `7621fcdccfe327e9e59f453947b9f7903cd0f477b73cde8f4aa5ee513061e0ff`, identical to v1.4.3. The generated release-body heading also says v1.4.3; retain that as a historical notes-generation anomaly rather than attributing a different source snapshot.
-
-## [v1.4.3] - 2026-11-05
-
-- Published Release ID `440298465` on 10 November 2026 (the annotated tag was created on 5 November) from the same `7f923a2c7aa59721bc00728faccbc073e06c697a` target as v1.4.4. Its 388,000-byte asset digest is identical to v1.4.4; this release entry was restored/published later and is not a new source snapshot.
-
-## [v1.4.2] - 2026-11-05
-
-- Published Release ID `434925955` from tag commit `9661091e35aed98b18483ff6d25a54fe0653c877`. The listed asset is 380,135 bytes, SHA-256 `ef3b430ccff66f3c1905516be018991585e5945ceccdd2b06eaaf1545fdd06fd`. Its generated release-body heading starts at v1.4.1, a retained version-heading mismatch.
-
-## [v1.4.1] - 2026-11-04
-
-- Published Release ID `433672805` from tag commit `480972a235655f6d1e9ec6137f85ad3f30b8655a`. The listed asset is 354,216 bytes, SHA-256 `c430c3f339ee98559ae6f9599782c39e1ee371ba4c021ab7837523f8e8152f6e`. Its generated release-body heading starts at v1.4.0, a retained version-heading mismatch.
-
-## [v1.4.0] - 2026-11-01
-
-- Published Release ID `430849590` from tag commit `ca6edf2a381118fbd81aeccb82287f234f44a257`. The listed asset is 301,189 bytes, SHA-256 `2bd2c437ed10bb78468067cce6b49757368d8d4cee1e2b41b5e299fa65b86ee0`. Its generated release-body heading starts at v1.3.9, a retained version-heading mismatch.
 
 ## [v1.4.7] - 2026-11-09
 
@@ -542,6 +514,34 @@ The heading date follows the v1.4.2 publication date. Full-system Build #11 itse
 
 - Added a fail-closed preflight for file-backed CD-ROM ISO paths before VM disk creation and XML definition, with regression tests wired into CI and documented in the README and installation guide.
 - Validated the XML root element in both the ISO preflight and diagnostic-copy helpers, with wrong-root regression tests. Hardened the two-file new-VM publication rollback so a concurrent final-XML collision removes only the disk inode created by this run; added a mocked concurrency regression test. Added the VM bootstrap test to CI/contributor Bash syntax and ShellCheck coverage and completed the repository map entries for `scripts/test-manual-vm-bootstrap.sh` and `statix.toml`.
+
+## [v1.4.6] - 2026-11-06
+
+- Published Release ID `436371622` from tag commit `a6dd4544319fafa7ec517e73b31ad29a1b4010b3`. GitHub Release API lists a 402,118-byte asset with SHA-256 `05ffe97ee342a4b233f56bc7ae0e455f3b91a1c87df86c42e57e0441e9089e76`; the asset name/manifest differs from the helper output retained in Release #20's job log, so canonical asset provenance remains qualified.
+
+## [v1.4.5] - 2026-11-05
+
+- Published Release ID `435306537` from tag commit `994b05c888fbb52295d93e8ef74e41bac66c5e65`. The listed asset is 392,212 bytes, SHA-256 `f97fb12bdfbaaff4d32e7ab57bbc9251fababcd126a8ef7644947844924de9e0`.
+
+## [v1.4.4] - 2026-11-05
+
+- Published Release ID `435237316`; its tag points to `7f923a2c7aa59721bc00728faccbc073e06c697a`. The listed 388,000-byte asset has SHA-256 `7621fcdccfe327e9e59f453947b9f7903cd0f477b73cde8f4aa5ee513061e0ff`, identical to v1.4.3. The generated release-body heading also says v1.4.3; retain that as a historical notes-generation anomaly rather than attributing a different source snapshot.
+
+## [v1.4.3] - 2026-11-05
+
+- Published Release ID `440298465` on 10 November 2026 (the annotated tag was created on 5 November) from the same `7f923a2c7aa59721bc00728faccbc073e06c697a` target as v1.4.4. Its 388,000-byte asset digest is identical to v1.4.4; this release entry was restored/published later and is not a new source snapshot.
+
+## [v1.4.2] - 2026-11-05
+
+- Published Release ID `434925955` from tag commit `9661091e35aed98b18483ff6d25a54fe0653c877`. The listed asset is 380,135 bytes, SHA-256 `ef3b430ccff66f3c1905516be018991585e5945ceccdd2b06eaaf1545fdd06fd`. Its generated release-body heading starts at v1.4.1, a retained version-heading mismatch.
+
+## [v1.4.1] - 2026-11-04
+
+- Published Release ID `433672805` from tag commit `480972a235655f6d1e9ec6137f85ad3f30b8655a`. The listed asset is 354,216 bytes, SHA-256 `c430c3f339ee98559ae6f9599782c39e1ee371ba4c021ab7837523f8e8152f6e`. Its generated release-body heading starts at v1.4.0, a retained version-heading mismatch.
+
+## [v1.4.0] - 2026-11-01
+
+- Published Release ID `430849590` from tag commit `ca6edf2a381118fbd81aeccb82287f234f44a257`. The listed asset is 301,189 bytes, SHA-256 `2bd2c437ed10bb78468067cce6b49757368d8d4cee1e2b41b5e299fa65b86ee0`. Its generated release-body heading starts at v1.3.9, a retained version-heading mismatch.
 
 ## Follow-up fixes — documented 2026-10-23 (includes earlier changes)
 

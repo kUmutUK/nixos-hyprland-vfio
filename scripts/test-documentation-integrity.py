@@ -140,8 +140,8 @@ require(
     and len(documented_release_path_list) == len(documented_release_paths)
     and len(workflow_release_path_list) == len(workflow_release_paths)
     and documented_release_paths == workflow_release_paths
-    and len(workflow_release_paths) == 42,
-    "RELEASING.md and release.yml must contain the same unique exhaustive 42-path literal allowlist",
+    and len(workflow_release_paths) == 43,
+    "RELEASING.md and release.yml must contain the same unique exhaustive 43-path literal allowlist",
 )
 require(
     "no wildcard rules or blanket exemptions" in RELEASING
@@ -965,6 +965,7 @@ verification_metadata_paths = {
     "scripts/test-documentation-integrity.py",
     "scripts/test-release-workflow-python.py",
     "scripts/test-lsfg-vk-v2.py",
+    "scripts/package-source-zip.sh",
 }
 for path in verification_metadata_paths:
     require(path in RELEASE_WORKFLOW, f"release workflow must keep {path!r} in the full-build ancestor allowlist")
@@ -1443,7 +1444,7 @@ require(
     "CHANGELOG must distinguish the historical four/five-file preflight from the current six-file source tree",
 )
 
-require("ilk snapshot: 2026-10-19" in ARCHIVE and "önsöz son güncelleme: 2026-11-04" in ARCHIVE, "archive note must distinguish its snapshot date from the preface update date")
+require("kayıtlı durum tarihi: 2026-10-19" in ARCHIVE and "önsöz son güncelleme: 2026-11-14" in ARCHIVE, "archive note must distinguish its snapshot date from the preface update date")
 require("Bu 19 Ekim snapshot'ındaki XML yazma açıklaması güncel değildir" in ARCHIVE, "archive preface must mark the old installer XML-writing statement as superseded")
 require("Aşağıdaki `[1.3.8]` ICH9 kaldırma kaydı" in ARCHIVE and "6e8d6cfe" in ARCHIVE and "46bf9015" in ARCHIVE, "archive preface must trace the ICH9 removal and restoration")
 require("not byte-for-byte identical to the original changelog" in ARCHIVE_INDEX and "historical Turkish release entries" in ARCHIVE_INDEX, "archive index must distinguish preserved release entries from the added preface")

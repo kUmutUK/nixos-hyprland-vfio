@@ -58,11 +58,12 @@ The dual-guest VM definition `vm-xml/win10.xml` remains outside the ancestor-bui
    `scripts/test-vm-diagnostic.py`,
    `scripts/test-vm-xml-paths.py`,
    `scripts/test-installer-rollback.sh`,
+   `scripts/package-source-zip.sh`,
    `.github/workflows/check.yml`,
    `.github/workflows/kernel-build.yml`,
    `.github/workflows/release.yml`
 
-   The list is intentionally limited to documentation, CI/release metadata, standalone migration helpers, and offline tests that do not change the installed NixOS toplevel or selected kernel. The VM XML structural test is included because it is an offline regression test; the live `vm-xml/win10.xml` definition is deliberately excluded until libvirt/QEMU semantic validation and real Windows and NixOS guest boot tests are documented. A file is not eligible merely because it lives under `scripts/` or is labelled a test: each accepted path is named explicitly and reviewed against the runtime/build boundary.
+   The list is intentionally limited to documentation, CI/release metadata, the canonical source-archive packaging/validation helper, standalone migration helpers, and offline tests that do not change the installed NixOS toplevel or selected kernel. The VM XML structural test is included because it is an offline regression test; the live `vm-xml/win10.xml` definition is deliberately excluded until libvirt/QEMU semantic validation and real Windows and NixOS guest boot tests are documented. A file is not eligible merely because it lives under `scripts/` or is labelled a test: each accepted path is named explicitly and reviewed against the runtime/build boundary.
 
    Any later change outside this exact list, including a documentation or test file not named above, blocks publication by default and requires a new full-system build. In particular, changes to `install.sh` remain gated by a new full-system build and are intentionally excluded from this ancestor-build allowlist.
 
