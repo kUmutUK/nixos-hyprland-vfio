@@ -1,6 +1,6 @@
 # flake.nix
 {
-  description = "NixOS CachyOS RT-Bore-LTO Kernel — Gaming + Hyprland + VFIO";
+  description = "NixOS CachyOS RT-Bore-LTO x86-64-v3 Kernel — Gaming + Hyprland + VFIO";
 
   # Configure the Nix Community binary cache at flake-evaluation time for
   # supported packages. This is not the CachyOS kernel cache: the selected
@@ -19,6 +19,8 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     cachyos-kernel.url = "github:xddxdd/nix-cachyos-kernel/master";
+    # Reuse the kernel flake's exact Nixpkgs input when regenerating its package set.
+    cachyos-nixpkgs.follows = "cachyos-kernel/nixpkgs";
     home-manager.url = "github:nix-community/home-manager";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
     # Impermanence is intentionally not imported: this configuration does
@@ -30,12 +32,30 @@
     {
       nixpkgs,
       cachyos-kernel,
+      cachyos-nixpkgs,
       home-manager,
       ...
     }:
     let
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
+      # Keep kernel and out-of-tree module derivations on the exact Nixpkgs revision
+      # used by nix-cachyos-kernel's pinned overlay.
+      cachyosPkgs = import cachyos-nixpkgs {
+        inherit system;
+        config = {
+          allowUnfree = true;
+          allowInsecurePredicate = _: true;
+        };
+      };
+      cachyosKernelHelpers = cachyosPkgs.callPackage "${cachyos-kernel}/helpers.nix" { };
+      rtBoreLtoV3Kernel =
+        cachyos-kernel.legacyPackages.${system}.linux-cachyos-rt-bore-lto.override {
+          processorOpt = "x86_64-v3";
+        };
+      rtBoreLtoV3KernelPackages = cachyosKernelHelpers.kernelModuleLLVMOverride (
+        cachyosPkgs.linuxKernel.packagesFor rtBoreLtoV3Kernel
+      );
       # LSFG-VK v2 is licensed CC BY-NC-ND 4.0, so allow it explicitly for this
       # standalone package output while keeping the main package set unchanged.
       pkgsUnfree = import nixpkgs {
@@ -52,13 +72,21 @@
           home-manager.nixosModules.home-manager
           ({ pkgs, ... }: {
             nixpkgs.config.allowUnfree = true;
-            # Keep the CachyOS kernel and patch set on the upstream pinned nixpkgs revision.
-            # The package follows the `master` input; its kernel version is not hard-coded here.
-            # Update the flake lock intentionally with `nix flake update cachyos-kernel` when
-            # upstream publishes a newer kernel. RT-Bore-LTO LTO is not in the binary cache,
-            # so this variant is expected to build locally even with `pinned`.
+            # Build reference-host userland C/C++ packages for x86-64-v3 and tune
+            # them for its Zen 3 Ryzen 5 5600 CPU. This generation is not portable
+            # to CPUs without x86-64-v3 support.
+            nixpkgs.hostPlatform = {
+              inherit system;
+              gcc = {
+                arch = "x86-64-v3";
+                tune = "znver3";
+              };
+            };
+            # Keep CachyOS kernel source/patches and the module set on the exact
+            # Nixpkgs revision used by the kernel flake. RT-Bore, RT, and ThinLTO
+            # remain enabled; only the kernel CPU baseline is raised.
             nixpkgs.overlays = [ cachyos-kernel.overlays.pinned ];
-            boot.kernelPackages = pkgs.cachyosKernels.linuxPackages-cachyos-rt-bore-lto;
+            boot.kernelPackages = rtBoreLtoV3KernelPackages;
             # Hyprland, its companion tools, and xdg-desktop-portal-hyprland
             # come from the same nixpkgs revision to keep their ABI consistent.
             # Keep shared system packages declared in configuration.nix only;

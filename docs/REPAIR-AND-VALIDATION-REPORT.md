@@ -1,8 +1,20 @@
-# Repair and validation report — updated 2026-11-12 (v1.5.2, Rev 8, source-tree audit reconciliation)
+# Repair and validation report — updated 2026-11-14 (v1.5.2, Rev 9, Linux performance profile)
 
 > **Delivery-scope note:** This report is part of the tracked source tree. The dated “patch-only ZIP” notes below are historical. For a canonical full-source ZIP, use `scripts/package-source-zip.sh` or the CI-uploaded `nixos-hyprland-vfio-source` artifact for the exact commit. The helper verifies tracked-file completeness, excludes `.git/`, preserves executable bits, and makes the finished artifact readable from shared output directories.
 
 ## Chronological navigation (newest first)
+
+### Linux performance-guide implementation — 2026-11-14 (new full-system build gate)
+
+The supplied cross-distribution performance guide was reconciled with the actual NixOS reference configuration and the locked CachyOS kernel inputs.
+
+- **x86-64-v3:** the NixOS host platform now sets `gcc.arch = "x86-64-v3"` and `gcc.tune = "znver3"`; the selected RT-Bore-LTO 7.3.3 kernel is derived with CachyOS `processorOpt = "x86_64-v3"`. A new `cachyos-nixpkgs` flake input follows `cachyos-kernel/nixpkgs`, so the rebuilt package set uses the exact same Nixpkgs revision as the kernel source. `kernelModuleLLVMOverride` remains applied to the regenerated kernel package set. RT, BORE, Clang ThinLTO, and the targeted Rust/BTF workaround are retained. This v3 generation is not portable to CPUs lacking x86-64-v3 support.
+- **Memory policy:** keep NixOS' default 50%-of-RAM ZSTD ZRAM at priority 100 and the existing encrypted disk-swap device at priority 10. Do not enable ZSwap while ZRAM is active. Remove the custom `vm.swappiness = 180` override and retain the kernel/NixOS default. This change does not assert that the physical host's ZRAM usage has been measured.
+- **OOM and scheduler:** enable systemd-oomd monitoring on root and user slices; do not enable EarlyOOM alongside it. Enable `scx-loader` with `scx_bpfland` as the sched_ext default. BPF-Land is a runtime scheduler replacing normal-task BORE/CFS scheduling while active; the RT-Bore kernel scheduler remains the fallback when sched_ext stops.
+- **Process priorities and boot:** remove Ananicy-cpp to avoid layering another process-priority daemon over sched_ext and GameMode. Disable `NetworkManager-wait-online.service` because the checked-in reference host mounts only local filesystems; re-enable it if future network-mounted storage or a service requires network-online ordering. Other services are not disabled without target-host `systemd-analyze critical-chain` evidence.
+- **Preserved safety choices:** do not add `mitigations=off`, preload, or a second OOM killer. Existing GPU/VFIO identity, GameMode settings, power-profiles-daemon, encrypted swap identity, and VM XML are unchanged.
+
+**Validation/build boundary:** this update changes `nixos/configuration.nix`, `nixos/flake.nix`, and `nixos/flake.lock`. A fresh full-system build is required before release. The change does not include a completed NixOS toplevel/kernel build, target-host activation, FPS/frametime benchmark, or VM lifecycle result. The full-system workflow remains manual-only and was not dispatched as part of this change; retain a known-good boot generation when applying the new configuration.
 
 ### Supplied source-tree audit reconciliation — 2026-11-12 (reviewed baseline `6d4b898d1cbb391b96525deff25e40fd87be1d01`)
 

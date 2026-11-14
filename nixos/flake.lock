@@ -126,7 +126,11 @@
       "inputs": {
         "cachyos-kernel": "cachyos-kernel",
         "home-manager": "home-manager",
-        "nixpkgs": "nixpkgs_2"
+        "nixpkgs": "nixpkgs_2",
+        "cachyos-nixpkgs": [
+          "cachyos-kernel",
+          "nixpkgs"
+        ]
       }
     }
   },

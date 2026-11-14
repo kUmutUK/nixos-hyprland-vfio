@@ -4,6 +4,13 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+### Apply Linux performance guide to the NixOS reference host — 2026-11-14
+
+- Set the Nixpkgs host platform to x86-64-v3 / Zen 3 and derive an x86-64-v3 CachyOS RT-Bore-LTO kernel package set from the exact Nixpkgs revision followed by the kernel flake; keep RT, BORE, ThinLTO, and the LTO module compatibility helper.
+- Enable `scx-loader` with `scx_bpfland`, configure systemd-oomd to monitor root and user slices, and leave EarlyOOM disabled so only one userspace OOM policy is active.
+- Preserve ZSTD ZRAM at priority 100 and encrypted disk swap at priority 10; do not enable ZSwap, remove the explicit swappiness=180 override, disable Ananicy-cpp, and disable NetworkManager-wait-online because the host has no network filesystems.
+- Record the x86-64-v3 CPU portability boundary and the required fresh manual full-system build. This commit does not claim a completed kernel build, host activation, benchmark, or VM lifecycle test.
+
 ### Independent audit cross-check and preflight fixes — 2026-11-11
 
 - Correct the v1.4.9 snapshot narrative: the published tag / Release #25 targets `a20962f`; Normal CI #1309 belongs to preceding `ad231d7`. The 410,138-byte archive is reproducible from the latter, while the 411,239-byte published asset belongs to the tag target. Only the original local copy's acquisition history is unknown.

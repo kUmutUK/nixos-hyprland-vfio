@@ -221,12 +221,8 @@ in
     "vm.max_map_count" = 1048576;
     "vm.nr_hugepages" = 0;
     # Swap priority selects which swap device is used first: higher values take
-    # precedence. `zramSwap.priority = 100` is above the disk-swap priority of 10 in
-    # `hardware-configuration.nix`, so the kernel prefers zram. `vm.swappiness` instead
-    # controls how aggressively memory pages are swapped; it does not choose between
-    # zram and disk. A high value can trigger earlier reclaim and, once zram fills,
-    # disk-swap activity that may cause gaming frametime spikes.
-    "vm.swappiness" = 180;
+    # precedence. zram priority 100 remains above the encrypted disk-swap priority 10.
+    # Leave vm.swappiness at the kernel/NixOS default rather than forcing earlier reclaim.
     "kernel.sched_autogroup_enabled" = 0;
     "kernel.perf_event_paranoid" = 1;
     "fs.inotify.max_user_watches" = 524288;
@@ -297,14 +293,31 @@ in
   };
 
   services.power-profiles-daemon.enable = true;
-  # Three components can change CPU scheduling/priority, and their order is not
-  # guaranteed: power-profiles-daemon controls the governor, ananicy-cpp applies
-  # nice/ioprio rules, and GameMode's renice = 10 is negated to nice value (-10),
-  # raising CPU scheduling priority when GameMode successfully applies it. This
-  # configuration accepts the overlap; consider using a balanced desktop power
-  # profile outside games.
+
+  # Use systemd-oomd as the sole userspace OOM manager. NixOS enables its daemon
+  # by default, but slice monitoring must be opted into explicitly. This follows
+  # Fedora's root/user-slice policy; EarlyOOM is deliberately not enabled alongside it.
+  systemd.oomd = {
+    enable = true;
+    enableRootSlice = true;
+    enableUserSlices = true;
+  };
+
+  # BPF-Land is the selected sched_ext policy. The kernel's RT-Bore/BORE scheduler
+  # remains the fallback whenever sched_ext is stopped or cannot be activated.
+  services.scx-loader = {
+    enable = true;
+    config.default_sched = "scx_bpfland";
+  };
+
+  # GameMode retains its existing game-time priority behavior. Ananicy-cpp is not
+  # enabled: avoid stacking a second process-priority policy over sched_ext/GameMode.
+  # Use a balanced desktop power profile outside games.
   networking.hostName = "nixos";
   networking.networkmanager.enable = true;
+  # The reference host mounts only local filesystems; do not hold boot for network-online.
+  # Re-enable this if a future remote mount or service requires network-online ordering.
+  systemd.services.NetworkManager-wait-online.enable = false;
   time.timeZone = "Europe/Istanbul";
   i18n.supportedLocales = [ "en_US.UTF-8/UTF-8" ];
   i18n.defaultLocale = "en_US.UTF-8";
@@ -848,12 +861,6 @@ in
   };
 
   programs.nix-ld.enable = true;
-
-  services.ananicy = {
-    enable = true;
-    package = pkgs.ananicy-cpp;
-    rulesProvider = pkgs.ananicy-rules-cachyos;
-  };
 
   # Impermanence is intentionally disabled. Importing the module without defining
   # `environment.persistence` only produced a rebuild warning. An attempted persistence

@@ -1,6 +1,6 @@
 # Historical Change Log Index (English)
 
-## Current release status — 2026-11-11
+## Current release status — 2026-11-14
 
 **Latest published release:** [v1.5.2](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.5.2), Release ID `441604359`, published by [Release run #32](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43012396764) from exact tag commit `418bb687ec4f4d539e3ccc2d839baf242552c018`. Normal CI [#1396](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43012004213) passed on that commit. The canonical source ZIP is 451,101 bytes, SHA-256 `11c0b38fc3de7c8f99a089018ad89131e175ca323c6652a19573f13f40b082c6`. The preceding [v1.5.1](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.5.1) archive contains 74 tracked files and is not the latest release.
 
@@ -19,6 +19,8 @@
 **v1.4.9 asset provenance:** the published 411,239-byte / SHA-256 `56c3d8dfde3eb0b224803ccefa1b624b831a15eca02aaf62d5c4fd4907ff8a3e` asset corresponds to tag commit `a20962f9be065f17c7c2ec143473c47b7a75aae9`. The 410,138-byte / `f28f91955d05679b7ff64cb33fbd193a86f87527f856b9801f0e7a197c1f5e61` audit-intake ZIP is now identified as the canonical archive for preceding commit `ad231d7529721eae343385cca9073790e4e3be61`; it is not the published asset.
 
 **Documentation/source-tree audit reconciliation (11 November 2026):** the reviewed `main` snapshot `418bb687ec4f4d539e3ccc2d839baf242552c018` contained 75 tracked files. The INSTALLATION VM bootstrap's primary-disk selector was aligned with README's stable VirtIO `vda` filter; CI now compares and executes both documented snippets against the dual-disk XML. The README tracked-file count is checked dynamically in both checkout and canonical source-ZIP test modes. The WirePlumber module link now uses the root system Nixpkgs lock revision. Build #13 timestamps and the historical Build #16 “latest” wording were clarified. The v1.4.9 audit-intake discrepancy remains in the historical record, while the current verified asset measurement is the 411,239-byte / `56c3d8df...` published asset documented above. These are documentation and regression-test changes only; no runtime configuration or VM template was changed.
+
+**Performance configuration update (14 November 2026):** the reference NixOS host now targets x86-64-v3 for Nixpkgs C/C++ builds and the RT-Bore-LTO kernel. The kernel package set is regenerated using the same Nixpkgs revision as the CachyOS kernel flake. `scx-loader` starts `scx_bpfland`; systemd-oomd monitors root and user slices; ZSTD ZRAM and encrypted disk swap remain in their existing priority order, with no ZSwap or forced swappiness=180. Ananicy-cpp is removed and NetworkManager-wait-online is disabled for the local-filesystem host. This new configuration is not yet covered by a full-system build or physical-host activation; a fresh manual build is required before release. The previous Build #18 and the 11 November owner-reported build do not validate this derived x86-64-v3 kernel configuration.
 
 ## Audit intake snapshot — 2026-11-10 (historical)
 
