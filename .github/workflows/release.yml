@@ -140,17 +140,25 @@ jobs:
           # A previous full-system build remains valid only when every later
           # changed path matches the exact literal allowlist documented in RELEASING.md.
           unexpected=0
-          while IFS= read -r path; do
+          while read -r status path; do
             [[ -z "$path" ]] && continue
             case "$path" in
-              .git-cliff.toml|RELEASING.md|README.md|INSTALLATION.md|DEGISIKLIK_GECMISI.md|CONTRIBUTING.md|CHANGELOG.md|DISCLAIMER.md|docs/REPAIR-AND-VALIDATION-REPORT.md|docs/UUID-AND-MACHINE-IDENTITY.md|docs/OPTISCALER.md|docs/OPTISCALER-MANAGER.md|docs/MAKO.md|docs/archive/DEGISIKLIK_GECMISI.md|docs/archive/README.md|docs/archive/HISTORICAL-AUDITS.md|scripts/check-home-snapper-layout.py|scripts/test-home-snapper-layout.py|scripts/check-vm-iso-paths.py|scripts/test-vm-iso-paths.py|scripts/test-vm-xml.py|scripts/test-vm-xml-structure.py|scripts/extract-embedded-scripts.py|scripts/test-extract-embedded-scripts.py|scripts/test-mako-renderer.py|scripts/optiscaler_manager.py|scripts/test-optiscaler-manager.py|scripts/sync-vm-xml.py|scripts/test-vm-xml-sync.py|scripts/test-manual-vm-bootstrap.sh|scripts/test-installer-invariants.sh|scripts/test-vfio-hook-driver-state.sh|scripts/test-documentation-integrity.py|scripts/test-release-workflow-python.py|scripts/test-lsfg-vk-v2.py|scripts/prepare-vm-diagnostic.py|scripts/test-vm-diagnostic.py|scripts/test-vm-xml-paths.py|scripts/test-installer-rollback.sh|scripts/package-source-zip.sh|.github/workflows/check.yml|.github/workflows/kernel-build.yml|.github/workflows/release.yml)
+              docs/archive/ANALYSIS-2026-10-05-ZIP3-SUPERSEDED.md|docs/archive/APPLIED-FIXES.md|docs/archive/FIX-REPORT-2026-10-13.md|docs/archive/INSTALL-SAFETY-FIXES-2026-10-12.md|docs/archive/NIXOS-HYPRLAND-VFIO-ANALYSIS.md|docs/archive/POST-FIX-VALIDATION-2026-10-12.md|docs/archive/REMAINING-ISSUES-AUDIT-2026-10-09.md|docs/archive/nixos-hyprland-vfio-analysis-v2-SUPERSEDED.md|docs/archive/nixos-hyprland-vfio-review-report.md)
+                if [[ "$status" != "D" ]]; then
+                  echo "::error::Archived audit snapshots are allowlisted for deletion only: $path (status: $status)"
+                  unexpected=1
+                fi
+                ;;
+            esac
+            case "$path" in
+              .git-cliff.toml|RELEASING.md|README.md|INSTALLATION.md|DEGISIKLIK_GECMISI.md|CONTRIBUTING.md|CHANGELOG.md|DISCLAIMER.md|docs/REPAIR-AND-VALIDATION-REPORT.md|docs/UUID-AND-MACHINE-IDENTITY.md|docs/OPTISCALER.md|docs/OPTISCALER-MANAGER.md|docs/MAKO.md|docs/archive/DEGISIKLIK_GECMISI.md|docs/archive/README.md|docs/archive/HISTORICAL-AUDITS.md|docs/archive/ANALYSIS-2026-10-05-ZIP3-SUPERSEDED.md|docs/archive/APPLIED-FIXES.md|docs/archive/FIX-REPORT-2026-10-13.md|docs/archive/INSTALL-SAFETY-FIXES-2026-10-12.md|docs/archive/NIXOS-HYPRLAND-VFIO-ANALYSIS.md|docs/archive/POST-FIX-VALIDATION-2026-10-12.md|docs/archive/REMAINING-ISSUES-AUDIT-2026-10-09.md|docs/archive/nixos-hyprland-vfio-analysis-v2-SUPERSEDED.md|docs/archive/nixos-hyprland-vfio-review-report.md|scripts/check-home-snapper-layout.py|scripts/test-home-snapper-layout.py|scripts/check-vm-iso-paths.py|scripts/test-vm-iso-paths.py|scripts/test-vm-xml.py|scripts/test-vm-xml-structure.py|scripts/extract-embedded-scripts.py|scripts/test-extract-embedded-scripts.py|scripts/test-mako-renderer.py|scripts/optiscaler_manager.py|scripts/test-optiscaler-manager.py|scripts/sync-vm-xml.py|scripts/test-vm-xml-sync.py|scripts/test-manual-vm-bootstrap.sh|scripts/test-installer-invariants.sh|scripts/test-vfio-hook-driver-state.sh|scripts/test-documentation-integrity.py|scripts/test-release-workflow-python.py|scripts/test-lsfg-vk-v2.py|scripts/prepare-vm-diagnostic.py|scripts/test-vm-diagnostic.py|scripts/test-vm-xml-paths.py|scripts/test-installer-rollback.sh|scripts/package-source-zip.sh|.github/workflows/check.yml|.github/workflows/kernel-build.yml|.github/workflows/release.yml)
                 ;;
               *)
                 echo "::error::Full-system build is older and $path changed afterwards."
                 unexpected=1
                 ;;
             esac
-          done < <(git diff --name-only "$build_sha" "$GITHUB_SHA")
+          done < <(git diff --no-renames --name-status "$build_sha" "$GITHUB_SHA")
 
           manual_host_attestation=0
           if [[ "$unexpected" -ne 0 ]]; then

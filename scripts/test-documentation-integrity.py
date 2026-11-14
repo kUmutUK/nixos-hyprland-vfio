@@ -141,8 +141,24 @@ require(
     and len(documented_release_path_list) == len(documented_release_paths)
     and len(workflow_release_path_list) == len(workflow_release_paths)
     and documented_release_paths == workflow_release_paths
-    and len(workflow_release_paths) == 43,
-    "RELEASING.md and release.yml must contain the same unique exhaustive 43-path literal allowlist",
+    and len(workflow_release_paths) == 52,
+    "RELEASING.md and release.yml must contain the same unique exhaustive 52-path literal allowlist",
+)
+require(
+    "git diff --no-renames --name-status" in RELEASE_WORKFLOW
+    and "Archived audit snapshots are allowlisted for deletion only" in RELEASE_WORKFLOW
+    and all(path in RELEASING for path in (
+        "docs/archive/ANALYSIS-2026-10-05-ZIP3-SUPERSEDED.md",
+        "docs/archive/APPLIED-FIXES.md",
+        "docs/archive/FIX-REPORT-2026-10-13.md",
+        "docs/archive/INSTALL-SAFETY-FIXES-2026-10-12.md",
+        "docs/archive/NIXOS-HYPRLAND-VFIO-ANALYSIS.md",
+        "docs/archive/POST-FIX-VALIDATION-2026-10-12.md",
+        "docs/archive/REMAINING-ISSUES-AUDIT-2026-10-09.md",
+        "docs/archive/nixos-hyprland-vfio-analysis-v2-SUPERSEDED.md",
+        "docs/archive/nixos-hyprland-vfio-review-report.md",
+    )),
+    "superseded archive reports must be explicitly documented and permitted for deletion only",
 )
 require(
     "no wildcard rules or blanket exemptions" in RELEASING
@@ -1085,6 +1101,15 @@ verification_metadata_paths = {
     "docs/archive/DEGISIKLIK_GECMISI.md",
     "docs/archive/README.md",
     "docs/archive/HISTORICAL-AUDITS.md",
+    "docs/archive/ANALYSIS-2026-10-05-ZIP3-SUPERSEDED.md",
+    "docs/archive/APPLIED-FIXES.md",
+    "docs/archive/FIX-REPORT-2026-10-13.md",
+    "docs/archive/INSTALL-SAFETY-FIXES-2026-10-12.md",
+    "docs/archive/NIXOS-HYPRLAND-VFIO-ANALYSIS.md",
+    "docs/archive/POST-FIX-VALIDATION-2026-10-12.md",
+    "docs/archive/REMAINING-ISSUES-AUDIT-2026-10-09.md",
+    "docs/archive/nixos-hyprland-vfio-analysis-v2-SUPERSEDED.md",
+    "docs/archive/nixos-hyprland-vfio-review-report.md",
     "scripts/check-home-snapper-layout.py",
     "scripts/test-home-snapper-layout.py",
     "scripts/check-vm-iso-paths.py",

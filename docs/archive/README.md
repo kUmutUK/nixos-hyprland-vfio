@@ -1,19 +1,12 @@
 # Archived audits and historical notes
 
-**Status:** historical snapshots only; not a current defect list.
+**Status:** retained historical records only; this is not a current defect list.
 
-The reports in this directory describe older ZIP files or commits and may contain findings that were later fixed, disproved, or superseded. Check the current source before acting on any old recommendation. The Turkish release-by-release entries are retained here as [`DEGISIKLIK_GECMISI.md`](DEGISIKLIK_GECMISI.md), beneath a dated status preface that flags settings later superseded; the combined file is not byte-for-byte identical to the original changelog. The repository-root `DEGISIKLIK_GECMISI.md` is an English current-state summary and pointer.
+This directory now keeps the detailed Turkish release history and the consolidated audit-retraction/provenance register. Nine one-off analysis, fix, and validation snapshots were removed on 15 November 2026 because their findings had been superseded by later source changes and the maintained `docs/REPAIR-AND-VALIDATION-REPORT.md`. Their original contents remain recoverable from Git history.
+
+The retained Turkish release entries are **not byte-for-byte identical to the original changelog** because a dated status preface was added to flag settings later superseded. They are historical context, not a current configuration reference.
 
 ## Contents
 
 - [`DEGISIKLIK_GECMISI.md`](DEGISIKLIK_GECMISI.md): historical Turkish release entries, preceded by a dated status preface.
-- [`HISTORICAL-AUDITS.md`](HISTORICAL-AUDITS.md): provenance, retractions, and live-only checks.
-- [`ANALYSIS-2026-10-05-ZIP3-SUPERSEDED.md`](ANALYSIS-2026-10-05-ZIP3-SUPERSEDED.md): early ZIP3 snapshot.
-- [`nixos-hyprland-vfio-analysis-v2-SUPERSEDED.md`](nixos-hyprland-vfio-analysis-v2-SUPERSEDED.md): ZIP2 snapshot.
-- [`NIXOS-HYPRLAND-VFIO-ANALYSIS.md`](NIXOS-HYPRLAND-VFIO-ANALYSIS.md): early consolidated static review.
-- [`nixos-hyprland-vfio-review-report.md`](nixos-hyprland-vfio-review-report.md): 2026-10-12 review snapshot.
-- [`FIX-REPORT-2026-10-13.md`](FIX-REPORT-2026-10-13.md): selected fixes described on 2026-10-13.
-- [`INSTALL-SAFETY-FIXES-2026-10-12.md`](INSTALL-SAFETY-FIXES-2026-10-12.md): installer safety notes.
-- [`POST-FIX-VALIDATION-2026-10-12.md`](POST-FIX-VALIDATION-2026-10-12.md): host-only validation checklist.
-- [`REMAINING-ISSUES-AUDIT-2026-10-09.md`](REMAINING-ISSUES-AUDIT-2026-10-09.md): earlier open-issues snapshot.
-- [`APPLIED-FIXES.md`](APPLIED-FIXES.md): historical fix register.
+- [`HISTORICAL-AUDITS.md`](HISTORICAL-AUDITS.md): consolidated provenance, retractions, and checks that still require the target host.

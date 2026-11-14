@@ -35,6 +35,15 @@ The dual-guest VM definition `vm-xml/win10.xml` remains outside the ancestor-bui
    `docs/archive/DEGISIKLIK_GECMISI.md`,
    `docs/archive/README.md`,
    `docs/archive/HISTORICAL-AUDITS.md`,
+   `docs/archive/ANALYSIS-2026-10-05-ZIP3-SUPERSEDED.md`,
+   `docs/archive/APPLIED-FIXES.md`,
+   `docs/archive/FIX-REPORT-2026-10-13.md`,
+   `docs/archive/INSTALL-SAFETY-FIXES-2026-10-12.md`,
+   `docs/archive/NIXOS-HYPRLAND-VFIO-ANALYSIS.md`,
+   `docs/archive/POST-FIX-VALIDATION-2026-10-12.md`,
+   `docs/archive/REMAINING-ISSUES-AUDIT-2026-10-09.md`,
+   `docs/archive/nixos-hyprland-vfio-analysis-v2-SUPERSEDED.md`,
+   `docs/archive/nixos-hyprland-vfio-review-report.md`,
    `scripts/check-home-snapper-layout.py`,
    `scripts/test-home-snapper-layout.py`,
    `scripts/check-vm-iso-paths.py`,
@@ -62,6 +71,8 @@ The dual-guest VM definition `vm-xml/win10.xml` remains outside the ancestor-bui
    `.github/workflows/check.yml`,
    `.github/workflows/kernel-build.yml`,
    `.github/workflows/release.yml`
+
+   The nine superseded one-off archive reports listed above are included solely as deletion paths. The release workflow verifies that each has Git diff status `D`; editing or recreating one remains outside this exception.
 
    The list is intentionally limited to documentation, CI/release metadata, the canonical source-archive packaging/validation helper, standalone migration helpers, and offline tests that do not change the installed NixOS toplevel or selected kernel. The VM XML structural test is included because it is an offline regression test; the live `vm-xml/win10.xml` definition is deliberately excluded until libvirt/QEMU semantic validation and real Windows and NixOS guest boot tests are documented. A file is not eligible merely because it lives under `scripts/` or is labelled a test: each accepted path is named explicitly and reviewed against the runtime/build boundary.
 
