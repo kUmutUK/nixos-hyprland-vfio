@@ -567,9 +567,14 @@ restore_vfio_state() {
     return 1
   fi
   if ! cat -- "$RESTORE_XML_FILE"; then
-    log "ERROR: Could not return the unchanged domain XML to libvirt after VFIO preparation."
+    log "ERROR: Could not return the unchanged domain XML to libvirt after VFIO preparation; rolling back the GPU handoff."
     rm -f -- "$RESTORE_XML_FILE"
     RESTORE_XML_FILE=""
+    # Preparation already succeeded and disabled its signal traps. If libvirt
+    # cannot receive the XML, explicitly restore the host GPU and desktop state.
+    if ! rollback_prepare; then
+      log "ERROR: VFIO rollback after restore-XML output failure was incomplete; inspect the VFIO log and host driver state."
+    fi
     return 1
   fi
   rm -f -- "$RESTORE_XML_FILE"

@@ -4,11 +4,19 @@
 
 ## Chronological navigation (newest first)
 
+### VFIO saved-state restore output-failure rollback — 2026-11-14
+
+The restore hook is a libvirt XML filter. It buffers the incoming domain XML, performs the VFIO preparation, and then returns the unchanged XML. A failure while writing the buffered XML to the filter's stdout occurs after preparation has already succeeded; the old error branch removed the temporary file and returned non-zero without invoking the preparation rollback.
+
+The current patch calls `rollback_prepare` when that final XML output operation fails, then returns failure to libvirt. If rollback itself reports failure, the hook emits an additional diagnostic directing the operator to inspect the VFIO log and host driver state. The temporary XML buffer is removed and its path variable cleared in either case.
+
+`scripts/test-vfio-hook-driver-state.sh` now mocks a failed final `cat` after successful preparation and asserts a non-zero result, exactly one rollback call, no emitted XML in the failed-output fixture, and temporary-buffer cleanup. This covers the previously missing control-flow branch only; it does not validate a real libvirt saved-state/managed-save operation, physical GPU handback, or host graphics recovery.
+
 ### Kernel-only x86-64-v3 correction — 2026-11-14
 
 The initial performance-profile change applied x86-64-v3/Zen 3 compiler flags to the entire Nixpkgs host platform. That would force a broad userland rebuild and unnecessarily narrow the binary-cache/CPU compatibility boundary. The current configuration now sets `nixpkgs.hostPlatform = system` (`x86_64-linux`) and keeps the v3 override only on the CachyOS RT-Bore-LTO kernel through `processorOpt = "x86_64-v3"`. RT, BORE, ThinLTO, the exact CachyOS Nixpkgs input, and the kernel-module compatibility helper are retained. Only the selected kernel requires x86-64-v3 CPU support; ordinary userland packages remain generic x86-64 and can use matching substitutes where available.
 
-This correction changes the flake target and reconciles current documentation/regression checks. It does not build the kernel or full NixOS toplevel, activate a generation, or establish a target-host boot result. The kernel-only v3 derivation still requires a fresh manual Full NixOS System Build and target-host boot validation. The prior Normal CI #1537 passed before this correction; the correction commit needs its own CI result.
+This correction changes the flake target and reconciles current documentation/regression checks. It does not build the kernel or full NixOS toplevel, activate a generation, or establish a target-host boot result. The kernel-only v3 derivation still requires a fresh manual Full NixOS System Build and target-host boot validation. Normal CI #1538 completed successfully on the exact pre-follow-up correction commit `562650a071a3797d6a8b0ac1364139827455f8d7` (run ID `43635956350`). This confirms the normal CI gates for that source snapshot; it does not build the selected kernel or the full NixOS toplevel.
 
 ### Linux performance-guide reconciliation and host checks — 2026-11-14
 
@@ -16,7 +24,7 @@ The cross-distribution guide was compared against the NixOS reference system rat
 
 The README now provides read-only commands to inspect those live settings and use `systemd-analyze critical-chain` to locate boot dependencies. A documentation-integrity regression checks both the commands and the key source configuration choices. No additional NixOS runtime setting, kernel input/lock, VM XML, PCI identity, or desktop preference was changed in this reconciliation.
 
-Normal CI #1534 passed on the pre-existing source configuration and the ZRAM test correction. The current commit will require its own Normal CI result. CI's flake evaluation is not a complete NixOS toplevel/kernel build; the current x86-64-v3-derived RT-Bore-LTO kernel still requires a fresh manual Full NixOS System Build and target-host activation/boot test. No performance gain or live runtime state is claimed by adding these read-only checks.
+Normal CI #1538 completed successfully on the exact pre-follow-up source snapshot `562650a071a3797d6a8b0ac1364139827455f8d7` (run ID `43635956350`). The successful evaluation/package checks do not constitute a full NixOS toplevel or selected-kernel build. CI's flake evaluation is not a complete NixOS toplevel/kernel build; the current x86-64-v3-derived RT-Bore-LTO kernel still requires a fresh manual Full NixOS System Build and target-host activation/boot test. No performance gain or live runtime state is claimed by adding these read-only checks.
 
 ### ZRAM capacity increase — 2026-11-14
 

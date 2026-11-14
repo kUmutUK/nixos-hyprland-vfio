@@ -302,8 +302,46 @@ fi
   || fail 'restore hook emitted domain XML after VFIO preparation failed'
 [[ "$PREPARE_CALLS" -eq 1 ]] \
   || fail 'restore failure did not invoke the VFIO prepare path exactly once'
+
+# If VFIO preparation succeeds but writing the buffered XML back to libvirt
+# fails, the hook must still roll the GPU/desktop preparation back.
+REAL_CAT="$(command -v cat)"
+MOCK_RESTORE_OUTPUT_FAIL=1
+MOCK_RESTORE_OUTPUT_PATH=""
+ROLLBACK_CALLS=0
+rollback_prepare() {
+  ROLLBACK_CALLS=$((ROLLBACK_CALLS + 1))
+}
+cat() {
+  if [[ "$MOCK_RESTORE_OUTPUT_FAIL" == "1" \
+    && "${1:-}" == "--" \
+    && "${2:-}" == "${RESTORE_XML_FILE:-}" ]]; then
+    MOCK_RESTORE_OUTPUT_PATH="$2"
+    return 1
+  fi
+  "$REAL_CAT" "$@"
+}
+PREPARE_CALLS=0
+MOCK_PREPARE_STATUS=0
+: > "$RESTORE_OUTPUT"
+if restore_vfio_state < "$RESTORE_INPUT" > "$RESTORE_OUTPUT"; then
+  fail 'restore accepted a failed XML output operation after VFIO preparation'
+fi
+[[ "$PREPARE_CALLS" -eq 1 ]] \
+  || fail 'output-failure test did not complete VFIO preparation exactly once'
+[[ "$ROLLBACK_CALLS" -eq 1 ]] \
+  || fail 'restore did not roll back VFIO preparation after XML output failure'
+[[ ! -s "$RESTORE_OUTPUT" ]] \
+  || fail 'mocked failed XML output unexpectedly emitted data'
+[[ -n "$MOCK_RESTORE_OUTPUT_PATH" && ! -e "$MOCK_RESTORE_OUTPUT_PATH" ]] \
+  || fail 'temporary restore XML was not removed after output failure'
+[[ -z "$RESTORE_XML_FILE" ]] \
+  || fail 'restore XML buffer variable was not cleared after output failure'
+unset -f cat rollback_prepare
+
 if ! grep -Fq 'if [ "$ACTION" = "restore" ]; then' "$HOOK" \
-  || ! grep -Fq 'restore_vfio_state || exit 1' "$HOOK"; then
+  || ! grep -Fq 'restore_vfio_state || exit 1' "$HOOK" \
+  || ! grep -Fq 'rollback_prepare' "$HOOK"; then
   fail 'the libvirt restore operation is not wired to the VFIO XML-filter handler'
 fi
 

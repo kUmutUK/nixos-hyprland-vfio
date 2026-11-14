@@ -4,6 +4,11 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+### VFIO saved-state restore output-failure rollback — 2026-11-14
+
+- If libvirt cannot receive the buffered domain XML after VFIO preparation has succeeded, explicitly run the preparation rollback before returning failure. This restores the host-driver/desktop recovery path instead of leaving the host prepared for a restore that libvirt rejected.
+- Extend the VFIO hook regression to simulate a failed XML output operation after successful preparation and assert that rollback runs once and the temporary XML buffer is removed. This is mocked coverage, not a physical saved-state/managed-save test.
+
 ### Linux performance-guide verification — 2026-11-14
 
 - Add a read-only README checklist for checking the running kernel, ZRAM/disk-swap order, ZSwap state, systemd-oomd, active sched_ext policy, and systemd boot critical chain. The NixOS-equivalent configuration choices from the supplied guide were already present; this adds verification guidance, not new runtime settings.
@@ -148,6 +153,20 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 - Clarify the GPU/audio IOMMU split: `0000:0b:00.0` was recorded in group 18 and `0000:0b:00.1` in group 19. Different group numbers alone do not prove an isolation defect or establish intra-device isolation; group membership and PCIe/ACS topology require separate review.
 - H1 is already corrected in the archived [1.2.2] entry and dated preface: pinned Nixpkgs defines Hyprland `0.56.2` / hyprlock `0.9.6`; `0.54.3 / 0.9.5` is marked as the incorrect earlier statement. H3 and H4 remain documented historical anomalies; no old release description is rewritten and no missing Build #14 event is inferred.
 - **Second reconciliation CI failure:** Nix Flake Check [#1383](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42998196145) failed on `36c13be1558d70822edf9432fe6cca3507f6d8e5` at the documentation-integrity assertion `README must distinguish the immutable v1.5.0 release ZIP from later main-branch documentation`. Commit `edf78e8` restored `The v1.5.0 asset will not be rewritten`; [#1384](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42998456098) then passed on exact commit `edf78e8559a289dda5da01467ce0082da2c38188`.
+
+## [v1.5.4] - 2026-11-14
+
+### Release and validation boundary — 2026-11-14
+
+- Published [v1.5.4](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.5.4), Release ID `445492077`, from annotated tag commit `f6689bcd5234f29a7cfcfc4151d161727b0658bc`; Release workflow [#38](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43625112235) completed successfully.
+- Normal Nix Flake Check [#1526](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43624282232) passed on that exact commit. GitHub Release metadata records the canonical source ZIP as 477,863 bytes with SHA-256 `dca1f4ccd365df64d416a029f13ea821a58e4e05cf21a81c4d5bc3d2d65b5e6c`; this is the platform-reported digest, not an independent re-hash in this review.
+- The v1.5.4 flake applies x86-64-v3 to both the Nixpkgs host platform and selected RT-Bore-LTO kernel. The later 14 November `main` correction removes the userland-wide target and retains x86-64-v3 only for the kernel. That correction is not included in the immutable v1.5.4 ZIP.
+- Release #38 used Full NixOS System Build #19 as an ancestor build and an explicit `TARGET_HOST_VALIDATED=true` maintainer attestation for later runtime-affecting Nix changes. The attestation is not a fresh full-system build of the v1.5.4 profile. Build #19 itself succeeded on 11 November using the earlier CachyOS input `9df32f70be3550911f178b3ba9ad784996a4e80c`; the current kernel-only-v3 profile and current lock still require a new full-system build and target-host boot validation.
+
+### Highlights
+
+- Apply the Linux performance-guide changes recorded in the release notes, including the initial global x86-64-v3 compiler target, ZRAM LZ4 selection, ZSwap disablement, and scheduler/OOM policy adjustments. The later kernel-only-v3 correction is recorded under `[Unreleased]`.
+- Normalize canonical source ZIP Unix file metadata and strengthen source-archive preflight validation.
 
 ## [v1.5.3] - 2026-11-12
 
