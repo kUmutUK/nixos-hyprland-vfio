@@ -300,9 +300,14 @@ MOCK_FALLBACK_RECOVERS=0
 
 # If only the audio function fails to reprobe, pass only that function to the
 # fallback; the healthy display GPU must remain untouched.
+# These globals are read by rollback_prepare extracted from the QEMU hook.
+# shellcheck disable=SC2034
 PREPARE_GPU_PCI_TOUCHED=0
+# shellcheck disable=SC2034
 PREPARE_GPU_AUDIO_TOUCHED=1
+# shellcheck disable=SC2034
 PREPARE_DISPLAY_DETACH_ATTEMPTED=0
+# shellcheck disable=SC2034
 PREPARE_DESKTOP_TOUCHED=0
 rm -f -- "$DEVICES_ROOT/$AUDIO_DEVICE/driver"
 bind_mock_expected_host_driver "$DEVICE"
@@ -321,8 +326,12 @@ rollback_prepare \
 
 MOCK_RELEASE_FAIL_FOR=""
 MOCK_FALLBACK_RECOVERS=0
+# These globals are read by rollback_prepare extracted from the QEMU hook.
+# shellcheck disable=SC2034
 PREPARE_GPU_PCI_TOUCHED=0
+# shellcheck disable=SC2034
 PREPARE_GPU_AUDIO_TOUCHED=0
+# shellcheck disable=SC2034
 PREPARE_DESKTOP_TOUCHED=0
 
 # Previously inactive Ollama must remain stopped after the VM closes. Active greetd
