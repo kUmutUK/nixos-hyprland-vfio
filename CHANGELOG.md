@@ -12,6 +12,13 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 - Set `zramSwap.memoryPercent = 100`, allowing logical ZRAM swap capacity up to all detected RAM (about 32 GB on the 32 GB reference host). This is a capacity limit, not an eager reservation of 32 GB physical RAM; backing memory is consumed as compressed pages are stored. Keep LZ4, ZRAM priority 100, encrypted disk swap priority 10, and disabled ZSwap unchanged.
 
+### Restrict x86-64-v3 to the kernel — 2026-11-14
+
+- Remove the global Nixpkgs `gcc.arch = "x86-64-v3"` / `gcc.tune = "znver3"` target from the system host platform.
+- Restore `nixpkgs.hostPlatform = system` where `system = "x86_64-linux"`, keeping general NixOS/userland derivations on the generic x86-64 baseline.
+- Preserve `processorOpt = "x86_64-v3"` only on the CachyOS RT-Bore-LTO kernel; RT, BORE, ThinLTO, the pinned CachyOS Nixpkgs input, and the kernel-module compatibility helper remain unchanged.
+- Standard x86-64 binary substitutes can now be used for matching userland derivations where available; the custom kernel still needs its own build and an x86-64-v3-capable CPU. Full-system build and target-host boot validation remain pending.
+
 ### 14 November audit follow-up — release and build records
 
 - Confirm that the supplied source archive's embedded revision `f6689bcd5234f29a7cfcfc4151d161727b0658bc` is the exact commit targeted by the annotated `v1.5.4` tag. Normal Nix Flake Check #1526 (run ID `43624282232`) passed on that commit, and Release workflow #38 (run ID `43625112235`) published Release ID `445492077`.

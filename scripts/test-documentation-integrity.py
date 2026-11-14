@@ -227,16 +227,19 @@ require(
     "README must document read-only live checks for swap, ZSwap, oomd, sched_ext, and boot critical chain",
 )
 require(
-    'arch = "x86-64-v3";' in FLAKE
-    and 'tune = "znver3"' in FLAKE
+    'nixpkgs.hostPlatform = system;' in FLAKE
+    and 'arch = "x86-64-v3";' not in FLAKE
+    and 'tune = "znver3"' not in FLAKE
     and 'processorOpt = "x86_64-v3"' in FLAKE
+    and "NixOS userland stays on the generic `x86_64-linux` host-platform baseline" in README
+    and 'applied **only to the CachyOS RT-Bore-LTO kernel**' in README
     and 'config.default_sched = "scx_bpfland"' in CONFIG
     and "enableRootSlice = true;" in CONFIG
     and "enableUserSlices = true;" in CONFIG
     and '"zswap.enabled=0"' in CONFIG
     and '"vm.swappiness" =' not in CONFIG
     and "systemd.services.NetworkManager-wait-online.enable = false;" in CONFIG,
-    "NixOS performance configuration must retain the x86-64-v3, BPF-Land, oomd, no-ZSwap, default-swappiness, and local-boot choices from the guide",
+    "NixOS performance configuration must limit x86-64-v3 to the kernel while retaining BPF-Land, oomd, no-ZSwap, default-swappiness, and local-boot choices from the guide",
 )
 
 vm_xml_root = ET.parse(ROOT / "vm-xml/win10.xml").getroot()

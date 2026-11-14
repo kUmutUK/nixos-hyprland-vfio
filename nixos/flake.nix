@@ -71,16 +71,11 @@
           home-manager.nixosModules.home-manager
           ({ pkgs, ... }: {
             nixpkgs.config.allowUnfree = true;
-            # Build reference-host userland C/C++ packages for x86-64-v3 and tune
-            # them for its Zen 3 Ryzen 5 5600 CPU. This generation is not portable
-            # to CPUs without x86-64-v3 support.
-            nixpkgs.hostPlatform = {
-              inherit system;
-              gcc = {
-                arch = "x86-64-v3";
-                tune = "znver3";
-              };
-            };
+            # Keep the NixOS userland on the generic x86_64-linux baseline so
+            # ordinary system packages can use standard x86-64 binary substitutes.
+            # The x86-64-v3 target is deliberately limited to the RT-Bore-LTO
+            # kernel derivation above; that kernel still requires a v3-capable CPU.
+            nixpkgs.hostPlatform = system;
             # Keep CachyOS kernel source/patches and the module set on the exact
             # Nixpkgs revision used by the kernel flake. RT-Bore, RT, and ThinLTO
             # remain enabled; only the kernel CPU baseline is raised.

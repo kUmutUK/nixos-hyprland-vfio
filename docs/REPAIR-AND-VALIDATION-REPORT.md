@@ -4,9 +4,15 @@
 
 ## Chronological navigation (newest first)
 
+### Kernel-only x86-64-v3 correction — 2026-11-14
+
+The initial performance-profile change applied x86-64-v3/Zen 3 compiler flags to the entire Nixpkgs host platform. That would force a broad userland rebuild and unnecessarily narrow the binary-cache/CPU compatibility boundary. The current configuration now sets `nixpkgs.hostPlatform = system` (`x86_64-linux`) and keeps the v3 override only on the CachyOS RT-Bore-LTO kernel through `processorOpt = "x86_64-v3"`. RT, BORE, ThinLTO, the exact CachyOS Nixpkgs input, and the kernel-module compatibility helper are retained. Only the selected kernel requires x86-64-v3 CPU support; ordinary userland packages remain generic x86-64 and can use matching substitutes where available.
+
+This correction changes the flake target and reconciles current documentation/regression checks. It does not build the kernel or full NixOS toplevel, activate a generation, or establish a target-host boot result. The kernel-only v3 derivation still requires a fresh manual Full NixOS System Build and target-host boot validation. The prior Normal CI #1537 passed before this correction; the correction commit needs its own CI result.
+
 ### Linux performance-guide reconciliation and host checks — 2026-11-14
 
-The cross-distribution guide was compared against the NixOS reference system rather than applying commands intended for Ubuntu, Debian, Fedora, or Arch. The NixOS equivalents are already present: x86-64-v3 / Zen 3 Nixpkgs C/C++ target and x86-64-v3 RT-Bore-LTO kernel; LZ4 ZRAM with a 100%-of-detected-RAM logical capacity and priority 100; ZSwap disabled and encrypted disk swap priority 10; no forced swappiness override; systemd-oomd on root/user slices without EarlyOOM; BPF-Land via `scx-loader`; Ananicy-cpp disabled; and NetworkManager-wait-online disabled for the local-filesystem host.
+The cross-distribution guide was compared against the NixOS reference system rather than applying commands intended for Ubuntu, Debian, Fedora, or Arch. The NixOS equivalents are already present: generic `x86_64-linux` Nixpkgs userland baseline and an x86-64-v3 RT-Bore-LTO kernel-only target; LZ4 ZRAM with a 100%-of-detected-RAM logical capacity and priority 100; ZSwap disabled and encrypted disk swap priority 10; no forced swappiness override; systemd-oomd on root/user slices without EarlyOOM; BPF-Land via `scx-loader`; Ananicy-cpp disabled; and NetworkManager-wait-online disabled for the local-filesystem host.
 
 The README now provides read-only commands to inspect those live settings and use `systemd-analyze critical-chain` to locate boot dependencies. A documentation-integrity regression checks both the commands and the key source configuration choices. No additional NixOS runtime setting, kernel input/lock, VM XML, PCI identity, or desktop preference was changed in this reconciliation.
 
@@ -54,7 +60,7 @@ The supplied analysis identifies an intake ZIP of 472,243 bytes with SHA-256 `ee
 - **Btrfs Home Snapper ordering:** no behavior change was needed. The manual setup requires mounting `@home` before creating `@home/.snapshots`; the strict checker and installer's allow-missing transaction path already have regression coverage. Build-time/static validation does not replace checking the actual target filesystem.
 - **ZIP creator metadata:** the supplied audit reports `create_system=0` / zero external attributes for ordinary entries in its intake copy. That copy was not attached here. The canonical packager now rewrites all archive entries to Unix `create_system=3` metadata and explicit 0644/0755 file modes, then validates every tracked file in the normalized output.
 
-### Linux performance-guide implementation — 2026-11-14 (new full-system build gate)
+### Linux performance-guide implementation — 2026-11-14 (historical initial global-userland-v3 design; superseded by the kernel-only correction above)
 
 The supplied cross-distribution performance guide was reconciled with the actual NixOS reference configuration and the locked CachyOS kernel inputs.
 
