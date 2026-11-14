@@ -129,10 +129,12 @@ jobs:
       - name: VFIO hook driver-state regression tests
         run: bash scripts/test-vfio-hook-driver-state.sh
 
-      - name: Verify runner supports x86-64-v3
-        # The NixOS reference host intentionally builds userland for x86-64-v3.
-        # Do not advertise this Nix system feature unless the physical runner CPU
-        # exposes the complete v3 instruction set.
+      - name: ShellCheck of the Nix-generated VFIO hook
+        # The source hooks/qemu was checked separately; this also checks the
+        # Nix-interpolated writeShellScript wrapper from configuration.nix.
+        # The reference host targets x86-64-v3, so verify the runner's real CPU
+        # flags before advertising gccarch-x86-64-v3 to its local Nix daemon.
+        working-directory: nixos
         run: |
           set -euo pipefail
           flags="$(awk -F: '/^flags[[:space:]]*:/ { print $2; exit }' /proc/cpuinfo)"
@@ -152,15 +154,8 @@ jobs:
           fi
           echo "  runner CPU supports x86-64-v3"
 
-      - name: ShellCheck of the Nix-generated VFIO hook
-        # The source hooks/qemu was checked separately; this also checks the
-        # Nix-interpolated writeShellScript wrapper from configuration.nix.
-        # Only the small hook derivation is built, not the full NixOS system.
-        # Nix does not infer gccarch-x86-64-v3 from /proc/cpuinfo; advertise it
-        # for this build only, after the CPU-feature gate above has passed.
-        working-directory: nixos
-        run: |
-          set -euo pipefail
+          # Determinate Nix reads supported custom settings from this file.
+          # Keep the daemon's existing features and add v3 only after verification.
           system_features="$(nix show-config | sed -n 's/^system-features = //p')"
           if [[ -z "$system_features" ]]; then
             echo "::error::Could not read Nix system-features"
@@ -169,8 +164,18 @@ jobs:
           if [[ " $system_features " != *" gccarch-x86-64-v3 "* ]]; then
             system_features+=" gccarch-x86-64-v3"
           fi
-          hook_path="$(nix build --no-link --no-update-lock-file \
-            --option system-features "$system_features" --print-out-paths \
+          sudo install -d -m 0755 /etc/nix
+          sudo touch /etc/nix/nix.custom.conf
+          sudo sed -i '/^[[:space:]]*system-features[[:space:]]*=/d' /etc/nix/nix.custom.conf
+          printf 'system-features = %s\n' "$system_features" | sudo tee -a /etc/nix/nix.custom.conf >/dev/null
+          sudo systemctl restart nix-daemon.service
+          effective_features="$(nix show-config | sed -n 's/^system-features = //p')"
+          if [[ " $effective_features " != *" gccarch-x86-64-v3 "* ]]; then
+            echo "::error::Nix daemon did not load gccarch-x86-64-v3"
+            exit 1
+          fi
+
+          hook_path="$(nix build --no-link --no-update-lock-file --print-out-paths \
             .#nixosConfigurations.nixos.config.virtualisation.libvirtd.hooks.qemu.vfio)"
           test -f "$hook_path"
           shellcheck -S warning "$hook_path"
