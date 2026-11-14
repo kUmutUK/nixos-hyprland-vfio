@@ -350,7 +350,8 @@ require(
     f"`{cachyos_revision}`" in kernel_limitations
     and "Build #18" in kernel_limitations
     and "ancestor source commit" in kernel_limitations
-    and "exact v1.4.7 build" in kernel_limitations
+    and "does not validate the current locked revision" in kernel_limitations
+    and "derived x86-64-v3 kernel" in kernel_limitations
     and "exact kernel SHA booted for that test was not recorded" in kernel_limitations,
     "README must tie the active kernel note to flake.lock and distinguish the ancestor build from unrecorded target-host kernel identity",
 )
