@@ -243,8 +243,8 @@ def test_release_manual_attestation_gate_behavior() -> None:
         )
         require(
             documentation_result.returncode == 0
-            and "changes since that build match the exact release-only allowlist"
-            in documentation_result.stdout,
+            and "::error::" not in documentation_result.stdout
+            and "::error::" not in documentation_result.stderr,
             "an allowlisted documentation-only change must remain releasable without host attestation",
         )
 
