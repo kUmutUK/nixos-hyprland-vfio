@@ -175,6 +175,10 @@ in
     # watchdog-based lockup detection. This favors lower jitter but reduces diagnostic
     # information if the host unexpectedly locks up.
     "amd_pstate=active"
+    # The pinned CachyOS RT-Bore-LTO 7.3.3 config sets CONFIG_ZSWAP_DEFAULT_ON=y.
+    # ZRAM is the selected compressed swap tier; disable ZSwap to avoid a second
+    # compression layer before the higher-priority zram and lower-priority disk swap.
+    "zswap.enabled=0"
     "nowatchdog"
     "nmi_watchdog=0"
     # IOMMU activation depends on the CPU, kernel, and platform firmware/BIOS.
