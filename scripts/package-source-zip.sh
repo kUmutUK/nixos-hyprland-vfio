@@ -26,6 +26,8 @@ git -C "$repo_root" archive \
   "$commit"
 
 python3 - "$tmp_archive" "$repo_root" "$commit" <<'PY'
+import copy
+import os
 import subprocess
 import sys
 import zipfile
@@ -78,7 +80,29 @@ if tracked_executables != expected_executables:
         print("Unexpected tracked executable mode (expected 100644):", *unexpected_executables, sep="\n  ", file=sys.stderr)
     raise SystemExit("ERROR: tracked executable-mode set differs from canonical packaging policy.")
 
-with zipfile.ZipFile(archive_path) as bundle:
+# Python's zipfile sees ordinary git-archive ZIP entries as DOS-origin files
+# even though Git tracks their Unix modes. Rewrite metadata for every entry so
+# consumers on Unix receive explicit regular-file/executable permission bits.
+normalized_path = archive_path + ".normalized"
+try:
+    with zipfile.ZipFile(archive_path, "r") as original:
+        with zipfile.ZipFile(normalized_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as normalized:
+            for source_entry in original.infolist():
+                entry = copy.copy(source_entry)
+                entry.create_system = 3
+                if entry.is_dir():
+                    entry.external_attr = (0o40755 << 16) | 0x10
+                else:
+                    expected_mode = 0o755 if entry.filename in tracked_executables else 0o644
+                    file_mode = 0o100000 | expected_mode
+                    entry.external_attr = file_mode << 16
+                normalized.writestr(entry, original.read(source_entry.filename), compress_type=source_entry.compress_type, compresslevel=9)
+    os.replace(normalized_path, archive_path)
+finally:
+    if os.path.exists(normalized_path):
+        os.unlink(normalized_path)
+
+with zipfile.ZipFile(archive_path, "r") as bundle:
     corrupt_entry = bundle.testzip()
     if corrupt_entry is not None:
         raise SystemExit(f"ERROR: corrupt ZIP entry: {corrupt_entry}")
