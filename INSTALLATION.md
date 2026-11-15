@@ -20,7 +20,7 @@ This guide walks through an AMD-oriented **NixOS + LUKS2 + Btrfs + Hyprland + VF
 - UEFI system
 - AMD Ryzen CPU
 - AMD Radeon RX 6700 XT (Navi 22) — the reference GPU for this configuration. Other RX 6000/7000 cards are not considered supported until PCI/IOMMU groups, GPU reset behavior, and ROCm settings have been verified separately.
-- At least 810 GiB of storage (about 870 GB decimal) for the 809 GiB system layout and a minimal remainder partition; a 1 TB-class drive is recommended in practice.
+- At least 818 GiB of storage (about 879 GB decimal) for the 817 GiB system layout and a minimal remainder partition; a 1 TB-class drive is recommended in practice.
 
 **ISO and installed-package channel are separate:** The NixOS 26.05 Live ISO is the installer environment only. The installed system's package set is selected by `nixos/flake.nix`: its root `nixpkgs` input follows `nixos-unstable`, with the exact source revision recorded in `nixos/flake.lock`. `system.stateVersion = "26.05"` selects compatibility defaults; it does not pin the installed packages to the 26.05 channel. The installed package snapshot can therefore differ from the Live ISO. Keep flake updates deliberate and review the lock-file diff.
 
@@ -125,9 +125,9 @@ For a 1 TB-class reference disk, the intended layout is:
 | Device | Size | Purpose |
 |---|---:|---|
 | `/dev/nvme0n1p1` | 1 GiB | EFI, mounted at `/boot` |
-| `/dev/nvme0n1p2` | 8 GiB | Swap backing partition; encrypted with a random key at boot |
+| `/dev/nvme0n1p2` | 16 GiB | Swap backing partition; encrypted with a random key at boot |
 | `/dev/nvme0n1p3` | 800 GiB | LUKS2 container holding the Btrfs system |
-| `/dev/nvme0n1p4` | Remaining space (about 122.5 GiB on a 931.5 GiB disk) | ext4 media volume, mounted at `/mnt/media` |
+| `/dev/nvme0n1p4` | Remaining space (about 114.5 GiB on a 931.5 GiB disk) | ext4 media volume, mounted at `/mnt/media` |
 
 The device names above are examples, not stable identifiers. In a Live ISO session, `/dev/sda` may be the installer USB; identify the target by model, serial number, and capacity, not by assuming that the first disk is the internal drive. Never select the Live USB.
 
@@ -232,14 +232,14 @@ assert_disk_unused() {
 
 assert_disk_unused || exit 1
 
-# G in sgdisk is GiB. The three system partitions allocate 809 GiB; the optional media partition uses the remaining space.
-MIN_DISK_BYTES=$((810 * 1024 * 1024 * 1024))
+# G in sgdisk is GiB. The three system partitions allocate 817 GiB; the optional media partition uses the remaining space.
+MIN_DISK_BYTES=$((818 * 1024 * 1024 * 1024))
 if [ "$DISK_BYTES" -lt "$MIN_DISK_BYTES" ]; then
-  printf 'ERROR: Disk capacity is insufficient (%s bytes); at least 810 GiB (%s bytes) is required.\n' \
+  printf 'ERROR: Disk capacity is insufficient (%s bytes); at least 818 GiB (%s bytes) is required.\n' \
     "$DISK_BYTES" "$MIN_DISK_BYTES" >&2
   exit 1
 fi
-printf 'Capacity check passed: at least 810 GiB. Verify the model and serial number yourself above.\n'
+printf 'Capacity check passed: at least 818 GiB. Verify the model and serial number yourself above.\n'
 
 # NVMe partition names use p1/p2; SATA/SCSI partition names use sda1/sda2.
 case "$DISK_REAL" in
@@ -303,7 +303,7 @@ assert_partition_on_target() {
 | Partition | Description |
 |---|---|
 | EFI | 1 GiB FAT32, mounted at `/boot` |
-| SWAP | 8 GiB backing partition; NixOS applies random-key encryption at boot |
+| SWAP | 16 GiB backing partition; NixOS applies random-key encryption at boot |
 | LUKS | 800 GiB LUKS2 container with the Btrfs system |
 | MEDIA (optional; default: yes) | Remaining disk space, ext4, mounted at `/mnt/media` |
 
@@ -313,7 +313,7 @@ Set `CREATE_MEDIA_PARTITION=no` in Step 3 only when you deliberately want to res
 
 # 💾 4. Create the partition table
 
-> `G` in the `sgdisk` commands means GiB. EFI, swap, and the LUKS system volume use 809 GiB; when enabled, the fourth media partition consumes all remaining usable space.
+> `G` in the `sgdisk` commands means GiB. EFI, swap, and the LUKS system volume use 817 GiB; when enabled, the fourth media partition consumes all remaining usable space.
 > Even if the capacity and mounted-device checks pass, `sgdisk -Z` irreversibly removes the entire existing partition table. Verify the model and serial number one final time.
 
 ```bash
@@ -331,7 +331,7 @@ fi
 
 sudo sgdisk -Z "$DISK_REAL"
 sudo sgdisk -n 1:0:+1G   -t 1:ef00 -c 1:EFI  "$DISK_REAL"
-sudo sgdisk -n 2:0:+8G   -t 2:8200 -c 2:SWAP "$DISK_REAL"
+sudo sgdisk -n 2:0:+16G  -t 2:8200 -c 2:SWAP "$DISK_REAL"
 sudo sgdisk -n 3:0:+800G -t 3:8309 -c 3:LUKS "$DISK_REAL"
 if [[ "$CREATE_MEDIA_PARTITION" == "yes" ]]; then
   sudo sgdisk -n 4:0:0 -t 4:8300 -c 4:MEDIA "$DISK_REAL"
