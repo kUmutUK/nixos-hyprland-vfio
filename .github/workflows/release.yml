@@ -147,9 +147,9 @@ jobs:
           while read -r status path; do
             [[ -z "$path" ]] && continue
             case "$path" in
-              docs/archive/ANALYSIS-2026-10-05-ZIP3-SUPERSEDED.md|docs/archive/APPLIED-FIXES.md|docs/archive/FIX-REPORT-2026-10-13.md|docs/archive/INSTALL-SAFETY-FIXES-2026-10-12.md|docs/archive/NIXOS-HYPRLAND-VFIO-ANALYSIS.md|docs/archive/POST-FIX-VALIDATION-2026-10-12.md|docs/archive/REMAINING-ISSUES-AUDIT-2026-10-09.md|docs/archive/nixos-hyprland-vfio-analysis-v2-SUPERSEDED.md|docs/archive/nixos-hyprland-vfio-review-report.md)
+              docs/archive/DEGISIKLIK_GECMISI.md|docs/archive/ANALYSIS-2026-10-05-ZIP3-SUPERSEDED.md|docs/archive/APPLIED-FIXES.md|docs/archive/FIX-REPORT-2026-10-13.md|docs/archive/INSTALL-SAFETY-FIXES-2026-10-12.md|docs/archive/NIXOS-HYPRLAND-VFIO-ANALYSIS.md|docs/archive/POST-FIX-VALIDATION-2026-10-12.md|docs/archive/REMAINING-ISSUES-AUDIT-2026-10-09.md|docs/archive/nixos-hyprland-vfio-analysis-v2-SUPERSEDED.md|docs/archive/nixos-hyprland-vfio-review-report.md)
                 if [[ "$status" != "D" ]]; then
-                  echo "::error::Archived audit snapshots are allowlisted for deletion only: $path (status: $status)"
+                  echo "::error::Archived snapshots and the retired Turkish release history are allowlisted for deletion only: $path (status: $status)"
                   unexpected=1
                 fi
                 ;;

@@ -18,6 +18,8 @@ The dual-guest VM definition `vm-xml/win10.xml` remains outside the ancestor-bui
    that commit or an ancestor of it.
 4. If the full-system build is from an ancestor, the release workflow checks every later changed path against the **literal, exhaustive allowlist** below. The category descriptions are explanatory only: there are no wildcard rules or blanket exemptions for all documentation, CI files, or helper scripts.
 
+   The nine superseded one-off archive snapshots and the retired Turkish release-history file are listed only to permit deletion. The workflow requires Git status `D` for all ten paths; editing or reintroducing any of them is rejected.
+
    **Exact release allowlist (literal paths only):**
    `.git-cliff.toml`,
    `RELEASING.md`,

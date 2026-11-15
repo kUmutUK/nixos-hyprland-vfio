@@ -24,7 +24,6 @@ CHECK_WORKFLOW = (ROOT / ".github/workflows/check.yml").read_text(encoding="utf-
 VFIO_HOOK = (ROOT / "nixos/hooks/qemu").read_text(encoding="utf-8")
 VFIO_HOOK_TEST = (ROOT / "scripts/test-vfio-hook-driver-state.sh").read_text(encoding="utf-8")
 AUDIT = (ROOT / "docs/AUDIT-2026-10-28-VM-XML-VFIO.md").read_text(encoding="utf-8")
-ARCHIVE = (ROOT / "docs/archive/DEGISIKLIK_GECMISI.md").read_text(encoding="utf-8")
 ARCHIVE_INDEX = (ROOT / "docs/archive/README.md").read_text(encoding="utf-8")
 CHANGELOG = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
 STATE_INDEX = (ROOT / "DEGISIKLIK_GECMISI.md").read_text(encoding="utf-8")
@@ -285,8 +284,10 @@ require(
 )
 require(
     "git diff --no-renames --name-status" in RELEASE_WORKFLOW
-    and "Archived audit snapshots are allowlisted for deletion only" in RELEASE_WORKFLOW
-    and all(path in RELEASING for path in (
+    and "Archived snapshots and the retired Turkish release history are allowlisted for deletion only" in RELEASE_WORKFLOW
+    and 'if [[ "$status" != "D" ]]' in RELEASE_WORKFLOW
+    and all(path in RELEASING and path in RELEASE_WORKFLOW for path in (
+        "docs/archive/DEGISIKLIK_GECMISI.md",
         "docs/archive/ANALYSIS-2026-10-05-ZIP3-SUPERSEDED.md",
         "docs/archive/APPLIED-FIXES.md",
         "docs/archive/FIX-REPORT-2026-10-13.md",
@@ -297,7 +298,7 @@ require(
         "docs/archive/nixos-hyprland-vfio-analysis-v2-SUPERSEDED.md",
         "docs/archive/nixos-hyprland-vfio-review-report.md",
     )),
-    "superseded archive reports must be explicitly documented and permitted for deletion only",
+    "the nine retired audit snapshots and Turkish release history must be explicitly documented and permitted for deletion only",
 )
 require(
     "no wildcard rules or blanket exemptions" in RELEASING
@@ -1015,12 +1016,6 @@ require(
     and 'config.home.homeDirectory}/.local/share/Steam/steamapps/common/Lossless Scaling/lsfg-vk.dll' in HOME_NIX
     and '/home/localhost/.local/share/Steam/steamapps/common/Lossless Scaling/lsfg-vk.dll' not in HOME_NIX,
     "installer must fail closed on an unsafe account hash and LSFG DLL path must follow the configured home directory",
-)
-require(
-    "19 Ekim 2026 tarihi bu dosyanın tarihsel yapılandırma durumunu belirtir" in ARCHIVE
-    and "[1.0.0] / 12 Mayıs 2026" in ARCHIVE
-    and "[v1.4.0] ve sonrası" in ARCHIVE,
-    "Turkish archive preface must distinguish the state snapshot from the full release-history range",
 )
 
 require(
@@ -1872,13 +1867,13 @@ require(
     "CHANGELOG must distinguish the historical four/five-file preflight from the current six-file source tree",
 )
 
-require("kayıtlı durum tarihi: 2026-10-19" in ARCHIVE and "önsöz son güncelleme: 2026-11-14" in ARCHIVE, "archive note must distinguish its snapshot date from the preface update date")
-require("Bu 19 Ekim snapshot'ındaki XML yazma açıklaması güncel değildir" in ARCHIVE, "archive preface must mark the old installer XML-writing statement as superseded")
-require("Aşağıdaki `[1.3.8]` ICH9 kaldırma kaydı" in ARCHIVE and "6e8d6cfe" in ARCHIVE and "46bf9015" in ARCHIVE, "archive preface must trace the ICH9 removal and restoration")
-require("not byte-for-byte identical to the original changelog" in ARCHIVE_INDEX and "historical Turkish release entries" in ARCHIVE_INDEX, "archive index must distinguish preserved release entries from the added preface")
-require("geçersiz kılındı" in ARCHIVE and "Bu ayar güncel değildir" in ARCHIVE, "archive note must mark old Reflex and SSH policies as superseded")
-require("ile etkinleştirilmiştir. Uyumsuz" not in ARCHIVE, "archive must not present the old Reflex setting as current")
-require(not re.search(r"parola girişi yalnız.*kullanıcısına izin verir", ARCHIVE), "archive must not present the old SSH password policy as current")
+require(
+    not (ROOT / "docs/archive/DEGISIKLIK_GECMISI.md").exists()
+    and "This directory now retains only the consolidated audit-retraction/provenance register." in ARCHIVE_INDEX
+    and "The separate Turkish release-by-release history file was removed from the current tree on 15 November 2026." in ARCHIVE_INDEX
+    and "blob/a0fa8ca557c53810230eb8d42b2edd1e79365460/docs/archive/DEGISIKLIK_GECMISI.md" in ARCHIVE_INDEX,
+    "archive index must describe the retained historical audit and link retired release history to its last Git revision",
+)
 
 require("Supplied ZIP provenance and canonical packaging — 2026-10-30" in REPAIR, "repair report must identify the supplied ZIP measurements as noncanonical provenance")
 require("565,429 bytes" in REPAIR and "89fab35d7ecd18bb2b39bb74cbf7b799f8d76bc4c9d59970e7e94060f82dc374" in REPAIR and "b413e6df50f64ab16d1694d9b19dae97a078f56c" in REPAIR, "repair report must record the third supplied ZIP without conflating it with the earlier archive")
@@ -1911,17 +1906,16 @@ require(
     and "replaced that old block" in STATE_INDEX,
     "current-state index must trace the old USB hostdev disablement and new active IDs",
 )
-require(
-    all(sha in ARCHIVE for sha in ("ed6ca666", "0c035b2c", "91c4d58e", "6e8d6cfe", "46bf9015", "f46b8ac8", "fbd105c8")),
-    "Turkish historical preface must reconcile IOMMU, ICH9, and USB commit chronology",
-)
 require("historical note under release `[1.3.6]` about `amd_iommu=on`" not in STATE_INDEX, "root history index retains the wrong amd_iommu section reference")
-require("Aşağıdaki `[1.3.5]` kaydındaki IOMMU değişimi Git geçmişiyle eşleştirildi" in ARCHIVE and "Aşağıdaki `[1.3.6]`" not in ARCHIVE, "archive preface must point to the section that actually records amd_iommu=on")
 require("### Earlier unreleased work (2026-10-28)" not in CHANGELOG, "CHANGELOG still has an empty same-level group heading")
 require("### Eighth audit follow-up — 2026-10-30" in CHANGELOG, "CHANGELOG must record the eighth audit follow-up")
 require("### Ninth audit follow-up — 2026-10-30" in CHANGELOG, "CHANGELOG must record the ninth audit follow-up")
 require("Historical pre-v2 design note (superseded 2026-10-29)" in CHANGELOG and "That statement no longer describes the current configuration" in CHANGELOG, "CHANGELOG must clearly supersede the old LSFG-VK v1 decision")
-require("byte-for-byte unchanged copy" in CHANGELOG and "preserved unchanged in" not in CHANGELOG, "CHANGELOG must describe the archive preface accurately")
+require(
+    "formerly retained below a dated status preface" in CHANGELOG
+    and "was removed from the current tree on 15 November 2026" in CHANGELOG,
+    "CHANGELOG must identify the Turkish archive as a retired historical source",
+)
 require("approximately lines 8–16" in INSTALLATION and "approximately lines 9–15" not in INSTALLATION and "approximately lines 4–12" not in INSTALLATION, "INSTALLATION must point to the current home.nix let-block line range")
 wallpaper = re.search(r'(?m)^\s*wallpaperVideo\s*=\s*"\$\{config\.home\.homeDirectory\}/Downloads/([^"]+)"\s*;', HOME_NIX)
 require(wallpaper is not None and f"~/Downloads/{wallpaper.group(1)}" in INSTALLATION, "INSTALLATION wallpaper default must match the exact home.nix filename")
@@ -1935,7 +1929,6 @@ require("570,101 bytes" in REPAIR and "dee424e555ca173773388101d407a6699d668eda6
 require("install.sh` resolves the source revision from `git rev-parse HEAD`" in REPAIR and "too absolute" in REPAIR, "repair report must distinguish the Git-worktree and SOURCE_REVISION provenance paths")
 require("bytes were not attached" in REPAIR.lower(), "repair report must preserve the independent-verification boundary")
 require("554,516 bytes" not in REPAIR[:2500] and "65ab86f1" not in REPAIR[:2500], "repair report's current provenance row still contains stale measurements")
-require("v0.2.0" in ARCHIVE and "948a561" in ARCHIVE, "archive note must distinguish the historical upstream revision from v0.2.0")
 latency_vars = re.search(r"environment\.sessionVariables\s*=\s*\{(.*?)\};", CONFIG, re.DOTALL)
 require(latency_vars is not None and re.search(r'(?m)^\s*LOW_LATENCY_LAYER\s*=\s*"1";', latency_vars.group(1)), "current configuration must opt in to low_latency_layer v0.2.0")
 require(latency_vars is not None and not re.search(r"(?m)^\s*LOW_LATENCY_LAYER_REFLEX\s*=", latency_vars.group(1)), "Reflex must remain unset globally")
@@ -2059,16 +2052,6 @@ require(
 require(
     "fzf, git, and Kitty intentionally remain available in the system profile too" in HOME_NIX,
     "the system-profile fzf/git/Kitty entries must remain explicitly intentional",
-)
-require(
-    "Hyprland sürüm kaydı upstream Nixpkgs kaynaklarıyla düzeltildi" in ARCHIVE
-    and "7a0f122f5090cf4c2ade2a13a0e229d4e19ba71f" in ARCHIVE
-    and "pkgs/by-name/hy/hyprland/package.nix" in ARCHIVE
-    and "pkgs/by-name/hy/hyprlock/package.nix" in ARCHIVE
-    and "0.56.2" in ARCHIVE
-    and "0.9.6" in ARCHIVE
-    and "tek başına çalışma zamanı ABI uyumluluğunu kanıtlamaz" in ARCHIVE,
-    "the Turkish archive must source-link the corrected Hyprland/hyprlock versions and retain the ABI verification boundary",
 )
 require(
     "Fourteenth supplied audit cross-check — 2026-11-04" in REPAIR
