@@ -433,7 +433,7 @@ require(
     "Current flake input identities" in README
     and f"`{root_nixpkgs_revision}`" in README
     and f"`{cachyos_nixpkgs_revision}`" in README
-    and "not the root system/userland Nixpkgs" in README,
+    and "**not** the root system/userland Nixpkgs" in README,
     "README must label the root and CachyOS-nested Nixpkgs revisions separately",
 )
 require(
