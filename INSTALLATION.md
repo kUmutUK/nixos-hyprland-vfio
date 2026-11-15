@@ -748,8 +748,7 @@ git -C /tmp/repo show "$SOURCE_REVISION:nixos/flake.lock" |
 > completed successfully on exact source commit `46d2b809e4fe9530dde58c85450b3544cf5d1ed0`.
 > The job evaluated the locked flake, built the complete NixOS system and selected
 > RT-Bore-LTO kernel, and verified that the lock file was not rewritten. It used
-> current CachyOS source `c9620070e884d55c5b5566e3fd46611ee24c4d3b`, nested
-> `nixos-unstable-small` Nixpkgs `82566dfe91ca5e12bc10b36272280628142f651d`, and
+> current CachyOS source `c9620070e884d55c5b5566e3fd46611ee24c4d3b`, the nested `nixos-unstable-small` Nixpkgs package set `82566dfe91ca5e12bc10b36272280628142f651d`, and
 > root system `nixos-unstable` Nixpkgs `d4f25a3e562008648d45bcf2d70bcc7422cad84e`.
 > The four commits from this build baseline through the pre-update source snapshot
 > `03beec8eefd41ed386353abbf00bc04630be79b9` changed documentation and the
