@@ -417,11 +417,25 @@ require(
     and "USB `hostdev` entries omit explicit guest-side addresses" in README,
     "README must document the checked-in TPM profile version floor and USB hostdev address caveat",
 )
+mpris_players = re.search(
+    r"(?ms)^\s*mpris\s*=\s*\{\s*player\s*=\s*\[(?P<players>.*?)\]\s*;",
+    HOME_NIX,
+)
+brave_watchdog = (
+    HOME_NIX.partition('home.file.".local/bin/mpvpaper-watchdog" = {')[2]
+    .partition("\n  };")[0]
+)
 require(
-    "brave-browser" in HOME_NIX
+    mpris_players is not None
+    and '"brave-origin"' in mpris_players.group("players")
+    and 'MONITORED_CLASSES="brave-origin"' in brave_watchdog
+    and "is_gamemode_active()" in brave_watchdog
+    and "com.feralinteractive.GameMode" in brave_watchdog
+    and "if is_gamemode_active; then" in brave_watchdog
+    and "`brave-origin`" in README
     and "repository does not install Brave" in README
     and "GameMode behavior is unchanged" in README,
-    "README must identify Brave as optional without disabling the GameMode watchdog path",
+    "README and the optional Brave integration must agree on brave-origin while the watchdog retains independent GameMode handling",
 )
 require(
     root_nixpkgs_node_name != cachyos_nixpkgs_node_name

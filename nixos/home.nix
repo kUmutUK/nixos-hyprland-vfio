@@ -9,7 +9,7 @@ let
   gitName = "changeme";
   gitEmail = "you@example.com";
   makoRenderer = pkgs.callPackage ./mako-renderer.nix { };
-  monitorOutput = "";
+  monitorOutput = "DP-3";
   # Hyprland 0.55+ uses Lua configuration. The monitor output is set by the installer;
   # an empty value remains a catch-all for manual setups.
   hyprlandMonitorMode = "preferred";
@@ -742,7 +742,7 @@ let
         "com.spotify.Client"
         "firefox"
         "chromium"
-        "brave-browser"
+        "brave-origin"
       ];
       format = "{player_icon} {artist} - {title}";
       format-paused = "⏸ {artist} - {title}";
@@ -1395,7 +1395,7 @@ in
     executable = true;
     text = ''
       #!${pkgs.bash}/bin/bash
-      MONITORED_CLASSES="brave-browser"
+      MONITORED_CLASSES="brave-origin"
       HYPR_SOCK="$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock"
 
       is_gamemode_active() {
