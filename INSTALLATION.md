@@ -750,8 +750,10 @@ git -C /tmp/repo show "$SOURCE_REVISION:nixos/flake.lock" |
 > snapshot.
 >
 > **Kernel input distinction (updated 15 November 2026):** the current
-> `nixos/flake.lock` resolves CachyOS to
-> `c9620070e884d55c5b5566e3fd46611ee24c4d3b` and root Nixpkgs to `82566dfe91ca5e12bc10b36272280628142f651d`. Full-system Build #19
+> `nixos/flake.lock` resolves the CachyOS source to
+> `c9620070e884d55c5b5566e3fd46611ee24c4d3b`, its nested `nixos-unstable-small` Nixpkgs package set to
+> `82566dfe91ca5e12bc10b36272280628142f651d`, and the root system `nixos-unstable` Nixpkgs to
+> `d4f25a3e562008648d45bcf2d70bcc7422cad84e`. Full-system Build #19
 > completed on 11 November on exact source commit
 > `6242439da7e944d297dbe5f44fdff8e79fe4689c`, using CachyOS revision `9df32f70be3550911f178b3ba9ad784996a4e80c` and root Nixpkgs `4d6a01a11146f4691c0991682885ad9e4686e3ee`.
 > It predates the 14 November kernel-only x86-64-v3 profile and the 15 November

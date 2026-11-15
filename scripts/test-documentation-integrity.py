@@ -31,10 +31,26 @@ STATE_INDEX = (ROOT / "DEGISIKLIK_GECMISI.md").read_text(encoding="utf-8")
 CONFIG = (ROOT / "nixos/configuration.nix").read_text(encoding="utf-8")
 FLAKE = (ROOT / "nixos/flake.nix").read_text(encoding="utf-8")
 FLAKE_LOCK = json.loads((ROOT / "nixos/flake.lock").read_text(encoding="utf-8"))
-cachyos_locked = FLAKE_LOCK.get("nodes", {}).get("cachyos-kernel", {}).get("locked", {})
+lock_nodes = FLAKE_LOCK.get("nodes", {})
+cachyos_node = lock_nodes.get("cachyos-kernel", {})
+cachyos_locked = cachyos_node.get("locked", {})
 cachyos_revision = cachyos_locked.get("rev")
-root_nixpkgs_locked = FLAKE_LOCK.get("nodes", {}).get("nixpkgs", {}).get("locked", {})
+
+# Resolve each nixpkgs node from the input that owns it. The top-level
+# nodes["nixpkgs"] entry belongs to cachyos-kernel, not to the root system.
+root_inputs = lock_nodes.get("root", {}).get("inputs", {})
+root_nixpkgs_node_name = root_inputs.get("nixpkgs")
+cachyos_nixpkgs_node_name = cachyos_node.get("inputs", {}).get("nixpkgs")
+if not isinstance(root_nixpkgs_node_name, str) or not isinstance(cachyos_nixpkgs_node_name, str):
+    raise SystemExit("FAIL: root and CachyOS nixpkgs lock nodes must resolve to node names.")
+root_nixpkgs_node = lock_nodes.get(root_nixpkgs_node_name, {})
+cachyos_nixpkgs_node = lock_nodes.get(cachyos_nixpkgs_node_name, {})
+root_nixpkgs_locked = root_nixpkgs_node.get("locked", {})
+cachyos_nixpkgs_locked = cachyos_nixpkgs_node.get("locked", {})
 root_nixpkgs_revision = root_nixpkgs_locked.get("rev")
+cachyos_nixpkgs_revision = cachyos_nixpkgs_locked.get("rev")
+root_nixpkgs_ref = root_nixpkgs_node.get("original", {}).get("ref")
+cachyos_nixpkgs_ref = cachyos_nixpkgs_node.get("original", {}).get("ref")
 HOME_NIX = (ROOT / "nixos/home.nix").read_text(encoding="utf-8")
 VM_XML_TEXT = (ROOT / "vm-xml/win10.xml").read_text(encoding="utf-8")
 REPAIR = (ROOT / "docs/REPAIR-AND-VALIDATION-REPORT.md").read_text(encoding="utf-8")
@@ -407,17 +423,35 @@ require(
     "README must identify Brave as optional without disabling the GameMode watchdog path",
 )
 require(
+    root_nixpkgs_node_name != cachyos_nixpkgs_node_name
+    and root_nixpkgs_ref == "nixos-unstable"
+    and cachyos_nixpkgs_ref == "nixos-unstable-small"
+    and root_nixpkgs_revision != cachyos_nixpkgs_revision,
+    "flake.lock must keep root nixos-unstable and CachyOS nested nixos-unstable-small as distinct inputs",
+)
+require(
+    "Current flake input identities" in README
+    and f"`{root_nixpkgs_revision}`" in README
+    and f"`{cachyos_nixpkgs_revision}`" in README
+    and "not the root system/userland Nixpkgs" in README,
+    "README must label the root and CachyOS-nested Nixpkgs revisions separately",
+)
+require(
     f"`{cachyos_revision}`" in CONTRIBUTING
+    and f"`{cachyos_nixpkgs_revision}`" in CONTRIBUTING
     and f"`{root_nixpkgs_revision}`" in CONTRIBUTING
+    and "nested CachyOS Nixpkgs package set" in CONTRIBUTING
     and "9df32f70be3550911f178b3ba9ad784996a4e80c" in CONTRIBUTING
     and "same kernel input used by Build #18" not in CONTRIBUTING,
-    "CONTRIBUTING must distinguish both current flake inputs from historical build inputs",
+    "CONTRIBUTING must distinguish CachyOS, its nested Nixpkgs, root Nixpkgs, and historical build inputs",
 )
 require(
     f"`{cachyos_revision}`" in INSTALLATION
+    and f"`{cachyos_nixpkgs_revision}`" in INSTALLATION
     and f"`{root_nixpkgs_revision}`" in INSTALLATION
+    and "nested `nixos-unstable-small` Nixpkgs package set" in INSTALLATION
     and "Build #19" in INSTALLATION,
-    "INSTALLATION must identify the current locked inputs and the older Build #19 baseline",
+    "INSTALLATION must distinguish the root and nested locked inputs and the older Build #19 baseline",
 )
 require(
     "f6689bcd5234f29a7cfcfc4151d161727b0658bc" in README
@@ -432,10 +466,33 @@ require(
     and "6242439da7e944d297dbe5f44fdff8e79fe4689c" in README
     and "Build #19 chronology" in REPAIR
     and f"`{cachyos_revision}`" in REPAIR
+    and f"`{cachyos_nixpkgs_revision}`" in REPAIR
     and f"`{root_nixpkgs_revision}`" in REPAIR,
-    "README and repair report must distinguish successful Build #19 from the refreshed, unbuilt flake inputs",
+    "README and repair report must distinguish Build #19 from both refreshed Nixpkgs nodes",
 )
 
+require(
+    "non-waivable installer build condition" not in STATE_INDEX.lower()
+    and "manual **Release** dispatch from `main`" in STATE_INDEX
+    and "`target_host_validated=true`" in STATE_INDEX
+    and "including an `install.sh` change" in STATE_INDEX
+    and "Tag-triggered releases cannot use this exception" in STATE_INDEX,
+    "the current status index must describe the manual installer attestation exception and its limits",
+)
+require(
+    f"`{parentSha}`" in STATE_INDEX
+    and "494,801 bytes" in STATE_INDEX
+    and f"`{archive}`" in STATE_INDEX
+    and "43692784975" in STATE_INDEX
+    and "43693008723" in STATE_INDEX,
+    "the deep-audit intake archive identity and exact-commit workflow results must be recorded",
+)
+require(
+    "timeout = 3600;" in HOME_NIX
+    and "900-second suspend statement is explicitly corrected" in REPAIR
+    and "3600 seconds" in REPAIR,
+    "the historical 900-second suspend note must not contradict the current 3600-second timeout",
+)
 readme_top = "\n".join(README.splitlines()[:8])
 require("docs/REPAIR-AND-VALIDATION-REPORT.md" in readme_top and "docs/AUDIT-2026-10-28-VM-XML-VFIO.md" not in readme_top, "README must point to the current repair report, not the older audit")
 require("2026-11-04 source-tree cross-checks" in readme_top, "README must identify the current 2026-11-04 source-tree cross-check")
@@ -624,7 +681,15 @@ require(
     and "MEDIA_UUID" in INSTALLATION
     and "Expected exactly %s partitions" in INSTALLATION
     and "ext4 `/mnt/media`" in README
-    and "Use a disk with at least 810 GiB of total capacity" in README
+    and "16 GiB swap" in README
+    and "system partitions total 817 GiB" in README
+    and "about 114.5 GiB for media" in README
+    and "Use a disk with at least 818 GiB of total capacity" in README
+    and "| `/dev/nvme0n1p2` | 16 GiB |" in INSTALLATION
+    and "817 GiB system layout" in INSTALLATION
+    and "at least 818 GiB" in INSTALLATION
+    and "about 114.5 GiB" in INSTALLATION
+    and "sudo sgdisk -n 2:0:+16G" in INSTALLATION
     and "when enabled, the media partition uses the remaining space" in README
     and "Use at least 810 GiB when creating the media partition" not in README
     and 'sudo blkid -s UUID -o value' in README
