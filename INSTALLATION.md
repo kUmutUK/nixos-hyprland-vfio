@@ -743,25 +743,26 @@ git -C /tmp/repo show "$SOURCE_REVISION:nixos/flake.lock" |
   sudo tee /mnt/etc/nixos/nixos/flake.lock >/dev/null
 ```
 
-> **Kernel and full-system validation status (9 November 2026):** manual full-system
-> build [#18](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42597469118)
-> passed on ancestor commit `c6f4b955475de2ea16bc2b34c59a95dad3a1ae78`, including
-> the two-symbol Rust/BTF workaround. This was not a build of the later v1.4.7 release
-> snapshot.
+> **Current kernel and full-system build status (15 November 2026):** manual Full NixOS System Build #20
+> [run #20](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43653123079)
+> completed successfully on exact source commit `46d2b809e4fe9530dde58c85450b3544cf5d1ed0`.
+> The job evaluated the locked flake, built the complete NixOS system and selected
+> RT-Bore-LTO kernel, and verified that the lock file was not rewritten. It used
+> current CachyOS source `c9620070e884d55c5b5566e3fd46611ee24c4d3b`, nested
+> `nixos-unstable-small` Nixpkgs `82566dfe91ca5e12bc10b36272280628142f651d`, and
+> root system `nixos-unstable` Nixpkgs `d4f25a3e562008648d45bcf2d70bcc7422cad84e`.
+> The four commits from this build baseline through the pre-update source snapshot
+> `03beec8eefd41ed386353abbf00bc04630be79b9` changed documentation and the
+> documentation-integrity test only. The build gate for this runtime source is closed.
 >
-> **Kernel input distinction (updated 15 November 2026):** the current
-> `nixos/flake.lock` resolves the CachyOS source to
-> `c9620070e884d55c5b5566e3fd46611ee24c4d3b`, its nested `nixos-unstable-small` Nixpkgs package set to
-> `82566dfe91ca5e12bc10b36272280628142f651d`, and the root system `nixos-unstable` Nixpkgs to
-> `d4f25a3e562008648d45bcf2d70bcc7422cad84e`. Full-system Build #19
-> completed on 11 November on exact source commit
-> `6242439da7e944d297dbe5f44fdff8e79fe4689c`, using CachyOS revision `9df32f70be3550911f178b3ba9ad784996a4e80c` and root Nixpkgs `4d6a01a11146f4691c0991682885ad9e4686e3ee`.
-> It predates the 14 November kernel-only x86-64-v3 profile and the 15 November
-> lock refresh, so it does not validate the current locked inputs or the derived
-> RT-Bore-LTO kernel. The 3 November physical kernel/VM test used the older
-> `755712deee259ef7efbfe9154038a270c3d75a87` revision. The exact kernel SHA
-> booted during the 9 November clean-install/VM check was not recorded, so that
-> host result is not explicit hardware validation of the current locked kernel SHA.
+> **Physical-host boundary:** Build #20 proves that the checked system and kernel
+> derivations compile; it does not prove that this exact kernel was installed,
+> selected at boot, or tested on the physical host. Boot/graphics recovery and the
+> complete Windows VFIO lifecycle must still be verified on the target machine.
+> The 3 November physical kernel/VM test used older CachyOS revision
+> `755712deee259ef7efbfe9154038a270c3d75a87`. The exact kernel SHA booted during
+> the 9 November clean-install/VM check was not recorded. Build #19 is the prior
+> full-system baseline, not the current one.
 >
 > **v1.4.7 release snapshot:** `c28250c34de4b4349023681305da99dee75aac9e`. Normal CI
 > [#1299](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42684408581)

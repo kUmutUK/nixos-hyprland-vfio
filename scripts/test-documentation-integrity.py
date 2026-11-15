@@ -450,8 +450,10 @@ require(
     and f"`{cachyos_nixpkgs_revision}`" in INSTALLATION
     and f"`{root_nixpkgs_revision}`" in INSTALLATION
     and "nested `nixos-unstable-small` Nixpkgs package set" in INSTALLATION
-    and "Build #19" in INSTALLATION,
-    "INSTALLATION must distinguish the root and nested locked inputs and the older Build #19 baseline",
+    and "Build #20" in INSTALLATION
+    and "43653123079" in INSTALLATION
+    and "`46d2b809e4fe9530dde58c85450b3544cf5d1ed0`" in INSTALLATION,
+    "INSTALLATION must distinguish root/nested locked inputs and record Build #20 for the current profile",
 )
 require(
     "f6689bcd5234f29a7cfcfc4151d161727b0658bc" in README
@@ -465,6 +467,9 @@ require(
     "43101226875" in README
     and "6242439da7e944d297dbe5f44fdff8e79fe4689c" in README
     and "Build #19 chronology" in REPAIR
+    and "43653123079" in README
+    and "`46d2b809e4fe9530dde58c85450b3544cf5d1ed0`" in README
+    and "Build #20" in REPAIR
     and f"`{cachyos_revision}`" in REPAIR
     and f"`{cachyos_nixpkgs_revision}`" in REPAIR
     and f"`{root_nixpkgs_revision}`" in REPAIR,
@@ -866,7 +871,7 @@ repair_baseline_match = re.search(
     REPAIR,
 )
 index_baseline_match = re.search(
-    r"(?m)^- \*\*Last completed full-system build baseline \(2026-11-09\):\*\* GitHub `main` at `([0-9a-f]{40})`",
+    r"(?m)^- \*\*Last completed full-system build baseline \(2026-11-15\):\*\* GitHub `main` at `([0-9a-f]{40})`",
     STATE_INDEX,
 )
 reviewed_snapshot_match = re.search(
@@ -874,7 +879,7 @@ reviewed_snapshot_match = re.search(
     REPAIR,
 )
 index_reviewed_snapshot_match = re.search(
-    r"(?m)^- Reviewed source snapshot \(2026-11-09\): GitHub `main` at `([0-9a-f]{40})`",
+    r"(?m)^- Reviewed source snapshot \(2026-11-15\): GitHub `main` at `([0-9a-f]{40})`",
     STATE_INDEX,
 )
 ci_run_match = re.search(
@@ -1121,18 +1126,34 @@ require(
         "7a37d0687ff8580aed0cb34eb4f4479cf2918fff0e65433e3e264e5b6787272f",
         "66 commits", "Build #19",
     )),
-    "v1.5.1 release metadata and outstanding Build #19 must be recorded across current documentation",
+    "v1.5.1 release metadata and historical Build #19 chronology must remain recorded across current documentation",
 )
 
 require(
     "owner-reported current-system build verification" in REPAIR
     and "current NixOS system build was checked successfully" in REPAIR
     and "Build #19 chronology" in REPAIR
+    and "Full-system Build #20" in REPAIR
     and "43101226875" in REPAIR
     and "Owner-reported target-system build verification" in CHANGELOG
     and "current NixOS system build was checked successfully" in README
     and "local system-build check" in STATE_INDEX,
-    "owner-reported host build and successful GitHub Build #19 must remain separate, correctly attributed records",
+    "owner-reported host build and historical GitHub Build #19 must remain separate from the current Build #20 record",
+)
+require(
+    "Full-system Build #20" in CHANGELOG
+    and "43653123079" in CHANGELOG
+    and "`46d2b809e4fe9530dde58c85450b3544cf5d1ed0`" in CHANGELOG
+    and all(item in (README + INSTALLATION + CONTRIBUTING + STATE_INDEX + REPAIR) for item in (
+        "c9620070e884d55c5b5566e3fd46611ee24c4d3b",
+        "82566dfe91ca5e12bc10b36272280628142f651d",
+        "d4f25a3e562008648d45bcf2d70bcc7422cad84e",
+    ))
+    and "all 28 workflow-defined steps" in REPAIR
+    and "Complete target-host activation and boot" in REPAIR
+    and "Perform a real libvirt saved-state/managed-save restore" in REPAIR
+    and "Validate `install.sh` end-to-end" in REPAIR,
+    "Build #20 must validate the current locked system/kernel build while physical validation gaps remain explicit",
 )
 require(
     "4cef0c5f02bb2a466070b6a2c9b5468fd59af7da" in README
@@ -1278,13 +1299,16 @@ require(
     and "42597469118" in REPAIR
     and "Build #19 chronology" in REPAIR
     and "43101226875" in REPAIR
-    and "6242439da7e944d297dbe5f44fdff8e79fe4689c" in REPAIR,
-    "repair report must retain Build #18 as historical and identify Build #19 as the later successful full-system baseline",
+    and "6242439da7e944d297dbe5f44fdff8e79fe4689c" in REPAIR
+    and "Build #20" in REPAIR and "43653123079" in REPAIR
+    and "`46d2b809e4fe9530dde58c85450b3544cf5d1ed0`" in REPAIR,
+    "repair report must retain historical Builds #18/#19 and identify Build #20 as the latest full-system baseline",
 )
 require(
-    "Build #19" in STATE_INDEX and "43101226875" in STATE_INDEX
-    and "6242439da7e944d297dbe5f44fdff8e79fe4689c" in STATE_INDEX,
-    "current-state index must match the latest successful full-system Build #19 baseline",
+    "Build #20" in STATE_INDEX and "43653123079" in STATE_INDEX
+    and "`46d2b809e4fe9530dde58c85450b3544cf5d1ed0`" in STATE_INDEX
+    and "Build #19" in STATE_INDEX and "43101226875" in STATE_INDEX,
+    "current-state index must identify Build #20 as current and retain Build #19 as historical",
 )
 require("run #1120" in REPAIR and "run #1120" in STATE_INDEX and "8d1e4585c9cd3f690c1df80ee531008c7e9d30ef" in STATE_INDEX,
         "current-state index must preserve the distinct reviewed-snapshot normal-CI record")

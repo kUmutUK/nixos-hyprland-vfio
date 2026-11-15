@@ -4,6 +4,13 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 
 ## [Unreleased]
 
+### Full-system Build #20 and current validation boundary — 2026-11-15
+
+- Complete manual Full NixOS System Build #20 [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43653123079) passed on exact source commit `46d2b809e4fe9530dde58c85450b3544cf5d1ed0`. The workflow evaluated the locked flake, built the complete NixOS system and selected RT-Bore-LTO kernel, and verified the lock file was unchanged.
+- Build #20 used the current CachyOS source `c9620070e884d55c5b5566e3fd46611ee24c4d3b`, its nested Nixpkgs package set `82566dfe91ca5e12bc10b36272280628142f651d`, and root system Nixpkgs `d4f25a3e562008648d45bcf2d70bcc7422cad84e`. The four commits from that build baseline to the last pre-update CI snapshot `03beec8eefd41ed386353abbf00bc04630be79b9` touched only documentation and the documentation-integrity test.
+- The prior Normal CI [#1566](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43696760003) passed all 28 workflow-defined steps on that pre-update snapshot. This documentation/test follow-up still needs its own exact-commit CI result.
+- The compile/build gate is closed. Physical-host activation and boot of the exact kernel, `install.sh` live migration/rollback, real VFIO saved-state/managed-save restore, and the standard Windows/NixOS dual-guest lifecycle remain unverified; do not treat Build #20 or mocked tests as hardware evidence.
+
 ### General clean-install guide refinements — 2026-11-15
 
 - Extend the optional Live ISO SSH section with Android Termux setup, wake-lock and battery-optimization guidance, while retaining server-side tmux reconnection instructions.
@@ -13,7 +20,7 @@ This file summarizes notable changes in English. The Turkish release-by-release 
 ### Flake input refresh — 2026-11-15
 
 - Refresh `nixos/flake.lock`: the CachyOS source advances from the 14 November snapshot `f5e1fb8f1185cb51ef6d433e27ab7b60f54cd0e0` to `c9620070e884d55c5b5566e3fd46611ee24c4d3b`; its nested `nixos-unstable-small` Nixpkgs input advances from `ac9af266ee64ddb2eafeb4b250cac6a88147b43a` to `82566dfe91ca5e12bc10b36272280628142f651d`. The root system `nixos-unstable` Nixpkgs input remains `d4f25a3e562008648d45bcf2d70bcc7422cad84e` and is resolved separately through `nodes.root.inputs.nixpkgs`.
-- Record the validation boundary: Full-system Build #19 used CachyOS `9df32f70be3550911f178b3ba9ad784996a4e80c` and root Nixpkgs `4d6a01a11146f4691c0991682885ad9e4686e3ee`, so it does not validate the refreshed kernel/package inputs or the kernel-only x86-64-v3 derivation. A new manual full-system build and target-host boot validation are still required.
+- At the time of the lock-refresh entry, Build #19 was the latest full-system result; that compile gate was subsequently closed by Build #20 on 15 November. Build #20 uses the refreshed CachyOS/root/nested Nixpkgs inputs and the kernel-only x86-64-v3 profile. Physical-host boot validation remains a separate open item.
 - Make the documentation-integrity regression compare the current locked revisions with README, CONTRIBUTING, INSTALLATION, and the repair report, preventing stale “current input” claims after future lock updates. Normal CI #1557 caught the stale documentation; it did not run a full-system build.
 ### Deep source-audit reconciliation — 2026-11-15
 
