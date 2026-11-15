@@ -136,7 +136,7 @@ in
 
   # Media partition
   fileSystems."/mnt/media" = {
-    device = "/dev/disk/by-uuid/365a053e-38ce-4f45-a225-8a3ac7e0596e";
+    device = "/dev/disk/by-uuid/34609584-8e72-4a79-b076-5ece7e60ed71";
     fsType = "ext4";
     options = [
       "nofail"
@@ -592,6 +592,7 @@ in
   security.pam.services.hyprlock = { };
 
   environment.systemPackages = with pkgs; [
+    brave-origin
     kitty
     waybar
     rofi
