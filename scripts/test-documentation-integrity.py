@@ -480,9 +480,9 @@ require(
     "the current status index must describe the manual installer attestation exception and its limits",
 )
 require(
-    f"`{parentSha}`" in STATE_INDEX
+    "`b9e45d600e26a53de15aca882ed028255e5581e5`" in STATE_INDEX
     and "494,801 bytes" in STATE_INDEX
-    and f"`{archive}`" in STATE_INDEX
+    and "`36ae2363ac089c5cb04f63df5917997fc3d3f59dde37bea9e6d579b585dd374d`" in STATE_INDEX
     and "43692784975" in STATE_INDEX
     and "43693008723" in STATE_INDEX,
     "the deep-audit intake archive identity and exact-commit workflow results must be recorded",
