@@ -476,6 +476,16 @@ require(
     and f"`{root_nixpkgs_revision}`" in REPAIR,
     "README and repair report must distinguish Build #19 from both refreshed Nixpkgs nodes",
 )
+require(
+    "Owner-reported fresh-install/build check (15 November 2026)" in README
+    and "Owner-reported fresh-install/build check (15 November 2026)" in CHANGELOG
+    and "Owner-reported fresh-install/build check (15 November 2026)" in CONTRIBUTING
+    and "Owner-reported fresh-install/build check (15 November 2026)" in REPAIR
+    and "Owner-reported fresh-install/build check (15 November 2026)" in STATE_INDEX
+    and "No exact source SHA, build command/derivation, or booted kernel identity was supplied" in README
+    and "not a GitHub Actions run" in README,
+    "the 15 November owner-reported clean-install/build result must be recorded separately from the exact Build #20 Actions baseline and must not overclaim kernel boot",
+)
 
 require(
     "non-waivable installer build condition" not in STATE_INDEX.lower()
@@ -1261,7 +1271,7 @@ require(
     "the 3 November target-host test must remain as dated historical information",
 )
 require(
-    "latest target-machine update dated 2026-11-09" in CONTRIBUTING
+    "latest target-machine update (owner-reported, 15 November 2026)" in CONTRIBUTING
     and "3 November 2026" in CONTRIBUTING,
     "contributor guide must distinguish latest and historical target-host validation",
 )
