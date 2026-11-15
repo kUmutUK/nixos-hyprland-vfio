@@ -44,6 +44,7 @@ This file summarizes notable changes in English. The separate Turkish release-by
 - Remove nine superseded one-off audit and fix snapshots from `docs/archive/`; keep `HISTORICAL-AUDITS.md` as the only retained file in that directory.
 - Remove the separate Turkish release-by-release archive from the current tree; its exact prior contents remain recoverable from Git history.
 - Keep all active CI regression tests. Update the README repository map to the current 65 tracked files; the earlier 75-file count remains only in dated historical snapshots.
+- Explicitly include the legacy `KURULUM.md` compatibility pointer in the exact documentation-only ancestor-build allowlist so its retired-history reference can be corrected without a new full-system build.
 - Permit the nine one-off archive paths and the retired Turkish release-history path in the release ancestor-build gate only when Git reports them as deleted, never when edited or reintroduced.
 
 

@@ -279,8 +279,8 @@ require(
     and len(documented_release_path_list) == len(documented_release_paths)
     and len(workflow_release_path_list) == len(workflow_release_paths)
     and documented_release_paths == workflow_release_paths
-    and len(workflow_release_paths) == 52,
-    "RELEASING.md and release.yml must contain the same unique exhaustive 52-path literal allowlist",
+    and len(workflow_release_paths) == 53,
+    "RELEASING.md and release.yml must contain the same unique exhaustive 53-path literal allowlist",
 )
 require(
     "git diff --no-renames --name-status" in RELEASE_WORKFLOW
@@ -1340,6 +1340,7 @@ verification_metadata_paths = {
     "DEGISIKLIK_GECMISI.md",
     "README.md",
     "INSTALLATION.md",
+    "KURULUM.md",
     "RELEASING.md",
     "docs/REPAIR-AND-VALIDATION-REPORT.md",
     "docs/UUID-AND-MACHINE-IDENTITY.md",

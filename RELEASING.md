@@ -25,6 +25,7 @@ The dual-guest VM definition `vm-xml/win10.xml` remains outside the ancestor-bui
    `RELEASING.md`,
    `README.md`,
    `INSTALLATION.md`,
+   `KURULUM.md`,
    `DEGISIKLIK_GECMISI.md`,
    `CONTRIBUTING.md`,
    `CHANGELOG.md`,
