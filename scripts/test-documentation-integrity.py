@@ -412,10 +412,13 @@ usb_hostdevs = [
 require(
     'profile name="default-v1"' in VM_XML_TEXT
     and "libvirt 10.10.0 or newer" in README
-    and len(usb_hostdevs) == 2
-    and all(node.find("address") is None for node in usb_hostdevs)
-    and "USB `hostdev` entries omit explicit guest-side addresses" in README,
-    "README must document the checked-in TPM profile version floor and USB hostdev address caveat",
+    and len(usb_hostdevs) == 4
+    and all(node.find("address") is not None for node in usb_hostdevs)
+    and all(node.find("./source/address") is None for node in usb_hostdevs)
+    and "four USB `hostdev` entries" in README
+    and "guest-side USB port assignment" in README
+    and "host bus/device numbers" in README,
+    "README must document the checked-in TPM profile floor and distinguish guest USB ports from host USB identifiers",
 )
 mpris_players = re.search(
     r"(?ms)^\s*mpris\s*=\s*\{\s*player\s*=\s*\[(?P<players>.*?)\]\s*;",
