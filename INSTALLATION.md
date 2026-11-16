@@ -759,6 +759,15 @@ git -C /tmp/repo show "$SOURCE_REVISION:nixos/flake.lock" |
 > and normal VM start/shutdown on 16 November; the exact source SHA, derivation,
 > and booted generation/kernel were not recorded.
 >
+> **Locked input identities used by Build #20:** CachyOS source
+> `c9620070e884d55c5b5566e3fd46611ee24c4d3b`, the nested
+> `nixos-unstable-small` Nixpkgs package set
+> `82566dfe91ca5e12bc10b36272280628142f651d`, and root system
+> `nixos-unstable` Nixpkgs `d4f25a3e562008648d45bcf2d70bcc7422cad84e`.
+> The root and nested Nixpkgs inputs are distinct. The prior Build #19 used
+> CachyOS `9df32f70be3550911f178b3ba9ad784996a4e80c` and root Nixpkgs
+> `4d6a01a11146f4691c0991682885ad9e4686e3ee`; these are historical inputs.
+>
 > **Physical/functional boundary:** the reported ordinary VM start/shutdown does
 > not establish the installed NixOS `vdb` guest boot, Windows guest boot from its
 > normal disk, guest networking, saved-state/managed-save restore, or GPU/display
