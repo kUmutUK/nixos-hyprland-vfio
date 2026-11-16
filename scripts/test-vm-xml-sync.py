@@ -127,23 +127,25 @@ def fake_virsh_env(
 
 
 def customize_xml(data: str, uuid: str, mac: str, disk: str, vcpu: int) -> str:
-    updated = data.replace(
-        "<uuid>3def90f6-01d9-4640-badb-1488b66bec29</uuid>",
-        f"<uuid>{uuid}</uuid>",
-        1,
+    # Work from the parsed template rather than assuming libvirt's XML quote,
+    # disk-path, or vCPU attribute formatting.
+    root = ET.fromstring(data)
+    uuid_node = root.find("uuid")
+    mac_node = root.find("./devices/interface/mac")
+    windows_disk = next(
+        item for item in root.findall("./devices/disk[@device='disk']")
+        if item.find("target") is not None and item.find("target").get("dev") == "vda"
     )
-    updated = updated.replace('address="52:54:00:df:49:0b"', f'address="{mac}"', 1)
-    updated = updated.replace(
-        "/var/lib/libvirt/images/win10new.qcow2",
-        disk,
-        1,
-    )
-    updated = updated.replace(
-        '<vcpu placement="static" current="6">6</vcpu>',
-        f'<vcpu placement="static" current="{vcpu}">{vcpu}</vcpu>',
-        1,
-    )
-    return updated
+    vcpu_node = root.find("vcpu")
+    if uuid_node is None or mac_node is None or windows_disk.find("source") is None or vcpu_node is None:
+        raise ValueError("template fixture is missing UUID, MAC, Windows disk source, or vCPU")
+    uuid_node.text = uuid
+    mac_node.set("address", mac)
+    windows_disk.find("source").set("file", disk)
+    vcpu_node.text = str(vcpu)
+    if vcpu_node.get("current") is not None:
+        vcpu_node.set("current", str(vcpu))
+    return ET.tostring(root, encoding="unicode")
 
 
 def source_bdf(hostdev: ET.Element) -> str | None:
@@ -247,7 +249,11 @@ def main() -> int:
             disk for disk in generated.findall("./devices/disk[@device='disk']")
             if disk.find("target") is not None and disk.find("target").get("dev") == "vdb"
         )
-        if generated_windows.find("source").get("file") != "/var/lib/libvirt/images/win10new.qcow2":
+        original_windows = next(
+            disk for disk in original.findall("./devices/disk[@device='disk']")
+            if disk.find("target") is not None and disk.find("target").get("dev") == "vda"
+        )
+        if generated_windows.find("source").get("file") != original_windows.find("source").get("file"):
             return fail("new VM Windows system disk path was changed")
         if generated_nixos.find("source").get("file") != "/var/lib/libvirt/images/nixos-test.qcow2":
             return fail("new VM NixOS test disk path was changed")
@@ -289,35 +295,27 @@ def main() -> int:
         custom_mac = "52:54:00:aa:bb:cc"
         custom_disk = "/var/lib/libvirt/images/my-existing-windows.qcow2"
         custom_nixos_disk = "/var/lib/libvirt/images/my-existing-nixos-test.qcow2"
-        custom_data = template_data.replace(
-            "<uuid>3def90f6-01d9-4640-badb-1488b66bec29</uuid>",
-            f"<uuid>{custom_uuid}</uuid>",
-            1,
+        custom_data = customize_xml(template_data, custom_uuid, custom_mac, custom_disk, 4)
+        custom_root = ET.fromstring(custom_data)
+        custom_nixos_disk_element = next(
+            disk for disk in custom_root.findall("./devices/disk[@device='disk']")
+            if disk.find("target") is not None and disk.find("target").get("dev") == "vdb"
         )
-        custom_data = custom_data.replace('address="52:54:00:df:49:0b"', f'address="{custom_mac}"', 1)
-        custom_data = custom_data.replace(
-            "/var/lib/libvirt/images/win10new.qcow2", custom_disk, 1
-        )
-        custom_data = custom_data.replace(
-            "/var/lib/libvirt/images/nixos-test.qcow2", custom_nixos_disk, 1
-        )
-        custom_data = custom_data.replace(
-            '<vcpu placement="static" current="6">6</vcpu>',
-            '<vcpu placement="static" current="4">4</vcpu>',
-            1,
-        )
-        # The PCI updater must retain non-BDF source-address attributes too.
-        custom_data = custom_data.replace(
-            'slot="0x00" function="0x0"/>',
-            'slot="0x00" function="0x0" multifunction="on"/>',
-            1,
-        )
-        custom_data = custom_data.replace(
-            "  <memory unit=\"KiB\">16777216</memory>",
-            '  <metadata><audit-setting>preserve-me</audit-setting></metadata>\n  <memory unit="KiB">16777216</memory>',
-            1,
-        )
-        if custom_uuid not in custom_data or custom_mac not in custom_data or custom_disk not in custom_data or '<vcpu placement="static" current="4">4</vcpu>' not in custom_data or "preserve-me" not in custom_data:
+        custom_nixos_disk_element.find("source").set("file", custom_nixos_disk)
+        custom_pci_target = custom_root.find("./devices/hostdev[@type='pci']/address")
+        custom_metadata = custom_root.find("metadata")
+        if custom_pci_target is None or custom_metadata is None:
+            return fail("test fixture could not find a PCI target address or metadata element")
+        custom_pci_target.set("multifunction", "on")
+        ET.SubElement(custom_metadata, "audit-setting").text = "preserve-me"
+        custom_data = ET.tostring(custom_root, encoding="unicode")
+        if (
+            custom_uuid not in custom_data
+            or custom_mac not in custom_data
+            or custom_disk not in custom_data
+            or custom_nixos_disk not in custom_data
+            or "preserve-me" not in custom_data
+        ):
             return fail("test fixture failed to create the expected VM customizations")
         deployed.write_text(custom_data, encoding="utf-8")
         before_usb = [
@@ -348,12 +346,19 @@ def main() -> int:
         if nixos_disk.find("source").get("file") != custom_nixos_disk:
             return fail("existing NixOS test disk path was changed")
         vcpu = updated.find("vcpu")
-        if vcpu is None or vcpu.text != "4" or vcpu.get("current") != "4":
+        original_vcpu = ET.fromstring(template_data).find("vcpu")
+        if (
+            vcpu is None or vcpu.text != "4"
+            or (original_vcpu is not None and original_vcpu.get("current") is not None and vcpu.get("current") != "4")
+        ):
             return fail("custom CPU topology/vCPU configuration was changed")
         if "preserve-me" not in updated_data:
             return fail("custom metadata was lost")
-        if 'multifunction="on"' not in updated_data:
-            return fail("extra PCI source-address attributes were not preserved")
+        if not any(
+            node.get("multifunction") == "on"
+            for node in updated.findall("./devices/hostdev[@type='pci']/address")
+        ):
+            return fail("extra PCI guest-address attributes were not preserved")
         after_usb = [
             ET.tostring(node, encoding="unicode")
             for node in updated.findall("./devices/hostdev[@type='usb']")
@@ -421,13 +426,13 @@ def main() -> int:
         template = temp_path / "template.xml"
         deployed = temp_path / "win10.xml"
         template.write_text(template_data, encoding="utf-8")
-        unknown_target = template_data.replace(
-            '<address type="pci" domain="0x0000" bus="0x06" slot="0x00" function="0x0"/>',
-            '<address type="pci" domain="0x0000" bus="0x08" slot="0x00" function="0x0"/>',
-            1,
+        unknown_root = ET.fromstring(template_data)
+        gpu_guest_target = next(
+            node for node in unknown_root.findall("./devices/hostdev[@type='pci']/address")
+            if node.get("bus") == "0x06"
         )
-        if unknown_target == template_data:
-            return fail("test fixture failed to change the guest-side PCI target")
+        gpu_guest_target.set("bus", "0x08")
+        unknown_target = ET.tostring(unknown_root, encoding="unicode")
         deployed.write_text(unknown_target, encoding="utf-8")
         result = run_sync(template, deployed)
         if result.returncode == 0:

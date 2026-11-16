@@ -222,13 +222,18 @@ def synchronize_pci_addresses(
 def fresh_identity(data: str) -> str:
     if not re.search(r"<uuid>[^<]+</uuid>", data):
         fail("the XML template does not contain a UUID; no file was written.")
-    if not re.search(r'<mac\s+address="[^"]+"\s*/>', data):
+    # libvirt's XML dump may use either single or double quotes. Preserve the
+    # existing quote style when assigning a fresh MAC to a new VM.
+    mac_pattern = re.compile(r"""<mac\s+address=(["'])[^"']+\1\s*/>""")
+    if not mac_pattern.search(data):
         fail("the XML template does not contain a network MAC address; no file was written.")
     vm_uuid = str(uuid.uuid4())
     vm_mac = "52:54:00:" + ":".join(secrets.token_hex(3)[i:i + 2] for i in (0, 2, 4))
     data, uuid_count = re.subn(r"<uuid>[^<]+</uuid>", f"<uuid>{vm_uuid}</uuid>", data, count=1)
-    data, mac_count = re.subn(
-        r'<mac\s+address="[^"]+"\s*/>', f'<mac address="{vm_mac}"/>', data, count=1
+    data, mac_count = mac_pattern.subn(
+        lambda match: f"<mac address={match.group(1)}{vm_mac}{match.group(1)}/>",
+        data,
+        count=1,
     )
     if uuid_count != 1 or mac_count != 1:
         fail("could not assign a unique VM UUID/MAC to the new XML; no file was written.")
