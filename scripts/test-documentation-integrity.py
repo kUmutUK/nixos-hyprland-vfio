@@ -410,7 +410,7 @@ usb_hostdevs = [
     if node.get("type") == "usb"
 ]
 require(
-    'profile name="default-v1"' in VM_XML_TEXT
+    ('profile name="default-v1"' in VM_XML_TEXT or "profile name='default-v1'" in VM_XML_TEXT)
     and "libvirt 10.10.0 or newer" in README
     and len(usb_hostdevs) == 4
     and all(node.find("address") is not None for node in usb_hostdevs)
