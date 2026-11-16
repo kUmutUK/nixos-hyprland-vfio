@@ -43,7 +43,7 @@ The committed `vm-xml/win10.xml` was not modified by this VM-test/documentation 
 
 **Still open — target-host/functional validation:**
 
-- Complete target-host activation/boot identification for the exact Build #20 kernel; confirm the selected generation/kernel identity, graphics login/recovery, and configured scheduler/ZRAM/oomd runtime state. The 16 November owner report confirms a separate from-scratch local build, but gives no generation or kernel identity.
+- Complete target-host activation and boot of the exact Build #20 kernel; confirm the selected generation/kernel identity, graphics login/recovery, and configured scheduler/ZRAM/oomd runtime state. The 16 November owner report confirms a separate from-scratch local build, but gives no generation or kernel identity.
 - Perform a real libvirt saved-state/managed-save restore and verify GPU handback plus Hyprland recovery. Mocked restore and rollback regressions are not hardware evidence.
 - Complete the remaining canonical dual-guest VM checks: live libvirt/QEMU semantic validation of `vm-xml/win10.xml`, installed NixOS boot from `vdb`, guest network access, and explicit GPU/display handback verification. The ordinary VM start/shutdown cycle was owner-reported successful on 16 November.
 - `install.sh` has not been tried by the owner. Its live migration and failure/rollback behavior remain unverified; any eventual test should use an isolated disposable NixOS/libvirt target with a verified recovery path.
