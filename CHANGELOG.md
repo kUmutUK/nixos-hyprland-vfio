@@ -33,6 +33,10 @@ This file summarizes notable changes in English. The separate Turkish release-by
 - After the v1.5.6 release/tag snapshot, documentation-integrity CI #1601 exposed two stale text assertions. They were corrected without changing NixOS configuration, VM XML, hardware identifiers, or runtime scripts.
 - Normal CI [#1602](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43946085543) passed all 27 workflow-defined steps on exact source commit `0c02d4554edb9d49495a26cfe25553d30c0af1a5`.
 
+### Earlier complete Normal CI #1599 result — 2026-11-16
+
+- Normal CI [#1599](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43934512654) completed successfully on exact commit `95930e6a41935f7c7fd64cf5bce2d3543f66891b`. VM XML invariants, structural tests, path/sync/diagnostic/ISO validation, and mocked VM bootstrap retry checks passed. This remains automated regression coverage, not a real installed-guest boot or saved-state restore.
+
 ### Automated VM validation passed — 2026-11-16
 - On exact source commit `95930e6a41935f7c7fd64cf5bce2d3543f66891b`, Normal CI [#1599](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43934512654) completed successfully. The `XML well-formedness and VM invariants` step ran the VM XML validator, 14 structural regression tests, custom-path validation, XML synchronization, diagnostic XML, and ISO-path checks; the manual VM bootstrap retry regression also passed its retry/failure-cleanup scenarios.
 - This is automated VM/XML regression coverage, separate from the owner-reported live VM start/shutdown check above. It does not validate the standard installed NixOS `vdb` guest boot, guest networking, or saved-state/managed-save restore.
