@@ -75,7 +75,7 @@ This file summarizes notable changes in English. The separate Turkish release-by
 
 ### Repository documentation cleanup — 2026-11-15
 
-- Remove nine superseded one-off audit and fix snapshots from `docs/archive/`; retain `HISTORICAL-AUDITS.md` as the only historical audit register alongside the `README.md` directory index.
+- Remove nine superseded one-off audit and fix snapshots from `docs/archive/`; retain `HISTORICAL-AUDITS.md` as the only retained historical audit register alongside the `README.md` directory index.
 - Remove the separate Turkish release-by-release archive from the current tree; its exact prior contents remain recoverable from Git history.
 - Keep all active CI regression tests. Update the README repository map to the current 65 tracked files; the earlier 75-file count remains only in dated historical snapshots.
 - Explicitly include the legacy `KURULUM.md` compatibility pointer in the exact documentation-only ancestor-build allowlist so its retired-history reference can be corrected without a new full-system build.
