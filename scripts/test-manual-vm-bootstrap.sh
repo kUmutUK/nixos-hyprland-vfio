@@ -16,7 +16,12 @@ mkdir -p "$REPO/scripts" "$REPO/vm-xml" "$MOCK_BIN" \
   "$LIBVIRT_ROOT/images" "$LIBVIRT_ROOT/qemu" "$HOME_DIR"
 cp "$ROOT/scripts/sync-vm-xml.py" "$REPO/scripts/"
 cp "$ROOT/scripts/check-vm-iso-paths.py" "$REPO/scripts/"
-sed "s|/var/lib/libvirt|$LIBVIRT_ROOT|g" "$ROOT/vm-xml/win10.xml" > "$REPO/vm-xml/win10.xml"
+# The bootstrap regression exercises the documented clean-VM path, not the
+# checked-in host's existing /mnt/media disk. Map both host storage roots into
+# the isolated fixture so the real template remains untouched.
+sed -e "s|/var/lib/libvirt|$LIBVIRT_ROOT|g" \
+    -e "s|/mnt/media|$LIBVIRT_ROOT/images|g" \
+    "$ROOT/vm-xml/win10.xml" > "$REPO/vm-xml/win10.xml"
 cp "$ROOT/scripts/verify-source-revision.sh" "$REPO/scripts/"
 git -C "$REPO" init -q
 git -C "$REPO" config user.name "VM Bootstrap Regression"

@@ -4,6 +4,10 @@ This file summarizes notable changes in English. The separate Turkish release-by
 
 ## [Unreleased]
 
+### VM bootstrap fixture and host-specific disk paths — 2026-11-16
+- Clarified that the checked-in Windows disk and installer-media paths under `/mnt/media` are host-specific, while the fresh-VM bootstrap intentionally auto-creates only its canonical `/var/lib/libvirt/images/win10new.qcow2` path. The manual bootstrap regression now maps the template's two host storage roots into an isolated temporary fixture without changing the committed VM XML.
+
+
 ### VM XML optional USB passthrough — 2026-11-16
 - Kept the two documented machine-specific USB IDs as required entries while allowing additional numeric USB hostdevs only when their source sets `startupPolicy='optional'`. Added structural and documentation regressions for optional devices, non-optional extras, invalid IDs, and duplicate ID pairs.
 
