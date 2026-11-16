@@ -4,7 +4,7 @@ This file summarizes notable changes in English. The separate Turkish release-by
 
 ## [Unreleased]
 
-### Owner-reported local full-system build and VM check — 2026-11-16
+### Owner-reported local full-system build and VM check (16 November 2026)
 
 - The owner reports that a from-scratch full NixOS system build completed successfully on the target machine and that the VM started and shut down successfully. This is an owner-reported result, not a GitHub Actions run; the exact source SHA, build command/derivation, and booted generation/kernel identity were not recorded.
 - The owner explicitly confirms that `install.sh` has not been tried. No live installer migration or rollback result exists; CI's syntax, ShellCheck, and mocked rollback tests are not live-target validation.
