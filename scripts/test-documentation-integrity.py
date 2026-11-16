@@ -2497,7 +2497,7 @@ require(
 )
 require(
     "Fetching `README.md` at Git ref `v1.3.9` succeeds" in REPAIR
-    and not re.search(r"(?m)^## \\[v1\.3\.9\]", CHANGELOG)
+    and "## [v1.3.9]" not in CHANGELOG
     and "B7 — DEGISIKLIK_GECMISI heading/parenthesis (not reproduced)" in REPAIR
     and "B5 — exact CI for b384 (not confirmed in the accessible records)" in REPAIR,
     "the missing v1.3.9 changelog heading, unreproduced B7, and qualified exact-CI gap must not be overstated",
