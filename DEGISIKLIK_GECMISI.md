@@ -1,15 +1,16 @@
 # Historical Change Log Index (English)
 
-## Current release status — 2026-11-15
+## Current release status — 2026-11-16
 
 **Latest confirmed published release:** [v1.5.4](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.5.4), Release ID `445492077`, published by [Release run #38](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43625112235) from tag commit `f6689bcd5234f29a7cfcfc4151d161727b0658bc`. Exact-commit Normal CI [#1526](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43624282232) passed. GitHub Release metadata records the source ZIP as 477,863 bytes with SHA-256 `dca1f4ccd365df64d416a029f13ea821a58e4e05cf21a81c4d5bc3d2d65b5e6c`, matching the supplied audit.
 
 The `v1.5.4` annotated tag resolves to `f6689bcd5234f29a7cfcfc4151d161727b0658bc`; Normal CI #1526 passed on that exact SHA. Release #38 published Release ID `445492077`, and the GitHub API now returns its source ZIP/checksum assets. The prior #37 verification's 404 observation is superseded; Release #37's earlier target-host attestation did not itself create a full-system build.
 
-## Current full-system build and CI status — 2026-11-15
+## Current full-system build and CI status — 2026-11-16
 
 - **Last completed full-system build baseline (2026-11-15):** GitHub `main` at `46d2b809e4fe9530dde58c85450b3544cf5d1ed0`.
 - **Full-system Build #20:** manual [run #20](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43653123079) completed successfully for the **same exact commit** `46d2b809e4fe9530dde58c85450b3544cf5d1ed0`. The job evaluated the locked flake, built the complete NixOS system and selected RT-Bore-LTO kernel, and verified the lock file was unchanged.
+- **Automated VM regression pass (16 November 2026):** Normal CI [#1599](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43934512654) on exact commit `95930e6a41935f7c7fd64cf5bce2d3543f66891b` passed the VM XML/invariant and manual VM bootstrap retry steps. The 14 structural cases, XML validation/path/sync/diagnostic/ISO checks, and mocked bootstrap recovery scenarios all passed. At the latest status check, overall CI was still in the separate `nix flake check (eval only)` step; this is not an overall green-run claim or evidence of a live Windows/NixOS dual-guest boot or physical GPU handback.
 - **Current locked inputs used by Build #20:** CachyOS `c9620070e884d55c5b5566e3fd46611ee24c4d3b`, nested `nixos-unstable-small` Nixpkgs `82566dfe91ca5e12bc10b36272280628142f651d`, and root `nixos-unstable` Nixpkgs `d4f25a3e562008648d45bcf2d70bcc7422cad84e`.
 - **Owner-reported fresh-install/build check (15 November 2026):** The owner reports that a fresh from-scratch NixOS installation and build completed without issues on 15 November 2026. No exact source SHA, build command/derivation, or booted kernel identity was supplied. This is a separate owner-reported result, not a GitHub Actions run, and it does not establish that the exact Build #20 kernel was activated or booted, nor validate VM/GPU lifecycle, saved-state restore, or `install.sh` migration.
 - Reviewed source snapshot (2026-11-15): GitHub `main` at `03beec8eefd41ed386353abbf00bc04630be79b9`.

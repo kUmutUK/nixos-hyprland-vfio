@@ -4,6 +4,11 @@ This file summarizes notable changes in English. The separate Turkish release-by
 
 ## [Unreleased]
 
+### Automated VM validation passed — 2026-11-16
+- On exact source commit `95930e6a41935f7c7fd64cf5bce2d3543f66891b`, Normal CI [#1599](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43934512654) passed the `XML well-formedness and VM invariants` and `Manual VM bootstrap retry regression test` steps. The XML step ran the VM XML validator, 14 structural regression tests, custom-path validation, XML synchronization, diagnostic XML, and ISO-path checks; the bootstrap regression also passed its retry/failure-cleanup scenarios.
+- This records successful automated VM/XML regression coverage only. It is not a new live libvirt/QEMU semantic validation or a claim that the standard Windows `vda` guest or installed NixOS `vdb` guest booted, that guest networking worked, or that physical GPU handback was tested. At the time this entry was written, the overall CI run was still executing `nix flake check (eval only)`; the two VM-focused steps had completed successfully.
+
+
 ### VM bootstrap fixture and host-specific disk paths — 2026-11-16
 - Clarified that the checked-in Windows disk and installer-media paths under `/mnt/media` are host-specific, while the fresh-VM bootstrap intentionally auto-creates only its canonical `/var/lib/libvirt/images/win10new.qcow2` path. The manual bootstrap regression now maps the template's two host storage roots into an isolated temporary fixture without changing the committed VM XML.
 

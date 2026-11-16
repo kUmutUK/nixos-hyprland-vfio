@@ -1,4 +1,15 @@
-# Repair and validation report — updated 2026-11-15 (latest confirmed published release v1.5.4)
+# Repair and validation report — updated 2026-11-16 (latest confirmed published release v1.5.4)
+
+### Automated VM test result — 2026-11-16
+
+Normal CI [#1599](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43934512654) on exact commit `95930e6a41935f7c7fd64cf5bce2d3543f66891b` completed both VM-focused steps successfully:
+
+- `XML well-formedness and VM invariants`: the repository XML parsed; `scripts/test-vm-xml.py`, the 14-case `scripts/test-vm-xml-structure.py` suite, `scripts/test-vm-xml-paths.py`, `scripts/test-vm-xml-sync.py`, `scripts/test-vm-diagnostic.py`, and `scripts/test-vm-iso-paths.py` passed.
+- `Manual VM bootstrap retry regression test`: the mocked fresh-VM flow passed its missing-ISO, failed/partial disk creation, pre-existing orphan disk, concurrent XML publication, and successful retry checks.
+
+**Scope boundary:** these are successful automated XML, helper, and mocked bootstrap tests. They are not a live `virsh`/QEMU semantic conversion or a newly observed guest boot. They do not prove that Windows boots from the real `vda`, that an installed NixOS guest boots from `vdb`, that guest networking works, or that shutdown returns the physical GPU/display to Hyprland. The standard dual-guest VM lifecycle gate therefore remains open. At the time of this report entry, the overall #1599 workflow was still running its separate `nix flake check (eval only)` step; no overall green CI result is claimed here.
+
+The committed `vm-xml/win10.xml` was not modified by this VM-test/documentation follow-up.
 
 ### Full-system Build #20 and current validation boundary — 2026-11-15
 
