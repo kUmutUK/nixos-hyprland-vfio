@@ -72,7 +72,7 @@ def main() -> int:
         for original_id, custom_id in usb_id_replacements:
             # XML writers may serialize attributes with either quote style.
             # Match the attribute value without assuming double quotes.
-            pattern = re.compile(rf'(\\bid=)(["\\']){re.escape(original_id)}\\2')
+            pattern = re.compile(rf"""(\bid=)(["']){re.escape(original_id)}\2""")
             matches = list(pattern.finditer(custom_xml))
             if len(matches) != 1:
                 return fail(
@@ -83,7 +83,7 @@ def main() -> int:
                 custom_xml,
                 count=1,
             )
-            replacement_pattern = re.compile(rf'(\\bid=)(["\\']){re.escape(custom_id)}\\2')
+            replacement_pattern = re.compile(rf"""(\bid=)(["']){re.escape(custom_id)}\2""")
             if len(list(replacement_pattern.finditer(custom_xml))) != 1:
                 return fail(f"custom USB ID replacement did not produce {custom_id!r}")
         if custom_xml == template_xml:
