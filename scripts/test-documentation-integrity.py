@@ -2496,14 +2496,14 @@ require(
     "allowlist snapshots and the 66-to-65 archive deletion explanation must remain explicit",
 )
 require(
-    "GitHub's `v1.3.9` ref resolves" in REPAIR
-    and not re.search(r"(?m)^## \\[v1\\.3\\.9\\]", CHANGELOG)
+    "Fetching `README.md` at Git ref `v1.3.9` succeeds" in REPAIR
+    and not re.search(r"(?m)^## \\[v1\.3\.9\]", CHANGELOG)
     and "B7 — DEGISIKLIK_GECMISI heading/parenthesis (not reproduced)" in REPAIR
     and "B5 — exact CI for b384 (not confirmed in the accessible records)" in REPAIR,
     "the missing v1.3.9 changelog heading, unreproduced B7, and qualified exact-CI gap must not be overstated",
 )
 require(
-    "only retained historical audit document, alongside the index" in CHANGELOG
+    "only retained historical audit register alongside the `README.md` directory index" in CHANGELOG
     and "HISTORICAL-AUDITS.md` as the only retained file in that directory" not in CHANGELOG
     and "B6 — archive inventory wording (corrected in CHANGELOG)" in REPAIR,
     "the archive index/register distinction must match the actual two-file directory",
