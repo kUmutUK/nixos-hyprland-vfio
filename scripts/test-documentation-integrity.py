@@ -1868,7 +1868,10 @@ require(
     "Unreleased changelog workstreams must have separate dated headings rather than appearing under the unrelated Home Snapper heading",
 )
 require("update_qemu_hook_pci()" in INSTALLER and "if ! update_qemu_hook_pci" in INSTALLER, "installer must use the checked QEMU hook PCI updater and fail closed on error")
-    and "## [v1.3.9]" not in CHANGELOG
+require(
+    "## [v1.3.9]" not in CHANGELOG,
+    "CHANGELOG must preserve the verified absence of a v1.3.9 release section until its historical notes are sourced",
+)
 require(
     "## Follow-up fixes — documented 2026-10-23 (includes earlier changes)" in CHANGELOG
     and "not a claim that every listed change first occurred on 23 October" in CHANGELOG,
