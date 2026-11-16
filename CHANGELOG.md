@@ -4,13 +4,22 @@ This file summarizes notable changes in English. The separate Turkish release-by
 
 ## [Unreleased]
 
+### Current-source and release-gate reconciliation — 2026-11-17
+
+- Update the current published-release record to v1.5.7 (Release run #47, exact tag commit `b384eba5b3b37a14b870aeeec5c2ed4b1009335a`), with Normal CI #1609 confirmed on that exact commit and GitHub asset metadata recorded without claiming an independent ZIP re-hash.
+- Record Normal CI #1619 as passing on pre-update `main` `e07894e9d63d077b6b11db3e0a189fce6e927875`; this also resolves the earlier B5 exact-CI evidence gap for `b384eba...`.
+- Correct Build #20's scope: it passed on `46d2b809e4fe9530dde58c85450b3544cf5d1ed0`, but the current-main comparison contains 45 commits and 23 changed paths, including NixOS configuration, `install.sh`, helper scripts, and `vm-xml/win10.xml`. Build #20 must not be described as validating current main.
+- Preserve the separate owner-reported local full-system build and ordinary VM start/shutdown result; its exact source SHA, derivation, and booted generation/kernel remain unrecorded. `install.sh` remains untried.
+- Add a separate `vm_xml_validated` Release dispatch attestation when the VM template differs from the previous stable tag. This VM-specific assertion requires libvirt/QEMU semantic validation and real Windows plus installed-NixOS `vdb` guest boots; generic `target_host_validated` cannot replace it. The production VM XML and machine-specific identifiers remain unchanged.
+
+
 ### Ten-finding contradiction-report reconciliation — 2026-11-16
 
 - Cross-check the supplied audit against GitHub records at intake commit `b384eba5b3b37a14b870aeeec5c2ed4b1009335a`. The comparison with the preceding confirmed CI commit `0c02d4554edb9d49495a26cfe25553d30c0af1a5` contains only six documentation files and `scripts/test-documentation-integrity.py`; no NixOS runtime, VM XML, hardware identity, or QEMU/VFIO hook path changed. The reported ZIP measurements remain attributed to the supplied report because its bytes were not attached for independent remeasurement.
 - Confirm that Release runs #42 and #45 both successfully created/published `v1.5.5` from different commits. The logs show the two tag object IDs and targets; the reason and exact timing for the tag no longer existing before run #45 remain unknown. The published release/tag was not modified.
 - Confirm the exact 42-path `RELEASING.md`/workflow match at the 11 November v1.5.2 commit and the current exact 53-path match. The earlier 10 November 43-path statement is not tied to an exact tree here, so its 43→42 transition remains unexplained.
 - Resolve the 66→65 file count through the single deleted path `docs/archive/DEGISIKLIK_GECMISI.md` between the cited 66-file and 65-file source snapshots. Confirm that Git ref `v1.3.9` resolves even though the current changelog still lacks its release heading.
-- Record the exact-CI evidence limit for `b384eba5`: CI #1602 is confirmed on its predecessor, but an exact push-run result was not established from the available records. Keep B7 unreproduced, B8–B10 qualified as historical records, and the Build #14 outcome unknown.
+- At the time of the initial audit, exact CI for `b384eba5` had not yet been located; the subsequent check found passing Normal CI #1609 on that exact SHA, resolving B5. Keep B7 unreproduced, B8–B10 qualified as historical records, and the Build #14 outcome unknown.
 - Correct the archive-directory description: `README.md` is the index and `HISTORICAL-AUDITS.md` is the only retained historical audit register. No runtime configuration or published release asset is changed.
 
 ### Owner-reported local full-system build and VM check (16 November 2026)

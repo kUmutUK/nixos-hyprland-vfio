@@ -743,29 +743,35 @@ git -C /tmp/repo show "$SOURCE_REVISION:nixos/flake.lock" |
   sudo tee /mnt/etc/nixos/nixos/flake.lock >/dev/null
 ```
 
-> **Current kernel and full-system build status (16 November 2026):** manual Full NixOS System Build #20
-> [run #20](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43653123079)
-> completed successfully on exact source commit `46d2b809e4fe9530dde58c85450b3544cf5d1ed0`.
-> The job evaluated the locked flake, built the complete NixOS system and selected
-> RT-Bore-LTO kernel, and verified that the lock file was not rewritten. It used
-> current CachyOS source `c9620070e884d55c5b5566e3fd46611ee24c4d3b`, the nested `nixos-unstable-small` Nixpkgs package set `82566dfe91ca5e12bc10b36272280628142f651d`, and
-> root system `nixos-unstable` Nixpkgs `d4f25a3e562008648d45bcf2d70bcc7422cad84e`.
-> The four commits from this build baseline through the pre-update source snapshot
-> `03beec8eefd41ed386353abbf00bc04630be79b9` changed documentation and the
-> documentation-integrity test only. The build gate for this runtime source is closed.
+> **Current published release and CI status (17 November 2026):** v1.5.7 is the latest published release (Release run #47, exact tag commit
+> `b384eba5b3b37a14b870aeeec5c2ed4b1009335a`). Normal CI #1609 passed on that
+> exact commit. The latest main-branch Normal CI is #1619, passed on
+> `e07894e9d63d077b6b11db3e0a189fce6e927875`.
 >
-> **Physical-host boundary:** Build #20 proves that the checked system and kernel
-> derivations compile; it does not prove that this exact kernel was installed,
-> selected at boot, or tested on the physical host. The owner separately reports a
-> from-scratch local full-system build and successful VM start/shutdown on 16 November,
-> but did not provide the active generation or kernel identity. Exact Build #20 kernel
-> activation/boot, graphics recovery, remaining dual-guest checks, and saved-state
-> restore must therefore be treated as separate validation items. The owner has not
-> tried `install.sh`.
-> The 3 November physical kernel/VM test used older CachyOS revision
-> `755712deee259ef7efbfe9154038a270c3d75a87`. The exact kernel SHA booted during
-> the 9 November clean-install/VM check was not recorded. Build #19 is the prior
-> full-system baseline, not the current one.
+> **Full-system build boundary:** manual Full NixOS System Build #20
+> [run #20](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43653123079)
+> succeeded on exact commit `46d2b809e4fe9530dde58c85450b3544cf5d1ed0`.
+> GitHub's comparison to pre-update `main` shows 45 later commits and 23
+> changed paths, including `install.sh`, NixOS system/hardware/Home Manager
+> configuration, VM helper scripts, and `vm-xml/win10.xml`. Build #20 therefore
+> does not validate the current main-branch system closure or current VM XML.
+> The owner separately reports a successful from-scratch local full-system build
+> and normal VM start/shutdown on 16 November; the exact source SHA, derivation,
+> and booted generation/kernel were not recorded.
+>
+> **Physical/functional boundary:** the reported ordinary VM start/shutdown does
+> not establish the installed NixOS `vdb` guest boot, Windows guest boot from its
+> normal disk, guest networking, saved-state/managed-save restore, or GPU/display
+> handback for the current source. Exact Build #20 kernel activation/boot remains
+> unverified. The owner confirms that `install.sh` has not been tried; live
+> migration and rollback remain unverified.
+>
+> **VM XML release gate:** `vm-xml/win10.xml` remains outside the automatic
+> ancestor-build allowlist. When it differs from the previous stable tag, the
+> Release workflow requires a separate `vm_xml_validated=true` manual-main
+> attestation for libvirt/QEMU semantic validation and real Windows plus installed
+> NixOS `vdb` guest boots. This is distinct from generic target-host attestation
+> and does not make an untested VM path valid.
 >
 > **v1.4.7 release snapshot:** `c28250c34de4b4349023681305da99dee75aac9e`. Normal CI
 > [#1299](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42684408581)

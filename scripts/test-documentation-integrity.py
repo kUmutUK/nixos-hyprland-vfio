@@ -2244,6 +2244,29 @@ require(
     and "Tag-triggered releases cannot" in RELEASING,
     "manual target-host attestation must be explicit, main-only, and must not bypass exact CI or the successful ancestor build baseline",
 )
+vm_xml_input = RELEASE_WORKFLOW.partition("      vm_xml_validated:")[2].partition("\n\npermissions:")[0]
+vm_xml_guard = RELEASE_WORKFLOW.partition("- name: Require separate VM XML validation when the template changed")[2].partition("- name: Generate release notes with git-cliff")[0]
+require(
+    "vm_xml_validated:" in RELEASE_WORKFLOW
+    and "default: false" in vm_xml_input
+    and "VM_XML_VALIDATED: ${{ inputs.vm_xml_validated }}" in vm_xml_guard
+    and "PREVIOUS_TAG: ${{ steps.previous.outputs.tag }}" in vm_xml_guard
+    and 'git diff --quiet "$PREVIOUS_TAG" "$GITHUB_SHA" -- vm-xml/win10.xml' in vm_xml_guard
+    and 'GITHUB_EVENT_NAME" != "workflow_dispatch"' in vm_xml_guard
+    and 'GITHUB_REF" != "refs/heads/main"' in vm_xml_guard
+    and 'VM_XML_VALIDATED" != "true"' in vm_xml_guard
+    and "Tag-triggered releases cannot use this exception" in RELEASING
+    and "vm_xml_validated=true" in RELEASING
+    and "vm-xml/win10.xml" not in documented_release_paths,
+    "VM XML changes must require a separate manual-main attestation and remain outside the ancestor-build allowlist",
+)
+require(
+    "B5 exact-CI finding is resolved" in CHANGELOG
+    and "Normal CI #1609" in CHANGELOG
+    and "Normal CI #1619" in CHANGELOG
+    and "45 commits and 23 changed paths" in CHANGELOG,
+    "current-source release/CI records and the corrected Build #20 scope must remain documented",
+)
 require(
     "docs/UUID-AND-MACHINE-IDENTITY.md" in RELEASING
     and "docs/UUID-AND-MACHINE-IDENTITY.md" in RELEASE_WORKFLOW
@@ -2502,7 +2525,7 @@ require(
     "Fetching `README.md` at Git ref `v1.3.9` succeeds" in REPAIR
     and "## [v1.3.9]" not in CHANGELOG
     and "B7 — DEGISIKLIK_GECMISI heading/parenthesis (not reproduced)" in REPAIR
-    and "B5 — exact CI for b384 (not confirmed in the accessible records)" in REPAIR,
+    and "B5 — exact CI for b384 (resolved by Normal CI #1609)" in REPAIR,
     "the missing v1.3.9 changelog heading, unreproduced B7, and qualified exact-CI gap must not be overstated",
 )
 require(

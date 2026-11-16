@@ -21,6 +21,16 @@ on:
         default: false
         type: boolean
 
+      vm_xml_validated:
+        description: >-
+          I confirm that a changed vm-xml/win10.xml was checked with libvirt/QEMU
+          semantic validation and that both the Windows guest and installed
+          NixOS vdb guest completed real boot tests. This is a separate
+          maintainer attestation, not an automated CI result.
+        required: false
+        default: false
+        type: boolean
+
 permissions:
   actions: read
   contents: write
@@ -201,6 +211,32 @@ jobs:
               tail -n 1 || true
           )"
           echo "tag=$previous_tag" >> "$GITHUB_OUTPUT"
+
+      - name: Require separate VM XML validation when the template changed
+        shell: bash
+        env:
+          PREVIOUS_TAG: ${{ steps.previous.outputs.tag }}
+          VM_XML_VALIDATED: ${{ inputs.vm_xml_validated }}
+        run: |
+          set -Eeuo pipefail
+
+          vm_xml_changed=0
+          if [[ -z "$PREVIOUS_TAG" ]]; then
+            vm_xml_changed=1
+          elif ! git diff --quiet "$PREVIOUS_TAG" "$GITHUB_SHA" -- vm-xml/win10.xml; then
+            vm_xml_changed=1
+          fi
+
+          if [[ "$vm_xml_changed" -eq 1 ]]; then
+            if [[ "$GITHUB_EVENT_NAME" != "workflow_dispatch" \
+              || "$GITHUB_REF" != "refs/heads/main" \
+              || "$VM_XML_VALIDATED" != "true" ]]; then
+              echo "::error::vm-xml/win10.xml changed since the previous stable release. A separate vm_xml_validated=true attestation on a manual Release dispatch from main is required."
+              exit 1
+            fi
+            echo "::warning::The changed VM XML is accepted only by the separate vm_xml_validated maintainer attestation."
+            echo "::notice::Maintainer attested that libvirt/QEMU semantic validation and real Windows plus installed NixOS vdb guest boots were completed for exact commit $GITHUB_SHA."
+          fi
 
       - name: Generate release notes with git-cliff
         if: steps.previous.outputs.tag != ''
