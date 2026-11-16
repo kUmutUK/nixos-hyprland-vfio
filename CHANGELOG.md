@@ -4,9 +4,20 @@ This file summarizes notable changes in English. The separate Turkish release-by
 
 ## [Unreleased]
 
+### Owner-reported local full-system build and VM check — 2026-11-16
+
+- The owner reports that a from-scratch full NixOS system build completed successfully on the target machine and that the VM started and shut down successfully. This is an owner-reported result, not a GitHub Actions run; the exact source SHA, build command/derivation, and booted generation/kernel identity were not recorded.
+- The owner explicitly confirms that `install.sh` has not been tried. No live installer migration or rollback result exists; CI's syntax, ShellCheck, and mocked rollback tests are not live-target validation.
+- The successful ordinary VM start/shutdown report does not by itself validate the separate NixOS `vdb` guest path, guest networking, libvirt saved-state/managed-save restore, or physical GPU/display handback.
+
+### Documentation CI reconciliation — 2026-11-16
+
+- After the v1.5.6 release/tag snapshot, documentation-integrity CI #1601 exposed two stale text assertions. They were corrected without changing NixOS configuration, VM XML, hardware identifiers, or runtime scripts.
+- Normal CI [#1602](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43946085543) passed all 27 workflow-defined steps on exact source commit `0c02d4554edb9d49495a26cfe25553d30c0af1a5`.
+
 ### Automated VM validation passed — 2026-11-16
-- On exact source commit `95930e6a41935f7c7fd64cf5bce2d3543f66891b`, Normal CI [#1599](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43934512654) passed the `XML well-formedness and VM invariants` and `Manual VM bootstrap retry regression test` steps. The XML step ran the VM XML validator, 14 structural regression tests, custom-path validation, XML synchronization, diagnostic XML, and ISO-path checks; the bootstrap regression also passed its retry/failure-cleanup scenarios.
-- This records successful automated VM/XML regression coverage only. It is not a new live libvirt/QEMU semantic validation or a claim that the standard Windows `vda` guest or installed NixOS `vdb` guest booted, that guest networking worked, or that physical GPU handback was tested. At the time this entry was written, the overall CI run was still executing `nix flake check (eval only)`; the two VM-focused steps had completed successfully.
+- On exact source commit `95930e6a41935f7c7fd64cf5bce2d3543f66891b`, Normal CI [#1599](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43934512654) completed successfully. The `XML well-formedness and VM invariants` step ran the VM XML validator, 14 structural regression tests, custom-path validation, XML synchronization, diagnostic XML, and ISO-path checks; the manual VM bootstrap retry regression also passed its retry/failure-cleanup scenarios.
+- This is automated VM/XML regression coverage, separate from the owner-reported live VM start/shutdown check above. It does not validate the standard installed NixOS `vdb` guest boot, guest networking, or saved-state/managed-save restore.
 
 
 ### VM bootstrap fixture and host-specific disk paths — 2026-11-16
@@ -21,9 +32,9 @@ This file summarizes notable changes in English. The separate Turkish release-by
 
 - Complete manual Full NixOS System Build #20 [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43653123079) passed on exact source commit `46d2b809e4fe9530dde58c85450b3544cf5d1ed0`. The workflow evaluated the locked flake, built the complete NixOS system and selected RT-Bore-LTO kernel, and verified the lock file was unchanged.
 - Build #20 used the current CachyOS source `c9620070e884d55c5b5566e3fd46611ee24c4d3b`, its nested Nixpkgs package set `82566dfe91ca5e12bc10b36272280628142f651d`, and root system Nixpkgs `d4f25a3e562008648d45bcf2d70bcc7422cad84e`. The four commits from that build baseline to the last pre-update CI snapshot `03beec8eefd41ed386353abbf00bc04630be79b9` touched only documentation and the documentation-integrity test.
-- **Owner-reported fresh-install/build check (15 November 2026):** The owner reports that a fresh from-scratch NixOS installation and build completed without issues on 15 November 2026. No exact source SHA, build command/derivation, or booted kernel identity was supplied. This is a separate owner-reported result, not a GitHub Actions run, and it does not establish that the exact Build #20 kernel was activated or booted, nor validate VM/GPU lifecycle, saved-state restore, or `install.sh` migration.
-- The prior Normal CI [#1566](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43696760003) passed all 27 workflow-defined steps on that pre-update snapshot; GitHub's generated `Set up job` entry is not included. The later exact-current-main Normal CI #1600 passed on `c4e93db604904529654d3b1b8c53db0754ee3dd9`.
-- The compile/build gate is closed. Physical-host activation and boot of the exact kernel, `install.sh` live migration/rollback, real VFIO saved-state/managed-save restore, and the standard Windows/NixOS dual-guest lifecycle remain unverified; do not treat Build #20 or mocked tests as hardware evidence.
+- The 16 November owner-reported local full-system build and ordinary VM start/shutdown check are recorded in the dated entry above; this is separate from the GitHub Actions Full-system Build #20 baseline.
+- The prior Normal CI [#1566](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43696760003) passed all 27 workflow-defined steps on that pre-update snapshot; GitHub's generated `Set up job` entry is not included. Normal CI #1600 remains the exact-commit check for the v1.5.6 release tag; the later main-branch check #1602 passed on `0c02d4554edb9d49495a26cfe25553d30c0af1a5`.
+- The compile/build gate is closed. Exact Build #20 kernel activation/boot, `install.sh` live migration/rollback (not tried), real VFIO saved-state/managed-save restore, and complete dual-guest Windows/NixOS validation remain unverified; do not treat Build #20 or mocked tests as hardware evidence.
 
 ### General clean-install guide refinements — 2026-11-15
 

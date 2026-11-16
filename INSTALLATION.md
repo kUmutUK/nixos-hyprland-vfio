@@ -6,7 +6,7 @@ This guide walks through an AMD-oriented **NixOS + LUKS2 + Btrfs + Hyprland + VF
 
 > **Recommended approach: install manually.** This guide is for a clean installation. Follow the steps in order and understand each command before running it. `install.sh` is not a clean installer or disk-partitioning tool; it is an optional, higher-risk helper for advanced users migrating an existing NixOS system. Read [`README.md`](README.md) for its risk notice and the alternative manual migration steps.
 >
-> **EXPERIMENTAL — NOT END-TO-END TESTED:** No end-to-end run of `install.sh` against a live NixOS/libvirt target host has been completed. CI covers Bash syntax, ShellCheck, and mocked installer regressions only; it has not run the helper through a real migration on a live target host or verified live rollback. Treat it as experimental and prefer the manual procedure.
+> **EXPERIMENTAL — NOT END-TO-END TESTED:** The owner confirms that `install.sh` has not been tried. No end-to-end run against a live NixOS/libvirt target host has been completed. CI covers Bash syntax, ShellCheck, and mocked installer regressions only; it has not run the helper through a real migration on a live target host or verified live rollback. Treat it as experimental and prefer the manual procedure.
 >
 > The migration helper uses a non-blocking per-user process lock before prompting or deployment. A second run by the same user exits rather than overlapping backups and rollback; separately configured lock paths or different user accounts are not coordinated, so run the migration from one account at a time. Before any backup or system-file mutation, it now fails closed unless `/etc/nixos/hashedPassword` is non-empty and has `root:root` ownership with mode `0600`; create or repair the local-account hash using the manual migration instructions first.
 
@@ -743,7 +743,7 @@ git -C /tmp/repo show "$SOURCE_REVISION:nixos/flake.lock" |
   sudo tee /mnt/etc/nixos/nixos/flake.lock >/dev/null
 ```
 
-> **Current kernel and full-system build status (15 November 2026):** manual Full NixOS System Build #20
+> **Current kernel and full-system build status (16 November 2026):** manual Full NixOS System Build #20
 > [run #20](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43653123079)
 > completed successfully on exact source commit `46d2b809e4fe9530dde58c85450b3544cf5d1ed0`.
 > The job evaluated the locked flake, built the complete NixOS system and selected
@@ -756,8 +756,12 @@ git -C /tmp/repo show "$SOURCE_REVISION:nixos/flake.lock" |
 >
 > **Physical-host boundary:** Build #20 proves that the checked system and kernel
 > derivations compile; it does not prove that this exact kernel was installed,
-> selected at boot, or tested on the physical host. Boot/graphics recovery and the
-> complete Windows VFIO lifecycle must still be verified on the target machine.
+> selected at boot, or tested on the physical host. The owner separately reports a
+> from-scratch local full-system build and successful VM start/shutdown on 16 November,
+> but did not provide the active generation or kernel identity. Exact Build #20 kernel
+> activation/boot, graphics recovery, remaining dual-guest checks, and saved-state
+> restore must therefore be treated as separate validation items. The owner has not
+> tried `install.sh`.
 > The 3 November physical kernel/VM test used older CachyOS revision
 > `755712deee259ef7efbfe9154038a270c3d75a87`. The exact kernel SHA booted during
 > the 9 November clean-install/VM check was not recorded. Build #19 is the prior

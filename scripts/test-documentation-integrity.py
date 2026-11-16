@@ -524,14 +524,29 @@ require(
     "README and repair report must distinguish Build #19 from both refreshed Nixpkgs nodes",
 )
 require(
-    "Owner-reported fresh-install/build check (15 November 2026)" in README
-    and "Owner-reported fresh-install/build check (15 November 2026)" in CHANGELOG
-    and "Owner-reported fresh-install/build check (15 November 2026)" in CONTRIBUTING
-    and "Owner-reported fresh-install/build check (15 November 2026)" in REPAIR
-    and "Owner-reported fresh-install/build check (15 November 2026)" in STATE_INDEX
-    and "No exact source SHA, build command/derivation, or booted kernel identity was supplied" in README
-    and "not a GitHub Actions run" in README,
-    "the 15 November owner-reported clean-install/build result must be recorded separately from the exact Build #20 Actions baseline and must not overclaim kernel boot",
+    "Owner-reported local full-system build and VM check (16 November 2026)" in README
+    and "Owner-reported local full-system build and VM check (16 November 2026)" in CHANGELOG
+    and "Owner-reported local full-system build and VM check (16 November 2026)" in CONTRIBUTING
+    and "Owner-reported local full-system build and VM check (16 November 2026)" in REPAIR
+    and "Owner-reported local full-system build and VM check (16 November 2026)" in STATE_INDEX
+    and "No exact source SHA, build command/derivation, or booted generation/kernel identity was supplied" in README
+    and "VM started and shut down successfully" in README
+    and "not a GitHub Actions run" in README
+    and "the owner confirms that `install.sh` has not been tried" in README
+    and "`install.sh` has not been tried" in INSTALLATION,
+    "the 16 November owner-reported local build/VM result and untried installer must be recorded without overclaiming exact kernel boot",
+)
+require(
+    "43946085543" in README and "0c02d4554edb9d49495a26cfe25553d30c0af1a5" in README
+    and "43946085543" in STATE_INDEX and "0c02d4554edb9d49495a26cfe25553d30c0af1a5" in STATE_INDEX
+    and "43946085543" in CHANGELOG and "0c02d4554edb9d49495a26cfe25553d30c0af1a5" in REPAIR,
+    "current documentation must record the latest pre-update main-branch CI #1602 and its exact source commit",
+)
+require(
+    "overall Normal CI #1599 workflow completed successfully" in REPAIR
+    and "Normal CI [#1599]" in STATE_INDEX and "completed successfully" in STATE_INDEX
+    and "Normal CI [#1599]" in CHANGELOG and "completed successfully" in CHANGELOG,
+    "the complete #1599 workflow must be recorded as successful, not still in progress",
 )
 
 require(
@@ -1318,7 +1333,7 @@ require(
     "the 3 November target-host test must remain as dated historical information",
 )
 require(
-    "latest target-machine update (owner-reported, 15 November 2026)" in CONTRIBUTING
+    "Latest target-machine update (owner-reported, 16 November 2026)" in CONTRIBUTING
     and "3 November 2026" in CONTRIBUTING,
     "contributor guide must distinguish latest and historical target-host validation",
 )
