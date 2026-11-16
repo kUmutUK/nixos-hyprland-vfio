@@ -7,7 +7,7 @@ This file summarizes notable changes in English. The separate Turkish release-by
 ### Current-source and release-gate reconciliation — 2026-11-17
 
 - Update the current published-release record to v1.5.7 (Release run #47, exact tag commit `b384eba5b3b37a14b870aeeec5c2ed4b1009335a`), with Normal CI #1609 confirmed on that exact commit and GitHub asset metadata recorded without claiming an independent ZIP re-hash.
-- Record Normal CI #1619 as passing on pre-update `main` `e07894e9d63d077b6b11db3e0a189fce6e927875`; this also resolves the earlier B5 exact-CI evidence gap for `b384eba...`.
+- **B5 exact-CI finding is resolved:** Normal CI #1609 passed on exact `b384eba5b3b37a14b870aeeec5c2ed4b1009335a`. Also record Normal CI #1619 as passing on pre-update `main` `e07894e9d63d077b6b11db3e0a189fce6e927875`.
 - Correct Build #20's scope: it passed on `46d2b809e4fe9530dde58c85450b3544cf5d1ed0`, but the current-main comparison contains 45 commits and 23 changed paths, including NixOS configuration, `install.sh`, helper scripts, and `vm-xml/win10.xml`. Build #20 must not be described as validating current main.
 - Preserve the separate owner-reported local full-system build and ordinary VM start/shutdown result; its exact source SHA, derivation, and booted generation/kernel remain unrecorded. `install.sh` remains untried.
 - Add a separate `vm_xml_validated` Release dispatch attestation when the VM template differs from the previous stable tag. This VM-specific assertion requires libvirt/QEMU semantic validation and real Windows plus installed-NixOS `vdb` guest boots; generic `target_host_validated` cannot replace it. The production VM XML and machine-specific identifiers remain unchanged.
