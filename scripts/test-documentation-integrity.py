@@ -435,11 +435,41 @@ require(
     and "is_gamemode_active()" in brave_watchdog
     and "com.feralinteractive.GameMode" in brave_watchdog
     and "if is_gamemode_active; then" in brave_watchdog
-    and "`brave-origin`" in README
-    and "repository does not install Brave" in README
+    and re.search(r"environment\.systemPackages\s*=\s*with pkgs;\s*\[(?s:.*?)\bbrave-origin\b", CONFIG) is not None
+    and "This repository installs the `brave-origin` Nixpkgs package" in README
     and "GameMode behavior is unchanged" in README,
-    "README and the optional Brave integration must agree on brave-origin while the watchdog retains independent GameMode handling",
+    "README and the repository-installed brave-origin package must agree while the watchdog retains independent GameMode handling",
 )
+require(
+    'monitorOutput = "DP-3";' in HOME_NIX
+    and '`monitorOutput` | `"DP-3"` (reference host)' in INSTALLATION,
+    "INSTALLATION monitorOutput default must match the Home Manager reference configuration",
+)
+require(
+    "/mnt/media/win10new.qcow2" in VM_XML_TEXT
+    and "/mnt/media/Win10_22H2_English_x64v1.iso" in VM_XML_TEXT
+    and "/mnt/media/virtio-win-0.1.285.iso" in VM_XML_TEXT
+    and "/mnt/media/win10new.qcow2" in INSTALLATION
+    and "/mnt/media/" in INSTALLATION
+    and "/var/lib/libvirt/images/win10new.qcow2" in INSTALLATION
+    and "/mnt/media/" in INSTALLER
+    and "/var/lib/libvirt/images/win10new.qcow2" in INSTALLER,
+    "installation and installer guidance must distinguish host-specific VM template paths from the fresh-VM bootstrap disk path",
+)
+require(
+    sorted(path.name for path in (ROOT / "docs/archive").iterdir() if path.is_file())
+    == ["HISTORICAL-AUDITS.md", "README.md"]
+    and "README index and the consolidated audit-retraction/provenance register" in ARCHIVE_INDEX,
+    "archive index must accurately describe both currently retained files",
+)
+require(
+    "c4e93db604904529654d3b1b8c53db0754ee3dd9" in README
+    and "43935632624" in README
+    and "43936167712" in README
+    and "e1ea3edc75bd061b7460cf3c760ac7e5041b6407ce14f0a6f5c0cc37de0c8eed" in README,
+    "README release, exact-commit CI, and source-archive provenance must identify current v1.5.6 publication",
+)
+
 require(
     root_nixpkgs_node_name != cachyos_nixpkgs_node_name
     and root_nixpkgs_ref == "nixos-unstable"

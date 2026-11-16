@@ -604,7 +604,7 @@ valid as-is; placeholder identity values and paths should be replaced where appl
 | # | Setting | Default | What happens if it is wrong |
 |---|---|---|---|
 | 1 | `hyprlandMonitorMode` | `"preferred"` | Preferred mode by default. Set a fixed mode such as `"2560x1440@170"` when needed; the installer accepts only `preferred` or a width × height mode with an optional refresh rate. |
-| 2 | `monitorOutput` | `""` (empty) | The exact output name used for the Hyprland monitor rule and optional `mpvpaper` wallpaper. A manually empty value keeps Hyprland's catch-all monitor rule and disables live wallpaper; the installer asks for a real output name. |
+| 2 | `monitorOutput` | `"DP-3"` (reference host) | The exact output name used for the Hyprland monitor rule and optional `mpvpaper` wallpaper. The installer detects and asks for the target output; a manually empty value remains a catch-all and disables live wallpaper. |
 | 3 | `gitName` | `"changeme"` | Commits are attributed to a placeholder name. |
 | 4 | `gitEmail` | `"you@example.com"` | Commits are attributed to a placeholder email address. |
 | 5 | `wallpaperVideo` | `~/Downloads/arthur-leywin-the-beginning-after-the-end.3840x2160.mp4` | If the file is missing, `Unit.ConditionPathExists` prevents the service from starting. A login-time warning is shown only when `monitorOutput` is non-empty. |
@@ -941,8 +941,12 @@ VM only after the first successful boot.
 
 > **Check ISO prerequisites before defining or starting the VM.** The default XML expects
 > `Win10_22H2_English_x64v1.iso` and `virtio-win-0.1.285.iso` under
-> `/var/lib/libvirt/images/`. Confirm that both files exist at the exact paths shown by the
-> deployed XML; if you use different filenames or locations, edit those XML source paths first.
+> `/mnt/media/` in the checked-in reference-host template. The Windows primary disk (`vda`)
+> also points to `/mnt/media/win10new.qcow2`; all three paths are host-specific. Confirm that
+> the files exist at the exact paths shown by the deployed XML, or deliberately edit the XML
+> source paths before defining the VM. The fresh-VM bootstrap auto-creates only
+> `/var/lib/libvirt/images/win10new.qcow2`; it does not relocate the template's `/mnt/media`
+> disk or ISO paths automatically.
 > A missing Windows or VirtIO ISO prevents the VM from starting or completing Windows setup. The third SATA CD-ROM (`sdd`) is intentionally an empty tray for optional NixOS installation media; it is not a required path until you insert an ISO. The command block below runs `scripts/check-vm-iso-paths.py` against the staged XML before creating a VM disk and before `virsh define`; it checks file-backed CD-ROM source paths and accepts the unused empty tray.
 >
 > Regression test: run `bash -n scripts/test-manual-vm-bootstrap.sh && bash scripts/test-manual-vm-bootstrap.sh` from the repository root. It exercises missing-ISO retry, failed/partial disk creation, orphan-disk refusal, safe rollback when another process creates the final XML path concurrently, and successful bootstrap using isolated temporary paths and mocked libvirt/qemu-img/mv commands.

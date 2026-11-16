@@ -22,7 +22,7 @@ This file summarizes notable changes in English. The separate Turkish release-by
 - Complete manual Full NixOS System Build #20 [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43653123079) passed on exact source commit `46d2b809e4fe9530dde58c85450b3544cf5d1ed0`. The workflow evaluated the locked flake, built the complete NixOS system and selected RT-Bore-LTO kernel, and verified the lock file was unchanged.
 - Build #20 used the current CachyOS source `c9620070e884d55c5b5566e3fd46611ee24c4d3b`, its nested Nixpkgs package set `82566dfe91ca5e12bc10b36272280628142f651d`, and root system Nixpkgs `d4f25a3e562008648d45bcf2d70bcc7422cad84e`. The four commits from that build baseline to the last pre-update CI snapshot `03beec8eefd41ed386353abbf00bc04630be79b9` touched only documentation and the documentation-integrity test.
 - **Owner-reported fresh-install/build check (15 November 2026):** The owner reports that a fresh from-scratch NixOS installation and build completed without issues on 15 November 2026. No exact source SHA, build command/derivation, or booted kernel identity was supplied. This is a separate owner-reported result, not a GitHub Actions run, and it does not establish that the exact Build #20 kernel was activated or booted, nor validate VM/GPU lifecycle, saved-state restore, or `install.sh` migration.
-- The prior Normal CI [#1566](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43696760003) passed all 28 workflow-defined steps on that pre-update snapshot. This documentation/test follow-up still needs its own exact-commit CI result.
+- The prior Normal CI [#1566](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43696760003) passed all 27 workflow-defined steps on that pre-update snapshot; GitHub's generated `Set up job` entry is not included. The later exact-current-main Normal CI #1600 passed on `c4e93db604904529654d3b1b8c53db0754ee3dd9`.
 - The compile/build gate is closed. Physical-host activation and boot of the exact kernel, `install.sh` live migration/rollback, real VFIO saved-state/managed-save restore, and the standard Windows/NixOS dual-guest lifecycle remain unverified; do not treat Build #20 or mocked tests as hardware evidence.
 
 ### General clean-install guide refinements — 2026-11-15
@@ -105,11 +105,11 @@ This file summarizes notable changes in English. The separate Turkish release-by
 
 - Confirm that the supplied source archive's embedded revision `f6689bcd5234f29a7cfcfc4151d161727b0658bc` is the exact commit targeted by the annotated `v1.5.4` tag. Normal Nix Flake Check #1526 (run ID `43624282232`) passed on that commit, and Release workflow #38 (run ID `43625112235`) published Release ID `445492077`.
 - The published canonical source ZIP is recorded by GitHub as 477,863 bytes with SHA-256 `dca1f4ccd365df64d416a029f13ea821a58e4e05cf21a81c4d5bc3d2d65b5e6c`, matching the supplied audit's values. These are GitHub asset metadata values; no independent binary re-hash is claimed.
-- Correct the earlier v1.5.4 visibility note: the release object and both source ZIP/checksum assets are now retrievable. v1.5.4, not v1.5.3, is the latest confirmed published release.
+- Correct the earlier v1.5.4 visibility note: its release object and both source ZIP/checksum assets are retrievable. v1.5.4 was the latest confirmed release at the time of this 14 November entry; v1.5.5 and v1.5.6 were published later and are recorded above.
 - Correct the Build #19 history: Full NixOS System Build #19 (run ID `43101226875`) completed successfully on exact source commit `6242439da7e944d297dbe5f44fdff8e79fe4689c` on 11 November. It built the complete NixOS system and selected kernel using CachyOS input `9df32f70be3550911f178b3ba9ad784996a4e80c`.
 - At the time of Release #38, the then-current CachyOS input was `f5e1fb8f1185cb51ef6d433e27ab7b60f54cd0e0`; the 15 November refresh superseded it with `c9620070e884d55c5b5566e3fd46611ee24c4d3b` and root Nixpkgs `d4f25a3e562008648d45bcf2d70bcc7422cad84e`. Build #19 predates the 14 November x86-64-v3 performance-profile changes and both refreshed inputs. Release #38 used #19 as the successful ancestor build and accepted later changes to `nixos/configuration.nix`, `nixos/flake.lock`, `nixos/flake.nix`, and `nixos/home.nix` through explicit `TARGET_HOST_VALIDATED=true` maintainer attestation. The attestation is not a new full-system build; a fresh build is still required to validate the current profile.
 - Reconcile the README's hypridle timeout (3600 seconds), distinguish the explicit LZ4/priority-100 ZRAM choices from NixOS' ZSTD/priority-5 module defaults, and correct CONTRIBUTING's stale CachyOS lock statement.
-- Record Brave as an optional separately installed integration and document the libvirt 10.10.0 TPM-profile floor plus the USB hostdev address caveat. The shared VM XML template, runtime Nix settings, flake lock, and hardware identities are unchanged.
+- Correct the Brave integration note: `brave-origin` is included in `environment.systemPackages`, and the Waybar/MPRIS/mpvpaper rules target that repository-installed package. Also document the libvirt 10.10.0 TPM-profile floor and USB hostdev address caveat. The VM XML template, runtime Nix settings, flake lock, and hardware identities are unchanged.
 
 ### Initial Linux performance-guide application — superseded intermediate state (2026-11-14)
 
@@ -231,6 +231,36 @@ This file summarizes notable changes in English. The separate Turkish release-by
 - Clarify the GPU/audio IOMMU split: `0000:0b:00.0` was recorded in group 18 and `0000:0b:00.1` in group 19. Different group numbers alone do not prove an isolation defect or establish intra-device isolation; group membership and PCIe/ACS topology require separate review.
 - H1 is already corrected in the archived [1.2.2] entry and dated preface: pinned Nixpkgs defines Hyprland `0.56.2` / hyprlock `0.9.6`; `0.54.3 / 0.9.5` is marked as the incorrect earlier statement. H3 and H4 remain documented historical anomalies; no old release description is rewritten and no missing Build #14 event is inferred.
 - **Second reconciliation CI failure:** Nix Flake Check [#1383](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42998196145) failed on `36c13be1558d70822edf9432fe6cca3507f6d8e5` at the documentation-integrity assertion `README must distinguish the immutable v1.5.0 release ZIP from later main-branch documentation`. Commit `edf78e8` restored `The v1.5.0 asset will not be rewritten`; [#1384](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42998456098) then passed on exact commit `edf78e8559a289dda5da01467ce0082da2c38188`.
+
+## [v1.5.6] - 2026-11-16
+
+Published as [GitHub Release v1.5.6](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.5.6) by Release run [#46](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43936167712). Tag commit: `c4e93db604904529654d3b1b8c53db0754ee3dd9`; exact-commit Normal CI [#1600](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43935632624) passed. GitHub asset metadata: source ZIP 468,500 bytes, SHA-256 `e1ea3edc75bd061b7460cf3c760ac7e5041b6407ce14f0a6f5c0cc37de0c8eed`.
+
+### Bug fixes
+- Preserve executable mode for the VM bootstrap regression test.
+- Support libvirt XML quote and host-path variants.
+- Allow optional USB passthrough devices in VM XML checks.
+
+### Documentation and tests
+- Record successful automated VM regression coverage and clarify guest USB ports versus host USB device IDs.
+- Isolate host-specific VM media paths in the bootstrap fixture.
+- Accept both TPM profile quote styles and both XML attribute quote styles.
+
+## [v1.5.5] - 2026-11-15
+
+Published as [GitHub Release v1.5.5](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.5.5) by Release run [#45](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43720459493). The current annotated tag targets commit `045fd0a3cc56344a01cfa0a275f84c29d213fcbf`. Release ID `446090535`; GitHub asset metadata: source ZIP 464,867 bytes, SHA-256 `4939f78991420e696e121c21471a46726cfbd9687185247b8d2c3d4db2ad4b44`.
+
+### Features
+- Set the configured ZRAM logical capacity to 32 GB on the reference host.
+
+### Bug fixes and validation
+- Reconcile deep-audit findings, flake-lock identity, release-gate policy, and VFIO rollback checks.
+- Preserve executable modes for the VFIO hook and its regressions.
+- Require the machine hardware configuration for installer Snapper preflight.
+
+### Documentation
+- Record Build #20 and the remaining physical-host validation boundary.
+- Expand clean-install guidance and reconcile current flake-lock inputs.
 
 ## [v1.5.4] - 2026-11-14
 

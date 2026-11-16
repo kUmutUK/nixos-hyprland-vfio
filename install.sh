@@ -1217,10 +1217,10 @@ echo -e "${step_num}. Verify and preflight the VM XML disk and ISO paths before 
 if [ "$VM_XML_SYNCED" -eq 1 ]; then
   echo -e "   ${CYAN}sudo grep -E 'source file=' \"${PATCHED_XML}\"${NC}"
   echo -e "   ${CYAN}sudo python3 \"${REPO_DIR}/scripts/check-vm-iso-paths.py\" \"${PATCHED_XML}\"${NC}"
-  echo -e "   ${YELLOW}The default XML expects Win10_22H2_English_x64v1.iso and virtio-win-0.1.285.iso under /var/lib/libvirt/images/.${NC}"
+  echo -e "   ${YELLOW}The checked-in reference XML expects Win10_22H2_English_x64v1.iso and virtio-win-0.1.285.iso under /mnt/media/. These paths are host-specific; verify the deployed XML source paths.${NC}"
   echo -e "   ${YELLOW}Confirm both ISO files exist at the paths actually shown in the XML; edit custom paths deliberately.${NC}"
   echo -e "   ${YELLOW}Read the primary disk path from that same XML. For an existing VM, preserve its disk and verify it exists and is accessible to QEMU.${NC}"
-  echo -e "   ${YELLOW}For a genuinely new VM only, create a missing disk at the XML's reviewed path. The default template path is /var/lib/libvirt/images/win10new.qcow2 (120G).${NC}"
+  echo -e "   ${YELLOW}For a genuinely new VM only, create a missing disk at the XML's reviewed path. The checked-in vda path is /mnt/media/win10new.qcow2 (120G, reference-host-specific). Fresh-VM bootstrap auto-creates only /var/lib/libvirt/images/win10new.qcow2; deliberately review the XML vda path before creating a new VM.${NC}"
   echo -e "   ${YELLOW}Do not create, chown, or chmod win10new.qcow2 unless the deployed XML actually references it and you have confirmed the file is the intended disk.${NC}"
   echo -e "   ${YELLOW}Only define the VM after the ISO/source preflight above passes and the guest is shut down.${NC}"
   echo -e "   ${CYAN}sudo virsh define \"${PATCHED_XML}\"${NC}"
