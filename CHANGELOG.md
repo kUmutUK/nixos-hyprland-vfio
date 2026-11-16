@@ -4,6 +4,15 @@ This file summarizes notable changes in English. The separate Turkish release-by
 
 ## [Unreleased]
 
+### Ten-finding contradiction-report reconciliation — 2026-11-16
+
+- Cross-check the supplied audit against GitHub records at intake commit `b384eba5b3b37a14b870aeeec5c2ed4b1009335a`. The comparison with the preceding confirmed CI commit `0c02d4554edb9d49495a26cfe25553d30c0af1a5` contains only six documentation files and `scripts/test-documentation-integrity.py`; no NixOS runtime, VM XML, hardware identity, or QEMU/VFIO hook path changed. The reported ZIP measurements remain attributed to the supplied report because its bytes were not attached for independent remeasurement.
+- Confirm that Release runs #42 and #45 both successfully created/published `v1.5.5` from different commits. The logs show the two tag object IDs and targets; the reason and exact timing for the tag no longer existing before run #45 remain unknown. The published release/tag was not modified.
+- Confirm the exact 42-path `RELEASING.md`/workflow match at the 11 November v1.5.2 commit and the current exact 53-path match. The earlier 10 November 43-path statement is not tied to an exact tree here, so its 43→42 transition remains unexplained.
+- Resolve the 66→65 file count through the single deleted path `docs/archive/DEGISIKLIK_GECMISI.md` between the cited 66-file and 65-file source snapshots. Confirm that Git ref `v1.3.9` resolves even though the current changelog still lacks its release heading.
+- Record the exact-CI evidence limit for `b384eba5`: CI #1602 is confirmed on its predecessor, but an exact push-run result was not established from the available records. Keep B7 unreproduced, B8–B10 qualified as historical records, and the Build #14 outcome unknown.
+- Correct the archive-directory description: `README.md` is the index and `HISTORICAL-AUDITS.md` is the only retained historical audit register. No runtime configuration or published release asset is changed.
+
 ### Owner-reported local full-system build and VM check (16 November 2026)
 
 - The owner reports that a from-scratch full NixOS system build completed successfully on the target machine and that the VM started and shut down successfully. This is an owner-reported result, not a GitHub Actions run; the exact source SHA, build command/derivation, and booted generation/kernel identity were not recorded.
@@ -66,7 +75,7 @@ This file summarizes notable changes in English. The separate Turkish release-by
 
 ### Repository documentation cleanup — 2026-11-15
 
-- Remove nine superseded one-off audit and fix snapshots from `docs/archive/`; keep `HISTORICAL-AUDITS.md` as the only retained file in that directory.
+- Remove nine superseded one-off audit and fix snapshots from `docs/archive/`; retain `HISTORICAL-AUDITS.md` as the only historical audit register alongside the `README.md` directory index.
 - Remove the separate Turkish release-by-release archive from the current tree; its exact prior contents remain recoverable from Git history.
 - Keep all active CI regression tests. Update the README repository map to the current 65 tracked files; the earlier 75-file count remains only in dated historical snapshots.
 - Explicitly include the legacy `KURULUM.md` compatibility pointer in the exact documentation-only ancestor-build allowlist so its retired-history reference can be corrected without a new full-system build.
