@@ -1961,7 +1961,7 @@ require(
 
 require(
     not (ROOT / "docs/archive/DEGISIKLIK_GECMISI.md").exists()
-    and "This directory now retains only the consolidated audit-retraction/provenance register." in ARCHIVE_INDEX
+    and "This directory contains this README index and the consolidated audit-retraction/provenance register in `HISTORICAL-AUDITS.md`." in ARCHIVE_INDEX
     and "The separate Turkish release-by-release history file was removed from the current tree on 15 November 2026." in ARCHIVE_INDEX
     and "blob/a0fa8ca557c53810230eb8d42b2edd1e79365460/docs/archive/DEGISIKLIK_GECMISI.md" in ARCHIVE_INDEX,
     "archive index must describe the retained historical audit and link retired release history to its last Git revision",
