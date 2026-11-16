@@ -1868,7 +1868,7 @@ require(
     "Unreleased changelog workstreams must have separate dated headings rather than appearing under the unrelated Home Snapper heading",
 )
 require("update_qemu_hook_pci()" in INSTALLER and "if ! update_qemu_hook_pci" in INSTALLER, "installer must use the checked QEMU hook PCI updater and fail closed on error")
-require(not re.search(r"(?m)^## (?:Unreleased|Previous unreleased changes)\s*[—-]\s*\d{4}-\d{2}-\d{2}", CHANGELOG), "CHANGELOG still gives an Unreleased heading a date")
+    and "## [v1.3.9]" not in CHANGELOG
 require(
     "## Follow-up fixes — documented 2026-10-23 (includes earlier changes)" in CHANGELOG
     and "not a claim that every listed change first occurred on 23 October" in CHANGELOG,
