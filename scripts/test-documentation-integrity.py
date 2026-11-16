@@ -2475,6 +2475,46 @@ if (ROOT / ".git").exists():
         "Git history must prove that 0c035b2c removed both IOMMU flags and the six other recorded kernel parameters",
     )
 
+require(
+    "Independent reconciliation of the ten-finding contradiction report — 2026-11-16" in REPAIR
+    and all(value in REPAIR for value in (
+        "b384eba5b3b37a14b870aeeec5c2ed4b1009335a",
+        "43693008723", "132747398635", "43720459493", "132831114015",
+        "9e5de0b4c5dbf61640bcde3b23a54a0df09ff9f7",
+        "d3cf575bdc4f7bd9396f0fbf861bc6f186117d93",
+        "045fd0a3cc56344a01cfa0a275f84c29d213fcbf",
+    )),
+    "the contradiction report must preserve both v1.5.5 run logs, tag objects, targets, and unresolved lifecycle boundary",
+)
+require(
+    "418bb687ec4f4d539e3ccc2d839baf242552c018" in REPAIR
+    and "42 unique literal paths" in REPAIR
+    and "53 unique literal paths" in REPAIR
+    and "43→42" in REPAIR
+    and "docs/archive/DEGISIKLIK_GECMISI.md" in REPAIR
+    and "66→65" in REPAIR,
+    "allowlist snapshots and the 66-to-65 archive deletion explanation must remain explicit",
+)
+require(
+    "GitHub's `v1.3.9` ref resolves" in REPAIR
+    and not re.search(r"(?m)^## \\[v1\\.3\\.9\\]", CHANGELOG)
+    and "B7 — DEGISIKLIK_GECMISI heading/parenthesis (not reproduced)" in REPAIR
+    and "B5 — exact CI for b384 (not confirmed in the accessible records)" in REPAIR,
+    "the missing v1.3.9 changelog heading, unreproduced B7, and qualified exact-CI gap must not be overstated",
+)
+require(
+    "only retained historical audit document, alongside the index" in CHANGELOG
+    and "HISTORICAL-AUDITS.md` as the only retained file in that directory" not in CHANGELOG
+    and "B6 — archive inventory wording (corrected in CHANGELOG)" in REPAIR,
+    "the archive index/register distinction must match the actual two-file directory",
+)
+require(
+    "B8 — v1.4.6 asset/log discrepancy (already qualified)" in REPAIR
+    and "B9 — v1.4.3/v1.4.4 anomaly (already documented and regression-checked)" in REPAIR
+    and "B10 — Full-system Build #14 (unknown; no inference)" in REPAIR,
+    "the remaining historical release/build anomalies must retain their qualified dispositions",
+)
+
 if errors:
     for error in errors:
         print(f"FAIL: {error}", file=sys.stderr)
