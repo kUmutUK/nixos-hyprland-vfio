@@ -1168,9 +1168,11 @@ only for startup troubleshooting; it is not a permanent gaming configuration.
 >   --allow-custom-usb-ids
 > ```
 >
-> `--allow-custom-usb-ids` permits local USB vendor/product IDs while still checking their numeric
-> format and requiring the expected number of USB entries. The test compares PCI addresses and
-> other XML invariants; it cannot prove that a PCI address identifies the correct physical device.
+> `--allow-custom-usb-ids` permits local vendor/product IDs for the two required (non-optional)
+> USB passthrough entries. It still requires exactly two required entries, numeric and unique IDs,
+> and allows additional USB entries only when their `<source>` sets `startupPolicy='optional'`.
+> The test compares PCI addresses and other XML invariants; it cannot prove that a PCI address
+> identifies the correct physical device.
 > `/etc/nixos/nixos/hooks/qemu` is the source hook, not necessarily the currently active generated
 > libvirt hook. To compare against the hook output selected by the deployed NixOS flake, use:
 >

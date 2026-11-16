@@ -39,6 +39,57 @@ class VmXmlStructureTests(unittest.TestCase):
                 timeout=TIMEOUT_SECONDS,
             )
 
+    def test_committed_optional_usb_passthrough_entries_are_allowed(self) -> None:
+        usb_hostdevs = self.root.findall("./devices/hostdev[@type='usb']")
+        optional = [
+            node for node in usb_hostdevs
+            if node.find("./source") is not None
+            and node.find("./source").get("startupPolicy") == "optional"
+        ]
+        self.assertGreaterEqual(len(optional), 1, "fixture should exercise optional USB passthrough")
+        result = self.run_validator()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_additional_required_usb_passthrough_entry_is_rejected(self) -> None:
+        usb_hostdevs = self.root.findall("./devices/hostdev[@type='usb']")
+        optional = next(
+            node for node in usb_hostdevs
+            if node.find("./source").get("startupPolicy") == "optional"
+        )
+        extra = ET.fromstring(ET.tostring(optional))
+        source = extra.find("./source")
+        source.attrib.pop("startupPolicy")
+        source.find("vendor").set("id", "0x1234")
+        source.find("product").set("id", "0x5678")
+        self.root.find("./devices").append(extra)
+
+        result = self.run_validator()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("exactly two required USB hostdev entries", result.stderr)
+
+    def test_optional_usb_passthrough_ids_must_be_numeric(self) -> None:
+        optional = next(
+            node for node in self.root.findall("./devices/hostdev[@type='usb']")
+            if node.find("./source").get("startupPolicy") == "optional"
+        )
+        optional.find("./source/product").set("id", "not-a-number")
+
+        result = self.run_validator()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("vendor/product IDs must be numeric", result.stderr)
+
+    def test_usb_passthrough_id_pairs_must_be_unique(self) -> None:
+        optional = next(
+            node for node in self.root.findall("./devices/hostdev[@type='usb']")
+            if node.find("./source").get("startupPolicy") == "optional"
+        )
+        optional.find("./source/vendor").set("id", "0x1532")
+        optional.find("./source/product").set("id", "0x0098")
+
+        result = self.run_validator()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("ID pairs must be unique", result.stderr)
+
     def test_custom_iso_filenames_and_paths_pass(self) -> None:
         cdroms = self.root.findall("./devices/disk[@device='cdrom']")
         self.assertEqual(len(cdroms), 3)

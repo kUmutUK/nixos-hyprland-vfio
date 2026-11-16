@@ -359,7 +359,7 @@ The VM domain is named `win10`. The default `vm-xml/win10.xml` keeps the existin
 
 > **Windows 10 lifecycle:** Standard support for Windows 10 Home and Pro ended on October 14, 2025 ([Microsoft lifecycle policy](https://learn.microsoft.com/en-us/lifecycle/products/windows-10-home-and-pro)). Eligible, enrolled consumer devices may receive ESU protection through October 12, 2027; commercial ESU has separate licensing and coverage dates ([Microsoft ESU FAQ](https://learn.microsoft.com/en-us/lifecycle/faq/extended-security-updates)). This template does not enroll the guest, verify the license/edition, or install updates. Confirm the actual guest's ESU or other supported-lifecycle status before using it online; the ISO filename alone proves none of these conditions.
 
-> **USB passthrough preflight:** The default VM XML contains the machine-specific USB IDs `1532:0098` and `05ac:024f`. Check both on the target host before defining or starting the VM:
+> **USB passthrough preflight:** The VM XML keeps two required USB passthrough entries with the machine-specific IDs `1532:0098` and `05ac:024f`. Check both on the target host before defining or starting the VM:
 >
 > ```bash
 > lsusb -d 1532:0098
@@ -367,6 +367,8 @@ The VM domain is named `win10`. The default `vm-xml/win10.xml` keeps the existin
 > ```
 >
 > Both commands must identify the intended connected devices. If either ID is absent or identifies the wrong device, edit or remove its matching USB `<hostdev>` block in `vm-xml/win10.xml`; do not assume these IDs exist on another computer.
+>
+> The XML may also contain additional per-machine USB passthrough entries for removable devices such as phones. Every additional entry must set `startupPolicy='optional'` on its `<source>` element; libvirt can then skip that entry when the host device is absent. Additional entries do not replace the two required devices. All USB vendor/product IDs must be numeric and unique, and every optional device should be checked with `lsusb` before it is passed through.
 >
 > **Emulated input devices:** The XML also declares an emulated PS/2 keyboard and mouse. These are separate from the USB `<hostdev>` entries. Removing USB passthrough entries leaves the PS/2 device definitions in the XML; that alone does not prove that host keyboard/mouse events are routed to the guest at runtime.
 >

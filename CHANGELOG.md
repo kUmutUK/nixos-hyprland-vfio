@@ -4,6 +4,10 @@ This file summarizes notable changes in English. The separate Turkish release-by
 
 ## [Unreleased]
 
+### VM XML optional USB passthrough — 2026-11-16
+- Kept the two documented machine-specific USB IDs as required entries while allowing additional numeric USB hostdevs only when their source sets `startupPolicy='optional'`. Added structural and documentation regressions for optional devices, non-optional extras, invalid IDs, and duplicate ID pairs.
+
+
 ### Full-system Build #20 and current validation boundary — 2026-11-15
 
 - Complete manual Full NixOS System Build #20 [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43653123079) passed on exact source commit `46d2b809e4fe9530dde58c85450b3544cf5d1ed0`. The workflow evaluated the locked flake, built the complete NixOS system and selected RT-Bore-LTO kernel, and verified the lock file was unchanged.

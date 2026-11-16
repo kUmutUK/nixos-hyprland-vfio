@@ -62,7 +62,7 @@ Changes:
 
 - `--xml-path PATH` selects the XML file to parse.
 - `--hook-path PATH` selects the hook whose `GPU_PCI` and `GPU_AUDIO` values are compared.
-- `--allow-custom-usb-ids` keeps numeric/entry-count checks but allows a deployed machine to have different USB IDs from the repository template. Without this option the original exact template-ID assertion remains.
+- `--allow-custom-usb-ids` allows a deployed machine to use different IDs for the two required USB entries while retaining numeric/uniqueness checks; additional USB entries are accepted only when their source sets `startupPolicy='optional'`. Without this option the two required IDs must match the template.
 - `scripts/test-vm-xml-paths.py` copies files to temporary paths, confirms the arguments are honored, checks the custom-USB mode, and verifies that a mismatched hook is rejected.
 
 Documented deployed-source check:

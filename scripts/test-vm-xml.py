@@ -164,33 +164,56 @@ def main() -> int:
     if nixos_tray_source is not None and (nixos_tray_source.attrib or len(nixos_tray_source)):
         return fail("NixOS CD-ROM tray must start empty; attach the installer ISO on demand")
 
-    # The default template intentionally includes two active USB passthrough
-    # entries. Keep this invariant in sync with the README: install.sh only
-    # synchronizes PCI source addresses and does not discover/replace USB IDs.
+    # Keep the two documented, non-optional USB devices as the required
+    # template baseline. Additional machine-specific devices are allowed only
+    # when their source explicitly marks them optional, so an unplugged phone
+    # or other removable device cannot prevent the VM from starting.
+    # install.sh synchronizes PCI source addresses only; it does not discover
+    # or replace USB IDs.
     usb_hostdevs = root.findall("./devices/hostdev[@type='usb']")
     expected_usb_ids = {(0x1532, 0x0098), (0x05AC, 0x024F)}
-    actual_usb_ids: list[tuple[int, int]] = []
+    required_usb_ids: list[tuple[int, int]] = []
+    optional_usb_ids: list[tuple[int, int]] = []
+    all_usb_ids: list[tuple[int, int]] = []
     for hostdev in usb_hostdevs:
         source = hostdev.find("./source")
         vendor = source.find("vendor") if source is not None else None
         product = source.find("product") if source is not None else None
         if vendor is None or product is None:
             return fail("every USB hostdev must declare both vendor and product IDs")
+        startup_policy = source.get("startupPolicy")
+        if startup_policy not in (None, "optional"):
+            return fail(
+                "USB hostdev source must omit startupPolicy for required devices "
+                "or set startupPolicy='optional' for additional devices"
+            )
         try:
             vendor_id = int(vendor.get("id", ""), 0)
             product_id = int(product.get("id", ""), 0)
         except ValueError:
             return fail("USB hostdev vendor/product IDs must be numeric")
-        actual_usb_ids.append((vendor_id, product_id))
+        usb_id = (vendor_id, product_id)
+        all_usb_ids.append(usb_id)
+        if startup_policy == "optional":
+            optional_usb_ids.append(usb_id)
+        else:
+            required_usb_ids.append(usb_id)
 
-    if len(actual_usb_ids) != len(expected_usb_ids) or (
-        not args.allow_custom_usb_ids and set(actual_usb_ids) != expected_usb_ids
-    ):
-        formatted = sorted(f"{vendor:04x}:{product:04x}" for vendor, product in actual_usb_ids)
+    if len(all_usb_ids) != len(set(all_usb_ids)):
+        return fail("USB hostdev vendor/product ID pairs must be unique")
+    if len(required_usb_ids) != len(expected_usb_ids):
+        formatted_required = sorted(f"{vendor:04x}:{product:04x}" for vendor, product in required_usb_ids)
+        return fail(
+            "VM XML must contain exactly two required USB hostdev entries; "
+            "mark every additional USB device with source startupPolicy='optional'; "
+            f"required XML IDs={formatted_required}"
+        )
+    if not args.allow_custom_usb_ids and set(required_usb_ids) != expected_usb_ids:
+        formatted = sorted(f"{vendor:04x}:{product:04x}" for vendor, product in required_usb_ids)
         expected = sorted(f"{vendor:04x}:{product:04x}" for vendor, product in expected_usb_ids)
         return fail(
-            "XML USB passthrough IDs must contain exactly two numeric devices; "
-            "default template IDs must match unless --allow-custom-usb-ids is set; "
+            "the two required USB passthrough IDs must match the default template "
+            "unless --allow-custom-usb-ids is set; "
             f"XML={formatted}, expected={expected}"
         )
 

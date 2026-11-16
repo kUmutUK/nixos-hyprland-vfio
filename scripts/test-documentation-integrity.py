@@ -1746,17 +1746,51 @@ require(
 require("packages.${system} = {" in FLAKE and "lsfg-vk-v2 = lsfgVkV2Package;" in FLAKE and "packages.${system}.lsfg-vk =" not in FLAKE, "README package command must match the declared grouped flake output")
 require(watchdog is not None and watchdog.get("model", "").lower() == "itco" and watchdog.get("action") == "reset", "VM XML watchdog no longer matches the README")
 require(network_model is not None and network_model.get("type") == "e1000e", "VM XML network model no longer matches the README")
-usb_ids = set()
-for hostdev in vm.findall("./devices/hostdev"):
-    if hostdev.get("type") == "usb":
-        vendor_node = hostdev.find("./source/vendor")
-        product_node = hostdev.find("./source/product")
-        if vendor_node is not None and product_node is not None:
-            vendor = vendor_node.get("id", "").removeprefix("0x").lower()
-            product = product_node.get("id", "").removeprefix("0x").lower()
-            usb_ids.add((vendor, product))
-require(usb_ids == {("1532", "0098"), ("05ac", "024f")}, "VM XML must contain only the two documented active USB passthrough IDs")
-require("lsusb -d 1532:0098" in README and "lsusb -d 05ac:024f" in README and "intended connected devices" in README, "README must require verification of both machine-specific USB passthrough IDs")
+usb_hostdevs = vm.findall("./devices/hostdev[@type='usb']")
+required_usb_ids = []
+optional_usb_ids = []
+all_usb_ids = []
+usb_ids_are_numeric = True
+usb_policies_are_supported = True
+for hostdev in usb_hostdevs:
+    source = hostdev.find("./source")
+    vendor_node = source.find("vendor") if source is not None else None
+    product_node = source.find("product") if source is not None else None
+    if vendor_node is None or product_node is None:
+        usb_ids_are_numeric = False
+        continue
+    try:
+        pair = (int(vendor_node.get("id", ""), 0), int(product_node.get("id", ""), 0))
+    except ValueError:
+        usb_ids_are_numeric = False
+        continue
+    all_usb_ids.append(pair)
+    if source.get("startupPolicy") == "optional":
+        optional_usb_ids.append(pair)
+    elif source.get("startupPolicy") is None:
+        required_usb_ids.append(pair)
+    else:
+        usb_policies_are_supported = False
+require(usb_ids_are_numeric, "every USB hostdev must declare numeric vendor/product IDs")
+require(usb_policies_are_supported, "USB hostdev startupPolicy must be omitted or set to optional")
+require(
+    len(required_usb_ids) == 2 and set(required_usb_ids) == {(0x1532, 0x0098), (0x05AC, 0x024F)},
+    "VM XML must retain exactly the two documented required USB passthrough IDs",
+)
+require(len(all_usb_ids) == len(set(all_usb_ids)), "VM XML USB hostdev ID pairs must be unique")
+require(
+    len(usb_hostdevs) == len(required_usb_ids) + len(optional_usb_ids),
+    "every USB hostdev beyond the two required entries must use startupPolicy='optional'",
+)
+require(
+    "lsusb -d 1532:0098" in README and "lsusb -d 05ac:024f" in README
+    and "intended connected devices" in README,
+    "README must require verification of both machine-specific USB passthrough IDs",
+)
+require(
+    "two required USB passthrough entries" in README and "startupPolicy='optional'" in README,
+    "README must distinguish the two required USB entries from additional optional passthrough devices",
+)
 input_buses = {(node.get("type"), node.get("bus")) for node in vm.findall("./devices/input")}
 require({("mouse", "ps2"), ("keyboard", "ps2")}.issubset(input_buses), "VM XML must retain its separate emulated PS/2 mouse and keyboard inputs")
 require("emulated PS/2 keyboard and mouse" in README and "emulated PS/2 keyboard and mouse" in INSTALLATION, "README and INSTALLATION must distinguish emulated PS/2 inputs from USB passthrough")
