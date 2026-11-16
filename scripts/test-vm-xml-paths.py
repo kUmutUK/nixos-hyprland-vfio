@@ -64,18 +64,27 @@ def main() -> int:
         # numeric values remain checked, while the template's exact IDs are optional.
         custom_xml = template_xml
         usb_id_replacements = (
-            ('id="0x1532"', 'id="0x1234"'),
-            ('id="0x0098"', 'id="0x5678"'),
-            ('id="0x05ac"', 'id="0x4321"'),
-            ('id="0x024f"', 'id="0x8765"'),
+            ("0x1532", "0x1234"),
+            ("0x0098", "0x5678"),
+            ("0x05ac", "0x4321"),
+            ("0x024f", "0x8765"),
         )
         for original_id, custom_id in usb_id_replacements:
-            if custom_xml.count(original_id) != 1:
+            # XML writers may serialize attributes with either quote style.
+            # Match the attribute value without assuming double quotes.
+            pattern = re.compile(rf'(\\bid=)(["\\']){re.escape(original_id)}\\2')
+            matches = list(pattern.finditer(custom_xml))
+            if len(matches) != 1:
                 return fail(
                     f"expected exactly one template USB ID {original_id!r} before replacement"
                 )
-            custom_xml = custom_xml.replace(original_id, custom_id, 1)
-            if custom_xml.count(custom_id) != 1:
+            custom_xml = pattern.sub(
+                lambda match: f"{match.group(1)}{match.group(2)}{custom_id}{match.group(2)}",
+                custom_xml,
+                count=1,
+            )
+            replacement_pattern = re.compile(rf'(\\bid=)(["\\']){re.escape(custom_id)}\\2')
+            if len(list(replacement_pattern.finditer(custom_xml))) != 1:
                 return fail(f"custom USB ID replacement did not produce {custom_id!r}")
         if custom_xml == template_xml:
             return fail("test fixture could not customize the template USB IDs")
