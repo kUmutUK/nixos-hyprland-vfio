@@ -18,7 +18,7 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    cachyos-kernel.url = "github:xddxdd/nix-cachyos-kernel/master";
+    cachyos-kernel.url = "github:xddxdd/nix-cachyos-kernel/release";
     # Reuse the kernel flake's exact Nixpkgs input when regenerating its package set.
     cachyos-nixpkgs.follows = "cachyos-kernel/nixpkgs";
     home-manager.url = "github:nix-community/home-manager";

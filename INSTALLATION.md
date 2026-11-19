@@ -834,7 +834,7 @@ until the installed system profile exists and the root password has been set.
 > perform the equivalent update against `/mnt/etc/nixos/nixos` before running `nixos-install`.
 >
 > **Updating the kernel input:** `flake.nix` uses the `linuxPackages-cachyos-rt-bore-lto`
-> package from the CachyOS upstream `master` input; the kernel version is not hard-coded.
+> package from the CachyOS upstream `release` input; the kernel version is not hard-coded.
 > `flake.lock` records the resolved source revision for reproducibility. To move to a newer
 > upstream revision, back up the current lock file, update only the CachyOS input, and review
 > the resulting change:
