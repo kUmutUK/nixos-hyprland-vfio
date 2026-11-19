@@ -4,6 +4,14 @@ This file summarizes notable changes in English. The separate Turkish release-by
 
 ## [Unreleased]
 
+### v1.5.9 release preparation and current-source reconciliation — 2026-11-19
+
+- Reconcile the latest published release as v1.5.8 (Release run #48, exact tag commit `672d255d4a921c097dd69eae817e8dc9699380d6`) and preserve the exact GitHub source-archive metadata.
+- Record successful current-main Normal CI #1643 on `5f541211258511cc31b96160b6eb66fbe61a6499` separately from Full-system Build #21 on the earlier v1.5.8 tag commit.
+- Compare current `main` with Build #21: four commits and 36 changed paths later, including runtime-affecting host-layout and installer changes. Require a fresh full-system build on current `main` before v1.5.9.
+- Record the unresolved Release #48 manual-attestation discrepancy; do not describe the `install.sh` live migration or installed NixOS `vdb` guest path as tested without evidence.
+- Correct the allowlist chronology (53→56, then 56→61), host-settings module comments, and new-host GPU architecture notes; extend documentation-integrity checks to prevent these status regressions.
+
 ### Hosts/ layout restructure and repository modernization — 2026-11-19
 
 - **Repository layout:** move `nixos/configuration.nix`, `nixos/home.nix`, `nixos/hardware-configuration.nix`, and `nixos/hooks/qemu` to `nixos/hosts/nixos/`, following the dafitt/dotfiles-inspired hosts/ pattern. `nixos/flake.nix` now imports `./hosts/nixos/configuration.nix`. The deployed target tree under `/etc/nixos/nixos` keeps the same layout.
@@ -276,6 +284,39 @@ This file summarizes notable changes in English. The separate Turkish release-by
 - Clarify the GPU/audio IOMMU split: `0000:0b:00.0` was recorded in group 18 and `0000:0b:00.1` in group 19. Different group numbers alone do not prove an isolation defect or establish intra-device isolation; group membership and PCIe/ACS topology require separate review.
 - H1 is already corrected in the archived [1.2.2] entry and dated preface: pinned Nixpkgs defines Hyprland `0.56.2` / hyprlock `0.9.6`; `0.54.3 / 0.9.5` is marked as the incorrect earlier statement. H3 and H4 remain documented historical anomalies; no old release description is rewritten and no missing Build #14 event is inferred.
 - **Second reconciliation CI failure:** Nix Flake Check [#1383](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42998196145) failed on `36c13be1558d70822edf9432fe6cca3507f6d8e5` at the documentation-integrity assertion `README must distinguish the immutable v1.5.0 release ZIP from later main-branch documentation`. Commit `edf78e8` restored `The v1.5.0 asset will not be rewritten`; [#1384](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42998456098) then passed on exact commit `edf78e8559a289dda5da01467ce0082da2c38188`.
+
+## [v1.5.8] - 2026-11-16
+
+### Release and validation provenance
+
+- Published by Release workflow [#48](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43969320702) from exact annotated tag commit `672d255d4a921c097dd69eae817e8dc9699380d6`.
+- Full NixOS System Build #21 [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43982447714) completed successfully on the exact release commit. Release #48's job log records both manual host and VM XML validation inputs as true; the current repository's contemporaneous validation record conflicts with those assertions, so they are retained as unresolved maintainer attestations rather than independent test evidence.
+- GitHub Release metadata records the canonical source ZIP as 479,536 bytes with SHA-256 `8b6d86972c6d01c8102b5072a1cc5d0c970fff6ef4eb26d27edf1e5e0a82f201`. The ZIP was not independently downloaded and re-hashed during this review.
+
+### Bug fixes
+
+- Reconcile validation records and gate VM XML changes.
+- Restore v1.3.9 documentation assertion syntax.
+
+### Documentation and tests
+
+- Keep nested Nixpkgs identity explicit in the install guide and preserve the explicit dual-guest validation release gate.
+- Restore reviewed-source index anchors and retain historical validation records alongside current status.
+- Clarify the retained archive audit register and reconcile the ten-finding contradiction audit.
+- Restore dated host-validation labels, align B5 exact-CI assertion wording, and make legacy changelog assertions explicit.
+
+## [v1.5.7] - 2026-11-16
+
+### Documentation
+
+- Preserve historical clean-install validation and target-host validation history labels.
+- Align validation notes with integrity checks and retain the explicit installer test boundary.
+- Clarify the untried installer status and record the owner-reported local build/VM check.
+- Reconcile the audit against the published source and CI records.
+
+### Tests
+
+- Retain release provenance and update the archive inventory assertion.
 
 ## [v1.5.6] - 2026-11-16
 

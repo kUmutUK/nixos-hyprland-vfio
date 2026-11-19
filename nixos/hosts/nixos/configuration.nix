@@ -134,9 +134,9 @@ in
 {
   imports = [
     ./hardware-configuration.nix
-    # Host-specific desktop values (monitor output/mode, wallpaper, git identity).
-    # flake.nix reads the same config.kumutuk.host options to pass them to Home
-    # Manager through extraSpecialArgs, so there is exactly one place to edit.
+    # host-settings.nix declares the host-specific NixOS options (monitor,
+    # wallpaper, git identity); home.nix reads them through osConfig.kumutuk.host
+    # while Home Manager runs as a NixOS module.
     ./host-settings.nix
   ];
 

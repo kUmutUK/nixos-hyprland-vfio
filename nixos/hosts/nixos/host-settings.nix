@@ -2,9 +2,10 @@
 #
 # These five values used to live in the `let` block of hosts/nixos/home.nix and
 # were rewritten line-by-line by install.sh. They are host/user data, not module
-# logic, so they now live in the host directory and are passed to Home Manager
-# through `home-manager.extraSpecialArgs` in flake.nix. install.sh rewrites this
-# small structural file instead of patching the 1.8k-line home.nix.
+# logic, so they now live in the host directory as NixOS module options. Home
+# Manager runs as a NixOS module, and home.nix reads them through osConfig;
+# the module options remain declared here instead of being duplicated in HM.
+# install.sh rewrites this small structural file instead of patching home.nix.
 #
 # Reference-host defaults are kept exactly as before:
 #  - monitorOutput "DP-3" (reference host; empty string disables live wallpaper)

@@ -757,38 +757,15 @@ git -C /tmp/repo show "$SOURCE_REVISION:nixos/flake.lock" |
   sudo tee /mnt/etc/nixos/nixos/flake.lock >/dev/null
 ```
 
-> **Current published release and CI status (17 November 2026):** v1.5.7 is the latest published release (Release run #47, exact tag commit
-> `b384eba5b3b37a14b870aeeec5c2ed4b1009335a`). Normal CI #1609 passed on that
-> exact commit. The latest main-branch Normal CI is #1619, passed on
-> `e07894e9d63d077b6b11db3e0a189fce6e927875`.
+> **Current published release (19 November 2026):** [v1.5.8](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.5.8), published by [Release run #48](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43969320702) from exact tag commit `672d255d4a921c097dd69eae817e8dc9699380d6`. GitHub's source ZIP metadata is 479,536 bytes / SHA-256 `8b6d86972c6d01c8102b5072a1cc5d0c970fff6ef4eb26d27edf1e5e0a82f201` (not independently re-hashed here).
 >
-> **Full-system build boundary:** manual Full NixOS System Build #20
-> [run #20](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43653123079)
-> succeeded on exact commit `46d2b809e4fe9530dde58c85450b3544cf5d1ed0`.
-> GitHub's comparison to pre-update `main` shows 45 later commits and 23
-> changed paths, including `install.sh`, NixOS system/hardware/Home Manager
-> configuration, VM helper scripts, and `vm-xml/win10.xml`. Build #20 therefore
-> does not validate the current main-branch system closure or current VM XML.
-> The owner separately reports a successful from-scratch local full-system build
-> and normal VM start/shutdown on 16 November; the exact source SHA, derivation,
-> and booted generation/kernel were not recorded.
+> **Current main-branch Normal CI:** [#1643](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44536357001) passed all 27 workflow-defined steps on exact `main` commit `5f541211258511cc31b96160b6eb66fbe61a6499`.
 >
-> **Locked input identities used by Build #20:** CachyOS source
-> `c9620070e884d55c5b5566e3fd46611ee24c4d3b`, the nested `nixos-unstable-small` Nixpkgs package set
-> `82566dfe91ca5e12bc10b36272280628142f651d`, and root system
-> `nixos-unstable` Nixpkgs `d4f25a3e562008648d45bcf2d70bcc7422cad84e`.
-> The root and nested Nixpkgs inputs are distinct. The prior Build #19 used
-> CachyOS `9df32f70be3550911f178b3ba9ad784996a4e80c` and root Nixpkgs
-> `4d6a01a11146f4691c0991682885ad9e4686e3ee`; these are historical inputs.
+> **Latest completed full-system build:** Full NixOS System Build #21 [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43982447714) succeeded on exact v1.5.8 tag commit `672d255d4a921c097dd69eae817e8dc9699380d6`. Current `main` is four commits and 36 changed paths ahead of that build, including runtime-affecting hosts/ and installer changes; #21 does not validate the current source tree. Run a fresh full-system build against current `main` before v1.5.9.
 >
-> **Physical/functional boundary:** the reported ordinary VM start/shutdown does
-> not establish the installed NixOS `vdb` guest boot, Windows guest boot from its
-> normal disk, guest networking, saved-state/managed-save restore, or GPU/display
-> handback for the current source. Exact Build #20 kernel activation/boot remains
-> unverified. The owner confirms that `install.sh` has not been tried; live
-> migration and rollback remain unverified.
+> **Historical Full-system Build #20:** [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43653123079) succeeded on `46d2b809e4fe9530dde58c85450b3544cf5d1ed0`. Build #21 above supersedes it as the latest full-system build. The locked inputs used by the v1.5.8 build remain CachyOS `c9620070e884d55c5b5566e3fd46611ee24c4d3b`, nested `nixos-unstable-small` Nixpkgs `82566dfe91ca5e12bc10b36272280628142f651d`, and root `nixos-unstable` Nixpkgs `d4f25a3e562008648d45bcf2d70bcc7422cad84e`; these are distinct inputs.
 >
-> **VM XML release gate:** `vm-xml/win10.xml` remains outside the automatic
+> **Physical/functional validation boundary:** the separate owner-reported 16 November local build and ordinary VM start/shutdown has no recorded exact source SHA, derivation, or booted generation/kernel. The owner-reported status still says `install.sh` has not been tried; live migration/rollback, installed NixOS `vdb` guest boot, guest networking, and saved-state/managed-save restore remain unverified. Release #48 logged both manual host and VM XML attestations as true, but those values conflict with the retained validation record and are not independent test results. The VM XML has not changed in the four commits from v1.5.8 to current `main`; the VM-specific release checkbox is only relevant again if that file changes.> **VM XML release gate:** `vm-xml/win10.xml` remains outside the automatic
 > ancestor-build allowlist. When it differs from the previous stable tag, the
 > Release workflow requires a separate `vm_xml_validated=true` manual-main
 > attestation for libvirt/QEMU semantic validation and real Windows plus installed

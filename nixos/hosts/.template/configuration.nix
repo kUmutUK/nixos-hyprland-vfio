@@ -9,7 +9,8 @@
 #     the Home Snapper @home/.snapshots subvolume layout belong to that machine.
 #  2. Review the AMD assumptions inherited from the reference configuration:
 #     - kvm-amd, amd_pstate=active, AMD microcode
-#     - ROCm override rocmOverrideGfx = "10.3.0" (RX 6700 XT / gfx1030)
+#     - RX 6700 XT native target: gfx1031; configured ROCm compatibility override
+       rocmOverrideGfx = "10.3.0" selects gfx1030 (not the GPU's native identity)
 #     - RADV Vulkan environment and amdgpu initrd module
 #     An Intel/NVIDIA machine needs these blocks adapted or removed.
 #  3. VFIO is single-GPU passthrough to the win10 guest. If this host does not

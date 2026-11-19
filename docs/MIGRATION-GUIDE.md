@@ -45,8 +45,12 @@ backup, transaction, and stateVersion paths were updated for the new layout.
 **Documentation and tests.** README.md, INSTALLATION.md, CONTRIBUTING.md,
 RELEASING.md, DISCLAIMER.md, DEGISIKLIK_GECMISI.md, CHANGELOG.md, and the
 docs/ guides were updated to the new paths. The release allowlist in
-`.github/workflows/release.yml` and RELEASING.md was extended (53 → 56 exact
-paths) with the two new workflows and this guide. All offline regression
+`.github/workflows/release.yml` and RELEASING.md was first extended (53 → 56 exact
+paths) with the two new workflows and this guide. Follow-up commit
+`05aa2333b3c004dda7f2b8c6d8e992da9aea94bd` then added five more explicit paths
+(56 → 61); **61 is the current matching count** enforced by
+`scripts/test-documentation-integrity.py`. The 53 → 56 figure is an earlier
+intermediate snapshot, not the current allowlist size. All offline regression
 suites that reference repository paths were updated: installer invariants,
 documentation integrity, LSFG-VK v2, MAKO, VM XML (three suites), VM
 diagnostic, VM ISO paths, VFIO hook driver-state, embedded-script extraction,

@@ -52,6 +52,7 @@ root_nixpkgs_ref = root_nixpkgs_node.get("original", {}).get("ref")
 cachyos_nixpkgs_ref = cachyos_nixpkgs_node.get("original", {}).get("ref")
 HOME_NIX = (ROOT / "nixos/hosts/nixos/home.nix").read_text(encoding="utf-8")
 HOST_SETTINGS = (ROOT / "nixos/hosts/nixos/host-settings.nix").read_text(encoding="utf-8")
+HOST_TEMPLATE = (ROOT / "nixos/hosts/.template/configuration.nix").read_text(encoding="utf-8")
 VM_XML_TEXT = (ROOT / "vm-xml/win10.xml").read_text(encoding="utf-8")
 REPAIR = (ROOT / "docs/REPAIR-AND-VALIDATION-REPORT.md").read_text(encoding="utf-8")
 UUID_GUIDE = (ROOT / "docs/UUID-AND-MACHINE-IDENTITY.md").read_text(encoding="utf-8")
@@ -469,7 +470,7 @@ require(
     and "43935632624" in README
     and "43936167712" in README
     and "e1ea3edc75bd061b7460cf3c760ac7e5041b6407ce14f0a6f5c0cc37de0c8eed" in README,
-    "README release, exact-commit CI, and source-archive provenance must identify current v1.5.6 publication",
+    "README must retain historical v1.5.6 release, exact-commit CI, and source-archive provenance",
 )
 
 require(
@@ -503,7 +504,7 @@ require(
     and "Build #20" in INSTALLATION
     and "43653123079" in INSTALLATION
     and "`46d2b809e4fe9530dde58c85450b3544cf5d1ed0`" in INSTALLATION,
-    "INSTALLATION must distinguish root/nested locked inputs and record Build #20 for the current profile",
+    "INSTALLATION must distinguish root/nested locked inputs and retain historical Build #20 provenance",
 )
 require(
     "f6689bcd5234f29a7cfcfc4151d161727b0658bc" in README
@@ -542,7 +543,7 @@ require(
     "43946085543" in README and "0c02d4554edb9d49495a26cfe25553d30c0af1a5" in README
     and "43946085543" in STATE_INDEX and "0c02d4554edb9d49495a26cfe25553d30c0af1a5" in STATE_INDEX
     and "43946085543" in CHANGELOG and "0c02d4554edb9d49495a26cfe25553d30c0af1a5" in REPAIR,
-    "current documentation must record the latest pre-update main-branch CI #1602 and its exact source commit",
+    "current documentation must retain the historical pre-update main-branch CI #1602 exact-commit record",
 )
 require(
     "overall Normal CI #1599 workflow completed successfully" in REPAIR
@@ -1050,7 +1051,7 @@ require(
         "477,863 bytes",
         "dca1f4ccd365df64d416a029f13ea821a58e4e05cf21a81c4d5bc3d2d65b5e6c",
     )) and "v1.5.4" in STATE_INDEX and "v1.5.4" in README and "v1.5.3" in CHANGELOG,
-    "v1.5.4 must be recorded as the latest confirmed published release with exact tag, CI, release, and ZIP metadata",
+    "historical v1.5.4 tag, CI, release, and ZIP metadata must remain recorded",
 )
 require(
     all(item in CHANGELOG + REPAIR + README + STATE_INDEX for item in (
@@ -1222,7 +1223,7 @@ require(
     and "Complete target-host activation and boot" in REPAIR
     and "Perform a real libvirt saved-state/managed-save restore" in REPAIR
     and "Validate `install.sh` end-to-end" in REPAIR,
-    "Build #20 must validate the current locked system/kernel build while physical validation gaps remain explicit",
+    "historical Build #20 inputs and the current physical/functional validation gaps must remain documented",
 )
 require(
     "4cef0c5f02bb2a466070b6a2c9b5468fd59af7da" in README
@@ -1370,12 +1371,16 @@ require(
     and "43101226875" in REPAIR
     and "6242439da7e944d297dbe5f44fdff8e79fe4689c" in REPAIR
     and "Build #20" in REPAIR and "43653123079" in REPAIR
-    and "`46d2b809e4fe9530dde58c85450b3544cf5d1ed0`" in REPAIR,
+    and "`46d2b809e4fe9530dde58c85450b3544cf5d1ed0`" in REPAIR
+    and "Full-system Build #21" in REPAIR and "43982447714" in REPAIR
+    and "`672d255d4a921c097dd69eae817e8dc9699380d6`" in REPAIR,
     "repair report must retain historical Builds #18/#19 and identify Build #20 as the latest full-system baseline",
 )
 require(
     "Build #20" in STATE_INDEX and "43653123079" in STATE_INDEX
     and "`46d2b809e4fe9530dde58c85450b3544cf5d1ed0`" in STATE_INDEX
+    and "Full-system Build #21" in STATE_INDEX and "43982447714" in STATE_INDEX
+    and "`672d255d4a921c097dd69eae817e8dc9699380d6`" in STATE_INDEX
     and "Build #19" in STATE_INDEX and "43101226875" in STATE_INDEX,
     "current-state index must identify Build #20 as current and retain Build #19 as historical",
 )
@@ -2277,6 +2282,8 @@ require(
     "B5 exact-CI finding is resolved" in CHANGELOG
     and "Normal CI #1609" in CHANGELOG
     and "Normal CI #1619" in CHANGELOG
+    and "Normal CI #1643" in CHANGELOG
+    and "Full-system Build #21" in CHANGELOG
     and "45 commits and 23 changed paths" in CHANGELOG,
     "current-source release/CI records and the corrected Build #20 scope must remain documented",
 )
@@ -2561,6 +2568,43 @@ require(
     and "B9 — v1.4.3/v1.4.4 anomaly (already documented and regression-checked)" in REPAIR
     and "B10 — Full-system Build #14 (unknown; no inference)" in REPAIR,
     "the remaining historical release/build anomalies must retain their qualified dispositions",
+)
+
+require(
+    all(item in (README + INSTALLATION + CONTRIBUTING + STATE_INDEX + CHANGELOG + REPAIR) for item in (
+        "v1.5.8", "43969320702", "672d255d4a921c097dd69eae817e8dc9699380d6",
+        "479,536 bytes", "8b6d86972c6d01c8102b5072a1cc5d0c970fff6ef4eb26d27edf1e5e0a82f201",
+        "Normal CI #1643", "44536357001", "5f541211258511cc31b96160b6eb66fbe61a6499",
+        "Full-system Build #21", "43982447714",
+    )),
+    "current release/build/CI provenance must identify v1.5.8, Build #21, and exact-main CI #1643",
+)
+require(
+    "Release #48 attestation discrepancy" in REPAIR
+    and "TARGET_HOST_VALIDATED=true" in REPAIR
+    and "VM_XML_VALIDATED=true" in REPAIR
+    and "install.sh" in REPAIR
+    and "vdb" in REPAIR
+    and "Maintainer-attestation evidence rule" in RELEASING,
+    "the v1.5.8 manual-attestation evidence conflict must remain explicit",
+)
+require(
+    "61 matching unique literal paths" in STATE_INDEX
+    and "56 → 61" in STATE_INDEX
+    and "56 → 61" in (ROOT / "docs/MIGRATION-GUIDE.md").read_text(encoding="utf-8"),
+    "current 61-path release allowlist and historical 53→56→61 sequence must be explicit",
+)
+require(
+    "extraSpecialArgs" not in HOST_SETTINGS
+    and "extraSpecialArgs" not in CONFIG
+    and "osConfig.kumutuk.host" in HOME_NIX,
+    "host-settings comments must match Home Manager's actual osConfig integration",
+)
+require(
+    "gfx1031" in HOST_TEMPLATE
+    and "gfx1030" in HOST_TEMPLATE
+    and "native target" in HOST_TEMPLATE,
+    "new-host template must distinguish the RX 6700 XT native gfx1031 target from the gfx1030 compatibility override",
 )
 
 if errors:
