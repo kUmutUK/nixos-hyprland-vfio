@@ -7,7 +7,7 @@ This file summarizes notable changes in English. The separate Turkish release-by
 ### v1.5.9 release preparation and current-source reconciliation — 2026-11-19
 
 - Reconcile the latest published release as v1.5.8 (Release run #48, exact tag commit `672d255d4a921c097dd69eae817e8dc9699380d6`) and preserve the exact GitHub source-archive metadata.
-- Record successful current-main Normal CI #1643 on `5f541211258511cc31b96160b6eb66fbe61a6499` separately from Full-system Build #21 on the earlier v1.5.8 tag commit.
+- Record successful current-main Normal CI #1643 [run 44536357001](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44536357001) on `5f541211258511cc31b96160b6eb66fbe61a6499` separately from Full-system Build #21 [run 43982447714](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43982447714) on exact v1.5.8 tag commit `672d255d4a921c097dd69eae817e8dc9699380d6`.
 - Compare current `main` with Build #21: four commits and 36 changed paths later, including runtime-affecting host-layout and installer changes. Require a fresh full-system build on current `main` before v1.5.9.
 - Record the unresolved Release #48 manual-attestation discrepancy; do not describe the `install.sh` live migration or installed NixOS `vdb` guest path as tested without evidence.
 - Correct the allowlist chronology (53→56, then 56→61), host-settings module comments, and new-host GPU architecture notes; extend documentation-integrity checks to prevent these status regressions.

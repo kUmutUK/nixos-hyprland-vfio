@@ -1374,7 +1374,7 @@ require(
     and "`46d2b809e4fe9530dde58c85450b3544cf5d1ed0`" in REPAIR
     and "Full-system Build #21" in REPAIR and "43982447714" in REPAIR
     and "`672d255d4a921c097dd69eae817e8dc9699380d6`" in REPAIR,
-    "repair report must retain historical Builds #18/#19 and identify Build #20 as the latest full-system baseline",
+    "repair report must retain historical Builds #18/#19/#20 and identify Build #21 as the latest completed full-system build",
 )
 require(
     "Build #20" in STATE_INDEX and "43653123079" in STATE_INDEX
@@ -1382,7 +1382,7 @@ require(
     and "Full-system Build #21" in STATE_INDEX and "43982447714" in STATE_INDEX
     and "`672d255d4a921c097dd69eae817e8dc9699380d6`" in STATE_INDEX
     and "Build #19" in STATE_INDEX and "43101226875" in STATE_INDEX,
-    "current-state index must identify Build #20 as current and retain Build #19 as historical",
+    "current-state index must identify Build #21 as latest and retain Build #19/#20 as historical",
 )
 require("run #1120" in REPAIR and "run #1120" in STATE_INDEX and "8d1e4585c9cd3f690c1df80ee531008c7e9d30ef" in STATE_INDEX,
         "current-state index must preserve the distinct reviewed-snapshot normal-CI record")
@@ -2574,8 +2574,7 @@ require(
     all(item in (README + INSTALLATION + CONTRIBUTING + STATE_INDEX + CHANGELOG + REPAIR) for item in (
         "v1.5.8", "43969320702", "672d255d4a921c097dd69eae817e8dc9699380d6",
         "479,536 bytes", "8b6d86972c6d01c8102b5072a1cc5d0c970fff6ef4eb26d27edf1e5e0a82f201",
-        "Normal CI #1643", "44536357001", "5f541211258511cc31b96160b6eb66fbe61a6499",
-        "Full-system Build #21", "43982447714",
+        "44536357001", "5f541211258511cc31b96160b6eb66fbe61a6499", "43982447714",
     )),
     "current release/build/CI provenance must identify v1.5.8, Build #21, and exact-main CI #1643",
 )
