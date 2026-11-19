@@ -646,7 +646,7 @@ require(
     and "mocked installer-invariant/rollback tests" in README
     and "Release #52 later accepted `TARGET_HOST_VALIDATED=true`" in README
     and "The audited main baseline is six commits and 15 changed paths after v1.6.0" in README
-    and "install.sh changed by 36 insertions and one deletion" in README
+    and "`install.sh` changed by 36 insertions and one deletion" in README
     and "x86-64-v3 CPU/OS feature preflight" in README
     and "Release #52 accepted `TARGET_HOST_VALIDATED=true`" in CONTRIBUTING
     and "The audited main baseline is six commits and 15 changed paths after v1.6.0" in CONTRIBUTING
