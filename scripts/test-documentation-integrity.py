@@ -535,7 +535,7 @@ require(
     and "Owner-reported local full-system build and VM check (16 November 2026)" in STATE_INDEX
     and "supplied no exact source SHA, derivation/command, or booted generation/kernel identity" in README
     and "ordinary VM start/shutdown" in README
-    and "not a GitHub Actions run" in README
+    and "This remains separate from GitHub Build #21." in README
     and "The 16 November note said `install.sh` had not been tried;" in README
     and "the 16 November owner note said `install.sh` had not been tried." in INSTALLATION,
     "the 16 November owner-reported local build/VM result and untried installer must be recorded without overclaiming exact kernel boot",
