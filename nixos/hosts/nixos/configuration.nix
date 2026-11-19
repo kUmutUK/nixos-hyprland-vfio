@@ -420,6 +420,10 @@ in
   security.rtkit.enable = true;
   services.pipewire = {
     enable = true;
+    # QEMU runs as the unprivileged qemu-libvirtd account. A system-wide
+    # PipeWire socket lets it stream the ICH9 guest audio without running QEMU
+    # as root; access is restricted to members of the dedicated pipewire group.
+    systemWide = true;
     alsa.enable = true;
     alsa.support32Bit = true;
     pulse.enable = true;
@@ -524,6 +528,7 @@ in
       "networkmanager"
       "video"
       "audio"
+      "pipewire"
       "gamemode"
       "libvirtd"
       "kvm"
@@ -536,6 +541,11 @@ in
       # commit a private key. Example: "ssh-ed25519 AAAA... user@host"
     ];
   };
+
+  # The libvirt module creates this unprivileged QEMU account because
+  # virtualisation.libvirtd.qemu.runAsRoot is false. Grant only the PipeWire
+  # group required by the VM's ICH9 audio backend.
+  users.users.qemu-libvirtd.extraGroups = [ "pipewire" ];
 
   home-manager.users.localhost = import ./home.nix;
   home-manager.backupFileExtension = "backup";

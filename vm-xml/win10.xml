@@ -200,7 +200,10 @@
     <sound model='ich9'>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x1b' function='0x0'/>
     </sound>
-    <audio id='1' type='none'/>
+    <!-- ICH9 audio reaches the host ALC897 headphone output; GPU HDMI/DP audio remains a separate guest endpoint. -->
+    <audio id='1' type='pipewire' runtimeDir='/run/pipewire'>
+      <output name='alsa_output.pci-0000_0d_00.4.analog-stereo' streamName='win10-headphones'/>
+    </audio>
     <video>
       <model type='none'/>
     </video>

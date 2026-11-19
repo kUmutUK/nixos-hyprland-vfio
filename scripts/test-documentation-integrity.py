@@ -1811,10 +1811,32 @@ require("Install NixOS on a separate guest disk" in README and "/dev/vdb" in REA
 require(memory is not None and memory.get("unit") == "KiB" and (memory.text or "").strip() == "16777216", "VM XML memory no longer matches the documented 16 GiB")
 require(vcpu is not None and (vcpu.text or "").strip() == "6", "VM XML vCPU count no longer matches the documented 6 vCPUs")
 require(sound is not None and sound.get("model") == "ich9", "VM XML sound model no longer matches the README")
-require('`audio type="none"`' in README and "has no host audio backend" in README, "README must explain that the ICH9 sound device has no host audio backend")
-require("passed-through GPU HDMI/DP audio function" in README, "README must identify the passed-through GPU audio function as the guest audio path")
 audio = vm.find("./devices/audio")
-require(audio is not None and audio.get("type") == "none", "VM XML audio backend changed; update the README and review the intended guest audio path")
+audio_output = audio.find("output") if audio is not None else None
+local_user_match = re.search(
+    r"(?ms)^\\s*users\\.users\\.localhost\\s*=\\s*\\{(.*?)^\\s*\\};",
+    CONFIG,
+)
+require(
+    audio is not None
+    and audio.get("type") == "pipewire"
+    and audio.get("runtimeDir") == "/run/pipewire"
+    and audio_output is not None
+    and audio_output.get("name") == "alsa_output.pci-0000_0d_00.4.analog-stereo"
+    and audio_output.get("streamName") == "win10-headphones",
+    "VM XML must route ICH9 output to the reference host's ALC897 PipeWire sink",
+)
+require(
+    "systemWide = true;" in CONFIG
+    and local_user_match is not None
+    and '"pipewire"' in local_user_match.group(1)
+    and 'users.users.qemu-libvirtd.extraGroups = [ "pipewire" ];' in CONFIG
+    and "PipeWire system socket" in README
+    and "qemu-libvirtd" in README
+    and "either endpoint" in README
+    and "passed-through RX 6700 XT HDMI/DP audio function" in README,
+    "README and host configuration must describe PipeWire access and retain the separate GPU monitor audio output",
+)
 require("nix build .#lsfg-vk-v2" in README and "nix build .#lsfg-vk` command" not in README, "README must use the current LSFG-VK v2 flake output")
 require(
     'with tempfile.TemporaryDirectory(prefix="vm-xml-sync-mock-") as mock_root:' in VM_XML_SYNC_TEST
