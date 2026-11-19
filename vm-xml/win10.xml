@@ -198,6 +198,7 @@
       </backend>
     </tpm>
     <sound model='ich9'>
+      <audio id='1'/>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x1b' function='0x0'/>
     </sound>
     <!-- ICH9 audio reaches the host ALC897 headphone output; GPU HDMI/DP audio remains a separate guest endpoint. -->
