@@ -405,7 +405,7 @@ root_check_line="$(grep -nF 'if [[ $EUID -eq 0 ]]; then' "$INSTALLER" | cut -d: 
 repo_guard_line="$(grep -nF 'ensure_repo_outside_deployment_target "$REPO_DIR" "$NIXOS_DIR"' "$INSTALLER" | cut -d: -f1)"
 lock_line="$(grep -nF 'LOCK_HELPER="$REPO_DIR/scripts/installer-lock.sh"' "$INSTALLER" | cut -d: -f1)"
 banner_line="$(grep -nF 'WARNING: ADVANCED, HIGH-RISK MIGRATION SCRIPT' "$INSTALLER" | cut -d: -f1)"
-experimental_banner_line="$(grep -nF 'EXPERIMENTAL: NOT END-TO-END TESTED ON A TARGET HOST' "$INSTALLER" | cut -d: -f1)"
+experimental_banner_line="$(grep -nF 'CURRENT SOURCE REVISION NOT TARGET-HOST VALIDATED' "$INSTALLER" | cut -d: -f1)"
 if [[ -z "$os_check_line" || -z "$live_check_line" || -z "$root_check_line" || -z "$repo_guard_line" || -z "$lock_line" || -z "$banner_line" || -z "$experimental_banner_line" ]] \
   || (( os_check_line >= live_check_line || live_check_line >= root_check_line || root_check_line >= repo_guard_line || repo_guard_line >= lock_line || lock_line >= banner_line || banner_line >= experimental_banner_line || experimental_banner_line >= acknowledgement_line )); then
   echo "FAIL: preflight guards must precede the lock; the experimental warning must appear after the risk banner and before acknowledgement." >&2
