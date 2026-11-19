@@ -1814,7 +1814,7 @@ require(sound is not None and sound.get("model") == "ich9", "VM XML sound model 
 audio = vm.find("./devices/audio")
 audio_output = audio.find("output") if audio is not None else None
 local_user_match = re.search(
-    r"(?ms)^\\s*users\\.users\\.localhost\\s*=\\s*\\{(.*?)^\\s*\\};",
+    r"(?ms)^\s*users\.users\.localhost\s*=\s*\{(.*?)^\s*\};",
     CONFIG,
 )
 require(
