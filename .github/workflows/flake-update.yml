@@ -49,6 +49,7 @@ jobs:
 
           # Reuse or create the update branch from the current default branch.
           if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+            git fetch origin "refs/heads/$branch:refs/remotes/origin/$branch"
             git checkout -B "$branch" "origin/$branch"
             git merge --ff-only "origin/$base" || git checkout -B "$branch" "origin/$base"
           else
