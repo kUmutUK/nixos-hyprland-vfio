@@ -9,6 +9,7 @@ This file summarizes notable changes in English. The separate Turkish release-by
 - The VM's ICH9 emulated sound device now uses libvirt's PipeWire backend and targets the reference host's Realtek ALC897 Analog Stereo sink (`alsa_output.pci-0000_0d_00.4.analog-stereo`). The passed-through RX 6700 XT HDMI/DP audio function is retained as a second, separate Windows output for the monitor.
 - The host PipeWire service is switched to system-wide mode so the unprivileged `qemu-libvirtd` process can connect to its socket. The `localhost` and `qemu-libvirtd` accounts are added to the dedicated `pipewire` group; QEMU is not changed to run as root.
 - Windows can select the headphone or monitor endpoint independently. This XML does not automatically duplicate a single stream to both outputs. The new host audio routing is statically configured but still requires a full-system NixOS rebuild, a fresh login/reboot for group membership, and live playback verification. No physical audio validation is claimed.
+- The ICH9 `<sound>` device now explicitly references PipeWire backend ID `1` through its nested `<audio id='1'/>` element. VM XML regression tests reject a missing reference or an ID that does not resolve to exactly one backend.
 - The VM UUID, disk paths, firmware/NVRAM paths, PCI/USB passthrough identities, and VFIO hook are unchanged.
 
 ### CachyOS kernel input moved to the upstream release branch — 2026-11-19
