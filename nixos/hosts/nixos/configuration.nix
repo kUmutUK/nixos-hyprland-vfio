@@ -16,7 +16,7 @@ let
 
   # Build the v2 Vulkan layer/UI/CLI from the pinned upstream source. The archived
   # pabloaul NixOS module is v1-only and cannot read the v2 profile schema.
-  lsfgVkV2 = pkgs.callPackage ./lsfg-vk-v2.nix { };
+  lsfgVkV2 = pkgs.callPackage ../../lsfg-vk-v2.nix { };
 
   # Pin the tested upstream scroll-bounce filter. Build its C++ daemon and
   # platform-independent filter tests directly; runtime needs only evdev/uinput.

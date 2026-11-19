@@ -21,7 +21,7 @@ if "services.lsfg-vk" in config:
     raise SystemExit("FAIL: old LSFG-VK v1 module options remain active.")
 if "packages.${system} = {" not in flake or "lsfg-vk-v2 = lsfgVkV2Package;" not in flake:
     raise SystemExit("FAIL: CI cannot build the standalone LSFG-VK v2 package output.")
-if "lsfgVkV2 = pkgs.callPackage ./lsfg-vk-v2.nix" not in config:
+if "lsfgVkV2 = pkgs.callPackage ../../lsfg-vk-v2.nix" not in config:
     raise SystemExit("FAIL: NixOS config does not instantiate the pinned v2 package.")
 manifest = '"${lsfgVkV2}/share/vulkan/implicit_layer.d/VkLayer_LSFGVK_frame_generation.json"'
 if manifest not in config:

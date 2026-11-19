@@ -280,8 +280,8 @@ require(
     and len(documented_release_path_list) == len(documented_release_paths)
     and len(workflow_release_path_list) == len(workflow_release_paths)
     and documented_release_paths == workflow_release_paths
-    and len(workflow_release_paths) == 56,
-    "RELEASING.md and release.yml must contain the same unique exhaustive 56-path literal allowlist",
+    and len(workflow_release_paths) == 61,
+    "RELEASING.md and release.yml must contain the same unique exhaustive 61-path literal allowlist",
 )
 require(
     "git diff --no-renames --name-status" in RELEASE_WORKFLOW
@@ -1405,9 +1405,13 @@ require("run #1124" in REPAIR and "stale" in REPAIR and "target-host" in REPAIR,
 # explicit release allowlist or documented pending-build paths.
 verification_metadata_paths = {
     ".git-cliff.toml",
+    ".envrc",
     ".github/workflows/check.yml",
     ".github/workflows/kernel-build.yml",
     ".github/workflows/release.yml",
+    ".github/workflows/cache.yml",
+    ".github/workflows/flake-update.yml",
+    ".gitignore",
     "CHANGELOG.md",
     "CONTRIBUTING.md",
     "DISCLAIMER.md",
@@ -1421,6 +1425,10 @@ verification_metadata_paths = {
     "docs/OPTISCALER.md",
     "docs/OPTISCALER-MANAGER.md",
     "docs/MAKO.md",
+    "docs/MIGRATION-GUIDE.md",
+    "docs/AUDIT-2026-10-28-VM-XML-VFIO.md",
+    "nixos/hosts/.template/configuration.nix",
+    "nixos/hosts/.template/host-settings.nix",
     "docs/archive/DEGISIKLIK_GECMISI.md",
     "docs/archive/README.md",
     "docs/archive/HISTORICAL-AUDITS.md",

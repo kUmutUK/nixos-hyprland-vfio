@@ -76,7 +76,12 @@ The dual-guest VM definition `vm-xml/win10.xml` remains outside the ancestor-bui
    `.github/workflows/release.yml`,
    `.github/workflows/cache.yml`,
    `.github/workflows/flake-update.yml`,
-   `docs/MIGRATION-GUIDE.md`
+   `docs/MIGRATION-GUIDE.md`,
+   `.envrc`,
+   `.gitignore`,
+   `docs/AUDIT-2026-10-28-VM-XML-VFIO.md`,
+   `nixos/hosts/.template/configuration.nix`,
+   `nixos/hosts/.template/host-settings.nix`
 
    The nine superseded one-off archive reports listed above are included solely as deletion paths. The release workflow verifies that each has Git diff status `D`; editing or recreating one remains outside this exception.
 
