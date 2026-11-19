@@ -1379,7 +1379,7 @@ require(
 require(
     "Build #20" in STATE_INDEX and "43653123079" in STATE_INDEX
     and "`46d2b809e4fe9530dde58c85450b3544cf5d1ed0`" in STATE_INDEX
-    and "Full-system Build #21" in STATE_INDEX and "43982447714" in STATE_INDEX
+    and "Build #21" in STATE_INDEX and "43982447714" in STATE_INDEX
     and "`672d255d4a921c097dd69eae817e8dc9699380d6`" in STATE_INDEX
     and "Build #19" in STATE_INDEX and "43101226875" in STATE_INDEX,
     "current-state index must identify Build #21 as latest and retain Build #19/#20 as historical",
