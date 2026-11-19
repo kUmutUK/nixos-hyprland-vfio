@@ -2632,7 +2632,6 @@ require(
 require(
     "Normal CI #1669" in README and "44603757865" in README and "9e399dcbe96a82a91d03e95fe2251f4e437eadb7" in README
     and "Normal CI #1669" in CHANGELOG and "44603757865" in CHANGELOG
-    and "Normal CI #1669" in CONTRIBUTING and "44603757865" in CONTRIBUTING
     and "Normal CI #1669" in STATE_INDEX and "44603757865" in STATE_INDEX
     and "Normal CI #1669" in REPAIR and "44603757865" in REPAIR
     and "Normal CI #1663" in README and "44593727498" in README
