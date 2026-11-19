@@ -6,7 +6,7 @@
 
 ## Current full-system build and CI status — 2026-11-19
 
-- **Current main Normal CI:** [run #1655](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44576575377) passed all 27 workflow-defined steps on exact HEAD `7f0f4f7e0bef8567811244f6632abc798c98983e` (19 November 2026).
+- **Current main Normal CI #1655:** [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44576575377) passed all 27 workflow-defined steps on exact HEAD `7f0f4f7e0bef8567811244f6632abc798c98983e` (19 November 2026).
 - **Historical pre-update main CI:** [run #1649](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44560545993) passed all 27 workflow-defined steps on the v1.6.0 release SHA `93b8929f5aff5eec17a40afc3f3e91c3443a5c11`; it remains a historical record, not the latest main CI.
 - **Latest completed full-system build:** Full NixOS System Build #21 ([run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43982447714)) succeeded on exact source `672d255d4a921c097dd69eae817e8dc9699380d6`, the v1.5.8 tag commit. It built the complete NixOS system and selected kernel and verified that the lock file was not rewritten.
 - **Build #21 is not a current-main build:** GitHub compares the Build #21 source with the pre-update `main` baseline as 10 commits and 37 changed paths, and with current `main` as 16 commits and 38 changed paths. Those later changes include hosts/ layout, installer, NixOS configuration/Home Manager files, workflows, and regression tests. A fresh full-system build of current `main` is still required before the next release.
