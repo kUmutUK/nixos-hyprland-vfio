@@ -13,9 +13,13 @@
   libdrm,
   libglvnd,
   libxkbcommon,
+  libX11,
+  libXext,
+  libXrender,
+  libXi,
+  libxcb,
   vulkan-loader,
   wayland,
-  xorg,
   zlib,
 }:
 
@@ -48,11 +52,13 @@ stdenvNoCC.mkDerivation {
     qt6.qtwayland
     vulkan-loader
     wayland
-    xorg.libX11
-    xorg.libXext
-    xorg.libXrender
-    xorg.libXi
-    xorg.libxcb
+    # QtWayland still needs client-side Xwayland/X11 libraries at runtime; use
+    # the renamed top-level attributes to avoid the deprecated xorg alias set.
+    libX11
+    libXext
+    libXrender
+    libXi
+    libxcb
     zlib
   ];
 
