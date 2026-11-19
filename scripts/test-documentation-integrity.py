@@ -1811,6 +1811,13 @@ require("Install NixOS on a separate guest disk" in README and "/dev/vdb" in REA
 require(memory is not None and memory.get("unit") == "KiB" and (memory.text or "").strip() == "16777216", "VM XML memory no longer matches the documented 16 GiB")
 require(vcpu is not None and (vcpu.text or "").strip() == "6", "VM XML vCPU count no longer matches the documented 6 vCPUs")
 require(sound is not None and sound.get("model") == "ich9", "VM XML sound model no longer matches the README")
+sound_audio = sound.find("audio") if sound is not None else None
+require(
+    sound_audio is not None
+    and sound_audio.get("id") == "1"
+    and len([backend for backend in vm.findall("./devices/audio") if backend.get("id") == sound_audio.get("id")]) == 1,
+    "ICH9 sound device must reference the single declared PipeWire audio backend",
+)
 audio = vm.find("./devices/audio")
 audio_output = audio.find("output") if audio is not None else None
 local_user_match = re.search(
