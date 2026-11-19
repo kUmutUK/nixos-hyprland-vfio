@@ -57,6 +57,23 @@ def main() -> int:
     if name != "win10":
         return fail(f"expected domain name 'win10', found {name!r}")
 
+    sound = root.find("./devices/sound")
+    if sound is None or sound.get("model") != "ich9":
+        return fail("VM XML must declare the ICH9 sound device")
+    sound_audio = sound.find("audio")
+    if sound_audio is None or not sound_audio.get("id"):
+        return fail("ICH9 sound device must reference a declared audio backend")
+    audio_id = sound_audio.get("id")
+    matching_backends = [
+        backend for backend in root.findall("./devices/audio")
+        if backend.get("id") == audio_id
+    ]
+    if len(matching_backends) != 1:
+        return fail(
+            "ICH9 sound device must reference exactly one declared audio backend; "
+            f"audio id={audio_id!r}, matching backends={len(matching_backends)}"
+        )
+
     os_type = root.find("./os/type")
     if os_type is None or os_type.get("arch") != "x86_64":
         return fail("OS type must declare arch='x86_64'")
@@ -268,7 +285,7 @@ def main() -> int:
             f"XML={sorted(xml_bdfs)}, hook={[hook_gpu, hook_audio]}"
         )
 
-    print("OK: VM XML invariants passed (Q35, separate Windows/NixOS VirtIO disks, optional NixOS disk, three SATA CD-ROMs with an empty NixOS tray, USB passthrough, and GPU/audio PCI addresses matching the QEMU hook).")
+    print("OK: VM XML invariants passed (Q35, separate Windows/NixOS VirtIO disks, optional NixOS disk, three SATA CD-ROMs with an empty NixOS tray, ICH9-to-PipeWire audio association, USB passthrough, and GPU/audio PCI addresses matching the QEMU hook).")
     print("NOTE: this test does not replace a libvirt/QEMU semantic validation or a real VM boot test.")
     return 0
 
