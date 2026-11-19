@@ -533,10 +533,10 @@ require(
     and "Owner-reported local full-system build and VM check (16 November 2026)" in CONTRIBUTING
     and "Owner-reported local full-system build and VM check (16 November 2026)" in REPAIR
     and "Owner-reported local full-system build and VM check (16 November 2026)" in STATE_INDEX
-    and "No exact source SHA, build command/derivation, or booted generation/kernel identity was supplied" in README
-    and "VM started and shut down successfully" in README
+    and "supplied no exact source SHA, derivation/command, or booted generation/kernel identity" in README
+    and "ordinary VM start/shutdown" in README
     and "not a GitHub Actions run" in README
-    and "The 16 November owner note said the helper had not been tried." in README
+    and "The 16 November note said `install.sh` had not been tried;" in README
     and "the 16 November owner note said `install.sh` had not been tried." in INSTALLATION,
     "the 16 November owner-reported local build/VM result and untried installer must be recorded without overclaiming exact kernel boot",
 )
@@ -629,7 +629,7 @@ require(
     and "supporting target-host transcript is not committed" in README
     and "supporting target-host transcript is not committed" in INSTALLATION
     and "supporting transcript is not committed" in CONTRIBUTING
-    and "supporting host transcript is not committed" in REPAIR
+    and "no supporting transcript committed here" in REPAIR
     and "mocked installer-invariant/rollback tests" in README,
     "install.sh must be labeled experimental and static/mock coverage must not be presented as live target-host validation",
 )
@@ -1220,9 +1220,9 @@ require(
         "d4f25a3e562008648d45bcf2d70bcc7422cad84e",
     ))
     and "all 28 workflow-defined steps" in REPAIR
-    and "Complete target-host activation and boot" in REPAIR
+    and "Confirm the booted generation/kernel identity" in REPAIR
     and "Perform a real libvirt saved-state/managed-save restore" in REPAIR
-    and "Validate `install.sh` end-to-end" in REPAIR,
+    and "dedicated live migration/failure/rollback test" in REPAIR,
     "historical Build #20 inputs and the current physical/functional validation gaps must remain documented",
 )
 require(
