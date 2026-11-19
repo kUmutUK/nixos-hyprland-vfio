@@ -40,6 +40,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           branch="auto/flake-update"
+          base="${GITHUB_REF_NAME:-main}"
           date_tag="$(date -u +%Y%m%d)"
           title="chore: weekly flake lock update ($date_tag)"
           body="Automated weekly \`nix flake update\` for \`nixos/flake.lock\`.
@@ -49,27 +50,38 @@ jobs:
           # Reuse or create the update branch from the current default branch.
           if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
             git checkout -B "$branch" "origin/$branch"
-            git merge --ff-only origin/"${GITHUB_REF_NAME:-main}" || git checkout -B "$branch" "origin/${GITHUB_REF_NAME:-main}"
+            git merge --ff-only "origin/$base" || git checkout -B "$branch" "origin/$base"
           else
-            git checkout -b "$branch"
+            git checkout -b "$branch" "origin/$base"
           fi
 
           nix flake update --flake ./nixos
 
           if git diff --quiet -- nixos/flake.lock; then
-            echo "flake.lock is already up to date; no PR needed."
-            exit 0
+            echo "flake.lock is already up to date for this run."
+
+            # A previous attempt may already have pushed the lock update but
+            # failed while opening the PR. Do not exit while the branch still
+            # contains a lock-file change relative to the base branch.
+            if git diff --quiet "origin/$base...HEAD" -- nixos/flake.lock; then
+              echo "There is no lock-file diff against $base; no PR is needed."
+              exit 0
+            fi
+          else
+            git add nixos/flake.lock
+            git commit -m "chore: weekly flake lock update ($date_tag)"
           fi
 
-          git add nixos/flake.lock
-          git commit -m "chore: weekly flake lock update ($date_tag)"
           git push --force-with-lease origin "$branch"
 
           if gh pr view "$branch" --json number >/dev/null 2>&1; then
             gh pr edit "$branch" --title "$title" --body "$body"
             echo "  existing update PR refreshed"
           else
-            gh pr create --head "$branch" --base "${GITHUB_REF_NAME:-main}" \
-              --title "$title" --body "$body"
+            if ! gh pr create --head "$branch" --base "$base" \
+              --title "$title" --body "$body"; then
+              echo "::error::Could not create the flake update PR. Check Settings > Actions > General > Workflow permissions and enable 'Allow GitHub Actions to create and approve pull requests'."
+              exit 1
+            fi
             echo "  update PR created"
           fi
