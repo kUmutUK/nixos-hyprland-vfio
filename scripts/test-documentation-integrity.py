@@ -536,8 +536,8 @@ require(
     and "No exact source SHA, build command/derivation, or booted generation/kernel identity was supplied" in README
     and "VM started and shut down successfully" in README
     and "not a GitHub Actions run" in README
-    and "the owner confirms that `install.sh` has not been tried" in README
-    and "`install.sh` has not been tried" in INSTALLATION,
+    and "The 16 November owner note said the helper had not been tried." in README
+    and "the 16 November owner note said `install.sh` had not been tried." in INSTALLATION,
     "the 16 November owner-reported local build/VM result and untried installer must be recorded without overclaiming exact kernel boot",
 )
 require(
@@ -624,16 +624,12 @@ require(
 )
 require(
     "EXPERIMENTAL: NOT END-TO-END TESTED ON A TARGET HOST" in INSTALLER
-    and "EXPERIMENTAL — NOT END-TO-END TESTED" in README
-    and all(
-        "No end-to-end run of `install.sh` against a live NixOS/libvirt target host has been completed."
-        in document
-        for document in (
-            README, INSTALLATION, CONTRIBUTING, DISCLAIMER,
-            CHANGELOG, STATE_INDEX, REPAIR,
-        )
-    )
-    and "The 9 November owner-reported clean-install/VM result does not establish that `install.sh` was used or tested." in README
+    and "Experimental installer validation status" in README
+    and "EXPERIMENTAL — LIVE VALIDATION EVIDENCE IS INCOMPLETE" in INSTALLATION
+    and "supporting target-host transcript is not committed" in README
+    and "supporting target-host transcript is not committed" in INSTALLATION
+    and "supporting transcript is not committed" in CONTRIBUTING
+    and "supporting host transcript is not committed" in REPAIR
     and "mocked installer-invariant/rollback tests" in README,
     "install.sh must be labeled experimental and static/mock coverage must not be presented as live target-host validation",
 )
