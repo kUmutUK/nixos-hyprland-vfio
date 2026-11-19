@@ -39,6 +39,39 @@ class VmXmlStructureTests(unittest.TestCase):
                 timeout=TIMEOUT_SECONDS,
             )
 
+    def test_ich9_sound_references_the_declared_pipewire_backend(self) -> None:
+        sound = self.root.find("./devices/sound")
+        self.assertIsNotNone(sound)
+        sound_audio = sound.find("audio") if sound is not None else None
+        self.assertIsNotNone(sound_audio)
+        self.assertEqual(sound_audio.get("id"), "1")
+        backends = [
+            backend for backend in self.root.findall("./devices/audio")
+            if backend.get("id") == "1"
+        ]
+        self.assertEqual(len(backends), 1)
+        self.assertEqual(backends[0].get("type"), "pipewire")
+        result = self.run_validator()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_ich9_sound_without_audio_reference_is_rejected(self) -> None:
+        sound = self.root.find("./devices/sound")
+        self.assertIsNotNone(sound)
+        if sound is not None:
+            sound.remove(sound.find("audio"))
+        result = self.run_validator()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("ICH9 sound device must reference a declared audio backend", result.stderr)
+
+    def test_ich9_sound_with_unknown_audio_backend_id_is_rejected(self) -> None:
+        sound_audio = self.root.find("./devices/sound/audio")
+        self.assertIsNotNone(sound_audio)
+        if sound_audio is not None:
+            sound_audio.set("id", "99")
+        result = self.run_validator()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("matching backends=0", result.stderr)
+
     def test_committed_optional_usb_passthrough_entries_are_allowed(self) -> None:
         usb_hostdevs = self.root.findall("./devices/hostdev[@type='usb']")
         optional = [
