@@ -633,8 +633,8 @@ require(
     and "mocked installer-invariant/rollback tests" in README
     and "The Release #50 host attestation applies only to the exact v1.6.0 release commit" in README
     and "The current `install.sh` was changed after the tag and is not covered" in README
-    and "does not cover the six later commits on current `main`" in CONTRIBUTING
-    and "The current `main` is six commits later and includes post-release changes to `install.sh`" in DISCLAIMER,
+    and "does not cover the seven later commits and 16 changed paths in the published v1.6.0 tree" in CONTRIBUTING
+    and "The published v1.6.0 tree is seven commits later than `93b8929`" in DISCLAIMER,
     "install.sh must remain experimental and its exact-source attestation boundary must be stated consistently",
 )
 require(
@@ -2583,11 +2583,13 @@ require(
 
 require(
     all(item in (README + INSTALLATION + CONTRIBUTING + STATE_INDEX + CHANGELOG + REPAIR) for item in (
-        "v1.6.0", "44563029740", "93b8929f5aff5eec17a40afc3f3e91c3443a5c11",
-        "497,901 bytes", "8527aae50ab69809cf5986ebe6c6af0791bd955fca90d06d8656af8489821c36",
+        "v1.6.0", "44584744134", "a5beea31d09d6ebbe1e974c7b58d66b3b46cf699",
+        "502,126 bytes", "034912aec7b8b587a71f5ab3816158eb1604fb4d1f8e9cda7dc5a0cd133fbf23",
         "44560545993", "672d255d4a921c097dd69eae817e8dc9699380d6", "43982447714",
+        "44548011675", "d8484ab9083d9c9c71551b0147fa2591e2dbd8a1",
+        "5639e8b2fff7140b52a84e93756c2c3e0a8b6311a33d43aebcae430526601c84",
     )),
-    "current release/build/CI provenance must identify v1.6.0, Release #50, pre-update CI #1649, and Build #21",
+    "current release/build/CI provenance must identify v1.6.0 (run #51, a5beea31, re-hashed 502,126-byte asset), v1.5.9 (run #49), pre-update CI #1649, and Build #21",
 )
 require(
     all(item in (README + INSTALLATION + CONTRIBUTING + STATE_INDEX + CHANGELOG + REPAIR) for item in (
@@ -2596,11 +2598,11 @@ require(
     "current status records must distinguish the old full-system build, pre-update CI, and later Release #50 host attestation",
 )
 require(
-    "16 commits and 38 changed paths" in README
-    and "16 commits and 38 changed paths" in CHANGELOG
-    and "16 commits and 38 changed paths" in CONTRIBUTING
-    and "16 commits and 38 changed paths" in STATE_INDEX
-    and "16 commits and 38 changed paths" in REPAIR,
+    "17 commits and 38 changed paths" in README
+    and "17 commits and 38 changed paths" in CHANGELOG
+    and "17 commits and 38 changed paths" in CONTRIBUTING
+    and "17 commits and 38 changed paths" in STATE_INDEX
+    and "17 commits and 38 changed paths" in REPAIR,
     "current full-system build gap must be measured against current main, not only the old pre-update baseline",
 )
 require(
