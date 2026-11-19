@@ -19,7 +19,8 @@ let
   monitorOutput = hostCfg.monitorOutput or "DP-3";
   hyprlandMonitorMode = hostCfg.monitorMode or "preferred";
   wallpaperVideo =
-    hostCfg.wallpaperVideo or "${config.home.homeDirectory}/Downloads/arthur-leywin-the-beginning-after-the-end.3840x2160.mp4";
+    hostCfg.wallpaperVideo
+      or "${config.home.homeDirectory}/Downloads/arthur-leywin-the-beginning-after-the-end.3840x2160.mp4";
   gitName = hostCfg.gitName or "changeme";
   gitEmail = hostCfg.gitEmail or "you@example.com";
 
