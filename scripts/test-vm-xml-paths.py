@@ -12,7 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 VALIDATOR = ROOT / "scripts" / "test-vm-xml.py"
 TEMPLATE = ROOT / "vm-xml" / "win10.xml"
-HOOK = ROOT / "nixos" / "hooks" / "qemu"
+HOOK = ROOT / "nixos" / "hosts" / "nixos" / "hooks" / "qemu"
 TIMEOUT_SECONDS = 10
 
 

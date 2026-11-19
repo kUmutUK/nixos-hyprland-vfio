@@ -21,13 +21,13 @@ RELEASING = (ROOT / "RELEASING.md").read_text(encoding="utf-8")
 RELEASE_WORKFLOW = (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
 CLIFF_CONFIG = (ROOT / ".git-cliff.toml").read_text(encoding="utf-8")
 CHECK_WORKFLOW = (ROOT / ".github/workflows/check.yml").read_text(encoding="utf-8")
-VFIO_HOOK = (ROOT / "nixos/hooks/qemu").read_text(encoding="utf-8")
+VFIO_HOOK = (ROOT / "nixos/hosts/nixos/hooks/qemu").read_text(encoding="utf-8")
 VFIO_HOOK_TEST = (ROOT / "scripts/test-vfio-hook-driver-state.sh").read_text(encoding="utf-8")
 AUDIT = (ROOT / "docs/AUDIT-2026-10-28-VM-XML-VFIO.md").read_text(encoding="utf-8")
 ARCHIVE_INDEX = (ROOT / "docs/archive/README.md").read_text(encoding="utf-8")
 CHANGELOG = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
 STATE_INDEX = (ROOT / "DEGISIKLIK_GECMISI.md").read_text(encoding="utf-8")
-CONFIG = (ROOT / "nixos/configuration.nix").read_text(encoding="utf-8")
+CONFIG = (ROOT / "nixos/hosts/nixos/configuration.nix").read_text(encoding="utf-8")
 FLAKE = (ROOT / "nixos/flake.nix").read_text(encoding="utf-8")
 FLAKE_LOCK = json.loads((ROOT / "nixos/flake.lock").read_text(encoding="utf-8"))
 lock_nodes = FLAKE_LOCK.get("nodes", {})
@@ -50,7 +50,8 @@ root_nixpkgs_revision = root_nixpkgs_locked.get("rev")
 cachyos_nixpkgs_revision = cachyos_nixpkgs_locked.get("rev")
 root_nixpkgs_ref = root_nixpkgs_node.get("original", {}).get("ref")
 cachyos_nixpkgs_ref = cachyos_nixpkgs_node.get("original", {}).get("ref")
-HOME_NIX = (ROOT / "nixos/home.nix").read_text(encoding="utf-8")
+HOME_NIX = (ROOT / "nixos/hosts/nixos/home.nix").read_text(encoding="utf-8")
+HOST_SETTINGS = (ROOT / "nixos/hosts/nixos/host-settings.nix").read_text(encoding="utf-8")
 VM_XML_TEXT = (ROOT / "vm-xml/win10.xml").read_text(encoding="utf-8")
 REPAIR = (ROOT / "docs/REPAIR-AND-VALIDATION-REPORT.md").read_text(encoding="utf-8")
 UUID_GUIDE = (ROOT / "docs/UUID-AND-MACHINE-IDENTITY.md").read_text(encoding="utf-8")
@@ -279,8 +280,8 @@ require(
     and len(documented_release_path_list) == len(documented_release_paths)
     and len(workflow_release_path_list) == len(workflow_release_paths)
     and documented_release_paths == workflow_release_paths
-    and len(workflow_release_paths) == 53,
-    "RELEASING.md and release.yml must contain the same unique exhaustive 53-path literal allowlist",
+    and len(workflow_release_paths) == 56,
+    "RELEASING.md and release.yml must contain the same unique exhaustive 56-path literal allowlist",
 )
 require(
     "git diff --no-renames --name-status" in RELEASE_WORKFLOW
@@ -441,7 +442,8 @@ require(
     "README and the repository-installed brave-origin package must agree while the watchdog retains independent GameMode handling",
 )
 require(
-    'monitorOutput = "DP-3";' in HOME_NIX
+    'monitorOutput = hostCfg.monitorOutput or "DP-3";' in HOME_NIX
+    and 'default = "DP-3";' in HOST_SETTINGS
     and '`monitorOutput` | `"DP-3"` (reference host)' in INSTALLATION,
     "INSTALLATION monitorOutput default must match the Home Manager reference configuration",
 )
@@ -788,7 +790,7 @@ require(
     "installation guide must cover Android Termux SSH, wake-lock, battery optimization, host-key recovery, and server-side tmux",
 )
 require(
-    "grep -n -A4 'structuredExtraConfig' /mnt/etc/nixos/nixos/configuration.nix" in INSTALLATION
+    "grep -n -A4 'structuredExtraConfig' /mnt/etc/nixos/nixos/hosts/nixos/configuration.nix" in INSTALLATION
     and "BLK_DEV_RUST_NULL = lib.kernel.no;" in CONFIG
     and "CPUFREQ_DT_RUST = lib.kernel.no;" in CONFIG,
     "installation guide must verify the two deliberate Rust kernel-symbol workarounds without changing them",
@@ -936,7 +938,7 @@ require(
 )
 require(
     'read -rp "Enter a non-empty monitor output name (e.g. DP-1): " input_mon' in INSTALLER
-    and 'monitorOutput      = "DP-1"' in INSTALLATION,
+    and 'default = "DP-1"' in INSTALLATION,
     "installer and installation guide must use the same illustrative DP-1 monitor-output example",
 )
 repair_baseline_match = re.search(
@@ -1525,7 +1527,10 @@ if git_checkout and current_head and repair_baseline_match:
                 reviewed_ancestor = subprocess.run(["git", "merge-base", "--is-ancestor", reviewed_sha, current_head], cwd=ROOT, capture_output=True, text=True)
                 require(reviewed_ancestor.returncode == 0, "reviewed normal-CI source snapshot must be an ancestor of the current checkout HEAD")
             changed = subprocess.run(["git", "diff", "--name-only", verified_sha, current_head], cwd=ROOT, check=True, capture_output=True, text=True).stdout.splitlines()
-            full_build_pending_paths = {"nixos/configuration.nix", "nixos/hooks/qemu", "install.sh", "nixos/home.nix", "nixos/flake.nix", "nixos/flake.lock", "nixos/hardware-configuration.nix", "nixos/mako-renderer.nix"}
+            # Pre-restructure paths are pending-build paths too: the 2026-11-19 hosts/ move
+            # renamed nixos/{configuration,home}.nix and nixos/hooks/qemu, and diff reports
+            # the old locations until a new full-system build resets the verified baseline.
+            full_build_pending_paths = {"nixos/hosts/nixos/configuration.nix", "nixos/hosts/nixos/hooks/qemu", "install.sh", "nixos/hosts/nixos/home.nix", "nixos/hosts/nixos/host-settings.nix", "nixos/flake.nix", "nixos/flake.lock", "nixos/hosts/nixos/hardware-configuration.nix", "nixos/mako-renderer.nix", "nixos/hosts/nixos/hooks/README.md", "nixos/configuration.nix", "nixos/home.nix", "nixos/hardware-configuration.nix", "nixos/hooks/qemu"}
             vm_xml_pending_paths = {"vm-xml/win10.xml"}
             unexpected = sorted(set(changed) - verification_metadata_paths - full_build_pending_paths - vm_xml_pending_paths)
             require(
@@ -1555,13 +1560,13 @@ if git_checkout and current_head and repair_baseline_match:
                     and "vm-xml/win10.xml" not in workflow_release_paths,
                     "the VM XML template must remain outside the release allowlist until target-VM validation is documented",
                 )
-            if "nixos/hooks/qemu" in pending:
+            if "nixos/hosts/nixos/hooks/qemu" in pending:
                 require(
                     "A real saved-state restore and complete graphics lifecycle test on the target host are also still required" in REPAIR,
                     "a QEMU hook change must document target-host saved-state verification",
                 )
                 require(
-                    "nixos/hooks/qemu" not in RELEASING and "nixos/hooks/qemu" not in RELEASE_WORKFLOW,
+                    "nixos/hosts/nixos/hooks/qemu" not in RELEASING and "nixos/hosts/nixos/hooks/qemu" not in RELEASE_WORKFLOW,
                     "the changed QEMU hook must remain outside the ancestor-build release allowlist until a new full-system build passes",
                 )
             if "install.sh" in pending:
@@ -1578,20 +1583,20 @@ if git_checkout and current_head and repair_baseline_match:
                     and "END post-build change and manual host-attestation gate" in RELEASE_WORKFLOW,
                     "install.sh must remain outside the automatic allowlist while being covered by the explicit manual-attestation path",
                 )
-            if "nixos/home.nix" in pending:
+            if "nixos/hosts/nixos/home.nix" in pending:
                 require(
-                    "nixos/home.nix" in REPAIR and "fresh full-system build is required before release" in REPAIR,
+                    "nixos/hosts/nixos/home.nix" in REPAIR and "fresh full-system build is required before release" in REPAIR,
                     "Home Manager changes must be documented as requiring a fresh full-system build",
                 )
-            if "nixos/configuration.nix" in pending:
+            if "nixos/hosts/nixos/configuration.nix" in pending:
                 require(
-                    "nixos/configuration.nix" in REPAIR
+                    "nixos/hosts/nixos/configuration.nix" in REPAIR
                     and "XCURSOR_THEME" in REPAIR
                     and "fresh full-system build is required before release" in REPAIR,
                     "configuration.nix runtime changes must document their full-system build gate",
                 )
                 require(
-                    "nixos/configuration.nix" in RELEASING and "nixos/configuration.nix" not in RELEASE_WORKFLOW,
+                    "nixos/hosts/nixos/configuration.nix" in RELEASING and "nixos/hosts/nixos/configuration.nix" not in RELEASE_WORKFLOW,
                     "configuration.nix must remain outside the ancestor-build release allowlist",
                 )
             if "nixos/flake.nix" in pending:
@@ -1614,18 +1619,18 @@ if git_checkout and current_head and repair_baseline_match:
                     "nixos/flake.lock" in RELEASING and "nixos/flake.lock" not in RELEASE_WORKFLOW,
                     "nixos/flake.lock must remain outside the release ancestor-build allowlist until a new full-system build passes",
                 )
-            if "nixos/hardware-configuration.nix" in pending:
+            if "nixos/hosts/nixos/hardware-configuration.nix" in pending:
                 require(
-                    "nixos/hardware-configuration.nix" in REPAIR
+                    "nixos/hosts/nixos/hardware-configuration.nix" in REPAIR
                     and "lsblk -f" in REPAIR
                     and "sudo blkid" in REPAIR
                     and "findmnt" in REPAIR,
                     "host hardware-configuration updates must document storage-ID verification and the full-system build gate",
                 )
                 require(
-                    "nixos/hardware-configuration.nix" in RELEASING
-                    and "nixos/hardware-configuration.nix" not in RELEASE_WORKFLOW,
-                    "nixos/hardware-configuration.nix must remain outside the release ancestor-build allowlist until a new full-system build passes",
+                    "nixos/hosts/nixos/hardware-configuration.nix" in RELEASING
+                    and "nixos/hosts/nixos/hardware-configuration.nix" not in RELEASE_WORKFLOW,
+                    "nixos/hosts/nixos/hardware-configuration.nix must remain outside the release ancestor-build allowlist until a new full-system build passes",
                 )
             if "nixos/mako-renderer.nix" in pending:
                 require(
@@ -1931,7 +1936,7 @@ require(
 require("Current configuration notes — 2026-11-04" in STATE_INDEX, "current-state index date is stale")
 require("2026-10-28 entry" in STATE_INDEX and "2026-10-27 entry" not in STATE_INDEX, "root index must point to the 2026-10-28 CHANGELOG section")
 require("copy all six required Nix/flake files" in README and "copy all five required Nix/flake files" not in README and "four flake files" not in README, "README must describe the six-file migration accurately")
-require("approximately lines 8–16" in INSTALLATION, "INSTALLATION must point to the actual Home Manager customization block")
+require("host-settings.nix" in INSTALLATION, "INSTALLATION must point to the host-settings.nix customization module")
 require(
     f"text = {chr(0xF023)};" in HOME_NIX
     and "N I X O S   /   K I N G   G R E Y" not in HOME_NIX
@@ -2026,9 +2031,9 @@ require(
     and "was removed from the current tree on 15 November 2026" in CHANGELOG,
     "CHANGELOG must identify the Turkish archive as a retired historical source",
 )
-require("approximately lines 8–16" in INSTALLATION and "approximately lines 9–15" not in INSTALLATION and "approximately lines 4–12" not in INSTALLATION, "INSTALLATION must point to the current home.nix let-block line range")
-wallpaper = re.search(r'(?m)^\s*wallpaperVideo\s*=\s*"\$\{config\.home\.homeDirectory\}/Downloads/([^"]+)"\s*;', HOME_NIX)
-require(wallpaper is not None and f"~/Downloads/{wallpaper.group(1)}" in INSTALLATION, "INSTALLATION wallpaper default must match the exact home.nix filename")
+require("kumutuk.host" in INSTALLATION and "approximately lines" not in INSTALLATION, "INSTALLATION must point to the current host-settings.nix kumutuk.host block")
+wallpaper = re.search(r'(?m)^\s*wallpaperVideo\s*=\s*"([^"]+/Downloads/[^"]+)"\s*;', HOME_NIX) or re.search(r'(?m)^\s*default\s*=\s*"([^"]*Downloads/[^"]+)";\s*$', HOST_SETTINGS)
+require(wallpaper is not None and wallpaper.group(1).split("/")[-1] in INSTALLATION, "INSTALLATION wallpaper default must match the exact host-settings.nix filename")
 require("installer backups are not automatically pruned" in CHANGELOG, "CHANGELOG must describe current backup retention rather than the historical five-backup policy")
 require("verified current kernel defaults" in CHANGELOG and "0c035b2c" in CHANGELOG and "91c4d58e" in CHANGELOG, "CHANGELOG must distinguish current kernel parameters and record the historical IOMMU transition")
 require("7.3.3" in CONFIG and "historical" in CONFIG and "current flake.lock resolves 7.3.4" in CONFIG, "kernel comments must distinguish the historical 7.3.3 BTF failure from the current 7.3.4 lock")
@@ -2467,17 +2472,26 @@ require(
 
 if (ROOT / ".git").exists():
     def historical_kernel_params(revision: str) -> str | None:
-        result = subprocess.run(
-            ["git", "show", f"{revision}:nixos/configuration.nix"],
-            cwd=ROOT, text=True, capture_output=True, check=False,
-        )
-        if result.returncode != 0:
-            return None
-        match = re.search(
-            r"(?ms)^\s*boot\.kernelParams\s*=\s*\[(.*?)^\s*\];",
-            result.stdout,
-        )
-        return match.group(1) if match else None
+        # The configuration file moved to nixos/hosts/nixos/ during the 2026-11-19
+        # hosts/ restructure; historical revisions keep the old nixos/ path. Try the
+        # new path first, then the pre-restructure location.
+        for candidate in (
+            "nixos/hosts/nixos/configuration.nix",
+            "nixos/configuration.nix",
+        ):
+            result = subprocess.run(
+                ["git", "show", f"{revision}:{candidate}"],
+                cwd=ROOT, text=True, capture_output=True, check=False,
+            )
+            if result.returncode != 0:
+                continue
+            match = re.search(
+                r"(?ms)^\s*boot\.kernelParams\s*=\s*\[(.*?)^\s*\];",
+                result.stdout,
+            )
+            if match is not None:
+                return match.group(1)
+        return None
 
     ed_parent = historical_kernel_params("ed6ca666^")
     ed_added = historical_kernel_params("ed6ca666")

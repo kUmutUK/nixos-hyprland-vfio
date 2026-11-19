@@ -7,10 +7,10 @@ INSTALLER="$ROOT/install.sh"
 README="$ROOT/README.md"
 CONTRIBUTING="$ROOT/CONTRIBUTING.md"
 ENGLISH_GUIDE="$ROOT/INSTALLATION.md"
-CONFIG="$ROOT/nixos/configuration.nix"
+CONFIG="$ROOT/nixos/hosts/nixos/configuration.nix"
 FLAKE="$ROOT/nixos/flake.nix"
-HOME_CONFIG="$ROOT/nixos/home.nix"
-HOOK="$ROOT/nixos/hooks/qemu"
+HOME_CONFIG="$ROOT/nixos/hosts/nixos/home.nix"
+HOOK="$ROOT/nixos/hosts/nixos/hooks/qemu"
 
 check_fail2ban_loopback_only() {
   python3 - "$1" <<'PY'
@@ -226,7 +226,7 @@ echo "OK: partition-count guard and source ZIP checksum artifact contract verifi
 for expected in \
   "Mandatory Home Snapper preflight" \
   'existing child `@home/.snapshots` subvolume' \
-  'TARGET_HW=/etc/nixos/nixos/hardware-configuration.nix' \
+  'TARGET_HW=/etc/nixos/nixos/hosts/nixos/hardware-configuration.nix' \
   'python3 "$REPO/scripts/check-home-snapper-layout.py" "$TARGET_HW"'; do
   if ! grep -Fq -- "$expected" "$README"; then
     echo "FAIL: README Home Snapper preflight is missing: $expected" >&2
@@ -288,7 +288,8 @@ if ! grep -Fq 'Do not use the repository template' "$home_preflight_test_dir/sel
   exit 1
 fi
 printf 'machine top-level hardware config\n' > "$home_preflight_test_dir/etc-nixos/hardware-configuration.nix"
-printf 'flake hardware config\n' > "$home_preflight_test_dir/etc-nixos-nixos/hardware-configuration.nix"
+mkdir -p "$home_preflight_test_dir/etc-nixos-nixos/hosts/nixos"
+printf 'flake hardware config\n' > "$home_preflight_test_dir/etc-nixos-nixos/hosts/nixos/hardware-configuration.nix"
 selected_hw_config="$(bash "$home_preflight_test_dir/select-hardware-harness.sh" \
   "$home_preflight_test_dir/etc-nixos" "$home_preflight_test_dir/etc-nixos-nixos" \
   "$home_preflight_test_dir/repo" "$home_preflight_test_dir/select-hardware-config.sh")"
@@ -300,16 +301,16 @@ rm -f "$home_preflight_test_dir/etc-nixos/hardware-configuration.nix"
 selected_hw_config="$(bash "$home_preflight_test_dir/select-hardware-harness.sh" \
   "$home_preflight_test_dir/etc-nixos" "$home_preflight_test_dir/etc-nixos-nixos" \
   "$home_preflight_test_dir/repo" "$home_preflight_test_dir/select-hardware-config.sh")"
-if [[ "$selected_hw_config" != "$home_preflight_test_dir/etc-nixos-nixos/hardware-configuration.nix" ]]; then
+if [[ "$selected_hw_config" != "$home_preflight_test_dir/etc-nixos-nixos/hosts/nixos/hardware-configuration.nix" ]]; then
   echo "FAIL: installer did not accept the existing machine-generated flake hardware configuration." >&2
   exit 1
 fi
 python3 "$ROOT/scripts/test-home-snapper-layout.py"
 selector_call_line="$(grep -n '^select_home_snapper_hardware_config$' "$INSTALLER" | cut -d: -f1)"
 home_preflight_call_line="$(grep -nF 'require_btrfs_home "$HOME_SNAPPER_HW_CONFIG"' "$INSTALLER" | cut -d: -f1)"
-final_home_preflight_line="$(grep -nF 'require_btrfs_home "$NIXOS_FLAKE_DIR/hardware-configuration.nix"' "$INSTALLER" | cut -d: -f1)"
+final_home_preflight_line="$(grep -nF 'require_btrfs_home "$NIXOS_FLAKE_DIR/hosts/nixos/hardware-configuration.nix"' "$INSTALLER" | cut -d: -f1)"
 first_mutation_line="$(grep -n '^mkdir -m 700' "$INSTALLER" | head -n 1 | cut -d: -f1)"
-hook_mutation_line="$(grep -nF 'if [ -d "$REPO_DIR/nixos/hooks" ]; then' "$INSTALLER" | cut -d: -f1)"
+hook_mutation_line="$(grep -nF 'if [ -d "$REPO_DIR/nixos/hosts/nixos/hooks" ]; then' "$INSTALLER" | cut -d: -f1)"
 if [[ -z "$selector_call_line" || -z "$home_preflight_call_line" || -z "$final_home_preflight_line" || -z "$first_mutation_line" || -z "$hook_mutation_line" ]] \
   || (( selector_call_line >= home_preflight_call_line )) \
   || (( home_preflight_call_line >= first_mutation_line )) \
@@ -332,7 +333,7 @@ state_test_dir="$(mktemp -d)"
 
 # Exercise the actual installer source preflight against temporary repository trees.
 preflight_dir="$state_test_dir/source-preflight"
-mkdir -p "$preflight_dir/repo/nixos/hooks"
+mkdir -p "$preflight_dir/repo/nixos/hosts/nixos/hooks"
 preflight_function="$preflight_dir/validate-source.sh"
 awk '/^validate_nixos_source_files\(\) \{/ { capture=1 } capture { print } capture && /^}/ { exit }' "$INSTALLER" \
   > "$preflight_function"
@@ -340,20 +341,20 @@ if ! grep -q '^validate_nixos_source_files() {' "$preflight_function"; then
   echo "FAIL: could not locate validate_nixos_source_files() for its regression test." >&2
   exit 1
 fi
-if ! grep -Fq 'REQUIRED_NIXOS_SOURCE_FILES=(configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix)' "$INSTALLER"; then
-  echo "FAIL: installer source preflight must declare six Nix sources and a separate QEMU hook list." >&2
+if ! grep -Fq 'REQUIRED_NIXOS_SOURCE_FILES=(hosts/nixos/configuration.nix hosts/nixos/home.nix hosts/nixos/host-settings.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix)' "$INSTALLER"; then
+  echo "FAIL: installer source preflight must declare seven Nix sources (including the host settings module) and a separate QEMU hook list." >&2
   exit 1
 fi
 cat > "$preflight_dir/harness.sh" <<'BASH'
 set -euo pipefail
 REPO_DIR="$1"
-REQUIRED_NIXOS_SOURCE_FILES=(configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix)
-REQUIRED_NIXOS_RUNTIME_FILES=(hooks/qemu)
+REQUIRED_NIXOS_SOURCE_FILES=(hosts/nixos/configuration.nix hosts/nixos/home.nix hosts/nixos/host-settings.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix)
+REQUIRED_NIXOS_RUNTIME_FILES=(hosts/nixos/hooks/qemu)
 error() { printf '%s\\n' "$*" >&2; return 1; }
 source "$2"
 validate_nixos_source_files
 BASH
-for file in configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix hooks/qemu; do
+for file in hosts/nixos/configuration.nix hosts/nixos/home.nix hosts/nixos/host-settings.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix hosts/nixos/hooks/qemu; do
   printf 'valid %s\\n' "$file" > "$preflight_dir/repo/nixos/$file"
 done
 if ! bash "$preflight_dir/harness.sh" "$preflight_dir/repo" "$preflight_function"; then
@@ -362,7 +363,7 @@ if ! bash "$preflight_dir/harness.sh" "$preflight_dir/repo" "$preflight_function
 fi
 
 # Every required Nix source and the QEMU hook must fail closed when missing or empty.
-for file in configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix hooks/qemu; do
+for file in hosts/nixos/configuration.nix hosts/nixos/home.nix hosts/nixos/host-settings.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix hosts/nixos/hooks/qemu; do
   source_file="$preflight_dir/repo/nixos/$file"
   mv "$source_file" "$source_file.saved"
   if bash "$preflight_dir/harness.sh" "$preflight_dir/repo" "$preflight_function" >/dev/null 2>&1; then
@@ -379,7 +380,7 @@ for file in configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix mako-
   mv "$source_file.saved" "$source_file"
 done
 
-if ! grep -Fq 'REQUIRED_NIXOS_RUNTIME_FILES=(hooks/qemu)' "$INSTALLER" \
+if ! grep -Fq 'REQUIRED_NIXOS_RUNTIME_FILES=(hosts/nixos/hooks/qemu)' "$INSTALLER" \
   || ! grep -Fq 'for file in "${REQUIRED_NIXOS_SOURCE_FILES[@]}" "${REQUIRED_NIXOS_RUNTIME_FILES[@]}"; do' "$INSTALLER"; then
   echo "FAIL: installer preflight must separately require the QEMU runtime hook." >&2
   exit 1
@@ -519,10 +520,10 @@ if [ ! -s "$ROOT/nixos/mako-renderer.nix" ]; then
   echo "FAIL: required MAKO Renderer package expression is missing or empty." >&2
   exit 1
 fi
-if ! grep -Fq 'REQUIRED_NIXOS_SOURCE_FILES=(configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix)' "$INSTALLER" \
+if ! grep -Fq 'REQUIRED_NIXOS_SOURCE_FILES=(hosts/nixos/configuration.nix hosts/nixos/home.nix hosts/nixos/host-settings.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix)' "$INSTALLER" \
   || ! grep -Fq 'for file in "${REQUIRED_NIXOS_SOURCE_FILES[@]}" "${REQUIRED_NIXOS_RUNTIME_FILES[@]}"; do' "$INSTALLER" \
   || ! grep -Fq 'for f in "${REQUIRED_NIXOS_SOURCE_FILES[@]}"; do' "$INSTALLER"; then
-  echo "FAIL: installer preflight and deployment must require/copy the six Nix expressions." >&2
+  echo "FAIL: installer preflight and deployment must require/copy the seven Nix expressions (host files plus flake-root packages)." >&2
   exit 1
 fi
 transaction_block="$(sed -n '/^TRANSACTION_PATHS=(/,/^)/p' "$INSTALLER")"
@@ -540,8 +541,8 @@ if ! grep -Fq '"$NIXOS_FLAKE_DIR/mako-renderer.nix"' <<< "$transaction_block" \
   echo "FAIL: installer rollback transaction and backup list must include mako-renderer.nix." >&2
   exit 1
 fi
-if [ "$(grep -Fc 'for file in configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix; do' "$README")" -lt 2 ]; then
-  echo "FAIL: README manual migration loops must include lsfg-vk-v2.nix." >&2
+if [ "$(grep -Fc 'for file in hosts/nixos/configuration.nix hosts/nixos/home.nix hosts/nixos/host-settings.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix; do' "$README")" -lt 2 ]; then
+  echo "FAIL: README manual migration loops must include host files and lsfg-vk-v2.nix." >&2
   exit 1
 fi
 if ! grep -Fq 'nixfmt --check' "$README" \
@@ -550,8 +551,8 @@ if ! grep -Fq 'nixfmt --check' "$README" \
   || ! grep -Fq 'Lossless Scaling' "$README" \
   || ! grep -Fq 'Lossless Scaling' "$ENGLISH_GUIDE" \
   || ! grep -Fq 'nixfmt --check' "$CONTRIBUTING" \
-  || ! grep -Fq 'shellcheck -S warning install.sh scripts/package-source-zip.sh scripts/verify-source-revision.sh scripts/test-source-revision.sh scripts/installer-lock.sh scripts/pci-address.sh nixos/hooks/qemu' "$README" \
-  || ! grep -Fq 'shellcheck -S warning install.sh scripts/package-source-zip.sh scripts/verify-source-revision.sh scripts/test-source-revision.sh scripts/installer-lock.sh scripts/pci-address.sh nixos/hooks/qemu' "$CONTRIBUTING" \
+  || ! grep -Fq 'shellcheck -S warning install.sh scripts/package-source-zip.sh scripts/verify-source-revision.sh scripts/test-source-revision.sh scripts/installer-lock.sh scripts/pci-address.sh nixos/hosts/nixos/hooks/qemu' "$README" \
+  || ! grep -Fq 'shellcheck -S warning install.sh scripts/package-source-zip.sh scripts/verify-source-revision.sh scripts/test-source-revision.sh scripts/installer-lock.sh scripts/pci-address.sh nixos/hosts/nixos/hooks/qemu' "$CONTRIBUTING" \
   || ! grep -Fq 'bash scripts/test-installer-lock.sh' "$README" \
   || ! grep -Fq 'bash scripts/test-installer-lock.sh' "$CONTRIBUTING" \
   || ! grep -Fq 'scripts/package-source-zip.sh' "$ROOT/.github/workflows/check.yml" \
@@ -1023,7 +1024,7 @@ if root_pass_command < install_command:
     raise SystemExit("FAIL: INSTALLATION.md must place root password setup after successful nixos-install.")
 
 
-config = Path(sys.argv[1]).parent / "nixos" / "configuration.nix"
+config = Path(sys.argv[1]).parent / "nixos" / "hosts" / "nixos" / "configuration.nix"
 config_text = config.read_text(encoding="utf-8")
 service_start = config_text.index('systemd.services.libvirtd-qemu-ownership = {')
 service_end = config_text.index('\n  };', service_start) + len('\n  };')
@@ -1049,7 +1050,7 @@ fi
 cat > "$apply_var_test_dir/harness.sh" <<'BASH'
 set -Eeuo pipefail
 PYTHON3="$(command -v python3)"
-HOME_NIX="$2"
+HOST_SETTINGS_NIX="$2"
 warn() { printf 'WARN: %s\n' "$*" >&2; }
 log() { :; }
 sudo() { "$@"; }
@@ -1222,7 +1223,7 @@ if grep -Fq '`lspci -nn`' "$INSTALLER"; then
   exit 1
 fi
 
-python3 - "$CONFIG" "$HOME_CONFIG" "$INSTALLER" "$ROOT/nixos/hooks/qemu" "$ROOT/vm-xml/win10.xml" <<'PY'
+python3 - "$CONFIG" "$HOME_CONFIG" "$INSTALLER" "$ROOT/nixos/hosts/nixos/hooks/qemu" "$ROOT/vm-xml/win10.xml" <<'PY'
 from pathlib import Path
 import sys
 
@@ -1306,10 +1307,10 @@ report = Path(report_path).read_text(encoding="utf-8")
 if f"from the upstream `{branch}` input" not in report.split("## Corrections applied", 1)[0]:
     raise SystemExit("FAIL: the active status in docs/REPAIR-AND-VALIDATION-REPORT.md does not match the CachyOS flake branch.")
 
-config = Path(Path(flake_path).parent / "configuration.nix").read_text(encoding="utf-8")
+config = Path(Path(flake_path).parent / "hosts" / "nixos" / "configuration.nix").read_text(encoding="utf-8")
 if 'networking.hostName = "nixos";' not in config:
     raise SystemExit("FAIL: the configured host name changed; update the host-name guidance if intentional.")
-if 'The included configuration sets `networking.hostName = "nixos"`' not in readme or '`nixos/configuration.nix` sets the default hostname to `nixos`' not in setup:
+if 'The included configuration sets `networking.hostName = "nixos"`' not in readme or '`nixos/hosts/nixos/configuration.nix` sets the default hostname to `nixos`' not in setup:
     raise SystemExit("FAIL: host-name guidance in README/KURULUM is missing or stale.")
 print(f"OK: CachyOS branch {branch!r}, lock, active docs, and host-name guidance are consistent.")
 PY_KERNEL_REF
@@ -1389,8 +1390,8 @@ migration_test_dir="$(mktemp -d)"
 hardware_source="$migration_test_dir/source/hardware-configuration.nix"
 hardware_target="$migration_test_dir/target/hardware-configuration.nix"
 mkdir -p "$(dirname "$hardware_source")" "$(dirname "$hardware_target")"
-awk '$0 == "if [ ! -f /etc/nixos/nixos/hardware-configuration.nix ]; then" { capture=1 } capture { print } capture && $0 == "fi" { exit }' "$README" \
-  | sed -e "s|/etc/nixos/nixos/hardware-configuration.nix|$hardware_target|g" \
+awk '$0 == "if [ ! -f /etc/nixos/nixos/hosts/nixos/hardware-configuration.nix ]; then" { capture=1 } capture { print } capture && $0 == "fi" { exit }' "$README" \
+  | sed -e "s|/etc/nixos/nixos/hosts/nixos/hardware-configuration.nix|$hardware_target|g" \
         -e "s|/etc/nixos/hardware-configuration.nix|$hardware_source|g" \
   > "$migration_test_dir/readme-snippet.sh"
 if ! grep -Fq 'test -f '"$hardware_source" "$migration_test_dir/readme-snippet.sh" \

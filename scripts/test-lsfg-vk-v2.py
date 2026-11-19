@@ -10,8 +10,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 flake = (ROOT / "nixos/flake.nix").read_text(encoding="utf-8")
 lock = json.loads((ROOT / "nixos/flake.lock").read_text(encoding="utf-8"))
-config = (ROOT / "nixos/configuration.nix").read_text(encoding="utf-8")
-home = (ROOT / "nixos/home.nix").read_text(encoding="utf-8")
+config = (ROOT / "nixos/hosts/nixos/configuration.nix").read_text(encoding="utf-8")
+home = (ROOT / "nixos/hosts/nixos/home.nix").read_text(encoding="utf-8")
 package_text = (ROOT / "nixos/lsfg-vk-v2.nix").read_text(encoding="utf-8")
 
 # The legacy module is v1-only and must not silently return via the lock graph.

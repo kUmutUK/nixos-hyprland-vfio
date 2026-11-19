@@ -14,7 +14,7 @@ A flake-based NixOS gaming desktop that passes its single AMD Radeon GPU through
 
 **Current flake input identities (15 November 2026):** The root system input follows `nixos-unstable` and resolves through `nodes.root.inputs.nixpkgs` to `d4f25a3e562008648d45bcf2d70bcc7422cad84e`. The separate Nixpkgs input consumed by `cachyos-kernel` follows `nixos-unstable-small` at `82566dfe91ca5e12bc10b36272280628142f651d`; it supplies the kernel package set and is **not** the root system/userland Nixpkgs. The CachyOS source itself is pinned to `c9620070e884d55c5b5566e3fd46611ee24c4d3b`.
 
-**Latest completed GitHub Actions full-system build (15 November 2026):** manual Full NixOS System Build #20 [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43653123079) completed successfully on exact source commit `46d2b809e4fe9530dde58c85450b3544cf5d1ed0`, building the complete NixOS system and selected RT-Bore-LTO kernel with the locked CachyOS/Nixpkgs inputs listed below. It is not a build of the current `main`: GitHub's comparison from Build #20's commit to pre-update `main` `e07894e9d63d077b6b11db3e0a189fce6e927875` shows 45 intervening commits and 23 changed paths, including `install.sh`, `nixos/configuration.nix`, `nixos/hardware-configuration.nix`, `nixos/home.nix`, `vm-xml/win10.xml`, and VM helper scripts. Therefore Build #20 does not validate the current source's full-system closure or the current VM template.
+**Latest completed GitHub Actions full-system build (15 November 2026):** manual Full NixOS System Build #20 [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43653123079) completed successfully on exact source commit `46d2b809e4fe9530dde58c85450b3544cf5d1ed0`, building the complete NixOS system and selected RT-Bore-LTO kernel with the locked CachyOS/Nixpkgs inputs listed below. It is not a build of the current `main`: GitHub's comparison from Build #20's commit to pre-update `main` `e07894e9d63d077b6b11db3e0a189fce6e927875` shows 45 intervening commits and 23 changed paths, including `install.sh`, `nixos/hosts/nixos/configuration.nix`, `nixos/hosts/nixos/hardware-configuration.nix`, `nixos/hosts/nixos/home.nix`, `vm-xml/win10.xml`, and VM helper scripts. Therefore Build #20 does not validate the current source's full-system closure or the current VM template.
 
 **Owner-reported local full-system build and VM check (16 November 2026):** The owner reports that a from-scratch full NixOS system build completed successfully on the target machine and that the VM started and shut down successfully. No exact source SHA, build command/derivation, or booted generation/kernel identity was supplied. This is a separate owner-reported result, not a GitHub Actions run; it does not establish that the exact Build #20 kernel was activated or booted, nor does it separately verify the NixOS `vdb` guest, guest networking, saved-state restore, or GPU/display handback. No live installer migration or rollback result exists; the owner confirms that `install.sh` has not been tried.
 
@@ -36,7 +36,7 @@ A flake-based NixOS gaming desktop that passes its single AMD Radeon GPU through
 
 **v1.5.0 source-archive snapshot note (11 November 2026):** the published ZIP is the immutable source snapshot at commit `8818bd86dd55f8b456708902f16b01bf2052fbd8`. The README inside that exact commit retains v1.4.7 as its newest detailed historical CI/build validation entry; it does not contain the current-release status paragraph added to `main` after v1.5.0 was published. This is a post-publication documentation snapshot difference, not a tag/asset identity mismatch. The v1.5.0 asset will not be rewritten; v1.5.1 was subsequently published from `c77db6f76f48ffc2640a7b242964a7b9b984bc0d`, followed by v1.5.2 from `418bb687ec4f4d539e3ccc2d839baf242552c018`.
 
-**Historical release-source validation snapshot — v1.4.7 (9 November 2026):** Normal CI [#1299](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42684408581) passed all 28 workflow-defined steps on the exact release commit `c28250c34de4b4349023681305da99dee75aac9e`. The last completed full-system build, manual [#18](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42597469118), passed on ancestor `c6f4b955475de2ea16bc2b34c59a95dad3a1ae78`. The release commit is 23 commits ahead of that build. Those later commits include runtime-affecting changes to `install.sh`, `nixos/configuration.nix`, `nixos/hardware-configuration.nix`, and `nixos/home.nix`; Build #18 must not be described as an exact-release build.
+**Historical release-source validation snapshot — v1.4.7 (9 November 2026):** Normal CI [#1299](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42684408581) passed all 28 workflow-defined steps on the exact release commit `c28250c34de4b4349023681305da99dee75aac9e`. The last completed full-system build, manual [#18](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42597469118), passed on ancestor `c6f4b955475de2ea16bc2b34c59a95dad3a1ae78`. The release commit is 23 commits ahead of that build. Those later commits include runtime-affecting changes to `install.sh`, `nixos/hosts/nixos/configuration.nix`, `nixos/hosts/nixos/hardware-configuration.nix`, and `nixos/hosts/nixos/home.nix`; Build #18 must not be described as an exact-release build.
 
 **Historical release-gate boundary for the v1.4.7 snapshot:** Release run #23 succeeded for the exact release commit after the maintainer explicitly set `target_host_validated=true`. GitHub accepted the post-build paths using that maintainer attestation; it did not create a new full-system build result. The owner-reported 9 November clean installation, boot, normal Windows VM start/shutdown, GPU handback, and Hyprland recovery are the hardware evidence recorded for the release. Saved-state/managed-save restore remains unverified.
 
@@ -46,7 +46,7 @@ A flake-based NixOS gaming desktop that passes its single AMD Radeon GPU through
 
 **Host continuity note (9–11 November 2026):** The available records do not establish whether the 9 November clean-install/Windows VM lifecycle test and the 11 November NixOS-only first-start test were performed on the same physical host. The 11 November inventory records only the state observed during that test; it does not establish when or why the Windows domain and disk became unavailable. No host reinstall, disk removal, or machine change is inferred. The root Btrfs UUID, LUKS UUID, EFI filesystem UUID, swap PARTUUID, and optional `/mnt/media` filesystem UUID are intentionally published in this public repository because they are the storage references used by the committed, machine-specific NixOS configuration; they are not authentication credentials. Keep MAC addresses, serial numbers, machine IDs, and broader host inventories in a private local record; do not add them to this repository. The public record should state only whether host continuity is confirmed, disproved, or unknown.
 
-**Experimental installer status (updated 16 November 2026):** `install.sh` is an experimental migration helper and has not been tried by the owner. No end-to-end run against a live NixOS/libvirt target host has been completed. CI covers Bash syntax, ShellCheck, and mocked installer-invariant/rollback tests, but does not deploy the script to a live host or verify a real migration/recovery. The 9 November owner-reported clean-install/VM result does not establish that `install.sh` was used or tested. The 16 November owner-reported build/VM check likewise does not establish use; the owner confirms that `install.sh` has not been tried. Its Home Snapper preflight now accepts only a machine-generated hardware file at `/etc/nixos/hardware-configuration.nix` or `/etc/nixos/nixos/hardware-configuration.nix`; it refuses to fall back to the repository template's reference-host UUIDs and stops before backups when neither file exists. Manual installation/migration remains the recommended route.
+**Experimental installer status (updated 16 November 2026):** `install.sh` is an experimental migration helper and has not been tried by the owner. No end-to-end run against a live NixOS/libvirt target host has been completed. CI covers Bash syntax, ShellCheck, and mocked installer-invariant/rollback tests, but does not deploy the script to a live host or verify a real migration/recovery. The 9 November owner-reported clean-install/VM result does not establish that `install.sh` was used or tested. The 16 November owner-reported build/VM check likewise does not establish use; the owner confirms that `install.sh` has not been tried. Its Home Snapper preflight now accepts only a machine-generated hardware file at `/etc/nixos/hosts/nixos/hardware-configuration.nix` or `/etc/nixos/nixos/hosts/nixos/hardware-configuration.nix`; it refuses to fall back to the repository template's reference-host UUIDs and stops before backups when neither file exists. Manual installation/migration remains the recommended route.
 
 **Earlier release (v1.4.6; historical):** [v1.4.6](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.4.6), release run #20 ([run ID 42203730895](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42203730895)) on 6 November 2026 from commit `a6dd4544319fafa7ec517e73b31ad29a1b4010b3`; GitHub Release API records its published ZIP asset as 402,118 bytes, SHA-256 `05ffe97ee342a4b233f56bc7ae0e455f3b91a1c87df86c42e57e0441e9089e76`. However, run #20's job log records the canonical helper creating `nixos-hyprland-vfio-source.zip` and a separate `.sha256` manifest, while the Release API lists `nixos-hyprland-vfio.zip` and no manifest asset. Treat this as an unresolved asset/workflow provenance mismatch, not a verified canonical archive; the supplied Rev 2 report's 397,725-byte reproduction was not independently rerun in this update. The published asset is historical and must not be rewritten.
 
@@ -77,7 +77,7 @@ A flake-based NixOS gaming desktop that passes its single AMD Radeon GPU through
 
 The host is used for gaming and daily desktop work. When the VM starts, the QEMU hook stops the host graphical session and attaches the GPU functions to `vfio-pci`. When the VM stops, the hook attempts to return the GPU to the host drivers and restore the session. Libvirt saved-state restores use the separate `restore begin` XML-filter event; the hook now performs the same GPU handoff there and returns the original domain XML unchanged. A failed preparation step aborts the start/restore and attempts to roll back. The restore path has mocked regression coverage but still needs a saved-state test on the target machine.
 
-This is a personal, hardware-specific configuration, not a universal NixOS installer. The included configuration sets `networking.hostName = "nixos"`; change it in `nixos/configuration.nix` if the target host should use a different name. Incorrect disk identifiers can destroy data; incorrect filesystem UUIDs can prevent boot; and a failed single-GPU reset can leave the host without graphics. **UUID warning:** the committed host storage UUIDs are intentional for this machine; do not regenerate or replace them casually. Filesystem UUIDs, LUKS UUIDs, PARTUUIDs, and the Windows VM's libvirt domain UUID have different roles. Read [UUID and machine-identity safeguards](docs/UUID-AND-MACHINE-IDENTITY.md) before changing any identifier. Back up important data and keep a physical recovery TTY available before testing. SSH password and keyboard-interactive login are disabled by default; add a trusted public key under `users.users.localhost.openssh.authorizedKeys.keys` before relying on SSH. Root login is disabled. TCP 22 is allowed by the host firewall, so also restrict source networks at the router or by adapting the host firewall. The QEMU hook terminates only the local `seat0` sessions so a headless SSH session should survive VM startup. Test remote access before relying on it; the hook will abort and roll back if a process still holds the GPU device nodes. The configured Home Manager account is intentionally `localhost` with home directory `/home/localhost`; changing `networking.hostName` does not rename this account, and account renaming is not supported by a hostname-only edit. Review the user definition, Home Manager settings, greetd wrapper, and installer paths before attempting any account migration. The LSFG-VK DLL default derives from `config.home.homeDirectory`, but a non-default Steam library still needs its own path adjustment.
+This is a personal, hardware-specific configuration, not a universal NixOS installer. The included configuration sets `networking.hostName = "nixos"`; change it in `nixos/hosts/nixos/configuration.nix` if the target host should use a different name. Incorrect disk identifiers can destroy data; incorrect filesystem UUIDs can prevent boot; and a failed single-GPU reset can leave the host without graphics. **UUID warning:** the committed host storage UUIDs are intentional for this machine; do not regenerate or replace them casually. Filesystem UUIDs, LUKS UUIDs, PARTUUIDs, and the Windows VM's libvirt domain UUID have different roles. Read [UUID and machine-identity safeguards](docs/UUID-AND-MACHINE-IDENTITY.md) before changing any identifier. Back up important data and keep a physical recovery TTY available before testing. SSH password and keyboard-interactive login are disabled by default; add a trusted public key under `users.users.localhost.openssh.authorizedKeys.keys` before relying on SSH. Root login is disabled. TCP 22 is allowed by the host firewall, so also restrict source networks at the router or by adapting the host firewall. The QEMU hook terminates only the local `seat0` sessions so a headless SSH session should survive VM startup. Test remote access before relying on it; the hook will abort and roll back if a process still holds the GPU device nodes. The configured Home Manager account is intentionally `localhost` with home directory `/home/localhost`; changing `networking.hostName` does not rename this account, and account renaming is not supported by a hostname-only edit. Review the user definition, Home Manager settings, greetd wrapper, and installer paths before attempting any account migration. The LSFG-VK DLL default derives from `config.home.homeDirectory`, but a non-default Steam library still needs its own path adjustment.
 
 The repository is MIT-licensed and is provided “as is,” without warranty. Use it at your own risk.
 
@@ -123,7 +123,7 @@ sudo nixos-generate-config --root /mnt
 
 git clone https://github.com/kUmutUK/nixos-hyprland-vfio.git /tmp/repo
 SOURCE_REVISION="$(git -C /tmp/repo rev-parse --verify HEAD)"
-cp /mnt/etc/nixos/hardware-configuration.nix /tmp/repo/nixos/hardware-configuration.nix
+cp /mnt/etc/nixos/hosts/nixos/hardware-configuration.nix /tmp/repo/nixos/hosts/nixos/hardware-configuration.nix
 TARGET_BACKUP="/mnt/etc/nixos-generated-backup-$(date +%Y%m%d-%H%M%S)"
 if [ -e "$TARGET_BACKUP" ] || [ -L "$TARGET_BACKUP" ]; then
   echo "ERROR: Backup path already exists: $TARGET_BACKUP" >&2
@@ -139,7 +139,7 @@ sudo chmod 0644 /mnt/etc/nixos/.source-revision
 
 # Preserve the generated swap device path and add randomEncryption.enable = true
 # inside its swapDevices entry, then save and exit the editor.
-sudoedit /mnt/etc/nixos/nixos/hardware-configuration.nix
+sudoedit /mnt/etc/nixos/nixos/hosts/nixos/hardware-configuration.nix
 HASH=$(nix-shell -p whois --run 'mkpasswd --method yescrypt')
 printf '%s\n' "$HASH" | sudo tee /mnt/etc/nixos/hashedPassword >/dev/null
 sudo chown root:root /mnt/etc/nixos/hashedPassword
@@ -154,7 +154,7 @@ sudo nixos-install --flake /mnt/etc/nixos/nixos#nixos \
 
 **Before installing:**
 
-- Replace `nixos/hardware-configuration.nix` with the file generated for the target machine. The repository's original UUIDs and device paths are machine-specific; never use them blindly.
+- Replace `nixos/hosts/nixos/hardware-configuration.nix` with the file generated for the target machine. The repository's original UUIDs and device paths are machine-specific; never use them blindly.
 - Confirm `/mnt/etc/nixos/hashedPassword` exists and has permissions `0600`. Do not commit this file.
 - The clean-install commands record the original Git commit in `/mnt/etc/nixos/.source-revision`. After reboot, VM preparation checks out and verifies that exact revision and stops if the checkout is dirty or different, preventing VM scripts/XML from drifting away from the installed configuration.
 - Review the Nix Community binary-cache trust prompt before accepting it. The current flake configures `https://nix-community.cachix.org`; it does not configure the upstream CachyOS Attic cache. The flake follows the upstream `master` branch for CachyOS and uses `overlays.pinned`; no kernel version is hard-coded in `flake.nix`, and `nixos/flake.lock` records the resolved input revision. RT-Bore-LTO ThinLTO is not published in the upstream CachyOS binary cache, so expect a local kernel build.
@@ -182,7 +182,7 @@ This is the recommended path for an existing host. It intentionally makes you in
 ```bash
 set -Eeuo pipefail
 REPO="$HOME/nixos-hyprland-vfio"   # change this if your checkout is elsewhere
-test -f "$REPO/nixos/configuration.nix"
+test -f "$REPO/nixos/hosts/nixos/configuration.nix"
 BACKUP="$HOME/.nixos-manual-backup-$(date +%Y%m%d-%H%M%S)"
 mkdir -m 700 -- "$BACKUP"
 sudo cp -a -- /etc/nixos "$BACKUP/etc-nixos"
@@ -202,7 +202,7 @@ printf 'Backup saved to %s\n' "$BACKUP"
 
 ```bash
 REPO="$HOME/nixos-hyprland-vfio"   # same checkout path as above
-for file in configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix; do
+for file in hosts/nixos/configuration.nix hosts/nixos/home.nix hosts/nixos/host-settings.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix; do
   target="/etc/nixos/nixos/$file"
   if [ -f "$target" ]; then
     diff -u "$target" "$REPO/nixos/$file" || test "$?" -eq 1
@@ -212,8 +212,8 @@ for file in configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix mako-
 done
 # Record current compatibility baselines BEFORE replacing configuration files.
 grep -nE 'system\.stateVersion|home\.stateVersion' \
-  /etc/nixos/configuration.nix /etc/nixos/home.nix \
-  /etc/nixos/nixos/configuration.nix /etc/nixos/nixos/home.nix \
+  /etc/nixos/hosts/nixos/configuration.nix /etc/nixos/hosts/nixos/home.nix \
+  /etc/nixos/nixos/hosts/nixos/configuration.nix /etc/nixos/nixos/hosts/nixos/home.nix \
   /home/localhost/.config/home-manager/home.nix 2>/dev/null || true
 ```
 
@@ -231,30 +231,30 @@ if [ -n "$(git -C "$REPO" status --porcelain --untracked-files=all)" ]; then
   echo "ERROR: $REPO has local or untracked changes. Use a clean checkout before migrating." >&2
   exit 1
 fi
-sudo install -d -m 0755 /etc/nixos/nixos
-for file in configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix; do
-  sudo install -m 0644 "$REPO/nixos/$file" /etc/nixos/nixos/
+sudo install -d -m 0755 /etc/nixos/nixos/hosts/nixos
+for file in hosts/nixos/configuration.nix hosts/nixos/home.nix hosts/nixos/host-settings.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix; do
+  sudo install -D -m 0644 "$REPO/nixos/$file" "/etc/nixos/nixos/$file"
 done
-sudo install -d -m 0755 /etc/nixos/nixos/hooks
-sudo install -m 0755 "$REPO/nixos/hooks/qemu" /etc/nixos/nixos/hooks/qemu
+sudo install -d -m 0755 /etc/nixos/nixos/hosts/nixos/hooks
+sudo install -m 0755 "$REPO/nixos/hosts/nixos/hooks/qemu" /etc/nixos/nixos/hosts/nixos/hooks/qemu
 printf '%s\n' "$SOURCE_REVISION" | sudo tee /etc/nixos/.source-revision >/dev/null
 sudo chmod 0644 /etc/nixos/.source-revision
 ```
 
-6. **Preserve machine-specific settings.** If `/etc/nixos/nixos/hardware-configuration.nix` does not exist, first verify that `/etc/nixos/hardware-configuration.nix` was generated on this machine, then copy it (never use the repository template as a substitute):
+6. **Preserve machine-specific settings.** If `/etc/nixos/nixos/hosts/nixos/hardware-configuration.nix` does not exist, first verify that `/etc/nixos/hardware-configuration.nix` was generated on this machine, then copy it (never use the repository template as a substitute):
 
 ```bash
-if [ ! -f /etc/nixos/nixos/hardware-configuration.nix ]; then
+if [ ! -f /etc/nixos/nixos/hosts/nixos/hardware-configuration.nix ]; then
   test -f /etc/nixos/hardware-configuration.nix || { echo "No machine-generated hardware-configuration.nix; stop and generate/review one first." >&2; exit 1; }
-  sudo install -m 0644 /etc/nixos/hardware-configuration.nix /etc/nixos/nixos/hardware-configuration.nix
+  sudo install -m 0644 /etc/nixos/hardware-configuration.nix /etc/nixos/nixos/hosts/nixos/hardware-configuration.nix
 fi
 ```
 
-**Preserve machine-specific settings.** Never copy `REPO/nixos/hardware-configuration.nix` just because the file exists in the repository. Use the file generated on this machine. If `/etc/nixos/nixos/hardware-configuration.nix` already exists, compare its UUIDs, mount points, and swap device with the generated `/etc/nixos/hardware-configuration.nix` and merge deliberately; do not blindly replace either. Edit `/etc/nixos/nixos/configuration.nix` and `/etc/nixos/nixos/home.nix` to preserve the previous `system.stateVersion` and `home.stateVersion` values, then review the `home.nix` values listed in [`INSTALLATION.md`](INSTALLATION.md) (`gitName`, `gitEmail`, monitor output, monitor rule, and wallpaper path).
+**Preserve machine-specific settings.** Never copy `REPO/nixos/hosts/nixos/hardware-configuration.nix` just because the file exists in the repository. Use the file generated on this machine. If `/etc/nixos/nixos/hosts/nixos/hardware-configuration.nix` already exists, compare its UUIDs, mount points, and swap device with the generated `/etc/nixos/hardware-configuration.nix` and merge deliberately; do not blindly replace either. Edit `/etc/nixos/nixos/hosts/nixos/configuration.nix` and `/etc/nixos/nixos/hosts/nixos/home.nix` to preserve the previous `system.stateVersion` and `home.stateVersion` values, then review the `host-settings.nix` values listed in [`INSTALLATION.md`](INSTALLATION.md) (`gitName`, `gitEmail`, monitor output, monitor rule, and wallpaper path).
 
-**Check the optional media mount separately.** The UUID for `/mnt/media` lives in `nixos/configuration.nix`, not in `hardware-configuration.nix`. Do not copy the reference machine's value when migrating to another disk layout:
+**Check the optional media mount separately.** The UUID for `/mnt/media` lives in `nixos/hosts/nixos/configuration.nix`, not in `hardware-configuration.nix`. Do not copy the reference machine's value when migrating to another disk layout:
 - If the target has an ext4 media volume, identify that exact partition with `lsblk -f` and read its UUID with `sudo blkid -s UUID -o value /dev/<your-ext4-media-partition>`. Change only `fileSystems."/mnt/media".device` to `/dev/disk/by-uuid/<that-UUID>`.
-- If the target has no media volume, remove or comment out the complete `fileSystems."/mnt/media"` block from `nixos/configuration.nix`.
+- If the target has no media volume, remove or comment out the complete `fileSystems."/mnt/media"` block from `nixos/hosts/nixos/configuration.nix`.
 Verify the resulting mount with `findmnt /mnt/media` before building or activating.
 
 **Mandatory Home Snapper preflight — stop before build/switch if any check fails.**
@@ -266,14 +266,14 @@ Use the repository checker below in its strict default mode. It validates the co
 ```bash
 set -Eeuo pipefail
 REPO="$HOME/nixos-hyprland-vfio"   # change this if your checkout is elsewhere
-TARGET_HW=/etc/nixos/nixos/hardware-configuration.nix
+TARGET_HW=/etc/nixos/nixos/hosts/nixos/hardware-configuration.nix
 test -s "$TARGET_HW"
 python3 "$REPO/scripts/check-home-snapper-layout.py" "$TARGET_HW"
 ```
 
 If any test fails, stop. Do not run `nixos-rebuild build`, `dry-activate`, or `switch` until the Btrfs layout and target mount declaration have been corrected and this check passes. If the hardware file uses a different subvolume layout, adapt the mount declarations to the actual machine rather than copying the example literally.
 
-7. Find the GPU display and HDMI/DP audio functions with `lspci -Dnn`. Edit `/etc/nixos/nixos/hooks/qemu` so `GPU_PCI` and `GPU_AUDIO` match the actual PCI addresses. Validate IOMMU groups and make sure no unrelated device shares an unsafe group before using passthrough.
+7. Find the GPU display and HDMI/DP audio functions with `lspci -Dnn`. Edit `/etc/nixos/nixos/hosts/nixos/hooks/qemu` so `GPU_PCI` and `GPU_AUDIO` match the actual PCI addresses. Validate IOMMU groups and make sure no unrelated device shares an unsafe group before using passthrough.
 
 8. For an existing VM, **do not replace its XML with the repository template**. Preserve its UUID, MAC, firmware/NVRAM and primary Windows disk path. When `win10` is already registered with libvirt, the `scripts/sync-vm-xml.py --domain win10` helper uses the persistent definition from `virsh dumpxml --inactive win10`; it fails closed if libvirt cannot be queried and backs up both the registered definition and any existing on-disk XML before synchronizing only the two GPU/audio PCI addresses. For a new VM, use the helper in [Preparing and starting the VM](#preparing-and-starting-the-vm) instead of copying the template directly; it generates a fresh UUID and MAC and leaves the source template unchanged. Review the disk/ISO paths and USB IDs before defining the XML. Before any manual production-XML definition, run `sudo python3 "$REPO/scripts/check-vm-iso-paths.py" /var/lib/libvirt/win10.xml`; define the XML with `sudo virsh define /var/lib/libvirt/win10.xml` only after the preflight passes and the guest is shut down. This checker validates file-backed CD-ROM sources only; separately verify the primary qcow2 disk, NVRAM/firmware paths, permissions, and available storage.
 
@@ -302,7 +302,7 @@ Only after reviewing the build and dry-activation output should you run `sudo ni
 
 **EXPERIMENTAL — NOT END-TO-END TESTED.** No end-to-end run of `install.sh` against a live NixOS/libvirt target host has been completed. CI's Bash syntax, ShellCheck, and mocked regression checks do not prove that a live migration or rollback succeeds. Use the manual migration procedure unless you explicitly accept this unverified status and have an independent recovery path.
 
-Use this only if you have reviewed the script and intentionally prefer its automated migration flow over the manual steps above. It is **not** a fresh-installer or disk-partitioning tool. It replaces source files under `/etc/nixos/nixos` (including `/etc/nixos/nixos/hooks/qemu`). The helper synchronizes `/var/lib/libvirt/win10.xml` only when `win10` is registered with libvirt or a deployed VM XML already exists; if neither condition is met, it writes no VM XML. Fresh XML generation is deferred to the documented post-install VM-preparation flow, which uses the reviewed repository template and assigns a fresh UUID/MAC. The helper does **not** directly replace the currently active libvirt hook or automatically define the updated VM XML. The active hook is generated from `nixos/configuration.nix` and is refreshed only after a successful NixOS rebuild/activation. When `win10` is registered with libvirt, the helper prefers the persistent `virsh dumpxml --inactive win10` definition over a missing or stale `/var/lib/libvirt/win10.xml`; libvirt query/export failures stop the migration before writes. The registered XML and any existing on-disk XML are backed up before changing only the two PCI hostdev source addresses. If the existing XML is malformed, belongs to another domain, has an unsupported primary-disk layout, or does not contain exactly two synchronizable PCI hostdevs, the helper aborts so you can use the manual path. Incorrect PCI addresses, state versions, or mount settings can still make the host or VM unusable. Backup/rollback remains best-effort and does not replace a full backup or a tested recovery method. The script does not automatically rebuild/activate the host, define the VM XML, or reboot, and it retains prior installer backups without automatically deleting them. Do not run it as root; keep its repository checkout outside `/etc/nixos`. Before creating backups or changing files, the helper now stops unless `/etc/nixos/hashedPassword` is non-empty and owned by `root:root` with mode `0600`, and unless a machine-generated hardware configuration exists at `/etc/nixos/hardware-configuration.nix` or `/etc/nixos/nixos/hardware-configuration.nix`. It never uses the repository's reference-host hardware template for Home Snapper UUID validation. Generate the host file with `sudo nixos-generate-config --show-hardware-config` and save it at one of those paths when it is missing; create or repair the local-account password hash using the manual instructions before rerunning it.
+Use this only if you have reviewed the script and intentionally prefer its automated migration flow over the manual steps above. It is **not** a fresh-installer or disk-partitioning tool. It replaces source files under `/etc/nixos/nixos` (including `/etc/nixos/nixos/hosts/nixos/hooks/qemu`). The helper synchronizes `/var/lib/libvirt/win10.xml` only when `win10` is registered with libvirt or a deployed VM XML already exists; if neither condition is met, it writes no VM XML. Fresh XML generation is deferred to the documented post-install VM-preparation flow, which uses the reviewed repository template and assigns a fresh UUID/MAC. The helper does **not** directly replace the currently active libvirt hook or automatically define the updated VM XML. The active hook is generated from `nixos/hosts/nixos/configuration.nix` and is refreshed only after a successful NixOS rebuild/activation. When `win10` is registered with libvirt, the helper prefers the persistent `virsh dumpxml --inactive win10` definition over a missing or stale `/var/lib/libvirt/win10.xml`; libvirt query/export failures stop the migration before writes. The registered XML and any existing on-disk XML are backed up before changing only the two PCI hostdev source addresses. If the existing XML is malformed, belongs to another domain, has an unsupported primary-disk layout, or does not contain exactly two synchronizable PCI hostdevs, the helper aborts so you can use the manual path. Incorrect PCI addresses, state versions, or mount settings can still make the host or VM unusable. Backup/rollback remains best-effort and does not replace a full backup or a tested recovery method. The script does not automatically rebuild/activate the host, define the VM XML, or reboot, and it retains prior installer backups without automatically deleting them. Do not run it as root; keep its repository checkout outside `/etc/nixos`. Before creating backups or changing files, the helper now stops unless `/etc/nixos/hashedPassword` is non-empty and owned by `root:root` with mode `0600`, and unless a machine-generated hardware configuration exists at `/etc/nixos/hosts/nixos/hardware-configuration.nix` or `/etc/nixos/nixos/hosts/nixos/hardware-configuration.nix`. It never uses the repository's reference-host hardware template for Home Snapper UUID validation. Generate the host file with `sudo nixos-generate-config --show-hardware-config` and save it at one of those paths when it is missing; create or repair the local-account password hash using the manual instructions before rerunning it.
 
 ```bash
 # Review the whole script and the manual migration section first.
@@ -384,7 +384,7 @@ The documented fresh-VM bootstrap only auto-creates the canonical Windows disk p
 >
 > **NixOS QEMU runtime path:** The template pins QEMU to `/run/libvirt/nix-emulators/qemu-system-x86_64` and its OVMF firmware files under `/run/libvirt/nix-ovmf/`. NixOS's [libvirtd module](https://github.com/NixOS/nixpkgs/blob/master/nixos/modules/virtualisation/libvirtd.nix) creates stable runtime symlinks for QEMU executables in `nix-emulators`. Before defining or starting the VM, verify `test -x /run/libvirt/nix-emulators/qemu-system-x86_64` on the installed host. Adapt the XML paths if the expected runtime files are absent or the host uses a different QEMU/libvirt setup.
 
-After the first system activation and reboot, prepare the VM disk and define the domain. The `/tmp/repo` checkout used in Path A exists only in the Live ISO and is not available after reboot. The block below creates a persistent checkout at `~/nixos-hyprland-vfio` if one does not already exist; change `REPO` if your checkout lives elsewhere. Run it after reviewing the XML disk/ISO paths and USB passthrough IDs. Enter the exact `GPU_PCI` and `GPU_AUDIO` values from the deployed hook at `/etc/nixos/nixos/hooks/qemu`:
+After the first system activation and reboot, prepare the VM disk and define the domain. The `/tmp/repo` checkout used in Path A exists only in the Live ISO and is not available after reboot. The block below creates a persistent checkout at `~/nixos-hyprland-vfio` if one does not already exist; change `REPO` if your checkout lives elsewhere. Run it after reviewing the XML disk/ISO paths and USB passthrough IDs. Enter the exact `GPU_PCI` and `GPU_AUDIO` values from the deployed hook at `/etc/nixos/nixos/hosts/nixos/hooks/qemu`:
 
 ```bash
 set -euo pipefail
@@ -460,8 +460,8 @@ if [ "$EXISTING_VM_XML" -eq 0 ]; then
   STAGED_DISK_PATH="$STAGING_DISK_DIR/win10new.qcow2"
 fi
 
-read -rp "GPU display PCI address from /etc/nixos/nixos/hooks/qemu: " GPU_PCI
-read -rp "GPU audio PCI address from /etc/nixos/nixos/hooks/qemu: " GPU_AUDIO
+read -rp "GPU display PCI address from /etc/nixos/nixos/hosts/nixos/hooks/qemu: " GPU_PCI
+read -rp "GPU audio PCI address from /etc/nixos/nixos/hosts/nixos/hooks/qemu: " GPU_AUDIO
 sudo python3 "$REPO/scripts/sync-vm-xml.py" \
   "$GPU_PCI" "$GPU_AUDIO" \
   "$REPO/vm-xml/win10.xml" "$BOOTSTRAP_XML" --domain win10
@@ -544,7 +544,7 @@ fi
 sudo virsh define "$VM_XML"
 ```
 
-When called with --domain win10, the helper checks libvirt itself and prefers the persistent `virsh dumpxml --inactive win10` definition over a missing or stale on-disk XML; if libvirt cannot be queried or the registered domain cannot be exported, it stops without writing. The registered persistent definition and any existing on-disk XML are backed up before the destination changes. If win10 is not registered, an existing deployed XML remains the source of truth; only a genuinely new, unregistered VM starts from the template and receives a fresh UUID/MAC. The helper preserves existing VM settings and changes only the two GPU/audio PCI addresses. It refuses to replace a symlink, malformed XML, a different VM domain, or an unsupported disk/PCI layout. It never edits `vm-xml/win10.xml`. The disk setup above reads the actual primary disk path from the synchronized XML: existing VM disks are preserved and are never auto-created, re-owned, or re-permissioned; a missing disk for an existing VM stops for manual recovery. Automatic creation is limited to the reviewed 120G default path for a new VM. Verify the Windows and VirtIO ISO paths in the deployed XML exist before starting the guest. The XML's PCI addresses must match `GPU_PCI` and `GPU_AUDIO` in `/etc/nixos/nixos/hooks/qemu`; when a registered `win10` domain or an already-deployed VM XML exists, `install.sh` performs this synchronization on a successful run. For a new, unregistered VM, `install.sh` defers fresh XML generation to the documented VM-preparation flow. The manual flow keeps the XML and disk in temporary staging directories until ISO checks and disk creation/ownership/permissions succeed. A missing ISO or staged disk-creation failure therefore leaves no deployed XML or final-path partial disk, and the user can retry safely; concurrent destination conflicts fail closed rather than overwriting files.
+When called with --domain win10, the helper checks libvirt itself and prefers the persistent `virsh dumpxml --inactive win10` definition over a missing or stale on-disk XML; if libvirt cannot be queried or the registered domain cannot be exported, it stops without writing. The registered persistent definition and any existing on-disk XML are backed up before the destination changes. If win10 is not registered, an existing deployed XML remains the source of truth; only a genuinely new, unregistered VM starts from the template and receives a fresh UUID/MAC. The helper preserves existing VM settings and changes only the two GPU/audio PCI addresses. It refuses to replace a symlink, malformed XML, a different VM domain, or an unsupported disk/PCI layout. It never edits `vm-xml/win10.xml`. The disk setup above reads the actual primary disk path from the synchronized XML: existing VM disks are preserved and are never auto-created, re-owned, or re-permissioned; a missing disk for an existing VM stops for manual recovery. Automatic creation is limited to the reviewed 120G default path for a new VM. Verify the Windows and VirtIO ISO paths in the deployed XML exist before starting the guest. The XML's PCI addresses must match `GPU_PCI` and `GPU_AUDIO` in `/etc/nixos/nixos/hosts/nixos/hooks/qemu`; when a registered `win10` domain or an already-deployed VM XML exists, `install.sh` performs this synchronization on a successful run. For a new, unregistered VM, `install.sh` defers fresh XML generation to the documented VM-preparation flow. The manual flow keeps the XML and disk in temporary staging directories until ISO checks and disk creation/ownership/permissions succeed. A missing ISO or staged disk-creation failure therefore leaves no deployed XML or final-path partial disk, and the user can retry safely; concurrent destination conflicts fail closed rather than overwriting files.
 
 ### Install NixOS on a separate guest disk
 
@@ -595,7 +595,7 @@ sudo virsh change-media win10 sdd --eject --config
 
 On the next start, use OVMF **Boot Manager** to choose the NixOS boot entry or Windows Boot Manager. The two OS installations share the domain's existing UEFI NVRAM file, so firmware boot-order entries may change during installation; do not delete or recreate `/var/lib/libvirt/qemu/nvram/win10_VARS.fd`. Windows remains on its original disk even if you change which UEFI entry boots by default.
 
-The guest must use its own installer-generated `hardware-configuration.nix` and guest-specific NixOS configuration. **Do not copy this repository's physical-host `nixos/hardware-configuration.nix`, storage UUIDs, or VFIO host hook into the guest**: those describe the real machine, not the virtual disks. The VM's passed-through GPU is available to whichever guest OS is currently running.
+The guest must use its own installer-generated `hardware-configuration.nix` and guest-specific NixOS configuration. **Do not copy this repository's physical-host `nixos/hosts/nixos/hardware-configuration.nix`, storage UUIDs, or VFIO host hook into the guest**: those describe the real machine, not the virtual disks. The VM's passed-through GPU is available to whichever guest OS is currently running.
 
 The default XML contains two active USB passthrough entries with fixed vendor/product IDs `1532:0098` and `05ac:024f`; they are not detected or substituted automatically by the installer. Confirm with `lsusb` that these IDs identify the devices you intend to pass through, and edit or remove the corresponding USB `<hostdev>` entries in `/var/lib/libvirt/win10.xml` before starting the VM if they do not. The XML intentionally has no emulated graphics console, so verify that the guest has a usable display and input path before handing it the only GPU.
 
@@ -778,13 +778,13 @@ This launches a 1440×1440 game surface in fullscreen and stretches it to a 2560
 - `hypridle` requests suspend after 3600 seconds (one hour); the configured `before_sleep_cmd` invokes Hyprlock before suspension.
 
 - **Brave integration:** This repository installs the `brave-origin` Nixpkgs package through `environment.systemPackages`. Waybar's MPRIS player list and the `mpvpaper-watchdog` class filter use the `brave-origin` application identifier; Waybar's title rewrite separately matches Brave window titles. The Brave-specific rules therefore target the repository-installed package. The watchdog's independent GameMode behavior is unchanged.
-- **VG27AQ1A DisplayPort audio resume:** `services.pipewire.wireplumber.extraConfig` matches only the reference-host sink `alsa_output.pci-0000_0b_00.1.hdmi-stereo-extra4` and sets `session.suspend-timeout-seconds = 0`. The reference-host owner reported that the 2–3 second audio delay after pausing and resuming media disappeared with this rule in a temporary user-level WirePlumber drop-in. The declaration is in `nixos/configuration.nix`. Release #32's general `TARGET_HOST_VALIDATED=true` target-host attestation does not log a rule-specific check of this sink; activation of this exact rule and its persistence after reboot remain unverified. This leaves other sinks' idle-suspend behavior unchanged. See the [pinned NixOS WirePlumber module](https://github.com/NixOS/nixpkgs/blob/f4a03c008967841f2a0b3cb7c436fc6fc31671f6/nixos/modules/services/desktops/pipewire/wireplumber.nix) and [WirePlumber ALSA rules documentation](https://pipewire.pages.freedesktop.org/wireplumber/daemon/configuration/modifying_configuration.html).
+- **VG27AQ1A DisplayPort audio resume:** `services.pipewire.wireplumber.extraConfig` matches only the reference-host sink `alsa_output.pci-0000_0b_00.1.hdmi-stereo-extra4` and sets `session.suspend-timeout-seconds = 0`. The reference-host owner reported that the 2–3 second audio delay after pausing and resuming media disappeared with this rule in a temporary user-level WirePlumber drop-in. The declaration is in `nixos/hosts/nixos/configuration.nix`. Release #32's general `TARGET_HOST_VALIDATED=true` target-host attestation does not log a rule-specific check of this sink; activation of this exact rule and its persistence after reboot remain unverified. This leaves other sinks' idle-suspend behavior unchanged. See the [pinned NixOS WirePlumber module](https://github.com/NixOS/nixpkgs/blob/f4a03c008967841f2a0b3cb7c436fc6fc31671f6/nixos/modules/services/desktops/pipewire/wireplumber.nix) and [WirePlumber ALSA rules documentation](https://pipewire.pages.freedesktop.org/wireplumber/daemon/configuration/modifying_configuration.html).
 - `render.cm_auto_hdr = 0` disables Hyprland's automatic switch to HDR when a fullscreen application needs it; it does not force HDR or 10-bit output. This is a deliberate Home Manager runtime setting. The v1.4.7 clean-install/VM validation did not separately measure HDR transitions, 10-bit output, or display-switch flicker; see [Hyprland's render options](https://wiki.hypr.land/configuring/core/config-options/).
-- `HYPRLAND_CONFIG` is passed through the greetd wrapper and points to the native Lua config generated from `nixos/home.nix` at `~/.config/hypr/hyprland.lua`.
+- `HYPRLAND_CONFIG` is passed through the greetd wrapper and points to the native Lua config generated from `nixos/hosts/nixos/home.nix` at `~/.config/hypr/hyprland.lua`.
 - The active `Plus-Cursor` theme maps every cursor name in its source set and common XCursor aliases to the same `+` glyph. It has no inherited cursor theme, so pointer, text, hand, wait, and resize states all use the plus shape; system, Home Manager, GTK/X11, and Hyprland select the same theme.
 - `input-remapper` is installed, but this configuration does not enable its background service. Installing the package alone does not apply mappings; enable `services.input-remapper.enable = true` only when you intentionally configure remapping rules.
 - `nowatchdog` and `nmi_watchdog=0` reduce watchdog-based lockup diagnostics in exchange for less diagnostic data.
-- `usbcore.autosuspend=-1` and `kvm.ignore_msrs=1` are **not enabled by default** in `nixos/configuration.nix`. The former disables USB autosuspend and may increase idle power consumption; the latter suppresses some unknown MSR access failures and can hide guest problems. Add either only when the target hardware/guest needs it and after considering the trade-offs.
+- `usbcore.autosuspend=-1` and `kvm.ignore_msrs=1` are **not enabled by default** in `nixos/hosts/nixos/configuration.nix`. The former disables USB autosuspend and may increase idle power consumption; the latter suppresses some unknown MSR access failures and can hide guest problems. Add either only when the target hardware/guest needs it and after considering the trade-offs.
 
 
 ### Verify the active performance configuration
@@ -836,7 +836,7 @@ The kernel Kconfig defines `CPUFREQ_DT_RUST` as the Rust-based Generic DT CPUFre
 
 The repeated missing `.ko.BTF.1` failure across two different Rust modules shows the problem is not specific to `rnull_mod`. It points to the Rust + LTO + module-BTF path in this build. The build log resolved `pahole-1.32`; the version alone does not prove the root cause. The earlier `rustfmt` and libclang/Clang messages were not the terminating error.
 
-**Updated workaround:** `nixos/configuration.nix` now disables both `BLK_DEV_RUST_NULL` and `CPUFREQ_DT_RUST` through the existing `boot.kernelPatches.structuredExtraConfig`. General Rust support, BTF, ThinLTO, and RT-Bore-LTO remain enabled. This is a targeted workaround for the two unused modules, not a claim that every Rust module is compatible with this LTO/BTF toolchain.
+**Updated workaround:** `nixos/hosts/nixos/configuration.nix` now disables both `BLK_DEV_RUST_NULL` and `CPUFREQ_DT_RUST` through the existing `boot.kernelPatches.structuredExtraConfig`. General Rust support, BTF, ThinLTO, and RT-Bore-LTO remain enabled. This is a targeted workaround for the two unused modules, not a claim that every Rust module is compatible with this LTO/BTF toolchain.
 
 **Verification status:** manual full-system build #18 completed successfully on exact commit `c6f4b955475de2ea16bc2b34c59a95dad3a1ae78`, with both unused Rust-module symbols disabled. That validates the two-symbol workaround on the build baseline, not every later system change. The v1.4.7 release commit is 23 commits ahead of that baseline; release run #23 accepted the later runtime-affecting paths through the explicit owner hardware-validation attestation, not through a new GitHub full-system build.
 
@@ -856,7 +856,7 @@ The repeated missing `.ko.BTF.1` failure across two different Rust modules shows
 
 ## Repository map (selected entry points; non-exhaustive)
 
-This is a curated map of selected entry points, not a complete inventory of the 65 tracked files. Use the repository file browser for the full source tree.
+This is a curated map of selected entry points, not a complete inventory of the 72 tracked files. Use the repository file browser for the full source tree.
 
 ```text
 .
@@ -867,12 +867,19 @@ This is a curated map of selected entry points, not a complete inventory of the 
 ├── INSTALLATION.md
 ├── RELEASING.md
 ├── nixos/
-│   ├── configuration.nix
-│   ├── home.nix
 │   ├── flake.nix
 │   ├── flake.lock
 │   ├── lsfg-vk-v2.nix
-│   └── mako-renderer.nix
+│   ├── mako-renderer.nix
+│   ├── hosts/
+│   │   ├── .template/
+│   │   └── nixos/
+│   │       ├── configuration.nix
+│   │       ├── hardware-configuration.nix
+│   │       ├── home.nix
+│   │       ├── host-settings.nix
+│   │       └── hooks/
+│   │           └── qemu
 ├── vm-xml/
 │   └── win10.xml
 ├── scripts/
@@ -889,12 +896,14 @@ This is a curated map of selected entry points, not a complete inventory of the 
 
 The root files provide the project entry point, installation guidance, contribution requirements, release procedure, and safety disclaimers. The NixOS directory owns the system/Home Manager modules and pinned package expressions; `vm-xml/` holds the Windows guest template; `scripts/` contains installer, maintenance, and regression helpers; `docs/` contains supporting technical guides and historical/current review reports.
 
-- `nixos/configuration.nix`, `nixos/home.nix`, `nixos/flake.nix`, and `nixos/flake.lock`: NixOS modules, Home Manager configuration, flake outputs, and locked inputs.
+- `nixos/hosts/nixos/configuration.nix`, `nixos/hosts/nixos/home.nix`, `nixos/flake.nix`, and `nixos/flake.lock`: NixOS modules, Home Manager configuration, flake outputs, and locked inputs.
 - `nixos/lsfg-vk-v2.nix`: pinned LSFG-VK v2 package definition; `nixos/mako-renderer.nix`: optional MAKO Renderer package.
-- `nixos/hooks/qemu` and `vm-xml/win10.xml`: VFIO handoff hook and Windows guest template.
+- `nixos/hosts/nixos/hooks/qemu` and `vm-xml/win10.xml`: VFIO handoff hook and Windows guest template.
 - `scripts/optiscaler_manager.py` and `scripts/test-optiscaler-manager.py`: optional per-game manager and its offline regression suite; see [the manager guide](docs/OPTISCALER-MANAGER.md).
 - `scripts/test-vm-xml-paths.py`, `scripts/test-documentation-integrity.py`, `scripts/test-release-workflow-python.py`, and the other `scripts/test-*.py` files: focused regression checks.
 - `docs/AUDIT-2026-10-28-VM-XML-VFIO.md`: dated historical audit; [the repair and validation report](docs/REPAIR-AND-VALIDATION-REPORT.md) is the current verification record.
+- `docs/MIGRATION-GUIDE.md`: the 2026-11-19 hosts/ restructure — what moved, how to migrate a deployed host, and the post-merge validation sequence.
+- `nixos/hosts/.template/`: new-host template with the AMD/VFIO review checklist; copy it to add a second machine.
 - `.git-cliff.toml`, `RELEASING.md`, and `.github/workflows/release.yml`: release-note generation, release procedure, and automated release workflow.
 
 ## Validation
@@ -912,7 +921,7 @@ The Bash syntax-check loop is kept in sync with [CONTRIBUTING.md](CONTRIBUTING.m
     scripts/installer-lock.sh \
     scripts/pci-address.sh \
     scripts/test-installer-lock.sh \
-    nixos/hooks/qemu \
+    nixos/hosts/nixos/hooks/qemu \
     scripts/test-vfio-hook-driver-state.sh \
     scripts/test-installer-invariants.sh \
     scripts/test-installer-rollback.sh \
@@ -925,11 +934,11 @@ The Bash syntax-check loop is kept in sync with [CONTRIBUTING.md](CONTRIBUTING.m
 Run the syntax, formatting, and static-analysis checks used by normal CI:
 
 ```bash
-for f in install.sh scripts/package-source-zip.sh scripts/verify-source-revision.sh scripts/test-source-revision.sh scripts/installer-lock.sh scripts/pci-address.sh scripts/test-installer-lock.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh; do
+for f in install.sh scripts/package-source-zip.sh scripts/verify-source-revision.sh scripts/test-source-revision.sh scripts/installer-lock.sh scripts/pci-address.sh scripts/test-installer-lock.sh nixos/hosts/nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh; do
   bash -n "$f"
 done
 find ./nixos -type f -name "*.nix" -print0 | xargs -0 -r nixfmt --check
-shellcheck -S warning install.sh scripts/package-source-zip.sh scripts/verify-source-revision.sh scripts/test-source-revision.sh scripts/installer-lock.sh scripts/pci-address.sh nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-lock.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh
+shellcheck -S warning install.sh scripts/package-source-zip.sh scripts/verify-source-revision.sh scripts/test-source-revision.sh scripts/installer-lock.sh scripts/pci-address.sh nixos/hosts/nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-lock.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh
 bash scripts/test-installer-lock.sh
 statix check .
 deadnix .

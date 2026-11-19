@@ -2,18 +2,26 @@
   config,
   pkgs,
   lib,
+  osConfig ? { },
   ...
 }:
 
 let
-  gitName = "changeme";
-  gitEmail = "you@example.com";
-  makoRenderer = pkgs.callPackage ./mako-renderer.nix { };
-  monitorOutput = "DP-3";
-  # Hyprland 0.55+ uses Lua configuration. The monitor output is set by the installer;
-  # an empty value remains a catch-all for manual setups.
-  hyprlandMonitorMode = "preferred";
-  wallpaperVideo = "${config.home.homeDirectory}/Downloads/arthur-leywin-the-beginning-after-the-end.3840x2160.mp4";
+  makoRenderer = pkgs.callPackage ../../mako-renderer.nix { };
+
+  # Host-specific values (monitor output/mode, wallpaper path, git identity) are
+  # defined once in nixos/hosts/nixos/host-settings.nix and read here through
+  # osConfig when this module runs under NixOS + home-manager-as-a-module. The
+  # fallback literals keep standalone `home-manager switch` and the pre-10.3
+  # behavior working when no NixOS host configuration is in scope. install.sh
+  # rewrites host-settings.nix instead of patching this file.
+  hostCfg = osConfig.kumutuk.host or { };
+  monitorOutput = hostCfg.monitorOutput or "DP-3";
+  hyprlandMonitorMode = hostCfg.monitorMode or "preferred";
+  wallpaperVideo =
+    hostCfg.wallpaperVideo or "${config.home.homeDirectory}/Downloads/arthur-leywin-the-beginning-after-the-end.3840x2160.mp4";
+  gitName = hostCfg.gitName or "changeme";
+  gitEmail = hostCfg.gitEmail or "you@example.com";
 
   # Every cursor name resolves to the same plus glyph. There is no inherited theme,
   # so hand, text, wait, resize, and other states cannot fall back to another shape.

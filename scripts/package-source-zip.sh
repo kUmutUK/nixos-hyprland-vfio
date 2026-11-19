@@ -61,7 +61,7 @@ expected_executables = {
     prefix + path
     for path in (
         "install.sh",
-        "nixos/hooks/qemu",
+        "nixos/hosts/nixos/hooks/qemu",
         "scripts/package-source-zip.sh",
         "scripts/test-installer-invariants.sh",
         "scripts/test-installer-rollback.sh",

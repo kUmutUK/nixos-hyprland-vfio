@@ -6,7 +6,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = (ROOT / "nixos/mako-renderer.nix").read_text(encoding="utf-8")
-HOME = (ROOT / "nixos/home.nix").read_text(encoding="utf-8")
+HOME = (ROOT / "nixos/hosts/nixos/home.nix").read_text(encoding="utf-8")
 FLAKE = (ROOT / "nixos/flake.nix").read_text(encoding="utf-8")
 README = (ROOT / "README.md").read_text(encoding="utf-8")
 DOC = (ROOT / "docs/MAKO.md").read_text(encoding="utf-8")
@@ -42,7 +42,7 @@ require("mako-installer" in PACKAGE and "uninstaller.desktop" in PACKAGE,
 require("license = licenses.gpl3Plus;" in PACKAGE and 'platforms = [ "x86_64-linux" ];' in PACKAGE,
         "MAKO package metadata must record GPL-3.0-or-later and the published x86_64 Linux platform")
 
-require("makoRenderer = pkgs.callPackage ./mako-renderer.nix { };" in HOME,
+require("makoRenderer = pkgs.callPackage ../../mako-renderer.nix { };" in HOME,
         "Home Manager must instantiate the pinned MAKO package")
 require("included unconditionally in `home.packages`" in DOC and "installed by default" in DOC,
         "MAKO documentation must distinguish default package installation from per-game opt-in")
@@ -53,15 +53,15 @@ require('makoRendererPackage = pkgs.callPackage ./mako-renderer.nix { };' in FLA
         and 'mako-renderer = makoRendererPackage;' in FLAKE,
         "flake must expose a direct build target for the MAKO package")
 
-required_sources = "configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix"
+required_sources = "hosts/nixos/configuration.nix hosts/nixos/home.nix hosts/nixos/host-settings.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix"
 require(f"REQUIRED_NIXOS_SOURCE_FILES=({required_sources})" in INSTALLER
-        and "REQUIRED_NIXOS_RUNTIME_FILES=(hooks/qemu)" in INSTALLER,
-        "installer preflight must require the six Nix sources and separate QEMU runtime hook")
+        and "REQUIRED_NIXOS_RUNTIME_FILES=(hosts/nixos/hooks/qemu)" in INSTALLER,
+        "installer preflight must require the seven Nix sources (host files plus flake-root packages) and separate QEMU runtime hook")
 require('"$NIXOS_FLAKE_DIR/mako-renderer.nix"' in INSTALLER,
         "installer rollback/backup transaction must include the MAKO package expression")
 require(f"REQUIRED_NIXOS_SOURCE_FILES=({required_sources})" in INSTALLER_TEST
-        and "REQUIRED_NIXOS_RUNTIME_FILES=(hooks/qemu)" in INSTALLER_TEST,
-        "installer regression harness must cover the six deployed Nix sources and QEMU runtime hook")
+        and "REQUIRED_NIXOS_RUNTIME_FILES=(hosts/nixos/hooks/qemu)" in INSTALLER_TEST,
+        "installer regression harness must cover the seven deployed Nix sources (host files plus flake-root packages) and QEMU runtime hook")
 
 require("### MAKO Renderer for Proton games" in README and "docs/MAKO.md" in README,
         "README must describe and link the optional MAKO integration")
@@ -100,7 +100,7 @@ require("python3 scripts/test-mako-renderer.py" in WORKFLOW
 require("python3 scripts/test-mako-renderer.py" in CONTRIBUTING
         and ".#mako-renderer" in CONTRIBUTING,
         "contributor validation instructions must include the MAKO test and build")
-require("mako-renderer.nix" in README and README.count("for file in configuration.nix home.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix; do") == 2,
+require("mako-renderer.nix" in README and README.count("for file in hosts/nixos/configuration.nix hosts/nixos/home.nix hosts/nixos/host-settings.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix; do") == 2,
         "README manual deployment loops must copy the new package expression")
 
 if errors:

@@ -4,7 +4,7 @@ This repository contains **two different kinds of UUIDs**. Do not treat them as 
 
 ## 1. Host storage identifiers — keep the deployed values
 
-The committed `nixos/hardware-configuration.nix` is specific to the currently deployed host. Its storage identifiers are intentional, not placeholders:
+The committed `nixos/hosts/nixos/hardware-configuration.nix` is specific to the currently deployed host. Its storage identifiers are intentional, not placeholders:
 
 - `rootDev` selects the Btrfs filesystem used by the NixOS mount definitions.
 - `boot.initrd.luks.devices."cryptroot".device` identifies the encrypted LUKS block device that is opened during boot.

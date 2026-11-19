@@ -11,7 +11,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 XML_PATH = ROOT / "vm-xml" / "win10.xml"
-HOOK_PATH = ROOT / "nixos" / "hooks" / "qemu"
+HOOK_PATH = ROOT / "nixos" / "hosts" / "nixos" / "hooks" / "qemu"
 
 
 def parse_args() -> argparse.Namespace:

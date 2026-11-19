@@ -1,0 +1,75 @@
+name: Weekly flake update PR
+
+# Opens a pull request with a refreshed nixos/flake.lock every Monday at 04:00
+# UTC (and on manual dispatch). Normal CI evaluates the updated lock on the PR;
+# merging remains a deliberate maintainer decision. This keeps nixpkgs-unstable
+# drift reviewable instead of a large, occasional manual jump.
+#
+# The branch/PR is never merged automatically. If a PR is already open, the job
+# force-pushes the same branch so only one update PR exists at a time.
+on:
+  schedule:
+    - cron: '0 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: flake-update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    if: github.repository == 'kUmutUK/nixos-hyprland-vfio'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@3138316df39ed29be04236d7ffc686fa525866aa
+
+      - name: Update flake.lock and open or refresh the PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          branch="auto/flake-update"
+          date_tag="$(date -u +%Y%m%d)"
+          title="chore: weekly flake lock update ($date_tag)"
+          body="Automated weekly \`nix flake update\` for \`nixos/flake.lock\`.
+          Review the input diff below, then let Normal CI finish on this PR before merging.
+          A merged update requires a new manual Full NixOS System Build before the next release."
+
+          # Reuse or create the update branch from the current default branch.
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+            git checkout -B "$branch" "origin/$branch"
+            git merge --ff-only origin/"${GITHUB_REF_NAME:-main}" || git checkout -B "$branch" "origin/${GITHUB_REF_NAME:-main}"
+          else
+            git checkout -b "$branch"
+          fi
+
+          nix flake update --flake ./nixos
+
+          if git diff --quiet -- nixos/flake.lock; then
+            echo "flake.lock is already up to date; no PR needed."
+            exit 0
+          fi
+
+          git add nixos/flake.lock
+          git commit -m "chore: weekly flake lock update ($date_tag)"
+          git push --force-with-lease origin "$branch"
+
+          if gh pr view "$branch" --json number >/dev/null 2>&1; then
+            gh pr edit "$branch" --title "$title" --body "$body"
+            echo "  existing update PR refreshed"
+          else
+            gh pr create --head "$branch" --base "${GITHUB_REF_NAME:-main}" \
+              --title "$title" --body "$body"
+            echo "  update PR created"
+          fi

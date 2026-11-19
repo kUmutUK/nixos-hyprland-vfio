@@ -1,0 +1,75 @@
+name: Binary cache push (manual)
+
+# Pushes the built NixOS system toplevel, the selected kernel, and the pinned
+# LSFG-VK v2 / MAKO Renderer packages to a Cachix binary cache. The RT-Bore-LTO
+# kernel is not published upstream, so caching it removes repeated multi-hour
+# local rebuilds for the maintainer and contributors.
+#
+# Setup (one-time, by the maintainer):
+#   1. Create a cache at https://app.cachix.org/ named e.g.
+#      kumutuk-nixos-hyprland-vfio (personal/private scope is fine).
+#   2. Add the CACHIX_AUTH_TOKEN secret to this repository.
+#   3. Copy the "extra-substituters"/"extra-trusted-public-keys" pair printed by
+#      Cachix into the nixConfig block of nixos/flake.nix and into the
+#      nix.settings.substituters/trusted-public-keys lists of
+#      nixos/hosts/nixos/configuration.nix, then commit that change separately.
+# Until step 3 is committed, this workflow only uploads; nothing consumes it.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cache-push-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  push:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@3138316df39ed29be04236d7ffc686fa525866aa
+
+      - name: Report available disk space
+        run: df -h "$GITHUB_WORKSPACE" "$RUNNER_TEMP"
+
+      - name: Install Cachix
+        uses: cachix/cachix-action@fc01fd1a27c834c27f9e2bdd0b9319a2b0b2e00f # v16
+        with:
+          name: kumutuk-nixos-hyprland-vfio
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+          # Push only; do not activate the cache for this run's own substitution.
+          useCache: false
+
+      - name: Build and push the complete system
+        working-directory: nixos
+        run: |
+          set -euo pipefail
+          nix build --no-link --show-trace --no-update-lock-file \
+            .#nixosConfigurations.nixos.config.system.build.toplevel
+          echo "  system toplevel pushed"
+
+      - name: Build and push the pinned packages
+        working-directory: nixos
+        run: |
+          set -euo pipefail
+          nix build --no-link --no-update-lock-file .#lsfg-vk-v2
+          nix build --no-link --no-update-lock-file .#mako-renderer
+          echo "  pinned packages pushed"
+
+      - name: Verify the lock file was not rewritten
+        run: |
+          if ! git diff --quiet -- nixos/flake.lock; then
+            echo "::error::flake.lock changed during the cache push."
+            git --no-pager diff -- nixos/flake.lock
+            exit 1
+          fi
+          echo "  flake.lock clean"
+
+      - name: Report remaining disk space
+        if: always()
+        run: df -h "$GITHUB_WORKSPACE" "$RUNNER_TEMP"

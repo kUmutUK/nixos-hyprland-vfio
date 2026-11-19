@@ -15,6 +15,9 @@ result-*
 # macOS
 .DS_Store
 
+# direnv cache
+.direnv/
+
 # Sensitive files that should never be committed
 hashedPassword
 *.private

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Extract Bash scripts embedded in nixos/home.nix into standalone files.
+"""Extract Bash scripts embedded in nixos/hosts/nixos/home.nix into standalone files.
 
 The extractor recognizes selected Nix indented-string blocks without requiring
 a Nix parser, resolves the relevant Nix escapes, and writes each script to the
@@ -114,7 +114,7 @@ def extract(lines, index, direct=False):
 def main():
     parser = argparse.ArgumentParser(
         description=(
-            "Extract Bash scripts embedded in nixos/home.nix into standalone "
+            "Extract Bash scripts embedded in nixos/hosts/nixos/home.nix into standalone "
             "executable files."
         ),
         epilog=(
@@ -130,6 +130,8 @@ def main():
     outdir = args.output_directory
     home_nix = os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "nixos",
+        "hosts",
         "nixos",
         "home.nix",
     )

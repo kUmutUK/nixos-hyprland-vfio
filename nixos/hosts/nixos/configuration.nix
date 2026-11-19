@@ -132,7 +132,13 @@ let
   '';
 in
 {
-  imports = [ ./hardware-configuration.nix ];
+  imports = [
+    ./hardware-configuration.nix
+    # Host-specific desktop values (monitor output/mode, wallpaper, git identity).
+    # flake.nix reads the same config.kumutuk.host options to pass them to Home
+    # Manager through extraSpecialArgs, so there is exactly one place to edit.
+    ./host-settings.nix
+  ];
 
   # Media partition
   fileSystems."/mnt/media" = {

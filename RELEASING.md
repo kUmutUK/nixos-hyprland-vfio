@@ -73,7 +73,10 @@ The dual-guest VM definition `vm-xml/win10.xml` remains outside the ancestor-bui
    `scripts/package-source-zip.sh`,
    `.github/workflows/check.yml`,
    `.github/workflows/kernel-build.yml`,
-   `.github/workflows/release.yml`
+   `.github/workflows/release.yml`,
+   `.github/workflows/cache.yml`,
+   `.github/workflows/flake-update.yml`,
+   `docs/MIGRATION-GUIDE.md`
 
    The nine superseded one-off archive reports listed above are included solely as deletion paths. The release workflow verifies that each has Git diff status `D`; editing or recreating one remains outside this exception.
 
@@ -93,7 +96,7 @@ The dual-guest VM definition `vm-xml/win10.xml` remains outside the ancestor-bui
    rejection, including an `install.sh` change, but it does **not** bypass
    exact-commit normal CI, the existence of a successful ancestor full-system
    build, version and tag validation, or release-artifact checks. Tag-triggered releases cannot use it. It also cannot waive the separate `vm_xml_validated` requirement when `vm-xml/win10.xml` changed. GitHub records this as a maintainer assertion; it does not independently verify physical hardware testing.
-   The UUID identity guide above is documentation-only: it explains existing host storage identifiers and VM identity handling but does not alter either. It is included as one exact path, not as a wildcard documentation exemption. The two VM XML sync Python paths above are narrowly scoped migration-time helpers outside the NixOS flake/derivation graph and are covered by the dedicated mock-backed VM XML sync suite in normal CI. The VM diagnostic helper creates a separate temporary XML file and never edits the production input; its dedicated regression test covers libvirt's single-quoted `dumpxml` output. The VM XML path test and installer rollback test are offline regression harnesses. The `scripts/test-manual-vm-bootstrap.sh` and `scripts/test-installer-invariants.sh` paths are CI-only mock regression harnesses; they do not run host mutations or alter the NixOS system closure. NixOS modules/flake outputs/inputs and machine storage configuration (including `nixos/configuration.nix`, `nixos/flake.nix`, `nixos/flake.lock`, `nixos/hardware-configuration.nix`, and `nixos/mako-renderer.nix`), `vm-xml/win10.xml`, `install.sh`, runtime hooks, and other system-closure-affecting paths remain gated by a new full-system build.
+   The UUID identity guide above is documentation-only: it explains existing host storage identifiers and VM identity handling but does not alter either. It is included as one exact path, not as a wildcard documentation exemption. The two VM XML sync Python paths above are narrowly scoped migration-time helpers outside the NixOS flake/derivation graph and are covered by the dedicated mock-backed VM XML sync suite in normal CI. The VM diagnostic helper creates a separate temporary XML file and never edits the production input; its dedicated regression test covers libvirt's single-quoted `dumpxml` output. The VM XML path test and installer rollback test are offline regression harnesses. The `scripts/test-manual-vm-bootstrap.sh` and `scripts/test-installer-invariants.sh` paths are CI-only mock regression harnesses; they do not run host mutations or alter the NixOS system closure. NixOS modules/flake outputs/inputs and machine storage configuration (including `nixos/hosts/nixos/configuration.nix`, `nixos/flake.nix`, `nixos/flake.lock`, `nixos/hosts/nixos/hardware-configuration.nix`, and `nixos/mako-renderer.nix`), `vm-xml/win10.xml`, `install.sh`, runtime hooks, and other system-closure-affecting paths remain gated by a new full-system build.
 
 5. Review the release version and changelog before publishing.
 

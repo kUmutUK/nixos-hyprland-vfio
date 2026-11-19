@@ -87,7 +87,7 @@
             # Keep shared system packages declared in configuration.nix only;
             # duplicate declarations here make ownership harder to maintain.
           })
-          ./configuration.nix
+          ./hosts/nixos/configuration.nix
         ];
       };
 

@@ -2,8 +2,8 @@
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-HOOK="$REPO_DIR/nixos/hooks/qemu"
-CONFIG="$REPO_DIR/nixos/configuration.nix"
+HOOK="$REPO_DIR/nixos/hosts/nixos/hooks/qemu"
+CONFIG="$REPO_DIR/nixos/hosts/nixos/configuration.nix"
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
