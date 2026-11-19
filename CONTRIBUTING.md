@@ -17,7 +17,9 @@ Thank you for helping improve this project. Because this is a hardware-specific 
 
 Run these commands from the repository root. Go is required for the pinned Actionlint invocation.
 
-**Installer validation boundary:** CI and the commands below cover Bash syntax, ShellCheck, installer invariants, and mocked rollback behavior. Release #52 accepted `TARGET_HOST_VALIDATED=true` for exact v1.6.0 source `3c518e45d979db3234f7628ccbf3979a0057dcf2`; this is a maintainer attestation ; the supporting transcript is not committed. current `main` is one commit later, but `install.sh` itself is unchanged from the tagged source. A reviewer cannot independently reproduce the live migration/rollback result from retained evidence. Keep the helper experimental and record static tests separately from physical validation.
+**Installer validation boundary:** CI and the commands below cover Bash syntax, ShellCheck, installer invariants, and mocked rollback behavior. Release #52 accepted `TARGET_HOST_VALIDATED=true` for exact v1.6.0 tag source `3c518e45d979db3234f7628ccbf3979a0057dcf2`; this is a maintainer attestation and the supporting transcript is not committed. The audited main baseline is six commits and 15 changed paths after v1.6.0; `install.sh` changed by 36 insertions and one deletion. The x86-64-v3 preflight in the audited main installer is not covered by the tag attestation. A reviewer cannot independently reproduce the live migration/rollback result from retained evidence. Keep the helper experimental and record static tests separately from physical validation.
+
+**Full-system release gate:** Full-system Build #21 on `672d255d4a921c097dd69eae817e8dc9699380d6` is 20 commits and 39 changed paths behind the v1.6.0 tag, and 26 commits and 39 changed paths behind the audited main baseline `9e399dcbe96a82a91d03e95fe2251f4e437eadb7`. Normal CI is not a complete NixOS system build; a fresh full-system build remains required before the next release.
 
 ```bash
 go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/*.yml

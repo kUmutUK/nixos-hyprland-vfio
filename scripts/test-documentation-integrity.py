@@ -18,6 +18,7 @@ README = (ROOT / "README.md").read_text(encoding="utf-8")
 DISCLAIMER = (ROOT / "DISCLAIMER.md").read_text(encoding="utf-8")
 INSTALLATION = (ROOT / "INSTALLATION.md").read_text(encoding="utf-8")
 CONTRIBUTING = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
+MIGRATION_GUIDE = (ROOT / "docs/MIGRATION-GUIDE.md").read_text(encoding="utf-8")
 RELEASING = (ROOT / "RELEASING.md").read_text(encoding="utf-8")
 RELEASE_WORKFLOW = (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
 CLIFF_CONFIG = (ROOT / ".git-cliff.toml").read_text(encoding="utf-8")
@@ -643,12 +644,15 @@ require(
     and "supporting transcript is not committed" in CONTRIBUTING
     and "no supporting transcript committed here" in REPAIR
     and "mocked installer-invariant/rollback tests" in README
-    and "Release #52 later accepted a maintainer `TARGET_HOST_VALIDATED=true` declaration" in README
-    and "current `main` is one commit later" in README
-    and "`install.sh` itself is unchanged from that tag" in README
+    and "Release #52 later accepted `TARGET_HOST_VALIDATED=true`" in README
+    and "The audited main baseline is six commits and 15 changed paths after v1.6.0" in README
+    and "install.sh changed by 36 insertions and one deletion" in README
+    and "x86-64-v3 CPU/OS feature preflight" in README
     and "Release #52 accepted `TARGET_HOST_VALIDATED=true`" in CONTRIBUTING
-    and "current `main` is one commit later" in CONTRIBUTING
-    and "Release #52 accepted a maintainer `TARGET_HOST_VALIDATED=true` attestation" in DISCLAIMER,
+    and "The audited main baseline is six commits and 15 changed paths after v1.6.0" in CONTRIBUTING
+    and "Release #52 accepted a maintainer `TARGET_HOST_VALIDATED=true` attestation" in DISCLAIMER
+    and "The audited main baseline is six commits and 15 changed paths after v1.6.0" in DISCLAIMER
+    and "The audited main baseline is six commits and 15 changed paths after v1.6.0" in INSTALLATION,
     "install.sh must remain experimental and its exact-source attestation boundary must be stated consistently",
 )
 require(
@@ -2599,43 +2603,89 @@ require(
     all(item in (README + INSTALLATION + CONTRIBUTING + STATE_INDEX + CHANGELOG + REPAIR) for item in (
         "v1.6.0", "44594826628", "3c518e45d979db3234f7628ccbf3979a0057dcf2",
         "505,012 bytes", "80aa8e731e26e2ca81d3536f738f84203d7c2edfbfffc824b879bcf504d3d63b",
-        "44595684642", "b14b8d4a0fd4affcc8917b7f2376cfe9d6d78648", "44593727498",
+        "44603757865", "9e399dcbe96a82a91d03e95fe2251f4e437eadb7", "44593727498",
         "44560545993", "672d255d4a921c097dd69eae817e8dc9699380d6", "43982447714",
         "44548011675", "d8484ab9083d9c9c71551b0147fa2591e2dbd8a1",
         "5639e8b2fff7140b52a84e93756c2c3e0a8b6311a33d43aebcae430526601c84",
     )),
-    "current release/build/CI provenance must identify v1.6.0 (run #52, 3c518e45, metadata 505,012-byte asset), current main CI #1664, tag CI #1663, v1.5.9, pre-update CI #1649, and Build #21",
+    "release/build/CI provenance must identify v1.6.0, the pre-update main CI #1669 baseline, exact tag CI #1663, v1.5.9, pre-update CI #1649, and Build #21",
 )
 require(
     all(item in (README + INSTALLATION + CONTRIBUTING + STATE_INDEX + CHANGELOG + REPAIR) for item in (
-        "20 commits and 39 changed paths", "21 commits and 39 changed paths",
+        "20 commits and 39 changed paths", "26 commits and 39 changed paths",
+        "six commits and 15 changed paths", "36 insertions and one deletion",
         "Full-system Build #21", "Release #52", "TARGET_HOST_VALIDATED=true",
     )),
-    "current status records must distinguish the old full-system build, current tag/main gaps, and Release #52 host attestation",
+    "status records must distinguish Build #21, tag-to-main source drift, installer changes, and the Release #52 tag-only attestation",
 )
 require(
-    "20 commits and 39 changed paths" in README
-    and "20 commits and 39 changed paths" in CHANGELOG
-    and "20 commits and 39 changed paths" in CONTRIBUTING
-    and "20 commits and 39 changed paths" in STATE_INDEX
-    and "20 commits and 39 changed paths" in REPAIR
-    and "21 commits and 39 changed paths" in README
-    and "21 commits and 39 changed paths" in CHANGELOG
-    and "21 commits and 39 changed paths" in CONTRIBUTING
-    and "21 commits and 39 changed paths" in STATE_INDEX
-    and "21 commits and 39 changed paths" in REPAIR,
-    "current full-system build gap must be measured against both release tag and main",
+    all("20 commits and 39 changed paths" in document for document in (README, CHANGELOG, CONTRIBUTING, STATE_INDEX, REPAIR))
+    and all("26 commits and 39 changed paths" in document for document in (README, CHANGELOG, CONTRIBUTING, STATE_INDEX, REPAIR)),
+    "Build #21 distance must be recorded for both the release tag and audited main baseline",
 )
 require(
-    "Normal CI #1664" in README and "44595684642" in README and "b14b8d4a0fd4affcc8917b7f2376cfe9d6d78648" in README
-    and "Normal CI #1664" in CHANGELOG and "44595684642" in CHANGELOG
-    and "Normal CI #1664" in CONTRIBUTING and "44595684642" in CONTRIBUTING
-    and "Normal CI #1664" in STATE_INDEX and "44595684642" in STATE_INDEX
-    and "Normal CI #1664" in REPAIR and "44595684642" in REPAIR
+    all("six commits and 15 changed paths" in document for document in (
+        README, CHANGELOG, CONTRIBUTING, STATE_INDEX, REPAIR, DISCLAIMER, INSTALLATION, MIGRATION_GUIDE,
+    )),
+    "tag-to-audited-main distance must be stated across installer validation records",
+)
+require(
+    "Normal CI #1669" in README and "44603757865" in README and "9e399dcbe96a82a91d03e95fe2251f4e437eadb7" in README
+    and "Normal CI #1669" in CHANGELOG and "44603757865" in CHANGELOG
+    and "Normal CI #1669" in CONTRIBUTING and "44603757865" in CONTRIBUTING
+    and "Normal CI #1669" in STATE_INDEX and "44603757865" in STATE_INDEX
+    and "Normal CI #1669" in REPAIR and "44603757865" in REPAIR
     and "Normal CI #1663" in README and "44593727498" in README
     and "Normal CI #1663" in REPAIR and "44593727498" in REPAIR,
-    "current main CI #1664 and exact release-tag CI #1663 must be recorded across status documents",
+    "pre-update main CI #1669 and exact release-tag CI #1663 must be recorded in current status",
 )
+
+# Compare recorded distances with the actual Git graph in full checkouts.
+# Source ZIP validation has no .git metadata and skips only this history check.
+def git_stdout(*args: str) -> str | None:
+    result = subprocess.run(
+        ["git", "-C", str(ROOT), *args],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    return result.stdout.strip() if result.returncode == 0 else None
+
+
+if git_stdout("rev-parse", "--is-inside-work-tree") == "true":
+    audit_baseline = "9e399dcbe96a82a91d03e95fe2251f4e437eadb7"
+    release_tag_commit = "3c518e45d979db3234f7628ccbf3979a0057dcf2"
+    last_full_build = "672d255d4a921c097dd69eae817e8dc9699380d6"
+
+    def git_range_metrics(base: str, head: str) -> tuple[int | None, int | None]:
+        count_text = git_stdout("rev-list", "--count", f"{base}..{head}")
+        paths_text = git_stdout("diff", "--name-only", f"{base}...{head}")
+        if count_text is None or paths_text is None:
+            return None, None
+        return int(count_text), len([line for line in paths_text.splitlines() if line])
+
+    require(
+        git_stdout("rev-parse", f"{audit_baseline}^{{commit}}") == audit_baseline,
+        "the recorded pre-update main baseline must resolve in Git history",
+    )
+    require(
+        git_stdout("rev-parse", f"{release_tag_commit}^{{commit}}") == release_tag_commit,
+        "the v1.6.0 tag source must resolve in Git history",
+    )
+    build_to_tag = git_range_metrics(last_full_build, release_tag_commit)
+    build_to_audit = git_range_metrics(last_full_build, audit_baseline)
+    tag_to_audit = git_range_metrics(release_tag_commit, audit_baseline)
+    require(build_to_tag == (20, 39), f"Build #21 → tag expected (20 commits, 39 paths), got {build_to_tag}")
+    require(build_to_audit == (26, 39), f"Build #21 → audited main expected (26 commits, 39 paths), got {build_to_audit}")
+    require(tag_to_audit == (6, 15), f"v1.6.0 → audited main expected (6 commits, 15 paths), got {tag_to_audit}")
+    installer_numstat = git_stdout("diff", "--numstat", f"{release_tag_commit}...{audit_baseline}", "--", "install.sh")
+    require(
+        installer_numstat == "36\t1\tinstall.sh",
+        f"v1.6.0 → audited main install.sh diff expected 36 insertions / 1 deletion, got {installer_numstat!r}",
+    )
+else:
+    print("SKIP: source archive has no .git metadata; Git history comparisons run in checkout CI.")
+
 require(
     "Release #52 target-host attestation" in REPAIR
     and "TARGET_HOST_VALIDATED=true" in REPAIR
