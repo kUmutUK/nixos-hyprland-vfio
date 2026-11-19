@@ -623,15 +623,19 @@ require(
     "VM XML structural tests must use a stable diagnostic code instead of English-message matching",
 )
 require(
-    "EXPERIMENTAL: NOT END-TO-END TESTED ON A TARGET HOST" in INSTALLER
+    "EXPERIMENTAL: CURRENT SOURCE REVISION NOT TARGET-HOST VALIDATED" in INSTALLER
     and "Experimental installer validation status" in README
     and "EXPERIMENTAL — LIVE VALIDATION EVIDENCE IS INCOMPLETE" in INSTALLATION
     and "supporting target-host transcript is not committed" in README
     and "supporting target-host transcript is not committed" in INSTALLATION
     and "supporting transcript is not committed" in CONTRIBUTING
     and "no supporting transcript committed here" in REPAIR
-    and "mocked installer-invariant/rollback tests" in README,
-    "install.sh must be labeled experimental and static/mock coverage must not be presented as live target-host validation",
+    and "mocked installer-invariant/rollback tests" in README
+    and "The Release #50 host attestation applies only to the exact v1.6.0 release commit" in README
+    and "The current `install.sh` was changed after the tag and is not covered" in README
+    and "does not cover the six later commits on current `main`" in CONTRIBUTING
+    and "The current `main` is six commits later and includes post-release changes to `install.sh`" in DISCLAIMER,
+    "install.sh must remain experimental and its exact-source attestation boundary must be stated consistently",
 )
 require(
     "docs/UUID-AND-MACHINE-IDENTITY.md" in README
@@ -2590,6 +2594,22 @@ require(
         "10 commits and 37 changed paths", "Full-system Build #21", "Release #50", "TARGET_HOST_VALIDATED=true",
     )),
     "current status records must distinguish the old full-system build, pre-update CI, and later Release #50 host attestation",
+)
+require(
+    "16 commits and 38 changed paths" in README
+    and "16 commits and 38 changed paths" in CHANGELOG
+    and "16 commits and 38 changed paths" in CONTRIBUTING
+    and "16 commits and 38 changed paths" in STATE_INDEX
+    and "16 commits and 38 changed paths" in REPAIR,
+    "current full-system build gap must be measured against current main, not only the old pre-update baseline",
+)
+require(
+    "Normal CI #1655" in README and "44576575377" in README and "7f0f4f7e0bef8567811244f6632abc798c98983e" in README
+    and "Normal CI #1655" in CHANGELOG and "44576575377" in CHANGELOG
+    and "Normal CI #1655" in CONTRIBUTING and "44576575377" in CONTRIBUTING
+    and "Normal CI #1655" in STATE_INDEX and "44576575377" in STATE_INDEX
+    and "Normal CI #1655" in REPAIR and "44576575377" in REPAIR,
+    "current main CI #1655 and exact HEAD SHA must be recorded across status documents",
 )
 require(
     "Release #50 target-host attestation" in REPAIR
