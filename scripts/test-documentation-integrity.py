@@ -13,6 +13,7 @@ import xml.etree.ElementTree as ET
 ROOT = Path(__file__).resolve().parents[1]
 INSTALLER = (ROOT / "install.sh").read_text(encoding="utf-8")
 INSTALLER_TEST = (ROOT / "scripts/test-installer-invariants.sh").read_text(encoding="utf-8")
+INSTALLER_ROLLBACK_TEST = (ROOT / "scripts/test-installer-rollback.sh").read_text(encoding="utf-8")
 README = (ROOT / "README.md").read_text(encoding="utf-8")
 DISCLAIMER = (ROOT / "DISCLAIMER.md").read_text(encoding="utf-8")
 INSTALLATION = (ROOT / "INSTALLATION.md").read_text(encoding="utf-8")
@@ -931,16 +932,19 @@ require(
 )
 nav_section = REPAIR.split("## MAKO Renderer integration", 1)[0]
 require(
-    "Last completed full-system build baseline" in nav_section
+    "Latest completed full-system build" in nav_section
     and "Game graphics profile guidance" in nav_section
     and "CS2 frame-generation profile" in nav_section
     and "Source-tree audit hardening" in nav_section,
     "repair report navigation must include the build baseline and established historical sections",
 )
 require(
-    'read -rp "Enter a non-empty monitor output name (e.g. DP-1): " input_mon' in INSTALLER
+    "type 'none' to disable live wallpaper" in INSTALLER
+    and "none|off|disabled)" in INSTALLER
+    and "Monitor output name cannot be empty." not in INSTALLER
+    and "type `none` at the monitor prompt" in INSTALLATION
     and 'default = "DP-1"' in INSTALLATION,
-    "installer and installation guide must use the same illustrative DP-1 monitor-output example",
+    "installer, Home Manager, and installation guide must agree on explicit live-wallpaper disablement",
 )
 repair_baseline_match = re.search(
     r"(?m)^\*\*Verified full-system build baseline:\*\* GitHub `main` at `([0-9a-f]{40})`",
@@ -2579,20 +2583,54 @@ require(
 
 require(
     all(item in (README + INSTALLATION + CONTRIBUTING + STATE_INDEX + CHANGELOG + REPAIR) for item in (
-        "v1.5.8", "43969320702", "672d255d4a921c097dd69eae817e8dc9699380d6",
-        "479,536 bytes", "8b6d86972c6d01c8102b5072a1cc5d0c970fff6ef4eb26d27edf1e5e0a82f201",
-        "44536357001", "5f541211258511cc31b96160b6eb66fbe61a6499", "43982447714",
+        "v1.6.0", "44563029740", "93b8929f5aff5eec17a40afc3f3e91c3443a5c11",
+        "497,901 bytes", "8527aae50ab69809cf5986ebe6c6af0791bd955fca90d06d8656af8489821c36",
+        "44560545993", "672d255d4a921c097dd69eae817e8dc9699380d6", "43982447714",
     )),
-    "current release/build/CI provenance must identify v1.5.8, Build #21, and exact-main CI #1643",
+    "current release/build/CI provenance must identify v1.6.0, Release #50, pre-update CI #1649, and Build #21",
 )
 require(
-    "Release #48 attestation discrepancy" in REPAIR
+    all(item in (README + INSTALLATION + CONTRIBUTING + STATE_INDEX + CHANGELOG + REPAIR) for item in (
+        "10 commits and 37 changed paths", "Full-system Build #21", "Release #50", "TARGET_HOST_VALIDATED=true",
+    )),
+    "current status records must distinguish the old full-system build, pre-update CI, and later Release #50 host attestation",
+)
+require(
+    "Release #50 target-host attestation" in REPAIR
     and "TARGET_HOST_VALIDATED=true" in REPAIR
-    and "VM_XML_VALIDATED=true" in REPAIR
-    and "install.sh" in REPAIR
-    and "vdb" in REPAIR
+    and "Release #48" in REPAIR
+    and "vm_xml_validated=true" in REPAIR
+    and "unchanged between v1.5.9 and v1.6.0" in REPAIR
     and "Maintainer-attestation evidence rule" in RELEASING,
-    "the v1.5.8 manual-attestation evidence conflict must remain explicit",
+    "historical Release #48 and later Release #50 attestation limits must remain explicit",
+)
+require(
+    "${NIXOS_FLAKE_DIR}/hosts/nixos/hardware-configuration.nix" in INSTALLER
+    and "/mnt/etc/nixos/nixos/hosts/nixos/hardware-configuration.nix" in INSTALLER
+    and "${NIXOS_FLAKE_DIR}/hardware-configuration.nix" not in INSTALLER
+    and "/mnt/etc/nixos/nixos/hardware-configuration.nix" not in INSTALLER,
+    "installer recovery and Live ISO guidance must use the actual hosts/nixos hardware-configuration paths",
+)
+require(
+    "hosts/nixos/host-settings.nix" in INSTALLER_ROLLBACK_TEST
+    and "hosts/nixos/hardware-configuration.nix" in INSTALLER_ROLLBACK_TEST
+    and "mako-renderer.nix" in INSTALLER_ROLLBACK_TEST
+    and "NIXOS_FLAKE_DIR/hosts/nixos" in INSTALLER
+    and "NIXOS_FLAKE_DIR/hosts/nixos" in INSTALLER_ROLLBACK_TEST
+    and 'empty_parent in "$NIXOS_FLAKE_DIR/hosts/nixos"' in INSTALLER,
+    "installer rollback regression must cover the current hosts/nixos tree and empty-parent cleanup",
+)
+require(
+    "pkgs.gnused" in CONFIG
+    and "pkgs.gawk" in CONFIG
+    and "pkgs.gnused" in VFIO_HOOK_TEST
+    and "pkgs.gawk" in VFIO_HOOK_TEST,
+    "the VFIO hook runtime PATH must keep sed/gawk dependencies covered by regression tests",
+)
+require(
+    "`/etc/nixos/hardware-configuration.nix` or `/etc/nixos/nixos/hosts/nixos/hardware-configuration.nix`" in README
+    and "`/etc/nixos/hosts/nixos/hardware-configuration.nix`" not in README,
+    "README Home Snapper preflight paths must match the installer selector",
 )
 require(
     "61 matching unique literal paths" in STATE_INDEX

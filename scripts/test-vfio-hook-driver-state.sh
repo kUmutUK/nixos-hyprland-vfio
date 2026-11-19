@@ -25,9 +25,12 @@ match = re.search(
     configuration,
     re.DOTALL,
 )
-if match is None or "pkgs.gawk" not in match.group(1):
+if match is None:
+    raise SystemExit("FAIL: libvirt hook PATH block is missing")
+missing = [package for package in ("pkgs.gawk", "pkgs.gnused") if package not in match.group(1)]
+if missing:
     raise SystemExit(
-        "FAIL: libvirt hook PATH must explicitly include pkgs.gawk for service-state restoration"
+        "FAIL: libvirt hook PATH must include required runtime inputs: " + ", ".join(missing)
     )
 PY
 

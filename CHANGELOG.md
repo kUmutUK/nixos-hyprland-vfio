@@ -4,6 +4,16 @@ This file summarizes notable changes in English. The separate Turkish release-by
 
 ## [Unreleased]
 
+### Post-v1.6.0 repository consistency and installer parity fixes — 2026-11-19
+
+- **Current release/CI provenance:** record v1.6.0 / Release #50 and its canonical source ZIP metadata. Normal CI #1649 passed on the exact pre-update base commit `93b8929`; this update is later and requires its own CI result. Full-system Build #21 remains on `672d255` (10 commits / 37 changed paths behind that base), so a fresh full-system build of the updated main is required before the next release.
+- **Installer hardware paths:** correct the fallback paths printed by `install.sh` to the actual `/etc/nixos/nixos/hosts/nixos/hardware-configuration.nix` and `/mnt/etc/nixos/nixos/hosts/nixos/hardware-configuration.nix` targets.
+- **Optional monitor output:** pressing Enter keeps the detected monitor; typing `none`, `off`, or `disabled` explicitly stores an empty `monitorOutput`, matching the existing Home Manager behavior that disables mpvpaper.
+- **Rollback layout:** align the regression fixture with the deployed `hosts/nixos/` tree and cover restoration of `host-settings.nix`, machine hardware configuration, and `mako-renderer.nix`. When this run created the deployment root, rollback removes only empty `hosts/nixos` and `hosts` parents; non-empty/untracked content remains untouched.
+- **VFIO hook PATH:** document `pkgs.gnused` as required because the hook calls `sed`, and test it alongside `pkgs.gawk`.
+- **Attestation boundary:** Release #50 accepted `TARGET_HOST_VALIDATED=true` for exact source `93b8929` as a maintainer declaration; the supporting host transcript is not committed. The VM XML was unchanged from v1.5.9 to v1.6.0, so the changed-XML release gate did not trigger.
+- No storage UUID/PARTUUID, VM XML, PCI/USB identity, flake lock, GameMode setting, or other intentional runtime preference is changed by this update.
+
 ### Documentation consistency fixes from the repository deep analysis — 2026-11-19
 
 - **README manual migration (Path B):** correct "copy all six required Nix/flake files" to seven; the adjacent copy loop already deploys seven sources including `host-settings.nix`. INSTALLATION's pointer ("seven-file migration instructions") now matches. The documentation-integrity assertion pins the corrected wording and rejects the stale six/five variants.
@@ -11,11 +21,11 @@ This file summarizes notable changes in English. The separate Turkish release-by
 - **CONTRIBUTING target-machine chronology:** disambiguate the two "latest" labels — the 16 November "Latest target-machine update" is the local full-system build/ordinary VM check, while the 9 November entry is the latest clean-install/VM-lifecycle validation. The chronology paragraph now states this explicitly instead of using "latest" for both.
 - **INSTALLATION host-settings table:** rename the first row from the pre-restructure local variable name `hyprlandMonitorMode` to the actual `kumutuk.host` option `monitorMode`; the trailing "select a fixed mode in ..." sentence is updated the same way.
 - **DEGISIKLIK_GECMISI.md title:** rename the top-level heading to "Current-State Index (English)" to match how CHANGELOG and KURULUM describe the file; the old "Historical Change Log Index" title contradicted that description.
-- **VFIO hook wrapper comment:** the hook body uses `ls` and `awk` but no `sed`; the comment no longer claims `sed` (gnused) is required by the current body and marks gnused as a defensive input instead. The `makeBinPath` list is unchanged.
+- **VFIO hook wrapper comment (superseded correction):** the earlier analysis incorrectly concluded that the hook did not use `sed`; the current source calls `sed` when mapping DRM device nodes, so `pkgs.gnused` is required and is now documented and tested as such.
 - **docs/MIGRATION-GUIDE.md:** replace the unverifiable "31 offline Python/Bash suites" count with the concrete 19 `scripts/test-*` files that normal CI runs.
 - All offline regression suites pass after these changes; no NixOS runtime setting, VM XML, or hook behavior changed.
 
-### v1.5.9 release preparation and current-source reconciliation — 2026-11-19
+### v1.5.9 release preparation and current-source reconciliation (historical; superseded by v1.6.0) — 2026-11-19
 
 - Reconcile the latest published release as v1.5.8 (Release run #48, exact tag commit `672d255d4a921c097dd69eae817e8dc9699380d6`) and preserve the exact GitHub source-archive metadata.
 - Record successful current-main Normal CI #1643 [run 44536357001](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44536357001) on `5f541211258511cc31b96160b6eb66fbe61a6499` separately from Full-system Build #21 [run 43982447714](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43982447714) on exact v1.5.8 tag commit `672d255d4a921c097dd69eae817e8dc9699380d6`.

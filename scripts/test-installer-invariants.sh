@@ -1204,8 +1204,10 @@ if ! grep -Fq 'Target-system validation update — 3 November 2026' "$ENGLISH_GU
   echo "FAIL: INSTALLATION.md must distinguish the historical result from the latest RT-Bore-LTO validation." >&2
   exit 1
 fi
-if ! grep -Fq 'Monitor output name (for Hyprland monitor rule and mpvpaper wallpaper)' "$INSTALLER"; then
-  echo "FAIL: the monitor prompt must explain that the setting affects both the Hyprland rule and mpvpaper." >&2
+if ! grep -Fq "type 'none' to disable live wallpaper" "$INSTALLER" \
+  || ! grep -Fq 'none|off|disabled)' "$INSTALLER" \
+  || grep -Fq 'Monitor output name cannot be empty.' "$INSTALLER"; then
+  echo "FAIL: the monitor prompt must retain detected output on Enter and allow explicit live-wallpaper disablement." >&2
   exit 1
 fi
 if ! grep -Fq 'not published in the upstream CachyOS binary cache' "$README"; then

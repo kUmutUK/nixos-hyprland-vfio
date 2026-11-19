@@ -40,10 +40,13 @@ SYMLINK_TARGET="$NIXOS_FLAKE_DIR/symlink-config.nix"
 SYMLINK_REFERENT="$TEST_ROOT/original-referent.conf"
 DANGLING_TARGET="$NIXOS_FLAKE_DIR/dangling-config.nix"
 DANGLING_REFERENT="$TEST_ROOT/missing-original.conf"
-mkdir -p "$NIXOS_FLAKE_DIR/hooks" "$(dirname "$PATCHED_XML")" "$(dirname "$SOURCE_REVISION_FILE")" "$BACKUP_DIR"
-printf 'original configuration\n' > "$NIXOS_FLAKE_DIR/configuration.nix"
+mkdir -p "$NIXOS_FLAKE_DIR/hosts/nixos/hooks" "$(dirname "$PATCHED_XML")" "$(dirname "$SOURCE_REVISION_FILE")" "$BACKUP_DIR"
+printf 'original configuration\n' > "$NIXOS_FLAKE_DIR/hosts/nixos/configuration.nix"
+printf 'original host settings\n' > "$NIXOS_FLAKE_DIR/hosts/nixos/host-settings.nix"
+printf 'original machine hardware configuration\n' > "$NIXOS_FLAKE_DIR/hosts/nixos/hardware-configuration.nix"
 printf 'original LSFG package expression\n' > "$NIXOS_FLAKE_DIR/lsfg-vk-v2.nix"
-printf 'original hook\n' > "$NIXOS_FLAKE_DIR/hooks/qemu"
+printf 'original MAKO renderer expression\n' > "$NIXOS_FLAKE_DIR/mako-renderer.nix"
+printf 'original hook\n' > "$NIXOS_FLAKE_DIR/hosts/nixos/hooks/qemu"
 printf 'original vm xml\n' > "$PATCHED_XML"
 printf 'original source revision\n' > "$SOURCE_REVISION_FILE"
 printf 'original symlink referent\n' > "$SYMLINK_REFERENT"
@@ -80,18 +83,21 @@ ln -s "$NIXOS_FLAKE_DIR" "$SYMLINK_DIRECTORY"
 run_preflight_check 1 "$SYMLINK_DIRECTORY" "$NIXOS_FLAKE_DIR/normal-config.nix"
 
 # Use the same flattened backup naming convention as install.sh and preserve links.
-for target in "$NIXOS_FLAKE_DIR/configuration.nix" "$NIXOS_FLAKE_DIR/lsfg-vk-v2.nix" "$NIXOS_FLAKE_DIR/hooks" "$SOURCE_REVISION_FILE" "$PATCHED_XML" "$SYMLINK_TARGET" "$DANGLING_TARGET"; do
+for target in "$NIXOS_FLAKE_DIR/hosts/nixos/configuration.nix" "$NIXOS_FLAKE_DIR/hosts/nixos/host-settings.nix" "$NIXOS_FLAKE_DIR/hosts/nixos/hardware-configuration.nix" "$NIXOS_FLAKE_DIR/lsfg-vk-v2.nix" "$NIXOS_FLAKE_DIR/mako-renderer.nix" "$NIXOS_FLAKE_DIR/hosts/nixos/hooks" "$SOURCE_REVISION_FILE" "$PATCHED_XML" "$SYMLINK_TARGET" "$DANGLING_TARGET"; do
   backup_name="$(printf '%s' "$target" | tr '/' '_')"
   cp -a -- "$target" "$BACKUP_DIR/$backup_name"
 done
 
 # Simulate a partially completed deployment: some existing files have been
 # overwritten and targets that were previously absent have been created.
-printf 'partially deployed configuration\n' > "$NIXOS_FLAKE_DIR/configuration.nix"
+printf 'partially deployed configuration\n' > "$NIXOS_FLAKE_DIR/hosts/nixos/configuration.nix"
+printf 'partially deployed host settings\n' > "$NIXOS_FLAKE_DIR/hosts/nixos/host-settings.nix"
+printf 'partially deployed hardware configuration\n' > "$NIXOS_FLAKE_DIR/hosts/nixos/hardware-configuration.nix"
 printf 'partially deployed LSFG package expression\n' > "$NIXOS_FLAKE_DIR/lsfg-vk-v2.nix"
-printf 'partially deployed hook\n' > "$NIXOS_FLAKE_DIR/hooks/qemu"
+printf 'partially deployed MAKO renderer expression\n' > "$NIXOS_FLAKE_DIR/mako-renderer.nix"
+printf 'partially deployed hook\n' > "$NIXOS_FLAKE_DIR/hosts/nixos/hooks/qemu"
 printf 'new source revision\n' > "$SOURCE_REVISION_FILE"
-printf 'new home config\n' > "$NIXOS_FLAKE_DIR/home.nix"
+printf 'new home config\n' > "$NIXOS_FLAKE_DIR/hosts/nixos/home.nix"
 printf 'partially deployed xml\n' > "$PATCHED_XML"
 rm -- "$SYMLINK_TARGET" "$DANGLING_TARGET"
 ln -s "$TEST_ROOT/changed-referent.conf" "$SYMLINK_TARGET"
@@ -104,13 +110,15 @@ set +e
   NIXOS_FLAKE_DIR="$NIXOS_FLAKE_DIR"
   PATCHED_XML="$PATCHED_XML"
   TRANSACTION_PATHS=(
-    "$NIXOS_FLAKE_DIR/configuration.nix"
-    "$NIXOS_FLAKE_DIR/home.nix"
+    "$NIXOS_FLAKE_DIR/hosts/nixos/configuration.nix"
+    "$NIXOS_FLAKE_DIR/hosts/nixos/home.nix"
+    "$NIXOS_FLAKE_DIR/hosts/nixos/host-settings.nix"
+    "$NIXOS_FLAKE_DIR/hosts/nixos/hardware-configuration.nix"
     "$NIXOS_FLAKE_DIR/flake.nix"
     "$NIXOS_FLAKE_DIR/flake.lock"
     "$NIXOS_FLAKE_DIR/lsfg-vk-v2.nix"
-    "$NIXOS_FLAKE_DIR/hooks"
-    "$NIXOS_FLAKE_DIR/hardware-configuration.nix"
+    "$NIXOS_FLAKE_DIR/mako-renderer.nix"
+    "$NIXOS_FLAKE_DIR/hosts/nixos/hooks"
     "$SOURCE_REVISION_FILE"
     "$PATCHED_XML"
     "$SYMLINK_TARGET"
@@ -119,7 +127,7 @@ set +e
   declare -A TRANSACTION_EXISTED=()
   for target in "${TRANSACTION_PATHS[@]}"; do
     case "$target" in
-      "$NIXOS_FLAKE_DIR/configuration.nix"|"$NIXOS_FLAKE_DIR/lsfg-vk-v2.nix"|"$NIXOS_FLAKE_DIR/hooks"|"$SOURCE_REVISION_FILE"|"$PATCHED_XML"|"$SYMLINK_TARGET"|"$DANGLING_TARGET") TRANSACTION_EXISTED["$target"]=1 ;;
+      "$NIXOS_FLAKE_DIR/hosts/nixos/configuration.nix"|"$NIXOS_FLAKE_DIR/hosts/nixos/host-settings.nix"|"$NIXOS_FLAKE_DIR/hosts/nixos/hardware-configuration.nix"|"$NIXOS_FLAKE_DIR/lsfg-vk-v2.nix"|"$NIXOS_FLAKE_DIR/mako-renderer.nix"|"$NIXOS_FLAKE_DIR/hosts/nixos/hooks"|"$SOURCE_REVISION_FILE"|"$PATCHED_XML"|"$SYMLINK_TARGET"|"$DANGLING_TARGET") TRANSACTION_EXISTED["$target"]=1 ;;
       *)
         # shellcheck disable=SC2034 # consumed by sourced installer helpers
         TRANSACTION_EXISTED["$target"]=0
@@ -141,17 +149,23 @@ rollback_status=$?
 set -e
 [[ "$rollback_status" -eq 1 ]] || fail "rollback should preserve the original failure status 1 (got $rollback_status)"
 
-[[ "$(cat "$NIXOS_FLAKE_DIR/configuration.nix")" == 'original configuration' ]] \
-  || fail 'existing configuration.nix was not restored from backup'
+[[ "$(cat "$NIXOS_FLAKE_DIR/hosts/nixos/configuration.nix")" == 'original configuration' ]] \
+  || fail 'existing hosts/nixos/configuration.nix was not restored from backup'
+[[ "$(cat "$NIXOS_FLAKE_DIR/hosts/nixos/host-settings.nix")" == 'original host settings' ]] \
+  || fail 'existing hosts/nixos/host-settings.nix was not restored from backup'
+[[ "$(cat "$NIXOS_FLAKE_DIR/hosts/nixos/hardware-configuration.nix")" == 'original machine hardware configuration' ]] \
+  || fail 'existing hosts/nixos/hardware-configuration.nix was not restored from backup'
 [[ "$(cat "$NIXOS_FLAKE_DIR/lsfg-vk-v2.nix")" == 'original LSFG package expression' ]] \
   || fail 'existing lsfg-vk-v2.nix was not restored from backup'
-[[ "$(cat "$NIXOS_FLAKE_DIR/hooks/qemu")" == 'original hook' ]] \
+[[ "$(cat "$NIXOS_FLAKE_DIR/mako-renderer.nix")" == 'original MAKO renderer expression' ]] \
+  || fail 'existing mako-renderer.nix was not restored from backup'
+[[ "$(cat "$NIXOS_FLAKE_DIR/hosts/nixos/hooks/qemu")" == 'original hook' ]] \
   || fail 'existing hooks directory was not restored from backup'
 [[ "$(cat "$PATCHED_XML")" == 'original vm xml' ]] \
   || fail 'existing VM XML was not restored from backup'
 [[ "$(cat "$SOURCE_REVISION_FILE")" == 'original source revision' ]] \
   || fail 'previous .source-revision marker was not restored from backup'
-[[ ! -e "$NIXOS_FLAKE_DIR/home.nix" ]] \
+[[ ! -e "$NIXOS_FLAKE_DIR/hosts/nixos/home.nix" ]] \
   || fail 'newly created home.nix was not removed during rollback'
 [[ ! -e "$NIXOS_FLAKE_DIR/flake.nix" ]] \
   || fail 'newly created flake.nix was not removed during rollback'
@@ -177,13 +191,15 @@ HELPERS="$3"
 PATCHED_XML="$4"
 KEEP_EXTRA="$5"
 TRANSACTION_PATHS=(
-  "$NIXOS_FLAKE_DIR/configuration.nix"
-  "$NIXOS_FLAKE_DIR/home.nix"
+  "$NIXOS_FLAKE_DIR/hosts/nixos/configuration.nix"
+  "$NIXOS_FLAKE_DIR/hosts/nixos/home.nix"
+  "$NIXOS_FLAKE_DIR/hosts/nixos/host-settings.nix"
+  "$NIXOS_FLAKE_DIR/hosts/nixos/hardware-configuration.nix"
   "$NIXOS_FLAKE_DIR/flake.nix"
   "$NIXOS_FLAKE_DIR/flake.lock"
   "$NIXOS_FLAKE_DIR/lsfg-vk-v2.nix"
-  "$NIXOS_FLAKE_DIR/hooks"
-  "$NIXOS_FLAKE_DIR/hardware-configuration.nix"
+  "$NIXOS_FLAKE_DIR/mako-renderer.nix"
+  "$NIXOS_FLAKE_DIR/hosts/nixos/hooks"
   "$PATCHED_XML"
 )
 declare -A TRANSACTION_EXISTED=()
@@ -192,9 +208,12 @@ for target in "${TRANSACTION_PATHS[@]}"; do
 done
 NIXOS_FLAKE_DIR_EXISTED=0
 TRANSACTION_ACTIVE=1
-mkdir -p "$NIXOS_FLAKE_DIR/hooks"
-printf 'created by failed installer\n' > "$NIXOS_FLAKE_DIR/configuration.nix"
+mkdir -p "$NIXOS_FLAKE_DIR/hosts/nixos/hooks"
+printf 'created by failed installer\n' > "$NIXOS_FLAKE_DIR/hosts/nixos/configuration.nix"
+printf 'new host settings\n' > "$NIXOS_FLAKE_DIR/hosts/nixos/host-settings.nix"
+printf 'new hardware configuration\n' > "$NIXOS_FLAKE_DIR/hosts/nixos/hardware-configuration.nix"
 printf 'new LSFG package expression\n' > "$NIXOS_FLAKE_DIR/lsfg-vk-v2.nix"
+printf 'new MAKO renderer expression\n' > "$NIXOS_FLAKE_DIR/mako-renderer.nix"
 if [[ "$KEEP_EXTRA" == "yes" ]]; then
   printf 'preserve unrelated content\n' > "$NIXOS_FLAKE_DIR/user-notes.txt"
 fi
@@ -215,6 +234,7 @@ new_dir_status=$?
 set -e
 [[ "$new_dir_status" -eq 1 ]] || fail "new-directory rollback should preserve original exit status 1 (got $new_dir_status)"
 [[ ! -e "$NEW_FLAKE_DIR" ]] || fail 'rollback left the empty deployment directory created by this run'
+[[ ! -e "$NEW_FLAKE_DIR/hosts" ]] || fail 'rollback left the empty hosts parent created by this run'
 printf 'OK: rollback removes an empty deployment directory created by the failed run.\n'
 
 NEW_FLAKE_DIR_WITH_EXTRA="$TEST_ROOT/etc/nixos/new-nixos-flake-with-extra"
@@ -224,6 +244,7 @@ new_dir_extra_status=$?
 set -e
 [[ "$new_dir_extra_status" -eq 1 ]] || fail "nonempty-directory rollback should preserve original exit status 1 (got $new_dir_extra_status)"
 [[ -f "$NEW_FLAKE_DIR_WITH_EXTRA/user-notes.txt" ]] || fail 'rollback removed unrelated content from the new deployment directory'
+[[ ! -e "$NEW_FLAKE_DIR_WITH_EXTRA/hosts" ]] || fail 'rollback did not remove the empty hosts parents around managed paths'
 printf 'OK: rollback retains a newly created deployment directory when unrelated content remains.\n'
 
 # Snapshot cleanup is part of rollback only if this run created the subvolume.

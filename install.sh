@@ -554,20 +554,22 @@ trim_whitespace() {
   printf '%s' "$value"
 }
 
-read -rp "Monitor output name (for Hyprland monitor rule and mpvpaper wallpaper) [${monitor_output:-not detected}]: " input_mon
+read -rp "Monitor output name (for Hyprland monitor rule and mpvpaper wallpaper; type 'none' to disable live wallpaper) [${monitor_output:-not detected}]: " input_mon
 input_mon="$(trim_whitespace "$input_mon")"
 if [[ -n "$input_mon" ]]; then
-  monitor_output="$input_mon"
+  case "${input_mon,,}" in
+    none|off|disabled)
+      monitor_output=""
+      warn "Live wallpaper is disabled because monitorOutput is empty."
+      ;;
+    *)
+      monitor_output="$input_mon"
+      ;;
+  esac
 fi
-while [[ -z "${monitor_output//[[:space:]]/}" ]]; do
-  warn "Monitor output name cannot be empty. Find the exact name with: hyprctl monitors"
-  read -rp "Enter a non-empty monitor output name (e.g. DP-1): " input_mon
-  input_mon="$(trim_whitespace "$input_mon")"
-  if [[ -n "$input_mon" ]]; then
-    monitor_output="$input_mon"
-  fi
-done
-
+if [[ -z "$monitor_output" ]]; then
+  warn "No monitor output is configured; the empty monitorOutput keeps the catch-all monitor rule and disables mpvpaper."
+fi
 echo ""
 read -rp "Hyprland monitor mode (preferred or WIDTHxHEIGHT[@HZ]) [preferred]: " hypr_mon_mode
 hypr_mon_mode="${hypr_mon_mode:-preferred}"
@@ -700,7 +702,7 @@ transaction_backup_path() {
 }
 
 rollback_deployment() {
-  local exit_status="$1" target failed=0 backup_path parent
+  local exit_status="$1" target failed=0 backup_path parent empty_parent
   trap - EXIT
   trap '' INT TERM HUP
   if [ "$exit_status" -ne 0 ] && [ "${TRANSACTION_ACTIVE:-0}" = "1" ]; then
@@ -738,10 +740,16 @@ rollback_deployment() {
       fi
     done
 
-    # Remove the deployment directory only if it did not exist before this run.
-    # Use rmdir rather than rm -rf: anything untracked or added concurrently must
-    # be retained, even if that means the rollback is reported as incomplete.
+    # The hosts/nixos tree is created by this layout. Remove only empty parents
+    # when the deployment root itself was created by this run. Never recurse:
+    # untracked or concurrent content must be retained for manual recovery.
     if [[ "${NIXOS_FLAKE_DIR_EXISTED:-1}" = "0" && -d "$NIXOS_FLAKE_DIR" ]]; then
+      for empty_parent in "$NIXOS_FLAKE_DIR/hosts/nixos" "$NIXOS_FLAKE_DIR/hosts"; do
+        if [[ -d "$empty_parent" ]] && ! sudo rmdir -- "$empty_parent"; then
+          warn "Retained non-empty or inaccessible rollback parent directory: $empty_parent"
+          failed=1
+        fi
+      done
       if sudo rmdir -- "$NIXOS_FLAKE_DIR"; then
         warn "Removed the empty deployment directory created by this failed installer run."
       else
@@ -1047,15 +1055,15 @@ if [ "$HW_IN_PLACE" = "1" ]; then
   echo "  Verify: lsblk -f  # Are the UUIDs for all mounted partitions correct?"
 else
 warn "hardware-configuration.nix was NOT copied (machine-specific; UUIDs belong to this host)."
-warn "The flake imports ./hardware-configuration.nix, so the file must be located here:"
-echo -e "     ${CYAN}${NIXOS_FLAKE_DIR}/hardware-configuration.nix${NC}"
+warn "hosts/nixos/configuration.nix imports ./hardware-configuration.nix, so the file must be located here:"
+echo -e "     ${CYAN}${NIXOS_FLAKE_DIR}/hosts/nixos/hardware-configuration.nix${NC}"
 echo ""
 echo "   If the file already exists on this system:"
 echo -e "     ${CYAN}sudo cp ${NIXOS_DIR}/hardware-configuration.nix ${NIXOS_FLAKE_DIR}/hosts/nixos/${NC}"
 echo ""
 echo "   This migration installer is for an already booted NixOS host; do not run it from the live installer."
 echo "   For a fresh installation, follow INSTALLATION.md and generate hardware configuration for the mounted target."
-echo "   The generated file must be installed at /mnt/etc/nixos/nixos/hardware-configuration.nix before nixos-install."
+echo "   The generated file must be installed at /mnt/etc/nixos/nixos/hosts/nixos/hardware-configuration.nix before nixos-install."
 fi
 
 # ─── Btrfs snapshot subvolume ───────────────────────────

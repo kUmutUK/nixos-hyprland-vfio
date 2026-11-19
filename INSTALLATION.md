@@ -6,7 +6,7 @@ This guide walks through an AMD-oriented **NixOS + LUKS2 + Btrfs + Hyprland + VF
 
 > **Recommended approach: install manually.** This guide is for a clean installation. Follow the steps in order and understand each command before running it. `install.sh` is not a clean installer or disk-partitioning tool; it is an optional, higher-risk helper for advanced users migrating an existing NixOS system. Read [`README.md`](README.md) for its risk notice and the alternative manual migration steps.
 >
-> **EXPERIMENTAL — NOT END-TO-END TESTED:** The owner confirms that `install.sh` has not been tried. No end-to-end run of `install.sh` against a live NixOS/libvirt target host has been completed. CI covers Bash syntax, ShellCheck, and mocked installer regressions only; it has not run the helper through a real migration on a live target host or verified live rollback. Treat it as experimental and prefer the manual procedure.
+> **EXPERIMENTAL — LIVE VALIDATION EVIDENCE IS INCOMPLETE:** the 16 November owner note said `install.sh` had not been tried. The later v1.6.0 Release #50 log records `TARGET_HOST_VALIDATED=true` for exact source `93b8929`, with a maintainer declaration covering a clean installation using the current source (including `install.sh`) and the host/Windows VM lifecycle. The supporting target-host transcript is not committed, so this remains a maintainer attestation rather than independently reproducible evidence. CI's syntax, ShellCheck, and mocked regressions do not exercise a live migration or rollback. Treat the helper as experimental and prefer the manual procedure.
 >
 > The migration helper uses a non-blocking per-user process lock before prompting or deployment. A second run by the same user exits rather than overlapping backups and rollback; separately configured lock paths or different user accounts are not coordinated, so run the migration from one account at a time. Before any backup or system-file mutation, it now fails closed unless `/etc/nixos/hashedPassword` is non-empty and has `root:root` ownership with mode `0600`; create or repair the local-account hash using the manual migration instructions first.
 
@@ -644,10 +644,12 @@ options; the values used to live in home.nix's `let` block):
     };
 ```
 > The Lua `hl.monitor` rule reads `monitorOutput` and `monitorMode` through the host
-> module. An empty `monitorOutput` is a catch-all for manual setups; it does not mirror
-> workspaces. Prefer an explicit name such as `DP-1` on a multi-monitor system.
-> `home.nix` keeps fallback literals for standalone Home Manager use, but the deployed
-> values come from `host-settings.nix`.
+> module. An empty `monitorOutput` is a catch-all for manual setups and disables the
+> `mpvpaper` live wallpaper. In `install.sh`, type `none` at the monitor prompt to store
+> an empty value; pressing Enter keeps the detected output when one is available.
+> Prefer an explicit name such as `DP-1` on a multi-monitor system. `home.nix` keeps
+> fallback literals for standalone Home Manager use; deployed values come from
+> `host-settings.nix`.
 
 ### Native Hyprland Lua configuration
 
@@ -757,15 +759,19 @@ git -C /tmp/repo show "$SOURCE_REVISION:nixos/flake.lock" |
   sudo tee /mnt/etc/nixos/nixos/flake.lock >/dev/null
 ```
 
-> **Current published release (19 November 2026):** [v1.5.8](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.5.8), published by [Release run #48](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43969320702) from exact tag commit `672d255d4a921c097dd69eae817e8dc9699380d6`. GitHub's source ZIP metadata is 479,536 bytes / SHA-256 `8b6d86972c6d01c8102b5072a1cc5d0c970fff6ef4eb26d27edf1e5e0a82f201` (not independently re-hashed here).
+> **Latest published release (19 November 2026):** [v1.6.0](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.6.0), published by [Release run #50](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44563029740) from exact tag/source commit `93b8929f5aff5eec17a40afc3f3e91c3443a5c11`. GitHub records the canonical source ZIP as 497,901 bytes / SHA-256 `8527aae50ab69809cf5986ebe6c6af0791bd955fca90d06d8656af8489821c36` (not independently re-hashed here).
 >
-> **Current main-branch Normal CI:** [#1643](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44536357001) passed all 27 workflow-defined steps on exact `main` commit `5f541211258511cc31b96160b6eb66fbe61a6499`.
+> **Last confirmed pre-update main Normal CI baseline:** [#1649](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44560545993) passed all 27 workflow-defined steps on exact pre-update commit `93b8929f5aff5eec17a40afc3f3e91c3443a5c11`. The changes in this repository update are later than that SHA and need their own CI result.
 >
-> **Latest completed full-system build:** Full NixOS System Build #21 [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43982447714) succeeded on exact v1.5.8 tag commit `672d255d4a921c097dd69eae817e8dc9699380d6`. Current `main` is four commits and 36 changed paths ahead of that build, including runtime-affecting hosts/ and installer changes; #21 does not validate the current source tree. Run a fresh full-system build against current `main` before v1.5.9.
+> **Latest completed full-system build:** Full NixOS System Build #21 [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43982447714) succeeded on exact source `672d255d4a921c097dd69eae817e8dc9699380d6`. GitHub compares that build with the pre-update `main` baseline as 10 commits and 37 changed paths apart; #21 does not validate the hosts/ restructure and later updates. A fresh full-system build of the updated `main` is required before the next release.
 >
-> **Historical Full-system Build #20:** [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43653123079) succeeded on `46d2b809e4fe9530dde58c85450b3544cf5d1ed0`. Build #21 above supersedes it as the latest full-system build. The locked inputs used by the v1.5.8 build remain CachyOS `c9620070e884d55c5b5566e3fd46611ee24c4d3b`, nested `nixos-unstable-small` Nixpkgs package set `82566dfe91ca5e12bc10b36272280628142f651d`, and root `nixos-unstable` Nixpkgs `d4f25a3e562008648d45bcf2d70bcc7422cad84e`; these are distinct inputs.
+> **Release #50 target-host attestation:** the successful Release #50 log records `TARGET_HOST_VALIDATED=true` and confirms that the manual target-host attestation was accepted for exact commit `93b8929f5aff5eec17a40afc3f3e91c3443a5c11`. The input asserts exact-source clean installation, host boot, Windows VM start/shutdown, GPU handback, and Hyprland recovery. The repository does not contain the underlying test transcript, so record this as a maintainer attestation, not as an independently reproducible CI test. The 16 November note that `install.sh` had not been tried predates this later declaration and must not be repeated as the latest status without acknowledging the chronology.
 >
-> **Physical/functional validation boundary:** the separate owner-reported 16 November local build and ordinary VM start/shutdown has no recorded exact source SHA, derivation, or booted generation/kernel. The owner-reported status still says `install.sh` has not been tried; live migration/rollback, installed NixOS `vdb` guest boot, guest networking, and saved-state/managed-save restore remain unverified. Release #48 logged both manual host and VM XML attestations as true, but those values conflict with the retained validation record and are not independent test results. The VM XML has not changed in the four commits from v1.5.8 to current `main`; the VM-specific release checkbox is only relevant again if that file changes.
+> **VM XML validation boundary:** Release #50's dispatch included `vm_xml_validated=true`, but `vm-xml/win10.xml` was unchanged between v1.5.9 and v1.6.0, so the workflow's separate changed-XML gate did not trigger. That input is not evidence of a new semantic-validation or guest-boot result. The installed NixOS `vdb` guest, guest networking, saved-state/managed-save restore, and exact-source booted-generation identity remain unverified in the retained technical record.
+>
+> **Historical Full-system Build #20:** [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43653123079) succeeded on `46d2b809e4fe9530dde58c85450b3544cf5d1ed0`. Build #21 above supersedes it as the latest completed full-system build. The locked inputs used by Build #21 remain CachyOS `c9620070e884d55c5b5566e3fd46611ee24c4d3b`, nested `nixos-unstable-small` Nixpkgs `82566dfe91ca5e12bc10b36272280628142f651d`, and root `nixos-unstable` Nixpkgs `d4f25a3e562008648d45bcf2d70bcc7422cad84e`; these are distinct inputs.
+>
+> **Physical/functional validation boundary:** the 16 November owner-reported local build/ordinary VM start-shutdown has no recorded exact source SHA, derivation, or booted generation/kernel. The later Release #50 target-host attestation is recorded above but has no supporting transcript committed here. Installed NixOS `vdb` guest boot/networking, saved-state/managed-save restore, and exact-source physical activation/boot remain separately qualified.
 >
 > **VM XML release gate:** `vm-xml/win10.xml` remains outside the automatic
 > ancestor-build allowlist. When it differs from the previous stable tag, the
