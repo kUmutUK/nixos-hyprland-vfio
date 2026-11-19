@@ -257,10 +257,10 @@ echo -e "${CYAN}==============================================================${
 echo ""
 
 echo -e "${RED}${BOLD}WARNING: ADVANCED, HIGH-RISK MIGRATION SCRIPT${NC}"
-echo -e "${RED}${BOLD}EXPERIMENTAL: NOT END-TO-END TESTED ON A TARGET HOST${NC}"
+echo -e "${RED}${BOLD}EXPERIMENTAL: CURRENT SOURCE REVISION NOT TARGET-HOST VALIDATED${NC}"
 echo ""
-warn "No end-to-end run of install.sh against a live NixOS/libvirt target host has been completed."
-warn "CI covers syntax, ShellCheck, and mocked regression tests; it does not validate a live migration or recovery."
+warn "Release #50 records a maintainer host-validation attestation for exact v1.6.0 commit 93b8929; it does not cover this later main revision."
+warn "The supporting host transcript is not committed; CI syntax, ShellCheck, and mocked regressions do not validate a live migration or recovery."
 echo ""
 warn "RECOMMENDED APPROACH: Follow the manual migration steps in README.md first."
 warn "This script is not for a first-time NixOS installation or disk partitioning."
