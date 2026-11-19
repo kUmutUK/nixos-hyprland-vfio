@@ -1948,7 +1948,7 @@ require(
 )
 require("Current configuration notes — 2026-11-04" in STATE_INDEX, "current-state index date is stale")
 require("2026-10-28 entry" in STATE_INDEX and "2026-10-27 entry" not in STATE_INDEX, "root index must point to the 2026-10-28 CHANGELOG section")
-require("copy all six required Nix/flake files" in README and "copy all five required Nix/flake files" not in README and "four flake files" not in README, "README must describe the six-file migration accurately")
+require("copy all seven required Nix/flake files" in README and "copy all six required Nix/flake files" not in README and "copy all five required Nix/flake files" not in README and "four flake files" not in README, "README must describe the seven-file migration accurately (hosts/ layout includes host-settings.nix)")
 require("host-settings.nix" in INSTALLATION, "INSTALLATION must point to the host-settings.nix customization module")
 require(
     f"text = {chr(0xF023)};" in HOME_NIX
@@ -1992,7 +1992,14 @@ require(
     and "sixth" in CHANGELOG
     and "current preflight and regression coverage require all six" in CHANGELOG
     and "current preflight and regression coverage require all five" not in CHANGELOG,
-    "CHANGELOG must distinguish the historical four/five-file preflight from the current six-file source tree",
+    "CHANGELOG must distinguish the historical four/five-file preflight from the six-source preflight that preceded host-settings.nix",
+)
+require(
+    "cp /mnt/etc/nixos/hardware-configuration.nix /tmp/repo/nixos/hosts/nixos/hardware-configuration.nix" in README
+    and "cp /mnt/etc/nixos/hosts/nixos/hardware-configuration.nix" not in README
+    and "`nixos-generate-config` already creates `/mnt/etc/nixos/configuration.nix`" in INSTALLATION
+    and "/mnt/etc/nixos/hosts/nixos/configuration.nix" not in INSTALLATION,
+    "manual install guides must copy the generated hardware configuration from /mnt/etc/nixos and must not claim nixos-generate-config writes a hosts/ subtree",
 )
 
 require(

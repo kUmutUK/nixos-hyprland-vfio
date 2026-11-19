@@ -127,7 +127,7 @@ sudo nixos-generate-config --root /mnt
 
 git clone https://github.com/kUmutUK/nixos-hyprland-vfio.git /tmp/repo
 SOURCE_REVISION="$(git -C /tmp/repo rev-parse --verify HEAD)"
-cp /mnt/etc/nixos/hosts/nixos/hardware-configuration.nix /tmp/repo/nixos/hosts/nixos/hardware-configuration.nix
+cp /mnt/etc/nixos/hardware-configuration.nix /tmp/repo/nixos/hosts/nixos/hardware-configuration.nix
 TARGET_BACKUP="/mnt/etc/nixos-generated-backup-$(date +%Y%m%d-%H%M%S)"
 if [ -e "$TARGET_BACKUP" ] || [ -L "$TARGET_BACKUP" ]; then
   echo "ERROR: Backup path already exists: $TARGET_BACKUP" >&2
@@ -221,7 +221,7 @@ grep -nE 'system\.stateVersion|home\.stateVersion' \
   /home/localhost/.config/home-manager/home.nix 2>/dev/null || true
 ```
 
-5. After reviewing that diff and the values above, copy all six required Nix/flake files. This overwrites their corresponding target files, so do not run it before making and checking the backup:
+5. After reviewing that diff and the values above, copy all seven required Nix/flake files. This overwrites their corresponding target files, so do not run it before making and checking the backup:
 
 ```bash
 set -Eeuo pipefail

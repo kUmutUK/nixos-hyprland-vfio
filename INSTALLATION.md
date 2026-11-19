@@ -26,7 +26,7 @@ This guide walks through an AMD-oriented **NixOS + LUKS2 + Btrfs + Hyprland + VF
 
 **Gaming prerequisite:** If you plan to use LSFG-VK frame generation, install Lossless Scaling through Steam on the host. The Nix flake supplies the Vulkan layer, not the Lossless Scaling application. For a non-default Steam library, set the correct path in the LSFG-VK configuration.
 
-**LSFG-VK version:** The active configuration uses upstream v2, with `version = 2` and `[[profile]]` entries generated declaratively by Home Manager. The flake builds the layer/UI/CLI from the hash-pinned source expression `nixos/lsfg-vk-v2.nix`. It is a required part of the Nix source tree when deploying manually; do not copy only `configuration.nix`, `home.nix`, `flake.nix`, and `flake.lock`. The optional MAKO Renderer v4.6.0 package is defined in `nixos/mako-renderer.nix` and is also deployed with the Nix sources. Home Manager installs its UI and launcher, but games activate it only when you add `mako-launch %command%` to that game's Steam launch options. See [MAKO on NixOS](docs/MAKO.md) for prerequisites and compatibility notes. Follow the README's six-file migration instructions. Upstream LSFG-VK v2 is licensed CC BY-NC-ND 4.0; the package expression does not patch upstream source. When moving from an existing v1 setup, follow upstream's migration/validation guidance and check for stale v1 layer files before relying on the v2 install.
+**LSFG-VK version:** The active configuration uses upstream v2, with `version = 2` and `[[profile]]` entries generated declaratively by Home Manager. The flake builds the layer/UI/CLI from the hash-pinned source expression `nixos/lsfg-vk-v2.nix`. It is a required part of the Nix source tree when deploying manually; do not copy only `configuration.nix`, `home.nix`, `flake.nix`, and `flake.lock`. The optional MAKO Renderer v4.6.0 package is defined in `nixos/mako-renderer.nix` and is also deployed with the Nix sources. Home Manager installs its UI and launcher, but games activate it only when you add `mako-launch %command%` to that game's Steam launch options. See [MAKO on NixOS](docs/MAKO.md) for prerequisites and compatibility notes. Follow the README's seven-file migration instructions. Upstream LSFG-VK v2 is licensed CC BY-NC-ND 4.0; the package expression does not patch upstream source. When moving from an existing v1 setup, follow upstream's migration/validation guidance and check for stale v1 layer files before relying on the v2 install.
 
 ---
 
@@ -466,8 +466,8 @@ sudo mount "${PART_PREFIX}1" /mnt/boot
 
 # 🧠 9. Set up the repository and generate machine hardware configuration
 
-`nixos-generate-config` already creates `/mnt/etc/nixos/hosts/nixos/configuration.nix` and
-`hardware-configuration.nix`, so cloning the repository directly into `/mnt/etc/nixos`
+`nixos-generate-config` already creates `/mnt/etc/nixos/configuration.nix` and
+`/mnt/etc/nixos/hardware-configuration.nix`, so cloning the repository directly into `/mnt/etc/nixos`
 causes an “already exists and is not an empty directory” error. Clone it into a separate
 directory first, copy the machine-specific `hardware-configuration.nix` into the clone,
 and then replace the generated target configuration with the repository contents:
@@ -598,12 +598,12 @@ When `win10` is already registered, the documented XML helper uses the persisten
 
 The manual path copies the `nixos/` directory as-is and does not prompt for machine-specific
 values. Before installation, review these five settings in `nixos/hosts/nixos/host-settings.nix` (the `kumutuk.host` option defaults) and customize the ones
-that do not match your setup. Some defaults (such as `hyprlandMonitorMode = "preferred"`) are
+that do not match your setup. Some defaults (such as `monitorMode = "preferred"`) are
 valid as-is; placeholder identity values and paths should be replaced where applicable:
 
 | # | Setting | Default | What happens if it is wrong |
 |---|---|---|---|
-| 1 | `hyprlandMonitorMode` | `"preferred"` | Preferred mode by default. Set a fixed mode such as `"2560x1440@170"` when needed; the installer accepts only `preferred` or a width × height mode with an optional refresh rate. |
+| 1 | `monitorMode` | `"preferred"` | Preferred mode by default. Set a fixed mode such as `"2560x1440@170"` when needed; the installer accepts only `preferred` or a width × height mode with an optional refresh rate. |
 | 2 | `monitorOutput` | `"DP-3"` (reference host) | The exact output name used for the Hyprland monitor rule and optional `mpvpaper` wallpaper. The installer detects and asks for the target output; a manually empty value remains a catch-all and disables live wallpaper. |
 | 3 | `gitName` | `"changeme"` | Commits are attributed to a placeholder name. |
 | 4 | `gitEmail` | `"you@example.com"` | Commits are attributed to a placeholder email address. |
@@ -666,7 +666,7 @@ hyprctl monitors
 The Lua configuration keeps the existing gaming rules, Turkish keyboard layout,
 Waybar/notification startup, scratchpads, translation helpers, and optional `mpvpaper`
 services. A real monitor name is used for the output rule; select `preferred` or a fixed
-mode in `hyprlandMonitorMode`.
+mode in `monitorMode`.
 ---
 
 # 🔑 12. Set the installed user's password and optional SSH key

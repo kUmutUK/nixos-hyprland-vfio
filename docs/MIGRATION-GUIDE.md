@@ -138,7 +138,8 @@ path is intentionally absent).
 
 - The `nix develop`-based checks (nixfmt, statix, deadnix, Lua validation)
   could not run in the environment where this change was prepared (no Nix).
-  The 31 offline Python/Bash suites all pass; the Nix-side gates run in CI.
+  All offline regression suites (the 19 `scripts/test-*` files run by normal
+  CI) pass; the Nix-side gates run in CI.
 - `install.sh` remains experimental and untried end-to-end; its path handling
   was updated and covered by the mocked suites, but no live migration was
   performed.

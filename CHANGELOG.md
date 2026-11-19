@@ -4,6 +4,17 @@ This file summarizes notable changes in English. The separate Turkish release-by
 
 ## [Unreleased]
 
+### Documentation consistency fixes from the repository deep analysis — 2026-11-19
+
+- **README manual migration (Path B):** correct "copy all six required Nix/flake files" to seven; the adjacent copy loop already deploys seven sources including `host-settings.nix`. INSTALLATION's pointer ("seven-file migration instructions") now matches. The documentation-integrity assertion pins the corrected wording and rejects the stale six/five variants.
+- **README manual install (Path A):** fix the generated hardware-configuration copy source to `/mnt/etc/nixos/hardware-configuration.nix`. `nixos-generate-config` writes its output at the `/mnt/etc/nixos` root, not into a `hosts/nixos/` subtree; the previous source path failed under `set -Eeuo pipefail`. INSTALLATION's matching claim about the generated `configuration.nix` location is corrected the same way, and a regression assertion now rejects the wrong path on both pages.
+- **CONTRIBUTING target-machine chronology:** disambiguate the two "latest" labels — the 16 November "Latest target-machine update" is the local full-system build/ordinary VM check, while the 9 November entry is the latest clean-install/VM-lifecycle validation. The chronology paragraph now states this explicitly instead of using "latest" for both.
+- **INSTALLATION host-settings table:** rename the first row from the pre-restructure local variable name `hyprlandMonitorMode` to the actual `kumutuk.host` option `monitorMode`; the trailing "select a fixed mode in ..." sentence is updated the same way.
+- **DEGISIKLIK_GECMISI.md title:** rename the top-level heading to "Current-State Index (English)" to match how CHANGELOG and KURULUM describe the file; the old "Historical Change Log Index" title contradicted that description.
+- **VFIO hook wrapper comment:** the hook body uses `ls` and `awk` but no `sed`; the comment no longer claims `sed` (gnused) is required by the current body and marks gnused as a defensive input instead. The `makeBinPath` list is unchanged.
+- **docs/MIGRATION-GUIDE.md:** replace the unverifiable "31 offline Python/Bash suites" count with the concrete 19 `scripts/test-*` files that normal CI runs.
+- All offline regression suites pass after these changes; no NixOS runtime setting, VM XML, or hook behavior changed.
+
 ### v1.5.9 release preparation and current-source reconciliation — 2026-11-19
 
 - Reconcile the latest published release as v1.5.8 (Release run #48, exact tag commit `672d255d4a921c097dd69eae817e8dc9699380d6`) and preserve the exact GitHub source-archive metadata.

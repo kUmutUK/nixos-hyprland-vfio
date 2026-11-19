@@ -1,4 +1,4 @@
-# Historical Change Log Index (English)
+# Current-State Index (English)
 
 ## Current release status — 2026-11-19
 

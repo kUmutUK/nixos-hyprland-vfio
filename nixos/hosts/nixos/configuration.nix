@@ -103,8 +103,10 @@ let
   # `environment.systemPackages` could make a missing utility silently break the hook.
   vfioHook = pkgs.writeShellScript "libvirt-vfio-hook" ''
     # The libvirtd service PATH replaces the default PATH with its configured tool
-    # list. The hook uses `ls` (coreutils), `sed` (gnused), and `awk` (gawk); without
-    # these runtime inputs, commands may be missing and service/DRM recovery can fail.
+    # list. The hook uses `ls` and `awk` (gawk); without these runtime inputs,
+    # commands may be missing and service/DRM recovery can fail. gnused is kept
+    # in the list as a defensive input for future hook edits; it is not required
+    # by the current hook body.
     # Include the required store paths explicitly instead of relying on the host PATH.
     export PATH="${
       lib.makeBinPath [
