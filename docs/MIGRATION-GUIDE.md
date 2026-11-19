@@ -140,11 +140,13 @@ path is intentionally absent).
   could not run in the environment where this change was prepared (no Nix).
   All offline regression suites (the 19 `scripts/test-*` files run by normal
   CI) pass; the Nix-side gates run in CI.
-- `install.sh` remains experimental. Release #50 accepted a maintainer target-host
-  attestation for exact v1.6.0 commit `93b8929`, but its supporting transcript is
-  not committed and it does not cover later `main` changes to the installer.
-  The current installer revision is covered by static/mocked CI only, not a
-  retained live migration and rollback record.
+- `install.sh` remains experimental. Release #52 accepted a maintainer
+  `TARGET_HOST_VALIDATED=true` declaration for exact v1.6.0 commit
+  `3c518e45d979db3234f7628ccbf3979a0057dcf2`; its supporting transcript is not committed. Current `main`
+  is one commit after the tag, and the installer itself is unchanged from that
+  source. This remains attestation rather than independently reproducible
+  evidence; static/mocked CI does not replace a retained live migration and
+  rollback record.
 - The weekly flake-update workflow opens PRs from `auto/flake-update`; GitHub
   scheduled workflows are disabled by default on forks and can be noisy on
   long-lived branches — disable the schedule trigger if that becomes a problem.

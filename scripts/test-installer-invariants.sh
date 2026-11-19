@@ -1100,6 +1100,39 @@ if ! grep -Fq 'boot.kernelPackages = rtBoreLtoV3KernelPackages;' "$FLAKE" \
   echo "FAIL: the flake must derive its RT-Bore-LTO kernel with the x86-64-v3 processor target." >&2
   exit 1
 fi
+
+# Exercise the exact CPU/OS feature check used before installer deployment.
+x86_v3_test_dir="$(mktemp -d)"
+awk '$0 == "x86_64_v3_missing_flags() {" { capture=1 } capture { print } capture && /^}/ { exit }' "$INSTALLER" > "$x86_v3_test_dir/helper.sh"
+if ! grep -Fq 'x86_64_v3_missing_flags() {' "$x86_v3_test_dir/helper.sh"; then
+  echo "FAIL: installer x86-64-v3 preflight helper could not be extracted." >&2
+  rm -rf -- "$x86_v3_test_dir"
+  exit 1
+fi
+# Use the x86-64-v3 flags; Linux reports AMD LZCNT as abm.
+printf '%s\n' 'processor : 0' 'flags : cx16 lahf_lm popcnt pni sse4_1 sse4_2 ssse3 avx avx2 bmi1 bmi2 f16c fma movbe xsave abm' > "$x86_v3_test_dir/complete"
+# shellcheck disable=SC1091
+source "$x86_v3_test_dir/helper.sh"
+missing="$(x86_64_v3_missing_flags "$x86_v3_test_dir/complete")"
+if [[ -n "$missing" ]]; then
+  echo "FAIL: a complete x86-64-v3 CPU/OS flag set was rejected: $missing" >&2
+  rm -rf -- "$x86_v3_test_dir"
+  exit 1
+fi
+printf '%s\n' 'processor : 0' 'flags : cx16 lahf_lm popcnt pni sse4_1 sse4_2 ssse3 avx bmi1 bmi2 f16c fma movbe xsave' > "$x86_v3_test_dir/incomplete"
+missing="$(x86_64_v3_missing_flags "$x86_v3_test_dir/incomplete")"
+if [[ " $missing " != *" avx2 "* || " $missing " != *" lzcnt "* ]]; then
+  echo "FAIL: missing AVX2/LZCNT features were not detected: $missing" >&2
+  rm -rf -- "$x86_v3_test_dir"
+  exit 1
+fi
+missing="$(x86_64_v3_missing_flags "$x86_v3_test_dir/no-such-cpuinfo")"
+if [[ "$missing" != "cpu-info-unreadable" ]]; then
+  echo "FAIL: unavailable CPU feature data must fail closed: $missing" >&2
+  rm -rf -- "$x86_v3_test_dir"
+  exit 1
+fi
+rm -rf -- "$x86_v3_test_dir"
 # A blank monitorOutput intentionally disables live wallpaper, so the missing-file
 # notification must be gated by the monitor argument rather than shown at every login.
 # Commands are stored as ordinary Nix double-quoted strings so their Lua/shell

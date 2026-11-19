@@ -450,6 +450,18 @@ require(
     "INSTALLATION monitorOutput default must match the Home Manager reference configuration",
 )
 require(
+    "Change wallpaperVideo in nixos/hosts/nixos/host-settings.nix" in HOME_NIX
+    and "Set monitorOutput in nixos/hosts/nixos/host-settings.nix" in HOME_NIX,
+    "Home Manager diagnostics must point to host-settings.nix, where the host-specific values are declared",
+)
+require(
+    "x86_64_v3_missing_flags() {" in INSTALLER
+    and "cpu-info-unreadable" in INSTALLER
+    and "x86-64-v3 RT-Bore-LTO kernel" in INSTALLER
+    and "x86_64_v3_missing_flags" in INSTALLER_TEST,
+    "installer must fail closed when the CPU/OS cannot run the selected x86-64-v3 kernel",
+)
+require(
     "/mnt/media/win10new.qcow2" in VM_XML_TEXT
     and "/mnt/media/Win10_22H2_English_x64v1.iso" in VM_XML_TEXT
     and "/mnt/media/virtio-win-0.1.285.iso" in VM_XML_TEXT
@@ -631,10 +643,12 @@ require(
     and "supporting transcript is not committed" in CONTRIBUTING
     and "no supporting transcript committed here" in REPAIR
     and "mocked installer-invariant/rollback tests" in README
-    and "The Release #50 host attestation applies only to the exact v1.6.0 release commit" in README
-    and "The current `install.sh` was changed after the tag and is not covered" in README
-    and "does not cover the seven later commits and 16 changed paths in the published v1.6.0 tree" in CONTRIBUTING
-    and "The published v1.6.0 tree is seven commits later than `93b8929`" in DISCLAIMER,
+    and "Release #52 later accepted a maintainer `TARGET_HOST_VALIDATED=true` declaration" in README
+    and "current `main` is one commit later" in README
+    and "`install.sh` itself is unchanged from that tag" in README
+    and "Release #52 accepted `TARGET_HOST_VALIDATED=true`" in CONTRIBUTING
+    and "current `main` is one commit later" in CONTRIBUTING
+    and "Release #52 accepted a maintainer `TARGET_HOST_VALIDATED=true` attestation" in DISCLAIMER,
     "install.sh must remain experimental and its exact-source attestation boundary must be stated consistently",
 )
 require(
@@ -2583,44 +2597,55 @@ require(
 
 require(
     all(item in (README + INSTALLATION + CONTRIBUTING + STATE_INDEX + CHANGELOG + REPAIR) for item in (
-        "v1.6.0", "44584744134", "a5beea31d09d6ebbe1e974c7b58d66b3b46cf699",
-        "502,126 bytes", "034912aec7b8b587a71f5ab3816158eb1604fb4d1f8e9cda7dc5a0cd133fbf23",
+        "v1.6.0", "44594826628", "3c518e45d979db3234f7628ccbf3979a0057dcf2",
+        "505,012 bytes", "80aa8e731e26e2ca81d3536f738f84203d7c2edfbfffc824b879bcf504d3d63b",
+        "44595684642", "b14b8d4a0fd4affcc8917b7f2376cfe9d6d78648", "44593727498",
         "44560545993", "672d255d4a921c097dd69eae817e8dc9699380d6", "43982447714",
         "44548011675", "d8484ab9083d9c9c71551b0147fa2591e2dbd8a1",
         "5639e8b2fff7140b52a84e93756c2c3e0a8b6311a33d43aebcae430526601c84",
     )),
-    "current release/build/CI provenance must identify v1.6.0 (run #51, a5beea31, re-hashed 502,126-byte asset), v1.5.9 (run #49), pre-update CI #1649, and Build #21",
+    "current release/build/CI provenance must identify v1.6.0 (run #52, 3c518e45, metadata 505,012-byte asset), current main CI #1664, tag CI #1663, v1.5.9, pre-update CI #1649, and Build #21",
 )
 require(
     all(item in (README + INSTALLATION + CONTRIBUTING + STATE_INDEX + CHANGELOG + REPAIR) for item in (
-        "10 commits and 37 changed paths", "Full-system Build #21", "Release #50", "TARGET_HOST_VALIDATED=true",
+        "20 commits and 39 changed paths", "21 commits and 39 changed paths",
+        "Full-system Build #21", "Release #52", "TARGET_HOST_VALIDATED=true",
     )),
-    "current status records must distinguish the old full-system build, pre-update CI, and later Release #50 host attestation",
+    "current status records must distinguish the old full-system build, current tag/main gaps, and Release #52 host attestation",
 )
 require(
-    "17 commits and 38 changed paths" in README
-    and "17 commits and 38 changed paths" in CHANGELOG
-    and "17 commits and 38 changed paths" in CONTRIBUTING
-    and "17 commits and 38 changed paths" in STATE_INDEX
-    and "17 commits and 38 changed paths" in REPAIR,
-    "current full-system build gap must be measured against current main, not only the old pre-update baseline",
+    "20 commits and 39 changed paths" in README
+    and "20 commits and 39 changed paths" in CHANGELOG
+    and "20 commits and 39 changed paths" in CONTRIBUTING
+    and "20 commits and 39 changed paths" in STATE_INDEX
+    and "20 commits and 39 changed paths" in REPAIR
+    and "21 commits and 39 changed paths" in README
+    and "21 commits and 39 changed paths" in CHANGELOG
+    and "21 commits and 39 changed paths" in CONTRIBUTING
+    and "21 commits and 39 changed paths" in STATE_INDEX
+    and "21 commits and 39 changed paths" in REPAIR,
+    "current full-system build gap must be measured against both release tag and main",
 )
 require(
-    "Normal CI #1655" in README and "44576575377" in README and "7f0f4f7e0bef8567811244f6632abc798c98983e" in README
-    and "Normal CI #1655" in CHANGELOG and "44576575377" in CHANGELOG
-    and "Normal CI #1655" in CONTRIBUTING and "44576575377" in CONTRIBUTING
-    and "Normal CI #1655" in STATE_INDEX and "44576575377" in STATE_INDEX
-    and "Normal CI #1655" in REPAIR and "44576575377" in REPAIR,
-    "current main CI #1655 and exact HEAD SHA must be recorded across status documents",
+    "Normal CI #1664" in README and "44595684642" in README and "b14b8d4a0fd4affcc8917b7f2376cfe9d6d78648" in README
+    and "Normal CI #1664" in CHANGELOG and "44595684642" in CHANGELOG
+    and "Normal CI #1664" in CONTRIBUTING and "44595684642" in CONTRIBUTING
+    and "Normal CI #1664" in STATE_INDEX and "44595684642" in STATE_INDEX
+    and "Normal CI #1664" in REPAIR and "44595684642" in REPAIR
+    and "Normal CI #1663" in README and "44593727498" in README
+    and "Normal CI #1663" in REPAIR and "44593727498" in REPAIR,
+    "current main CI #1664 and exact release-tag CI #1663 must be recorded across status documents",
 )
 require(
-    "Release #50 target-host attestation" in REPAIR
+    "Release #52 target-host attestation" in REPAIR
     and "TARGET_HOST_VALIDATED=true" in REPAIR
     and "Release #48" in REPAIR
     and "vm_xml_validated=true" in REPAIR
     and "unchanged between v1.5.9 and v1.6.0" in REPAIR
-    and "Maintainer-attestation evidence rule" in RELEASING,
-    "historical Release #48 and later Release #50 attestation limits must remain explicit",
+    and "Maintainer-attestation evidence rule" in RELEASING
+    and "single-use" in RELEASING
+    and "ruleset for tag pattern `v*`" in RELEASING,
+    "current Release #52 evidence and immutable single-use tag policy must remain explicit",
 )
 require(
     "${NIXOS_FLAKE_DIR}/hosts/nixos/hardware-configuration.nix" in INSTALLER

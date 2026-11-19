@@ -259,7 +259,7 @@ echo ""
 echo -e "${RED}${BOLD}WARNING: ADVANCED, HIGH-RISK MIGRATION SCRIPT${NC}"
 echo -e "${RED}${BOLD}EXPERIMENTAL: CURRENT SOURCE REVISION NOT TARGET-HOST VALIDATED${NC}"
 echo ""
-warn "Release #50 records a maintainer host-validation attestation for exact v1.6.0 commit 93b8929; it does not cover this later main revision."
+warn "Release #52 accepted TARGET_HOST_VALIDATED=true for exact v1.6.0 source 3c518e45d979db3234f7628ccbf3979a0057dcf2; this is a maintainer attestation without a committed host transcript."
 warn "The supporting host transcript is not committed; CI syntax, ShellCheck, and mocked regressions do not validate a live migration or recovery."
 echo ""
 warn "RECOMMENDED APPROACH: Follow the manual migration steps in README.md first."
@@ -354,6 +354,41 @@ else
   CPU_VENDOR="unknown"
 fi
 log "CPU: $CPU_VENDOR"
+
+# The selected RT-Bore-LTO kernel is compiled for x86-64-v3. Read the kernel-
+# exposed flags (which account for OS-enabled AVX state) and fail closed before
+# prompting or deploying if the CPU/OS cannot run that kernel.
+x86_64_v3_missing_flags() {
+  local cpuinfo="${1:-/proc/cpuinfo}" flags feature
+  local required=(cx16 lahf_lm popcnt pni sse4_1 sse4_2 ssse3 avx avx2 bmi1 bmi2 f16c fma movbe xsave)
+
+  if [[ ! -r "$cpuinfo" ]]; then
+    printf 'cpu-info-unreadable'
+    return 0
+  fi
+  flags="$(awk '$1 == "flags" { for (i = 3; i <= NF; i++) printf "%s ", $i; exit }' "$cpuinfo")"
+  if [[ -z "$flags" ]]; then
+    printf 'cpu-flags-unavailable'
+    return 0
+  fi
+
+  for feature in "${required[@]}"; do
+    case " $flags " in
+      *" $feature "*) ;;
+      *) printf '%s ' "$feature" ;;
+    esac
+  done
+  # Linux reports AMD LZCNT as "abm"; other CPUs may expose it as "lzcnt".
+  case " $flags " in
+    *" lzcnt "*|*" abm "*) ;;
+    *) printf 'lzcnt ' ;;
+  esac
+}
+
+missing_x86_64_v3_flags="$(x86_64_v3_missing_flags)"
+if [[ -n "$missing_x86_64_v3_flags" ]]; then
+  error "This configuration selects an x86-64-v3 RT-Bore-LTO kernel, but the CPU/OS is missing required flags: ${missing_x86_64_v3_flags% }. No system files have been changed."
+fi
 
 # GPU vendor is determined only after the user selects a concrete PCI address.
 # Do not infer it from the first lspci display adapter: multi-GPU systems often

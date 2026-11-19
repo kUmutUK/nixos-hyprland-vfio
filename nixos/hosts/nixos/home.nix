@@ -74,8 +74,8 @@ let
   screenshotCommand = "grim -g \"$(slurp)\" - | wl-copy";
   sattyScreenshotCommand = "grim -g \"$(slurp)\" - | satty -f - | wl-copy";
   systemdEnvironmentCommand = "${pkgs.bash}/bin/bash -c 'systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE HYPRLAND_INSTANCE_SIGNATURE HYPRLAND_DISPLAY; dbus-update-activation-environment --systemd --all; systemctl --user start gamemode-notify; if [ -n \"$1\" ]; then systemctl --user start mpvpaper-watchdog; fi' sh ${lib.escapeShellArg monitorOutput}";
-  wallpaperMissingCommand = "${pkgs.bash}/bin/bash -c 'if [ -n \"$2\" ] && [ ! -e \"$1\" ]; then notify-send -t 15000 -u critical \"mpvpaper\" \"Live wallpaper file not found: $1. Change wallpaperVideo in home.nix, then restart mpvpaper-watchdog.\"; fi' sh ${lib.escapeShellArg wallpaperVideo} ${lib.escapeShellArg monitorOutput}";
-  monitorValidationCommand = "${pkgs.bash}/bin/bash -c 'if [ -n \"$1\" ] && ! hyprctl monitors 2>/dev/null | grep -Fq -- \"Monitor $1 (\"; then notify-send -t 15000 -u critical \"mpvpaper\" \"Monitor output not found: $1. Set monitorOutput in home.nix to the exact hyprctl monitors name.\"; fi' sh ${lib.escapeShellArg monitorOutput}";
+  wallpaperMissingCommand = "${pkgs.bash}/bin/bash -c 'if [ -n \"$2\" ] && [ ! -e \"$1\" ]; then notify-send -t 15000 -u critical \"mpvpaper\" \"Live wallpaper file not found: $1. Change wallpaperVideo in nixos/hosts/nixos/host-settings.nix, then restart mpvpaper-watchdog.\"; fi' sh ${lib.escapeShellArg wallpaperVideo} ${lib.escapeShellArg monitorOutput}";
+  monitorValidationCommand = "${pkgs.bash}/bin/bash -c 'if [ -n \"$1\" ] && ! hyprctl monitors 2>/dev/null | grep -Fq -- \"Monitor $1 (\"; then notify-send -t 15000 -u critical \"mpvpaper\" \"Monitor output not found: $1. Set monitorOutput in nixos/hosts/nixos/host-settings.nix to the exact hyprctl monitors name.\"; fi' sh ${lib.escapeShellArg monitorOutput}";
 
   gamemodeNotifyScript = pkgs.writeShellScriptBin "gamemode-notify" ''
     NOTIFY_SEND="${pkgs.libnotify}/bin/notify-send"
