@@ -969,7 +969,7 @@ repair_baseline_match = re.search(
     REPAIR,
 )
 index_baseline_match = re.search(
-    r"(?m)^- \*\*Last completed full-system build baseline \(2026-11-15\):\*\* GitHub `main` at `([0-9a-f]{40})`",
+    r"(?m)^- \*\*Last completed full-system build baseline \(2026-11-20\):\*\* GitHub `main` at `([0-9a-f]{40})`",
     STATE_INDEX,
 )
 reviewed_snapshot_match = re.search(
@@ -977,7 +977,7 @@ reviewed_snapshot_match = re.search(
     REPAIR,
 )
 index_reviewed_snapshot_match = re.search(
-    r"(?m)^- Reviewed source snapshot \(2026-11-15\): GitHub `main` at `([0-9a-f]{40})`",
+    r"(?m)^- Reviewed source snapshot \(2026-11-20\): GitHub `main` at `([0-9a-f]{40})`",
     STATE_INDEX,
 )
 ci_run_match = re.search(
@@ -1358,7 +1358,7 @@ require(
     "the 3 November target-host test must remain as dated historical information",
 )
 require(
-    "Latest target-machine update (owner-reported, 16 November 2026)" in CONTRIBUTING
+    "Owner-reported local full-system build and VM check (16 November 2026) — latest target-machine update (owner-reported, 16 November 2026):**" in CONTRIBUTING
     and "3 November 2026" in CONTRIBUTING,
     "contributor guide must distinguish latest and historical target-host validation",
 )
@@ -2638,6 +2638,15 @@ require(
         "5639e8b2fff7140b52a84e93756c2c3e0a8b6311a33d43aebcae430526601c84",
     )),
     "release/build/CI provenance must identify v1.6.0, the pre-update main CI #1669 baseline, exact tag CI #1663, v1.5.9, pre-update CI #1649, and Build #21",
+)
+require(
+    all(item in (README + INSTALLATION + CONTRIBUTING + STATE_INDEX + CHANGELOG + REPAIR) for item in (
+        "Release #54", "44696855597", "d845ccfb5dec3daf705b59bc29f2e5f14e4ee767",
+        "452397681", "510,143 bytes",
+        "977b1eed45673c022946cb04b997c4172c3c5c9b122d32838a3cd02a0a4fe057",
+        "44623962158", "44622481259", "ff655f61e39da2d22d4e85960e500b6eccb9b2db",
+    )),
+    "current provenance must identify the re-published v1.6.0 (Release #54 / d845ccf), Build #22, exact-commit CI #1683, and superseded attempt #53",
 )
 require(
     all(item in (README + INSTALLATION + CONTRIBUTING + STATE_INDEX + CHANGELOG + REPAIR) for item in (

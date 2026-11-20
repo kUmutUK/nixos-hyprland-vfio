@@ -6,7 +6,7 @@ This guide walks through an AMD-oriented **NixOS + LUKS2 + Btrfs + Hyprland + VF
 
 > **Recommended approach: install manually.** This guide is for a clean installation. Follow the steps in order and understand each command before running it. `install.sh` is not a clean installer or disk-partitioning tool; it is an optional, higher-risk helper for advanced users migrating an existing NixOS system. Read [`README.md`](README.md) for its risk notice and the alternative manual migration steps.
 >
-> **EXPERIMENTAL — LIVE VALIDATION EVIDENCE IS INCOMPLETE:** the 16 November owner note said `install.sh` had not been tried. Release #52 subsequently accepted `TARGET_HOST_VALIDATED=true` for exact published v1.6.0 tag source `3c518e45d979db3234f7628ccbf3979a0057dcf2`. This is a maintainer declaration for that tag only; the supporting target-host transcript is not committed and cannot be independently reproduced. The audited main baseline is six commits and 15 changed paths after v1.6.0; `install.sh` changed by 36 insertions and one deletion. The audited main installer adds the x86-64-v3 CPU/OS feature preflight, so the Release #52 attestation does not validate that later code. CI syntax, ShellCheck, and mocked regressions do not exercise a retained live migration/rollback transcript. Treat the helper as experimental and prefer the manual procedure.
+> **EXPERIMENTAL — LIVE VALIDATION EVIDENCE IS INCOMPLETE:** the 16 November owner note said `install.sh` had not been tried. Release #54 subsequently accepted `TARGET_HOST_VALIDATED=true` for the exact re-published v1.6.0 source `d845ccfb5dec3daf705b59bc29f2e5f14e4ee767`; the earlier Release #52 declaration covered only the superseded tag source `3c518e45d979db3234f7628ccbf3979a0057dcf2`. Both are maintainer declarations; the supporting target-host transcript is not committed and cannot be independently reproduced. The audited main baseline is six commits and 15 changed paths after v1.6.0; `install.sh` changed by 36 insertions and one deletion. The audited main installer adds the x86-64-v3 CPU/OS feature preflight, which is covered by Release #54's source scope but not by Release #52's declaration. CI syntax, ShellCheck, and mocked regressions do not exercise a retained live migration/rollback transcript. Treat the helper as experimental and prefer the manual procedure.
 >
 > The migration helper uses a non-blocking per-user process lock before prompting or deployment. A second run by the same user exits rather than overlapping backups and rollback; separately configured lock paths or different user accounts are not coordinated, so run the migration from one account at a time. Before any backup or system-file mutation, it now fails closed unless `/etc/nixos/hashedPassword` is non-empty and has `root:root` ownership with mode `0600`; create or repair the local-account hash using the manual migration instructions first.
 
@@ -623,7 +623,11 @@ done
 ```
 Before installation, while the target system is mounted under `/mnt`, edit the option
 defaults in `/mnt/etc/nixos/nixos/hosts/nixos/host-settings.nix` (the `kumutuk.host`
-options; the values used to live in home.nix's `let` block):
+options; the values used to live in home.nix's `let` block). The following is an
+**edited example** of a fully customized file — these are NOT the repository's shipped
+defaults. The actual defaults are the five values in the table above (`"preferred"`,
+`"DP-3"`, `"changeme"`, `"you@example.com"`, and the arthur-leywin wallpaper path);
+copy the shape below only to replace them with your own values:
 
 ```nix
     gitName = lib.mkOption {
@@ -632,15 +636,15 @@ options; the values used to live in home.nix's `let` block):
     };
     monitorOutput = lib.mkOption {
       type = lib.types.str;
-      default = "DP-1";                                     # Exact output name from hyprctl monitors
+      default = "DP-1";                                     # was "DP-3"; exact output name from hyprctl monitors
     };
     monitorMode = lib.mkOption {
       type = lib.types.str;
-      default = "2560x1440@170";                            # Or "preferred"
+      default = "2560x1440@170";                            # was "preferred"
     };
     wallpaperVideo = lib.mkOption {
       type = lib.types.str;
-      default = "/home/localhost/Downloads/wallpaper.mp4";
+      default = "/home/localhost/Downloads/wallpaper.mp4";  # was ~/Downloads/arthur-leywin-the-beginning-after-the-end.3840x2160.mp4
     };
 ```
 > The Lua `hl.monitor` rule reads `monitorOutput` and `monitorMode` through the host
@@ -759,19 +763,19 @@ git -C /tmp/repo show "$SOURCE_REVISION:nixos/flake.lock" |
   sudo tee /mnt/etc/nixos/nixos/flake.lock >/dev/null
 ```
 
-> **Latest published release (19 November 2026):** [v1.6.0](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.6.0), published by [Release run #52](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44594826628) from exact tag/source commit `3c518e45d979db3234f7628ccbf3979a0057dcf2` (GitHub Release ID `451804552`). GitHub metadata records the canonical source ZIP as 505,012 bytes / SHA-256 `80aa8e731e26e2ca81d3536f738f84203d7c2edfbfffc824b879bcf504d3d63b`; these metadata values were checked, but the asset was not independently re-hashed in this review. Earlier same-version runs #50 and #51 were superseded.
+> **Latest published release (re-published 20 November 2026):** [v1.6.0](https://github.com/kUmutUK/nixos-hyprland-vfio/releases/tag/v1.6.0), re-published by [Release run #54](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44696855597) from exact tag/source commit `d845ccfb5dec3daf705b59bc29f2e5f14e4ee767` (GitHub Release ID `452397681`). GitHub metadata records the canonical source ZIP as 510,143 bytes / SHA-256 `977b1eed45673c022946cb04b997c4172c3c5c9b122d32838a3cd02a0a4fe057`; the asset was downloaded and independently re-hashed to that value on 20 November 2026. The original 19 November publication (run #52 at `3c518e45d979db3234f7628ccbf3979a0057dcf2`, 505,012 bytes / `80aa8e731e26e2ca81d3536f738f84203d7c2edfbfffc824b879bcf504d3d63b`) and same-version runs #50, #51, and #53 were superseded.
 >
-> **Last pre-update main Normal CI:** [#1669](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44603757865) passed all 27 workflow-defined steps on the audited parent commit `9e399dcbe96a82a91d03e95fe2251f4e437eadb7`. This documentation/test update must pass its own push-triggered CI. The exact v1.6.0 tag commit `3c518e45d979db3234f7628ccbf3979a0057dcf2` passed Normal CI #1663 ([run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44593727498)). See the [live main-branch workflow history](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/workflows/check.yml) for subsequent runs.
+> **Last pre-update main Normal CI:** [#1669](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44603757865) passed all 27 workflow-defined steps on the audited parent commit `9e399dcbe96a82a91d03e95fe2251f4e437eadb7`. This documentation/test update must pass its own push-triggered CI. The original v1.6.0 tag commit `3c518e45d979db3234f7628ccbf3979a0057dcf2` passed Normal CI #1663 ([run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44593727498)), and the re-published source `d845ccfb5dec3daf705b59bc29f2e5f14e4ee767` passed Normal CI #1683 ([run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44622481259)). See the [live main-branch workflow history](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/workflows/check.yml) for subsequent runs.
 >
-> **Latest completed full-system build:** Full NixOS System Build #21 [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43982447714) succeeded on exact source `672d255d4a921c097dd69eae817e8dc9699380d6`. GitHub compares that build with the v1.6.0 tag as 20 commits and 39 changed paths apart, and with the audited pre-update main baseline `9e399dcbe96a82a91d03e95fe2251f4e437eadb7` as 26 commits and 39 changed paths apart. #21 does not validate the later locked-input, hosts/ restructure, or installer changes; a fresh full-system build is required before the next release.
+> **Latest completed full-system build:** Full NixOS System Build #22 [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44623962158) succeeded on exact source `d845ccfb5dec3daf705b59bc29f2e5f14e4ee767` (the current `main` and re-published v1.6.0 tag target), on the 19 November refreshed locked inputs; it verifies compilation of the current source, not physical-host boot or VM lifecycle. The historical Build #21 [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43982447714) on `672d255d4a921c097dd69eae817e8dc9699380d6` was 20 commits and 39 changed paths behind the v1.6.0 tag and 26 commits and 39 changed paths behind the audited pre-update main baseline `9e399dcbe96a82a91d03e95fe2251f4e437eadb7`.
 >
-> **Release #52 target-host attestation:** the successful Release #52 log records `TARGET_HOST_VALIDATED=true` and confirms that the manual target-host attestation was accepted for exact tag commit `3c518e45d979db3234f7628ccbf3979a0057dcf2`. The input asserts exact-source clean installation, host boot, Windows VM start/shutdown, GPU handback, and Hyprland recovery. The repository does not contain the underlying test transcript, so this is maintainer-attestation evidence, not an independently reproducible CI test. The audited main baseline is six commits and 15 changed paths after v1.6.0; `install.sh` changed by 36 insertions and one deletion. The Release #52 declaration does not validate the x86-64-v3 preflight added later to the audited main installer.
+> **Release #54 target-host attestation:** the successful Release #54 log records `TARGET_HOST_VALIDATED=true` and confirms that the manual target-host attestation was accepted for exact re-published source `d845ccfb5dec3daf705b59bc29f2e5f14e4ee767`. The input asserts exact-source clean installation, host boot, Windows VM start/shutdown, GPU handback, and Hyprland recovery. The repository does not contain the underlying test transcript, so this is maintainer-attestation evidence, not an independently reproducible CI test. The audited main baseline is six commits and 15 changed paths after the original v1.6.0 tag; `install.sh` changed by 36 insertions and one deletion. The earlier Release #52 declaration covered only the `3c518e45` tag source and did not validate the x86-64-v3 preflight added later; Release #54's source scope includes that installer revision.
 >
-> **VM XML validation boundary:** Release #52's dispatch supplied `vm_xml_validated=true`, but `vm-xml/win10.xml` was unchanged between v1.5.9 and v1.6.0, so the workflow's separate changed-XML gate did not trigger. That input is not evidence of a new semantic-validation or guest-boot result. The installed NixOS `vdb` guest, guest networking, saved-state/managed-save restore, and exact-source booted-generation identity remain unverified in the retained technical record.
+> **VM XML validation boundary:** Release #52's dispatch supplied `vm_xml_validated=true` while the XML was unchanged, so the workflow's separate changed-XML gate did not trigger. Release #54 supplied the same input with `vm-xml/win10.xml` changed between v1.5.9 and the re-published v1.6.0 (ICH9 PipeWire backend binding), so the changed-XML gate ran and accepted it as a maintainer attestation. Neither input is independent evidence of a new semantic-validation or guest-boot result. The installed NixOS `vdb` guest, guest networking, saved-state/managed-save restore, and exact-source booted-generation identity remain unverified in the retained technical record.
 >
-> **Historical Full-system Build #20:** [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43653123079) succeeded on `46d2b809e4fe9530dde58c85450b3544cf5d1ed0`. Build #21 above supersedes it as the latest completed full-system build. The locked inputs used by Build #21 were CachyOS `c9620070e884d55c5b5566e3fd46611ee24c4d3b`, nested `nixos-unstable-small` Nixpkgs package set `82566dfe91ca5e12bc10b36272280628142f651d`, and root `nixos-unstable` Nixpkgs `d4f25a3e562008648d45bcf2d70bcc7422cad84e`; these are distinct inputs. The 19 November 2026 lock refresh (commit `2b7cfff`) advanced the current inputs to CachyOS `10e8df08ad828225575f448e6b49ae092132d9a8`, nested `nixos-unstable-small` Nixpkgs `d00708e733dc47417b440d7537b0349f1ee66e22`, and root Nixpkgs `04906337b6d53e8bb0eaf0470ae9f070a4d4eb55`; no full-system build has yet run on those refreshed inputs.
+> **Historical Full-system Build #20:** [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43653123079) succeeded on `46d2b809e4fe9530dde58c85450b3544cf5d1ed0`. Builds #21 and #22 above supersede it. The locked inputs used by Build #21 were CachyOS `c9620070e884d55c5b5566e3fd46611ee24c4d3b`, nested `nixos-unstable-small` Nixpkgs package set `82566dfe91ca5e12bc10b36272280628142f651d`, and root `nixos-unstable` Nixpkgs `d4f25a3e562008648d45bcf2d70bcc7422cad84e`; these are distinct inputs. The 19 November 2026 lock refresh (commit `2b7cfff`) advanced the current inputs to CachyOS `10e8df08ad828225575f448e6b49ae092132d9a8`, nested `nixos-unstable-small` Nixpkgs `d00708e733dc47417b440d7537b0349f1ee66e22`, and root Nixpkgs `04906337b6d53e8bb0eaf0470ae9f070a4d4eb55`; Build #22 built the full system on those refreshed inputs.
 >
-> **Physical/functional validation boundary:** the 16 November owner-reported local build/ordinary VM start-shutdown has no recorded exact source SHA, derivation, or booted generation/kernel. Release #52's later target-host attestation is for exact source `3c518e45d979db3234f7628ccbf3979a0057dcf2` but has no supporting transcript committed here. Installed NixOS `vdb` guest boot/networking, saved-state/managed-save restore, and exact-source physical activation/boot remain separately qualified.
+> **Physical/functional validation boundary:** the 16 November owner-reported local build/ordinary VM start-shutdown has no recorded exact source SHA, derivation, or booted generation/kernel. Release #54's target-host attestation is for exact source `d845ccfb5dec3daf705b59bc29f2e5f14e4ee767` but has no supporting transcript committed here. Installed NixOS `vdb` guest boot/networking, saved-state/managed-save restore, and exact-source physical activation/boot remain separately qualified.
 >
 > **VM XML release gate:** `vm-xml/win10.xml` remains outside the automatic
 > ancestor-build allowlist. When it differs from the previous stable tag, the
@@ -950,7 +954,23 @@ VM only after the first successful boot.
 > wrong, edit the source template `$REPO/vm-xml/win10.xml` before creating a new deployed XML.
 > If `/var/lib/libvirt/win10.xml` already exists, edit the deployed file instead; editing only
 > the source template does not update an existing VM definition. Then re-define the active file
-> with `sudo virsh define /var/lib/libvirt/win10.xml`.
+> with `sudo virsh define /var/lib/libvirt/win10.xml`. The template declares four USB
+> `<hostdev>` entries in total: these two required devices (Razer mouse `1532:0098`, Apple
+> keyboard `05ac:024f`) plus two optional passthrough slots for `12d1:107d` (Huawei USB
+> composite device) and `18d1:d00d` (Google ADB/Fastboot device). The two optional entries
+> are commented-out targets in the template's device list; a boot fails if their hardware is
+> absent while the entries stay enabled, so remove or comment out unused optional hostdevs
+> before first start. Check `lsusb -nn` for `12d1:107d` / `18d1:d00d` presence just like the
+> required pair above.
+>
+> **Other fixed VM parameters in the template:** the domain uses 6 vCPUs, 16,777,216 KiB
+> (16 GiB) of memory, an emulated TPM 2.0 (`tpm-crb`) with an `emulator` backend, UEFI/OVMF
+> firmware with secure-boot disabled, and KVM vendor hiding plus Hyper-V enlightenments for
+> the Windows guest. The ICH9 sound device binds to the PipeWire backend targeting the
+> reference host's ALC897 analog output (`alsa_output.pci-0000_0d_00.4.analog-stereo`); hosts
+> with a different PipeWire sink name must edit the `<audio>` backend output before use.
+> These values are set in `vm-xml/win10.xml` itself; this guide does not restate them, so
+> review the template directly when adapting the VM to different hardware.
 >
 > **Emulated input devices:** `vm-xml/win10.xml` also declares an emulated PS/2 keyboard and mouse. These are separate from the USB host devices above. Removing USB `<hostdev>` blocks leaves the PS/2 definitions in the XML, but does not by itself prove that host input events reach the guest.
 >
@@ -1097,9 +1117,18 @@ if [ "$EXISTING_VM_XML" -eq 1 ]; then
   echo "Verify that the configured libvirt/QEMU service can read and write this file before starting the VM."
 else
   # Only auto-create the reviewed default disk for a genuinely new deployment.
+  # The checked-in template's vda path (/mnt/media/win10new.qcow2) is host-specific
+  # and intentionally NOT auto-created: /mnt/media must already hold the Windows
+  # disk on the reference host. For a genuinely new VM that keeps the template's
+  # /mnt/media path, create that directory tree and disk yourself BEFORE this
+  # step (e.g. sudo mkdir -p /mnt/media && sudo qemu-img create -f qcow2
+  # /mnt/media/win10new.qcow2 120G && sudo chown qemu-libvirtd:qemu-libvirtd
+  # /mnt/media/win10new.qcow2), or edit the template's <source file='...'> path in
+  # $REPO/vm-xml/win10.xml first so DISK_PATH equals the default below. The
+  # bootstrap refuses to guess the size or ownership of a non-default disk path.
   if [ "$DISK_PATH" != "/var/lib/libvirt/images/win10new.qcow2" ]; then
     echo "ERROR: New XML references a non-default disk path: $DISK_PATH" >&2
-    echo "Review its size and create/configure it manually; refusing to guess." >&2
+    echo "Create/configure that disk manually first (see the note above this gate), or edit the template's disk path; refusing to guess." >&2
     exit 1
   fi
   if sudo test -e "$DISK_PATH" || sudo test -L "$DISK_PATH"; then
