@@ -2986,6 +2986,15 @@ require(
     and "native target" in HOST_TEMPLATE,
     "new-host template must distinguish the RX 6700 XT native gfx1031 target from the gfx1030 compatibility override",
 )
+require(
+    "compsite" not in CONFIG
+    and "compsize" in CONFIG
+    and "btrfs-assistant" in CONFIG
+    and "polkit" in CONFIG
+    and "Btrfs Assistant GUI and compsize spelling fix" in CHANGELOG
+    and "services.btrfs.autoScrub" in CONFIG,
+    "the compsize spelling fix and the Btrfs Assistant GUI must stay pinned in the package list and changelog",
+)
 
 if errors:
     for error in errors:

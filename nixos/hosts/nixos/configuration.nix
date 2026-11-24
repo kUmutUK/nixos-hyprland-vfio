@@ -770,7 +770,15 @@ in
     pcmanfm
     imagemagick
     btrfs-progs
-    compsite
+    # Btrfs compression report behind the `btrfs-cmp` shell alias.
+    compsize
+    # Qt 6 GUI over the snapper configs above (root and home): snapshot
+    # browsing and diffs need no extra setup because ALLOW_USERS already
+    # includes `localhost`, and privileged actions ride the package's polkit
+    # daemon. Its own balance/scrub scheduling is cron-shaped for traditional
+    # distros and stays unused: maintenance remains declarative via
+    # services.btrfs.autoScrub.
+    btrfs-assistant
     snapper
     nh # nixos-rebuild helper with generation diffs and cleanup
     nvd # side-by-side NixOS generation/package-set diffing
