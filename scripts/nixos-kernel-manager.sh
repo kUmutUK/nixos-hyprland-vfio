@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 APP_TITLE="NixOS Kernel Manager"
-FLAKE_DIR="\${NIXOS_CONFIG_FLAKE:-/etc/nixos/nixos}"
+FLAKE_DIR="${NIXOS_CONFIG_FLAKE:-/etc/nixos/nixos}"
 FLAKE_FILE="$FLAKE_DIR/flake.nix"
 LOCK_FILE="$FLAKE_DIR/flake.lock"
 
@@ -88,7 +88,7 @@ run_kernel_build() {
   printf 'Kernel-only build. This does not activate the kernel.\n'
   printf 'A cache miss may require a long local build.\n\n'
   if nix build --no-link --print-out-paths --show-trace --no-update-lock-file \
-    "\${FLAKE_DIR}#nixosConfigurations.nixos.config.boot.kernelPackages.kernel"; then
+    "${FLAKE_DIR}#nixosConfigurations.nixos.config.boot.kernelPackages.kernel"; then
     printf '\nKernel build completed. The running kernel and boot entries were not changed.\n'
   else
     printf '\nKernel-only build failed; no system switch was attempted.\n'
@@ -100,7 +100,7 @@ run_rebuild() {
   require_flake || { pause_terminal; return 1; }
   printf 'Full NixOS rebuild and switch.\n'
   printf 'This builds and activates the current Flake. It does not update flake.lock.\n\n'
-  if sudo nixos-rebuild switch --flake "\${FLAKE_DIR}#nixos"; then
+  if sudo nixos-rebuild switch --flake "${FLAKE_DIR}#nixos"; then
     printf '\nNixOS rebuild and switch completed.\n'
   else
     printf '\nRebuild/switch failed. Review the output before retrying.\n'
@@ -146,8 +146,8 @@ main_menu() {
   done
 }
 
-if [[ "\${1:-}" == '--action' ]]; then
-  case "\${2:-}" in
+if [[ "${1:-}" == '--action' ]]; then
+  case "${2:-}" in
     overview) show_overview ;;
     boot) show_boot_entries ;;
     config) show_kernel_config ;;
@@ -161,5 +161,5 @@ fi
 
 command -v rofi >/dev/null 2>&1 || { printf 'Rofi is required.\n' >&2; exit 1; }
 command -v kitty >/dev/null 2>&1 || { printf 'Kitty is required.\n' >&2; exit 1; }
-[[ -n "\${WAYLAND_DISPLAY:-}\${DISPLAY:-}" ]] || { printf 'Launch this manager from a graphical session.\n' >&2; exit 1; }
+[[ -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" ]] || { printf 'Launch this manager from a graphical session.\n' >&2; exit 1; }
 main_menu
