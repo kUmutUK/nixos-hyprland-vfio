@@ -12,6 +12,11 @@
 }:
 
 let
+  # In a full checkout, scripts/ is at the repository root; in the deployed
+  # standalone flake, install.sh stages it inside the flake root. Match the
+  # resolver used by configuration.nix so both layouts evaluate identically.
+  homeScriptsDir = if builtins.pathExists ../../scripts then ../../scripts else ../../../scripts;
+
   makoRenderer = pkgs.callPackage ../../mako-renderer.nix { };
 
   # Read-only AMDGPU sysfs reader used by Waybar. nvtop is launched only on click.
@@ -22,7 +27,7 @@ let
       gawk
       jq
     ];
-    text = builtins.readFile ../../scripts/waybar-amdgpu.sh;
+    text = builtins.readFile "${homeScriptsDir}/waybar-amdgpu.sh";
   };
 
   # Rofi front-end for the Flake-declared kernel. Mutating actions require confirmation.

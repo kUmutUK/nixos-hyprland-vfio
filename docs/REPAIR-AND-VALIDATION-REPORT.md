@@ -1,6 +1,16 @@
-# Repair and validation report — updated 2026-11-24 (v1.6.0 remains latest release; merged Flake PR #30; feature-branch Normal CI #1765 passed; full-system build pending)
+# Repair and validation report — updated 2026-11-25 (v1.6.2 published; Serpantinum PR #34 merged; Home Manager build blocker diagnosed)
 
-## Current release, source and validation status — 2026-11-24
+## Current source and validation status — 2026-11-25
+
+**Published baseline.** v1.6.2 is the latest published GitHub Release (ID `457366336`), published 24 November 2026. Its annotated tag resolves to exact commit `622183e9bbaeebfa49c33b92e94fe42d4ceb91e`; the canonical source ZIP is 582,590 bytes with GitHub-reported SHA-256 `52fcdbfda4212cb9ca4ac9e2739097e16844353643ba80fccf751253828d6bdd`.
+
+**Current main and checks.** Main is `3b1c6a142ce0a9ae83cfb44d3f514be57f0799d9`. PR #33 and PR #34 are merged. Normal Nix Flake Check [run 45504325645](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/45504325645) passed on that exact commit. Full NixOS System Build [run 45507035118](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/45507035118) failed while evaluating Home Manager's Waybar JSON configuration: `home.nix` read `../../scripts/waybar-amdgpu.sh`, which resolves to absent `nixos/scripts/waybar-amdgpu.sh` in a full checkout. This is a Nix source-path evaluation failure, not a CachyOS kernel compile failure.
+
+**Correction in this update.** `home.nix` now uses the same dual-layout resolver as `configuration.nix`: prefer `nixos/scripts/` for a standalone deployed flake and fall back to repository-root `scripts/` for a full checkout. The documentation-integrity suite now asserts both branches and the exact reader path. No UUID, PCI/USB identity, VM XML, kernel selection, GameMode behavior, or established runtime preference is changed. The correction requires its own Normal CI and fresh Full NixOS System Build result after merge.
+
+**Serpantinum.** PR #34 integrated the pinned 2.5.3 shell. Its full-system closure and interactive target-host session are not yet validated; bar rendering, overlays, notification routing, sound/gamma behavior, and Ski portal integration remain open. AMDGPU telemetry is not yet mapped into Serpantinum's bar. Build #22 [run 44623962158](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44623962158) is the last successful full-system build, but validates an older source/lock tuple, not current main.
+
+## Historical source and validation snapshot — 2026-11-24
 
 **Current feature branch — 24 November 2026.** The proposed branch adds read-only AMDGPU Waybar telemetry; shared PPD/scx-loader profiles; optional `none`/`adios` NVMe selection; explicit CachyOS BBRv3 and opt-in KCFI; a fail-closed external-disk VM backup timer and verified retention; WirePlumber analog-output priority; and local MangoHud benchmark capture/report tools. USBGuard remains audit-safe by default. Normal CI #1765 [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/45483814217) passed all 30 workflow-defined steps on exact commit `15358cc68ba23853c7c6053fab5b003ccde9af89`; a fresh full-system build is the remaining compile gate. No RX 6700 XT Waybar rendering, headset routing, external-disk backup, USB enforcement, or CS2 performance result is claimed.
 

@@ -4,6 +4,12 @@ This file summarizes notable changes in English. The separate Turkish release-by
 
 ## [Unreleased]
 
+### Fix Home Manager's standalone-flake script path — 2026-11-25
+
+- Resolve the Waybar AMDGPU helper from the flake-local `scripts/` directory when deployed as a standalone flake, with the repository-root `scripts/` directory retained as the full-checkout fallback. This aligns `home.nix` with the resolver already used by `configuration.nix`.
+- Add a documentation-integrity regression assertion for both path branches and the exact `builtins.readFile` reference. The failure it addresses was recorded on main commit `3b1c6a1` in Full NixOS System Build run [45507035118](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/45507035118).
+- No UUID, PCI identity, VM XML, kernel selection, GameMode behavior, or runtime preference is changed. This source fix still requires its own Normal CI and a fresh full-system build after merge.
+
 ### Serpantinum desktop shell integration — 2026-11-25
 
 - **Shell replacement:** the Hyprland session shell is now [Serpantinum](https://github.com/ilyamiro/serpantinum) (locked at `2295c61f466fe46830bc16565af4c246081286da`, 2.5.3, with its own pinned nested inputs). Its NixOS module is enabled for system prerequisites (the PAM service for its lock screen, Ski as the default file manager, and `mkDefault` fallbacks for shared services that the explicit settings in this repository override), and its Home Manager module is configured in `home.nix` — Turkish UI, Istanbul weather location, the previous Waybar layout mapped onto the shell's bar modules, JetBrainsMono Nerd Font with Matugen theming, notifications with DND off, and both the shell's idle scheduler and dock disabled. The shell's Nixpkgs input is deliberately not followed from the root system so it builds against the Quickshell/Qt revision upstream tests.
