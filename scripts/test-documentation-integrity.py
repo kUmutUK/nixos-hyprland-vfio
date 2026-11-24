@@ -290,8 +290,8 @@ require(
     and len(documented_release_path_list) == len(documented_release_paths)
     and len(workflow_release_path_list) == len(workflow_release_paths)
     and documented_release_paths == workflow_release_paths
-    and len(workflow_release_paths) == 69,
-    "RELEASING.md and release.yml must contain the same unique exhaustive 69-path literal allowlist",
+    and len(workflow_release_paths) == 70,
+    "RELEASING.md and release.yml must contain the same unique exhaustive 70-path literal allowlist",
 )
 require(
     "git diff --no-renames --name-status" in RELEASE_WORKFLOW
@@ -1462,6 +1462,7 @@ verification_metadata_paths = {
     "docs/OPTISCALER.md",
     "docs/OPTISCALER-MANAGER.md",
     "docs/MAKO.md",
+    "docs/BTRFS-AND-KERNEL-MANAGEMENT.md",
     "docs/MIGRATION-GUIDE.md",
     "docs/AUDIT-2026-10-28-VM-XML-VFIO.md",
     "nixos/hosts/.template/configuration.nix",
@@ -2579,6 +2580,13 @@ require(
     and "Full-system Build #21" in CHANGELOG
     and "45 commits and 23 changed paths" in CHANGELOG,
     "current-source release/CI records and the corrected Build #20 scope must remain documented",
+)
+require(
+    "docs/BTRFS-AND-KERNEL-MANAGEMENT.md" in README
+    and "docs/BTRFS-AND-KERNEL-MANAGEMENT.md" in RELEASING
+    and "docs/BTRFS-AND-KERNEL-MANAGEMENT.md" in RELEASE_WORKFLOW
+    and "docs/BTRFS-AND-KERNEL-MANAGEMENT.md" in verification_metadata_paths,
+    "the Btrfs/kernel guide must be reflected in README and both matching documentation-only allowlists",
 )
 require(
     "docs/UUID-AND-MACHINE-IDENTITY.md" in RELEASING
