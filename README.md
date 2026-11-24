@@ -903,7 +903,7 @@ The repeated missing `.ko.BTF.1` failure across two different Rust modules shows
 
 ## Repository map (selected entry points; non-exhaustive)
 
-This is a curated map of selected entry points, not a complete inventory of the 82 tracked files. Use the repository file browser for the full source tree.
+This is a curated map of selected entry points, not a complete inventory of the 91 tracked files. Use the repository file browser for the full source tree.
 
 ```text
 .
@@ -984,6 +984,13 @@ The Bash syntax-check loop is kept in sync with [CONTRIBUTING.md](CONTRIBUTING.m
     scripts/test-backup-vm.sh \
     scripts/vfio-health.sh \
     scripts/test-vfio-health.sh \
+    scripts/waybar-amdgpu.sh \
+    scripts/test-waybar-amdgpu.sh \
+    scripts/host-profile.sh \
+    scripts/test-host-profile.sh \
+    scripts/automated-vm-backup.sh \
+    scripts/test-automated-vm-backup.sh \
+    scripts/benchmark-capture.sh \
     nixos/kernel-manager.sh
   do
     bash -n "$f"
@@ -993,11 +1000,11 @@ The Bash syntax-check loop is kept in sync with [CONTRIBUTING.md](CONTRIBUTING.m
 Run the syntax, formatting, and static-analysis checks used by normal CI:
 
 ```bash
-for f in install.sh scripts/package-source-zip.sh scripts/verify-source-revision.sh scripts/test-source-revision.sh scripts/installer-lock.sh scripts/pci-address.sh scripts/test-installer-lock.sh nixos/hosts/nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh scripts/backup-vm.sh scripts/test-backup-vm.sh scripts/vfio-health.sh scripts/test-vfio-health.sh nixos/kernel-manager.sh; do
+for f in install.sh scripts/package-source-zip.sh scripts/verify-source-revision.sh scripts/test-source-revision.sh scripts/installer-lock.sh scripts/pci-address.sh scripts/test-installer-lock.sh nixos/hosts/nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh scripts/backup-vm.sh scripts/test-backup-vm.sh scripts/vfio-health.sh scripts/test-vfio-health.sh scripts/waybar-amdgpu.sh scripts/test-waybar-amdgpu.sh scripts/host-profile.sh scripts/test-host-profile.sh scripts/automated-vm-backup.sh scripts/test-automated-vm-backup.sh scripts/benchmark-capture.sh nixos/kernel-manager.sh; do
   bash -n "$f"
 done
 find ./nixos -type f -name "*.nix" -print0 | xargs -0 -r nixfmt --check
-shellcheck -S warning install.sh scripts/package-source-zip.sh scripts/verify-source-revision.sh scripts/test-source-revision.sh scripts/installer-lock.sh scripts/pci-address.sh nixos/hosts/nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-lock.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh scripts/backup-vm.sh scripts/test-backup-vm.sh scripts/vfio-health.sh scripts/test-vfio-health.sh nixos/kernel-manager.sh
+shellcheck -S warning install.sh scripts/package-source-zip.sh scripts/verify-source-revision.sh scripts/test-source-revision.sh scripts/installer-lock.sh scripts/pci-address.sh nixos/hosts/nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-lock.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh scripts/backup-vm.sh scripts/test-backup-vm.sh scripts/vfio-health.sh scripts/test-vfio-health.sh scripts/waybar-amdgpu.sh scripts/test-waybar-amdgpu.sh scripts/host-profile.sh scripts/test-host-profile.sh scripts/automated-vm-backup.sh scripts/test-automated-vm-backup.sh scripts/benchmark-capture.sh nixos/kernel-manager.sh
 bash scripts/test-installer-lock.sh
 statix check .
 deadnix .
@@ -1020,6 +1027,9 @@ python3 scripts/test-vm-xml-paths.py
 python3 scripts/test-vm-xml-sync.py
 python3 scripts/test-vm-diagnostic.py
 python3 scripts/test-vm-iso-paths.py
+bash scripts/test-host-profile.sh
+bash scripts/test-automated-vm-backup.sh
+python3 scripts/test-benchmark-report.py
 ```
 
 Build the current LSFG-VK v2 flake output from the NixOS flake directory:
