@@ -4,7 +4,7 @@ This repository contains **two different kinds of UUIDs**. Do not treat them as 
 
 ## 1. Host storage identifiers — verified deployed mapping
 
-The committed `nixos/hosts/nixos/hardware-configuration.nix` is specific to the currently deployed host. Its storage identifiers are intentional, machine-specific values—not portable placeholders.
+The committed `nixos/hosts/nixos/hardware-configuration.nix` is specific to the currently deployed host. Its storage identifiers are intentional, not placeholders, and remain specific to this machine—not portable values.
 
 The mapping below was rechecked against the running reference host on **2026-11-24** using `lsblk -f` and `sudo blkid`:
 
@@ -20,7 +20,7 @@ The earlier committed identifiers had drifted from the devices currently present
 - `boot.initrd.luks.devices."cryptroot".device` identifies the encrypted LUKS block device that is opened during boot.
 - A `PARTUUID`, when used by a disk configuration, identifies a partition rather than the filesystem or encrypted container.
 
-**A filesystem UUID, a PARTUUID, and a LUKS UUID are different identifiers.** Never copy one into a field expecting another. Do not edit or regenerate the committed host identifiers without rechecking the live device mapping: a mismatch can prevent the encrypted root from opening or a filesystem from mounting.
+**A filesystem UUID, a PARTUUID, and a LUKS UUID are different identifiers.** Never copy one into a field expecting another. Do not edit, regenerate, swap, or replace the committed host identifiers without rechecking the live device mapping: a mismatch can prevent the encrypted root from opening or a filesystem from mounting.
 
 **Public-repository disclosure:** The root Btrfs UUID, LUKS UUID, EFI filesystem UUID, swap PARTUUID, and optional `/mnt/media` filesystem UUID are intentionally published in this public repository because they are the storage references used by the committed, machine-specific NixOS configuration; they are not authentication credentials. Keep MAC addresses, serial numbers, machine IDs, and broader host inventories in a private local record; do not add them to this repository. This is a deliberate disclosure of machine-specific storage metadata, not an anonymized or portable template. Do not copy the published identifiers to another machine; use that machine's generated configuration.
 
