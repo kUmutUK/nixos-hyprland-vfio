@@ -1,6 +1,5 @@
 # Repair and validation report — updated 2026-11-25 (v1.6.2 published; Serpantinum PR #34 merged; Home Manager build blocker diagnosed)
 
-
 ## Current source and validation status — 2026-11-25
 
 **Published baseline.** v1.6.2 is the latest published GitHub Release (ID `457366336`), published 24 November 2026. Its annotated tag resolves to exact commit `622183e9bbaeebfa49c33b92e94fe42d4ceb91e`; the canonical source ZIP is 582,590 bytes with GitHub-reported SHA-256 `52fcdbfda4212cb9ca4ac9e2739097e16844353643ba80fccf751253828d6bdd`.

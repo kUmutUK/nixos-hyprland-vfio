@@ -13,7 +13,6 @@
 **Current correction:** a dedicated fix branch aligns `home.nix` with the dual-layout script resolver already used by `configuration.nix`, and adds a regression assertion for the deployed-flake and full-checkout paths. Its Normal CI and a new full-system build must pass before the corrected tree can be treated as build-verified.
 
 ## Historical full-system build and CI status — 2026-11-24
-## Current full-system build and CI status — 2026-11-24
 
 - **Merged Flake inputs (PR #30):** root Nixpkgs `2786a2a72088ecf32aea5b3ec52099e6a7cff78f`, nested CachyOS `nixos-unstable-small` Nixpkgs `616ae05a769a23c143b19746b6a3b06366a9a28f`, CachyOS source `306480b9096055a06503167f975c027e244dd839`. The owner confirms the Flake update/rebuild and UWSM validation completed successfully on 24 November; this is an owner report, not a retained CI transcript.
 - **Current check workflow size:** the feature branch reuses the AMDGPU telemetry regression step for four related host-feature suites; the workflow now defines all 30 workflow-defined steps (GitHub's runner-generated `Set up job` entry is not part of that YAML-defined count). Normal CI #1765 [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/45483814217) passed all 30 workflow-defined steps on exact feature commit `15358cc68ba23853c7c6053fab5b003ccde9af89`.
