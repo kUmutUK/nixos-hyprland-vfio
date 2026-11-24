@@ -1,7 +1,16 @@
-name: Full NixOS System Build (manual)
+name: Full NixOS System Build
 
+# Manual dispatch stays the exact-commit gate for releases. The weekly
+# Tuesday 05:00 UTC schedule additionally builds the current `main` HEAD so
+# locked-input or kernel breakage surfaces between manual dispatches; it is
+# not a release gate. Tuesday 05:00 UTC deliberately runs one day after the
+# Monday 04:00 UTC flake-update PR so the PR has had time to be reviewed or
+# merged, but a scheduled build on unmerged `main` is still valid: it tests
+# the exact published default branch.
 on:
   workflow_dispatch:
+  schedule:
+    - cron: '0 5 * * 2'
 
 permissions:
   contents: read

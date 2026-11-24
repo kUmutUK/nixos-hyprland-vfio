@@ -169,6 +169,10 @@ in
   # under `/var/lib/libvirt/hooks/qemu.d/` instead.
 
   boot.loader.systemd-boot.enable = true;
+  # Bound the boot-entry count so generations cannot fill the 1 GiB ESP and
+  # break booting. Store generations remain governed by the weekly nix.gc
+  # 30-day retention; snapper snapshots are independent of the ESP entry list.
+  boot.loader.systemd-boot.configurationLimit = 20;
   boot.loader.efi.canTouchEfiVariables = true;
   # Apple Aluminium Keyboard (USB ID 05ac:024f) exposes the F-row as media keys
   # in hid_apple's automatic mode. Prefer standard F1-F12 keys; hold Fn for media.
@@ -223,10 +227,16 @@ in
   # Waydroid on Linux 5.18 and newer uses memfd rather than the removed
   # `ashmem_linux` module. Do not attempt to load `ashmem_linux`; after `waydroid init`,
   # verify `sys.use_memfd=true` in `/var/lib/waydroid/waydroid_base.prop`.
+  # `ntsync` (mainline since 6.14) implements the Windows game-synchronization
+  # primitives that Wine/Proton 10+ use for lower input-to-frame latency. Wine
+  # falls back to its own userspace implementation when the module is absent,
+  # so this is an optimization, not a dependency. VFIO is unaffected: ntsync
+  # owns no PCI device. Verify availability with `modinfo ntsync`.
   boot.kernelModules = [
     "kvm-amd"
     "binder_linux"
     "vfio-pci"
+    "ntsync"
   ];
 
   boot.kernel.sysctl = {
@@ -369,6 +379,11 @@ in
     # The `nggc` flag was removed because NGG culling is already enabled by default
     # in Mesa for GFX10.3 (RX 6700 XT); the flag had no effect. The `gpl` setting remains.
     RADV_PERFTEST = "gpl";
+    # Mesa's default on-disk shader cache is small enough that large games evict
+    # compiled shaders and recompile them on later launches (startup stutter).
+    # 12G follows the CachyOS gaming recommendation; the cache is per-user under
+    # ~/.cache, and DXVK/Proton keep their separate caches inside prefixes.
+    MESA_SHADER_CACHE_MAX_SIZE = "12G";
     NIXOS_OZONE_WL = "1";
     MOZ_ENABLE_WAYLAND = "1";
     QT_QPA_PLATFORM = "wayland;xcb";
@@ -463,7 +478,20 @@ in
   security.polkit.enable = true;
   services.udisks2.enable = true;
   services.gvfs.enable = true;
+  # fstrim stays off: every Btrfs mount already uses discard=async and the LUKS
+  # device allows discards, so freed extents are trimmed continuously. A weekly
+  # fstrim pass would add I/O without reclaiming anything further.
   services.fstrim.enable = false;
+
+  # S.M.A.R.T. health monitoring for the NVMe system disk and the media disk.
+  # smartd auto-detects devices and reports findings to the journal; direct
+  # mail notification is disabled because this host runs no mail transport.
+  services.smartd.enable = true;
+  services.smartd.notifications.mail.enable = false;
+
+  # LVFS firmware updates through `fwupdmgr` (UEFI/NVMe). Keep a known-good
+  # boot generation available before applying UEFI-level updates.
+  services.fwupd.enable = true;
 
   services.btrfs.autoScrub = {
     enable = true;
@@ -558,6 +586,14 @@ in
   # mice, keyboard interfaces, and all physical mouse buttons untouched.
   services.udev.extraRules = ''
     ACTION=="add", SUBSYSTEM=="input", KERNEL=="event*", ENV{ID_INPUT_MOUSE}=="1", ATTRS{idVendor}=="1532", ATTRS{idProduct}=="0098", TAG+="systemd", ENV{SYSTEMD_WANTS}+="mouse-hardware-fix@%k.service"
+  '';
+
+  # The ntsync character device is root-only by default; grant the default
+  # `users` group read/write so Steam/Proton do not need root for NT sync
+  # objects. 0660 with the users group is tighter than the 0666 used by some
+  # upstream examples.
+  services.udev.extraRules = ''
+    KERNEL=="ntsync", MODE="0660", GROUP="users"
   '';
 
   # The udev rule starts this template for the matching physical Razer pointer.
@@ -681,6 +717,8 @@ in
     btrfs-progs
     compsize
     snapper
+    nh # nixos-rebuild helper with generation diffs and cleanup
+    nvd # side-by-side NixOS generation/package-set diffing
     whois # mkpasswd --method yescrypt (password hash setup)
     mpvpaper
     flatpak-builder
@@ -776,6 +814,11 @@ in
   };
 
   programs.steam.enable = true;
+  # Declarative GE Proton: pinned by nixpkgs and the flake lock instead of
+  # manual protonup-qt downloads, and selectable per game in Steam's
+  # compatibility menu. Valve Proton stays the global default; protonup-qt
+  # remains available for ad-hoc, unpinned installs.
+  programs.steam.extraCompatPackages = [ pkgs.proton-ge-custom ];
   services.flatpak.enable = true;
   services.cloudflare-warp.enable = true;
 
