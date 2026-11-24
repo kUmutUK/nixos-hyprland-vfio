@@ -2046,6 +2046,23 @@ require("2026-10-28 entry" in STATE_INDEX and "2026-10-27 entry" not in STATE_IN
 require("copy all seven required Nix/flake files" in README and "copy all six required Nix/flake files" not in README and "copy all five required Nix/flake files" not in README and "four flake files" not in README, "README must describe the seven-file migration accurately (hosts/ layout includes host-settings.nix)")
 require("host-settings.nix" in INSTALLATION, "INSTALLATION must point to the host-settings.nix customization module")
 require(
+    "scriptsDir =" in CONFIG
+    and "builtins.pathExists ../../scripts" in CONFIG
+    and 'builtins.readFile "${scriptsDir}/host-profile.sh"' in CONFIG
+    and 'builtins.readFile "${scriptsDir}/automated-vm-backup.sh"' in CONFIG
+    and '"${scriptsDir}/backup-vm.sh"' in CONFIG,
+    "embedded NixOS scripts must resolve from either the deployed flake-local copy or the full repository checkout",
+)
+require(
+    'sudo cp -a "$REPO/scripts/." /etc/nixos/nixos/scripts/' in README
+    and "/etc/nixos/vm-xml/" in README
+    and "sudo cp -a /tmp/repo/scripts/. /mnt/etc/nixos/nixos/scripts/" in INSTALLATION
+    and "/mnt/etc/nixos/vm-xml/" in INSTALLATION
+    and "/etc/nixos/nixos/scripts/" in MIGRATION_GUIDE
+    and "/etc/nixos/nixos/vm-xml/" not in MIGRATION_GUIDE,
+    "installation and migration documentation must distinguish flake scripts from repository-level VM XML templates",
+)
+require(
     f"text = {chr(0xF023)};" in HOME_NIX
     and "N I X O S   /   K I N G   G R E Y" not in HOME_NIX
     and "ENTER PASSWORD TO UNLOCK" not in HOME_NIX
