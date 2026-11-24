@@ -147,7 +147,14 @@ if [[ "$edge_raw" =~ ^[0-9]+$ ]]; then
 fi
 
 tooltip="AMD GPU (read-only)"
-tooltip+=
+tooltip+=$'\nUsage: '"$usage_display"
+tooltip+=$'\nVRAM: '"$vram_display"
+tooltip+=$'\nEdge: '"$edge_display"
+tooltip+=$'\nJunction: '"$junction_display"
+tooltip+=$'\nClock: '"$clock_display"
+tooltip+=$'\nPower: '"$power_display"
+tooltip+=$'\nFan: '"$fan_display"
+
 emit_json "$text" "$tooltip" "amd-gpu"
 \nUsage: '"$usage_display"
 tooltip+=
