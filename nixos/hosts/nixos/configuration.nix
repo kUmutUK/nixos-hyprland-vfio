@@ -255,8 +255,7 @@ in
   # Target-host boot of the LTS specialisation remains unverified until the
   # next full-system build and activation.
   specialisation.lts-kernel.configuration = {
-    boot.kernelPackages =
-      lib.mkForce pkgs.cachyosKernels.linuxPackages-cachyos-lts;
+    boot.kernelPackages = lib.mkForce pkgs.cachyosKernels.linuxPackages-cachyos-lts;
   };
 
   boot.kernel.sysctl = {
@@ -872,7 +871,15 @@ in
   # %command%` there. Resolution matches the reference 2560x1440 monitor.
   programs.steam.gamescopeSession = {
     enable = true;
-    args = [ "-W" "2560" "-H" "1440" "-f" "--immediate-flips" "--force-grab-cursor" ];
+    args = [
+      "-W"
+      "2560"
+      "-H"
+      "1440"
+      "-f"
+      "--immediate-flips"
+      "--force-grab-cursor"
+    ];
   };
   services.flatpak.enable = true;
   services.cloudflare-warp.enable = true;
