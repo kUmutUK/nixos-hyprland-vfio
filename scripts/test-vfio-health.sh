@@ -42,11 +42,10 @@ run_health() {
 }
 
 new_case() {
-  CASE_NAME="$1"
   CASE_SYS="$TMP_DIR/$2-sys"
   CASE_LOG="$TMP_DIR/$2.log"
   CASE_DISK="$TMP_DIR/$2.qcow2"
-  mkdir -m 700 -p -- "$CASE_SYS/kernel/iommu_groups" "$CASE_SYS/bus/pci/devices"
+  mkdir -p -- "$CASE_SYS/kernel/iommu_groups" "$CASE_SYS/bus/pci/devices"
 }
 
 # Fake PCI device with an IOMMU group and a driver symlink. The symlinks are
@@ -56,10 +55,10 @@ add_pci_device() {
   group="$2"
   driver="$3"
   device_dir="$CASE_SYS/bus/pci/devices/$device"
-  mkdir -m 700 -p -- "$device_dir" "$CASE_SYS/kernel/iommu_groups/$group"
+  mkdir -p -- "$device_dir" "$CASE_SYS/kernel/iommu_groups/$group"
   ln -s "$CASE_SYS/kernel/iommu_groups/$group" "$device_dir/iommu_group"
   if [ "$driver" != "none" ]; then
-    mkdir -m 700 -p -- "$CASE_SYS/bus/pci/drivers/$driver"
+    mkdir -p -- "$CASE_SYS/bus/pci/drivers/$driver"
     ln -s "$CASE_SYS/bus/pci/drivers/$driver" "$device_dir/driver"
   fi
 }
@@ -114,7 +113,7 @@ fi
 new_case nogroup nogroup
 add_pci_device "0000:0b:00.0" 12 amdgpu
 device_dir="$CASE_SYS/bus/pci/devices/0000:0b:00.1"
-mkdir -m 700 -p -- "$device_dir" "$CASE_SYS/bus/pci/drivers/snd_hda_intel"
+mkdir -p -- "$device_dir" "$CASE_SYS/bus/pci/drivers/snd_hda_intel"
 ln -s "$CASE_SYS/bus/pci/drivers/snd_hda_intel" "$device_dir/driver"
 if OUTPUT="$(run_health 2>/dev/null)"; then
   fail_test "an ungrouped PCI function must fail the health check"
