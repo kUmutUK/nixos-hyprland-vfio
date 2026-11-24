@@ -1113,7 +1113,8 @@ require(
     and "entry.create_system != 3" in SOURCE_ZIP_HELPER
     and "expected_mode = 0o755 if name in tracked_executables else 0o644" in SOURCE_ZIP_HELPER
     and "entry.create_system = 3" in SOURCE_ZIP_HELPER
-    and "os.replace(normalized_path, archive_path)" in SOURCE_ZIP_HELPER,
+    and "os.replace(normalized_path, archive_path)" in SOURCE_ZIP_HELPER
+    and '"scripts/nixos-kernel-manager.sh",' in SOURCE_ZIP_HELPER,
     "canonical source packaging must validate Unix creator and exact permissions for every tracked file",
 )
 require(
