@@ -45,15 +45,87 @@ The CS2 `gamescope -f -w 1440 -h 1440 -W 2560 -H 1440 -S stretch ...` launch
 line is unnecessary inside this session — Gamescope already is the session;
 use `gamemoderun mangohud %command%` there instead.
 
-## GameMode and the power profile
+## GameMode and the coordinated host profiles
 
-GameMode raises scheduling priority (`renice = 10`), I/O priority, and the AMD
-GPU performance level while a game runs, and switches the
-power-profiles-daemon profile to `performance` on game start and back to
-`balanced` on exit (GameMode `custom.start`/`custom.end`). The switch is
-best-effort: if it fails, `gamemoded` logs an error and the game runs anyway.
-The mpvpaper watchdog — not GameMode — remains the single authority for the
-live-wallpaper service.
+GameMode continues to raise scheduling priority (`renice = 10`), I/O priority,
+and the AMD GPU performance level while a game runs. Its `custom.start` and
+`custom.end` hooks now call the shared `host-profile` helper. The first active
+GameMode client stores the selected manual profile, temporarily enters Gaming,
+and restores the previous profile when the final client exits. A failed profile
+switch is best-effort and does not block the game. The mpvpaper watchdog — not
+GameMode — remains the single authority for the live-wallpaper service.
+
+| Command | PPD | sched_ext |
+|---|---|---|
+| `host-profile desktop` | Balanced | Restore configured default |
+| `host-profile gaming` | Performance | Gaming |
+| `host-profile low-latency` | Performance | LowLatency |
+| `host-profile vm` | Performance | Server |
+
+Use `host-profile status` to inspect the saved profile, scx-loader state, and
+PPD mode. The VM profile is manual; it is not automatically coupled to
+libvirt. The existing PPD and scx-loader services remain the only authorities:
+this adds no second GameMode daemon, no Ananicy-cpp, and no second sched_ext
+manager.
+
+## AMD GPU Waybar telemetry
+
+The `custom/amdgpu` Waybar module reads the kernel's AMDGPU sysfs interface
+without changing power, clocks, fan policy, or performance state. It reports
+GPU busy percentage, VRAM used/total, Edge and Junction temperatures when
+exposed, the current graphics clock, average/instantaneous power, and fan RPM.
+The optional sensor fields are shown as unavailable when the driver does not
+export them. The module refreshes every two seconds; clicking it opens the
+AMD-enabled `nvtop` TUI in Kitty.
+
+The reader selects the first AMD DRM card exposed under
+`/sys/class/drm/card*/device`. On a single-GPU VFIO host, the module reports
+telemetry as unavailable when no AMD DRM card is present (for example while
+the GPU is bound to `vfio-pci`). It does not write to sysfs. The underlying
+interfaces are documented in the
+[Linux kernel AMDGPU monitoring documentation](https://www.kernel.org/doc/html/latest/gpu/amdgpu/thermal.html).
+
+## NVMe I/O scheduler and kernel options
+
+The pinned CachyOS kernel already compiles ADIOS (`MQ_IOSCHED_ADIOS`). The
+reference default remains `none`; the optional `kumutuk.host.nvmeScheduler`
+setting accepts `none` or `adios`. First confirm that the running kernel
+exposes ADIOS with:
+
+```bash
+cat /sys/block/nvme0n1/queue/scheduler
+```
+
+Compare both schedulers using the same workload. Keep `none` unless repeated
+measurements on the MP600 CORE XT justify changing the default.
+
+BBRv3 is selected explicitly through the pinned CachyOS kernel derivation.
+This is TCP congestion control, not a CS2 FPS optimization or a change to the
+game's UDP traffic. KCFI is available as the opt-in `kernelKcfi` host option
+and remains disabled by default. AutoFDO remains disabled.
+
+## Benchmark capture and reporting
+
+Use the same CS2 scene, resolution, graphics settings, warm-up, and capture
+duration for each comparison. Save a MangoHud CSV, then capture the host state
+and summarize the samples:
+
+```bash
+bash scripts/benchmark-capture.sh none path/to/none.csv
+bash scripts/benchmark-capture.sh adios path/to/adios.csv
+```
+
+The local report stores the kernel, NixOS system generation, CPU/RAM, PPD,
+scx-loader, GameMode, NVMe scheduler, and available AMDGPU sysfs readings.
+When a CSV is supplied it reports average FPS, 1% low FPS (mean of the lowest
+1% of samples), average frametime, and frametime p99. The standalone report
+can also be run directly:
+
+```bash
+python3 scripts/benchmark-report.py path/to/mangohud.csv
+```
+
+The tool is local-only and does not upload data.
 
 ## Shader cache sizing
 
@@ -65,11 +137,23 @@ game prefixes.
 
 ## VM backup and health checks
 
-`scripts/backup-vm.sh` creates a compressed, SHA-256-reported copy of the
-Windows guest's qcow2 disk while the VM is shut off; see the script header for
-the fail-closed guards. Back up to a mounted external disk, not to the media
-partition that stores the live image. Snapper snapshots protect the host
-Btrfs system only — the Windows disk has no other backup path.
+`scripts/backup-vm.sh` now checks the converted qcow2 before publishing,
+writes and verifies a SHA-256 sidecar, and prunes only older backups whose own
+sidecars verify. The weekly `vm-backup.timer` is disabled until both an
+external mountpoint and its expected filesystem UUID are set in
+`host-settings.nix`. At run time, an absent mount is a safe skip and a
+different mounted UUID is rejected. Use a dedicated external disk, never the
+partition holding the live Windows image.
+
+USBGuard remains audit-safe by default (`allow/keep`). The optional
+`usbguardMode = "enforce"` must only be selected after generating and reviewing
+a rules file that explicitly covers the host keyboard, Razer mouse, and VM
+passthrough devices. Do not enable enforcement with an incomplete policy.
+
+WirePlumber now gives the onboard analog output higher session priority than
+the monitor HDMI sink while retaining the separate VG27AQ1A no-suspend rule.
+A previously saved user default may override the priority; run
+`wpctl clear-default` once if necessary, then reconnect the headphones.
 
 `scripts/vfio-health.sh` is the read-only counterpart for between VM runs: it
 reports the resolved IOMMU groups and the current driver behind both GPU PCI

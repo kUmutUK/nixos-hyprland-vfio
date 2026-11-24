@@ -59,5 +59,56 @@
       default = "scx_bpfland";
       description = "sched_ext policy scx-loader starts by default. All enum values ship in the scx.rustscheds package set the service already installs; scxctl stop returns to the kernel BORE/EEVDF policy.";
     };
+    nvmeScheduler = lib.mkOption {
+      type = lib.types.enum [
+        "none"
+        "adios"
+      ];
+      default = "none";
+      description = "NVMe I/O scheduler. ADIOS is compiled into the pinned CachyOS kernel; none remains the reference default until target-host benchmarks justify a change.";
+    };
+    kernelKcfi = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = "Opt-in Clang KCFI kernel control-flow integrity. Enabling it changes the kernel derivation and requires a full-system build and boot test.";
+    };
+    usbguardMode = lib.mkOption {
+      type = lib.types.enum [
+        "audit"
+        "enforce"
+      ];
+      default = "audit";
+      description = "USBGuard policy. Keep audit unless a generated, reviewed rules.conf explicitly allows every required host and VM USB device.";
+    };
+    vmBackupTarget = lib.mkOption {
+      type = lib.types.str;
+      default = "";
+      description = "Dedicated external backup mountpoint. Empty disables the automatic VM backup timer.";
+    };
+    vmBackupTargetUUID = lib.mkOption {
+      type = lib.types.str;
+      default = "";
+      description = "Expected filesystem UUID of vmBackupTarget; both backup target fields must be set together.";
+    };
+    vmBackupSourceDisk = lib.mkOption {
+      type = lib.types.str;
+      default = "/mnt/media/win10new.qcow2";
+      description = "Source qcow2 disk to back up after the VM has shut down.";
+    };
+    vmBackupName = lib.mkOption {
+      type = lib.types.str;
+      default = "win10";
+      description = "Libvirt domain name passed to the fail-closed backup helper.";
+    };
+    vmBackupRetention = lib.mkOption {
+      type = lib.types.ints.between 1 52;
+      default = 4;
+      description = "Number of verified weekly VM backups to retain on the external disk.";
+    };
+    vmBackupNotificationUser = lib.mkOption {
+      type = lib.types.str;
+      default = "localhost";
+      description = "Desktop account that receives best-effort VM backup notifications when logged in.";
+    };
   };
 }

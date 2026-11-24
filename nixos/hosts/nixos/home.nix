@@ -9,6 +9,17 @@
 let
   makoRenderer = pkgs.callPackage ../../mako-renderer.nix { };
 
+  # Read-only AMDGPU sysfs reader used by Waybar. nvtop is launched only on click.
+  waybarAmdGpu = pkgs.writeShellApplication {
+    name = "waybar-amdgpu";
+    runtimeInputs = with pkgs; [
+      coreutils
+      gawk
+      jq
+    ];
+    text = builtins.readFile ../../scripts/waybar-amdgpu.sh;
+  };
+
   # Rofi front-end for the Flake-declared kernel. Mutating actions require confirmation.
   nixosKernelManager = pkgs.writeShellApplication {
     name = "nixos-kernel-manager";
@@ -554,7 +565,7 @@ let
       font-size: 13px; font-weight: 700; color: #D9C95E;
       background: #1B1E25; padding: 4px 14px; border-radius: 10px; margin: 4px;
     }
-    #cpu, #memory, #temperature, #pulseaudio, #network, #gamemode, #tray, #custom-temperature {
+    #cpu, #memory, #temperature, #pulseaudio, #network, #gamemode, #tray, #custom-temperature, #custom-amdgpu {
       padding: 4px 10px; margin: 4px 3px; border-radius: 10px;
       background: #1B1E25; border: 1px solid #2F364A;
     }
@@ -567,6 +578,7 @@ let
     #cpu { color: #76C4D7; }
     #memory { color: #EAB2C2; }
     #custom-temperature { color: #D9C95E; }
+    #custom-amdgpu { color: #76C4D7; font-weight: 600; }
     #pulseaudio { color: #D9C95E; }
     #network { color: #76C4D7; }
     #gamemode { color: #EAB2C2; font-weight: bold; }
@@ -594,6 +606,7 @@ let
     modules-right = [
       "mpris"
       "gamemode"
+      "custom/amdgpu"
       "cpu"
       "memory"
       "custom/temperature"
@@ -693,6 +706,15 @@ let
       interval = 5;
       on-click = "kitty -e btop";
       tooltip = false;
+    };
+
+    "custom/amdgpu" = {
+      exec = "${waybarAmdGpu}/bin/waybar-amdgpu";
+      return-type = "json";
+      format = "{text}";
+      interval = 2;
+      tooltip = true;
+      on-click = "${pkgs.kitty}/bin/kitty -e ${pkgs.nvtopPackages.amd}/bin/nvtop";
     };
 
     pulseaudio = {

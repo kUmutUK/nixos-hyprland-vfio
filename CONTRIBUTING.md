@@ -19,16 +19,18 @@ Run these commands from the repository root. Go is required for the pinned Actio
 
 **Installer validation boundary:** CI and the commands below cover Bash syntax, ShellCheck, installer invariants, and mocked rollback behavior. Release #52 accepted `TARGET_HOST_VALIDATED=true` for exact v1.6.0 tag source `3c518e45d979db3234f7628ccbf3979a0057dcf2`; this is a maintainer attestation and the supporting transcript is not committed. The audited main baseline is six commits and 15 changed paths after v1.6.0; `install.sh` changed by 36 insertions and one deletion. The x86-64-v3 preflight in the audited main installer is not covered by the tag attestation. A reviewer cannot independently reproduce the live migration/rollback result from retained evidence. Keep the helper experimental and record static tests separately from physical validation.
 
-**Full-system release gate:** Full-system Build #21 on `672d255d4a921c097dd69eae817e8dc9699380d6` is 20 commits and 39 changed paths behind the v1.6.0 tag, and 26 commits and 39 changed paths behind the audited main baseline `9e399dcbe96a82a91d03e95fe2251f4e437eadb7`. Normal CI is not a complete NixOS system build; a fresh full-system build remains required before the next release.
+**Full-system release gate:** the latest retained GitHub full-system result is Build #22 [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44623962158) on `d845ccfb5dec3daf705b59bc29f2e5f14e4ee767`, using the previous 19 November lock tuple. It does not build the merged 24 November lock or this feature branch. The feature branch's exact-source Normal CI #1765 [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/45483814217) passed, but Normal CI is not a full NixOS system build. Run the manual Full NixOS System Build against the exact feature-branch commit before release.
+
+**Historical CI baseline:** Normal CI #1669 [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44603757865) passed on the audited pre-update `main` commit `9e399dcbe96a82a91d03e95fe2251f4e437eadb7`; the exact v1.6.0 tag source `3c518e45d979db3234f7628ccbf3979a0057dcf2` separately passed Normal CI #1663 [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44593727498). The audited baseline was six commits and 15 changed paths after the v1.6.0 tag; `install.sh` changed by 36 insertions and one deletion. Build #21's 20-commit/39-path and 26-commit/39-path distances are historical; Build #22 is the latest retained full-system build.
 
 ```bash
 go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/*.yml
 nix develop ./nixos --command bash -euo pipefail -c '
-  for f in install.sh scripts/package-source-zip.sh scripts/verify-source-revision.sh scripts/test-source-revision.sh scripts/installer-lock.sh scripts/pci-address.sh scripts/test-installer-lock.sh nixos/hosts/nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh scripts/backup-vm.sh scripts/test-backup-vm.sh scripts/vfio-health.sh scripts/test-vfio-health.sh nixos/kernel-manager.sh; do
+  for f in install.sh scripts/package-source-zip.sh scripts/verify-source-revision.sh scripts/test-source-revision.sh scripts/installer-lock.sh scripts/pci-address.sh scripts/test-installer-lock.sh nixos/hosts/nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh scripts/backup-vm.sh scripts/test-backup-vm.sh scripts/vfio-health.sh scripts/test-vfio-health.sh scripts/waybar-amdgpu.sh scripts/test-waybar-amdgpu.sh scripts/host-profile.sh scripts/test-host-profile.sh scripts/automated-vm-backup.sh scripts/test-automated-vm-backup.sh scripts/benchmark-capture.sh nixos/kernel-manager.sh; do
     bash -n "$f"
   done
   find ./nixos -type f -name "*.nix" -print0 | xargs -0 -r nixfmt --check
-  shellcheck -S warning install.sh scripts/package-source-zip.sh scripts/verify-source-revision.sh scripts/test-source-revision.sh scripts/installer-lock.sh scripts/pci-address.sh nixos/hosts/nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-lock.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh scripts/backup-vm.sh scripts/test-backup-vm.sh scripts/vfio-health.sh scripts/test-vfio-health.sh nixos/kernel-manager.sh
+  shellcheck -S warning install.sh scripts/package-source-zip.sh scripts/verify-source-revision.sh scripts/test-source-revision.sh scripts/installer-lock.sh scripts/pci-address.sh nixos/hosts/nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-lock.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh scripts/backup-vm.sh scripts/test-backup-vm.sh scripts/vfio-health.sh scripts/test-vfio-health.sh scripts/waybar-amdgpu.sh scripts/test-waybar-amdgpu.sh scripts/host-profile.sh scripts/test-host-profile.sh scripts/automated-vm-backup.sh scripts/test-automated-vm-backup.sh scripts/benchmark-capture.sh nixos/kernel-manager.sh
   lua_file="$(mktemp)"
   trap "rm -f $lua_file" EXIT
   (cd nixos && nix eval --raw --no-update-lock-file ".#nixosConfigurations.nixos.config.home-manager.users.localhost.xdg.configFile.\"hypr/hyprland.lua\".text" > "$lua_file")
@@ -53,6 +55,10 @@ nix develop ./nixos --command bash -euo pipefail -c '
   bash scripts/test-installer-invariants.sh
   bash scripts/test-installer-rollback.sh
   bash scripts/test-vfio-hook-driver-state.sh
+  bash scripts/test-waybar-amdgpu.sh
+  bash scripts/test-host-profile.sh
+  bash scripts/test-automated-vm-backup.sh
+  python3 scripts/test-benchmark-report.py
   tmpdir="$(mktemp -d)"
   trap "rm -rf -- \"$tmpdir\"" EXIT
   python3 scripts/extract-embedded-scripts.py "$tmpdir" > "$tmpdir/paths.nul"

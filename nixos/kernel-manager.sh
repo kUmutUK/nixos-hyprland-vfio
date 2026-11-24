@@ -14,7 +14,7 @@ require_flake() {
 }
 
 kernel_profile() {
-  if grep -Eq 'boot\.kernelPackages[[:space:]]*=[[:space:]]*rtBoreLtoV3KernelPackages;' "$FLAKE_FILE"; then
+  if grep -Eq 'boot\.kernelPackages[[:space:]]*=[[:space:]]*rtBoreLtoV3KernelPackagesFor config\.kumutuk\.host\.kernelKcfi;' "$FLAKE_FILE"; then
     printf 'CachyOS RT-Bore-LTO (x86-64-v3)'
   else
     printf 'Custom Flake kernel expression'

@@ -30,6 +30,15 @@ FULL_SYSTEM_WORKFLOW = (ROOT / ".github/workflows/full-system-build.yml").read_t
 KERNEL_BUILD = (ROOT / ".github/workflows/kernel-build.yml").read_text(encoding="utf-8")
 VFIO_HOOK = (ROOT / "nixos/hosts/nixos/hooks/qemu").read_text(encoding="utf-8")
 VFIO_HOOK_TEST = (ROOT / "scripts/test-vfio-hook-driver-state.sh").read_text(encoding="utf-8")
+AMD_GPU_WAYBAR = (ROOT / "scripts/waybar-amdgpu.sh").read_text(encoding="utf-8")
+AMD_GPU_WAYBAR_TEST = (ROOT / "scripts/test-waybar-amdgpu.sh").read_text(encoding="utf-8")
+HOST_PROFILE = (ROOT / "scripts/host-profile.sh").read_text(encoding="utf-8")
+HOST_PROFILE_TEST = (ROOT / "scripts/test-host-profile.sh").read_text(encoding="utf-8")
+AUTOMATED_VM_BACKUP = (ROOT / "scripts/automated-vm-backup.sh").read_text(encoding="utf-8")
+AUTOMATED_VM_BACKUP_TEST = (ROOT / "scripts/test-automated-vm-backup.sh").read_text(encoding="utf-8")
+BENCHMARK_CAPTURE = (ROOT / "scripts/benchmark-capture.sh").read_text(encoding="utf-8")
+BENCHMARK_REPORT = (ROOT / "scripts/benchmark-report.py").read_text(encoding="utf-8")
+BENCHMARK_REPORT_TEST = (ROOT / "scripts/test-benchmark-report.py").read_text(encoding="utf-8")
 AUDIT = (ROOT / "docs/AUDIT-2026-10-28-VM-XML-VFIO.md").read_text(encoding="utf-8")
 ARCHIVE_INDEX = (ROOT / "docs/archive/README.md").read_text(encoding="utf-8")
 CHANGELOG = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
@@ -291,8 +300,8 @@ require(
     and len(documented_release_path_list) == len(documented_release_paths)
     and len(workflow_release_path_list) == len(workflow_release_paths)
     and documented_release_paths == workflow_release_paths
-    and len(workflow_release_paths) == 70,
-    "RELEASING.md and release.yml must contain the same unique exhaustive 70-path literal allowlist",
+    and len(workflow_release_paths) == 75,
+    "RELEASING.md and release.yml must contain the same unique exhaustive 75-path literal allowlist",
 )
 require(
     "git diff --no-renames --name-status" in RELEASE_WORKFLOW
@@ -766,14 +775,14 @@ require("scripts/test-vm-xml-structure.py" in CHECK_WORKFLOW, "CI must continue 
 workflow_defined_step_count = len(re.findall(r"(?m)^      - (?:name|uses|run):", CHECK_WORKFLOW))
 workflow_step_note = f"all {workflow_defined_step_count} workflow-defined steps"
 require(
-    workflow_defined_step_count == 29
+    workflow_defined_step_count == 30
     and workflow_step_note in CHANGELOG
     and workflow_step_note in STATE_INDEX
     and workflow_step_note in REPAIR
     and "runner-generated `Set up job` entry" in CHANGELOG
     and "runner-generated `Set up job` entry" in STATE_INDEX
     and "runner-generated `Set up job` entry" in REPAIR,
-    "CI documentation must match the current 29-step YAML workflow and distinguish GitHub's generated setup entry; historical counts remain dated",
+    "CI documentation must match the current 30-step YAML workflow and distinguish GitHub's generated setup entry; historical counts remain dated",
 )
 require(
     "`nixos-unstable`" in INSTALLATION
@@ -1406,16 +1415,20 @@ require(
     and "Build #20" in REPAIR and "43653123079" in REPAIR
     and "`46d2b809e4fe9530dde58c85450b3544cf5d1ed0`" in REPAIR
     and "Full-system Build #21" in REPAIR and "43982447714" in REPAIR
-    and "`672d255d4a921c097dd69eae817e8dc9699380d6`" in REPAIR,
-    "repair report must retain historical Builds #18/#19/#20 and identify Build #21 as the latest completed full-system build",
+    and "`672d255d4a921c097dd69eae817e8dc9699380d6`" in REPAIR
+    and "Full-system Build #22" in REPAIR and "44623962158" in REPAIR
+    and "`d845ccfb5dec3daf705b59bc29f2e5f14e4ee767`" in REPAIR,
+    "repair report must retain historical Builds #18/#19/#20/#21 and identify Build #22 as the latest completed full-system build",
 )
 require(
     "Build #20" in STATE_INDEX and "43653123079" in STATE_INDEX
     and "`46d2b809e4fe9530dde58c85450b3544cf5d1ed0`" in STATE_INDEX
     and "Build #21" in STATE_INDEX and "43982447714" in STATE_INDEX
     and "`672d255d4a921c097dd69eae817e8dc9699380d6`" in STATE_INDEX
+    and "Build #22" in STATE_INDEX and "44623962158" in STATE_INDEX
+    and "`d845ccfb5dec3daf705b59bc29f2e5f14e4ee767`" in STATE_INDEX
     and "Build #19" in STATE_INDEX and "43101226875" in STATE_INDEX,
-    "current-state index must identify Build #21 as latest and retain Build #19/#20 as historical",
+    "current-state index must identify Build #22 as latest and retain Build #19/#20/#21 as historical",
 )
 require("run #1120" in REPAIR and "run #1120" in STATE_INDEX and "8d1e4585c9cd3f690c1df80ee531008c7e9d30ef" in STATE_INDEX,
         "current-state index must preserve the distinct reviewed-snapshot normal-CI record")
@@ -1506,8 +1519,13 @@ verification_metadata_paths = {
     "scripts/test-release-workflow-python.py",
     "scripts/test-lsfg-vk-v2.py",
     "scripts/package-source-zip.sh",
-    "scripts/backup-vm.sh",
     "scripts/test-backup-vm.sh",
+    "scripts/test-waybar-amdgpu.sh",
+    "scripts/test-host-profile.sh",
+    "scripts/test-automated-vm-backup.sh",
+    "scripts/test-benchmark-report.py",
+    "scripts/benchmark-capture.sh",
+    "scripts/benchmark-report.py",
     "scripts/vfio-health.sh",
     "scripts/test-vfio-health.sh",
     ".github/renovate.json",
@@ -1585,7 +1603,7 @@ if git_checkout and current_head and repair_baseline_match:
             # Pre-restructure paths are pending-build paths too: the 2026-11-19 hosts/ move
             # renamed nixos/{configuration,home}.nix and nixos/hooks/qemu, and diff reports
             # the old locations until a new full-system build resets the verified baseline.
-            full_build_pending_paths = {"nixos/hosts/nixos/configuration.nix", "nixos/hosts/nixos/hooks/qemu", "install.sh", "nixos/hosts/nixos/home.nix", "nixos/hosts/nixos/host-settings.nix", "nixos/flake.nix", "nixos/flake.lock", "nixos/hosts/nixos/hardware-configuration.nix", "nixos/mako-renderer.nix", "nixos/hosts/nixos/hooks/README.md", "nixos/configuration.nix", "nixos/home.nix", "nixos/hardware-configuration.nix", "nixos/hooks/qemu", "nixos/kernel-manager.sh"}
+            full_build_pending_paths = {"nixos/hosts/nixos/configuration.nix", "nixos/hosts/nixos/hooks/qemu", "install.sh", "nixos/hosts/nixos/home.nix", "nixos/hosts/nixos/host-settings.nix", "nixos/flake.nix", "nixos/flake.lock", "nixos/hosts/nixos/hardware-configuration.nix", "nixos/mako-renderer.nix", "nixos/hosts/nixos/hooks/README.md", "nixos/configuration.nix", "nixos/home.nix", "nixos/hardware-configuration.nix", "nixos/hooks/qemu", "nixos/kernel-manager.sh", "scripts/backup-vm.sh", "scripts/waybar-amdgpu.sh", "scripts/host-profile.sh", "scripts/automated-vm-backup.sh"}
             vm_xml_pending_paths = {
                 "vm-xml/win10.xml",
                 "vm-xml/win11.xml",
@@ -2297,24 +2315,46 @@ require(
     "the unnecessary CachyOS LTS recovery kernel specialisation must stay removed",
 )
 require(
-    '"tcp_bbr"' in CONFIG
+    "bbr3 = true;" in FLAKE
+    and '"tcp_bbr"' not in CONFIG
     and '"net.ipv4.tcp_congestion_control" = "bbr";' in CONFIG
     and '"net.core.default_qdisc" = "fq";' in CONFIG,
-    "BBR congestion control must stay enabled with the fq pacing qdisc",
+    "BBRv3 must be built in by the pinned CachyOS derivation and selected with fq",
+)
+require(
+    "kernelKcfi = lib.mkOption" in HOST_SETTINGS
+    and "default = false;" in HOST_SETTINGS
+    and "inherit kcfi;" in FLAKE,
+    "KCFI must be opt-in while AutoFDO remains disabled",
 )
 require(
     'ATTR{queue/rotational}=="1", ATTR{queue/scheduler}="bfq"' in CONFIG
-    and 'ATTR{queue/rotational}=="0", ATTR{queue/scheduler}="none"' in CONFIG,
-    "per-device-class I/O scheduler udev rules must stay enabled",
+    and 'ATTR{queue/rotational}=="0", ATTR{queue/scheduler}="${config.kumutuk.host.nvmeScheduler}"' in CONFIG
+    and 'default = "none";' in HOST_SETTINGS
+    and '"adios"' in HOST_SETTINGS,
+    "NVMe must default to none while exposing the compiled ADIOS option",
 )
 require(
     "programs.steam.gamescopeSession" in CONFIG and '"--immediate-flips"' in CONFIG,
     "the Gamescope Steam session must remain an additional greetd session entry",
 )
 require(
-    "powerprofilesctl set performance" in CONFIG
-    and "powerprofilesctl set balanced" in CONFIG,
-    "GameMode must keep switching the PPD profile to performance/balanced on game start/end",
+    "host-profile game-start" in CONFIG
+    and "host-profile game-end" in CONFIG
+    and "scxctl restore" in HOST_PROFILE
+    and "scxctl switch --mode gaming" in HOST_PROFILE
+    and "scxctl switch --mode lowlatency" in HOST_PROFILE
+    and "scxctl switch --mode server" in HOST_PROFILE
+    and "game-start" in HOST_PROFILE_TEST
+    and "game-end" in HOST_PROFILE_TEST,
+    "GameMode must delegate to the tested shared PPD/scx-loader profile manager",
+)
+require(
+    '"priority.session" = 2200;' in CONFIG
+    and '"priority.session" = 1000;' in CONFIG
+    and "52-headphone-default-priority" in CONFIG
+    and "wpctl clear-default" in GAMING_DOC,
+    "WirePlumber must prefer analog headphones while preserving the monitor no-suspend rule",
 )
 require("nix-output-monitor" in CONFIG, "nix-output-monitor must remain in the system profile")
 require(
@@ -2332,8 +2372,23 @@ require(
     "the gaming guide must keep the NTSync per-game opt-out and the declarative GE Proton reference",
 )
 require(
-    "scripts/backup-vm.sh" in GAMING_DOC,
-    "the gaming guide must reference the VM disk backup script",
+    "scripts/backup-vm.sh" in GAMING_DOC
+    and "qemu-img check" in (ROOT / "scripts/backup-vm.sh").read_text(encoding="utf-8")
+    and "sha256sum -c" in (ROOT / "scripts/backup-vm.sh").read_text(encoding="utf-8")
+    and "BACKUP_RETENTION_COUNT" in (ROOT / "scripts/backup-vm.sh").read_text(encoding="utf-8")
+    and "findmnt" in AUTOMATED_VM_BACKUP
+    and "BACKUP_TARGET_UUID" in AUTOMATED_VM_BACKUP
+    and "test-automated-vm-backup.sh" in CHECK_WORKFLOW
+    and 'OnCalendar = "Sun 04:00";' in CONFIG,
+    "VM backup must verify offline qcow2 data and external disk identity before rotating copies",
+)
+require(
+    "benchmark-capture.sh" in GAMING_DOC
+    and "benchmark-report.py" in GAMING_DOC
+    and "frametime_p99_ms" in BENCHMARK_REPORT
+    and "one_percent_low_fps" in BENCHMARK_REPORT
+    and "python3 scripts/test-benchmark-report.py" in CHECK_WORKFLOW,
+    "benchmark capture and MangoHud FPS/1% low/frametime report must remain tested",
 )
 
 # 2026-11-24 third feature wave: VFIO health script, sched_ext policy option,
@@ -2408,8 +2463,9 @@ require(
 )
 require(
     "services.usbguard = {" in CONFIG
-    and 'implicitPolicyTarget = "allow";' in CONFIG
+    and 'implicitPolicyTarget = if config.kumutuk.host.usbguardMode == "enforce" then "block" else "allow";' in CONFIG
     and 'presentDevicePolicy = "keep";' in CONFIG
+    and 'default = "audit";' in HOST_SETTINGS
     and "audit-safe" in README,
     "USBGuard must stay in the audit-safe allow/keep mode with the README enforcement roadmap",
 )
@@ -3079,11 +3135,34 @@ require(
 )
 
 require(
-    'boot.kernelPackages = rtBoreLtoV3KernelPackages;' in FLAKE
+    'boot.kernelPackages = rtBoreLtoV3KernelPackagesFor config.kumutuk.host.kernelKcfi;' in FLAKE
     and 'nup = "sudo nix flake update --flake /etc/nixos/nixos cachyos-kernel";' in HOME_NIX
     and "CachyOS Kernel Manager" in BTRFS_KERNEL_GUIDE
-    and "does not activate the new kernel" in BTRFS_KERNEL_GUIDE,
+    and "does not activate the new kernel" in BTRFS_KERNEL_GUIDE
+    and "rtBoreLtoV3KernelPackagesFor config.kumutuk.host.kernelKcfi" in BTRFS_KERNEL_GUIDE
+    and "rtBoreLtoV3KernelPackagesFor config\\.kumutuk\\.host\\.kernelKcfi" in KERNEL_MANAGER_SCRIPT,
     "kernel management guidance must remain aligned with the declared Flake kernel and nup/nrs workflow",
+)
+
+require(
+    "waybarAmdGpu = pkgs.writeShellApplication" in HOME_NIX
+    and '"custom/amdgpu"' in HOME_NIX
+    and '"custom/amdgpu" = {' in HOME_NIX
+    and "nvtopPackages.amd" in HOME_NIX
+    and "jq" in HOME_NIX
+    and "gpu_busy_percent" in AMD_GPU_WAYBAR
+    and "mem_info_vram_used" in AMD_GPU_WAYBAR
+    and "temp1_input" in AMD_GPU_WAYBAR
+    and "temp2_input" in AMD_GPU_WAYBAR
+    and "WAYBAR_AMDGPU_SYSFS_ROOT" in AMD_GPU_WAYBAR
+    and "vfio-pci" in AMD_GPU_WAYBAR
+    and "Junction: 78°C" in AMD_GPU_WAYBAR_TEST
+    and "bash scripts/test-waybar-amdgpu.sh" in CHECK_WORKFLOW
+    and "scripts/waybar-amdgpu.sh" in CHECK_WORKFLOW
+    and "scripts/test-waybar-amdgpu.sh" in CONTRIBUTING
+    and "AMDGPU Waybar telemetry" in CHANGELOG
+    and "Waybar AMD GPU telemetry" in README,
+    "Waybar AMD GPU telemetry, nvtop click action, mock-sysfs regression, and documentation must remain connected",
 )
 
 if errors:

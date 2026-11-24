@@ -18,11 +18,20 @@ A flake-based NixOS gaming desktop that passes its single AMD Radeon GPU through
 
 **Main-branch review baseline (15 November 2026):** The review began at `13f3c2e9d6c85517e5da658523a2ba3f0f36e17c`; Normal Nix Flake Check [#1543](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43641743130) passed all 27 workflow-defined steps on that intake snapshot. The follow-up reached `322d0d7caa7cd2c99a53ebc06c733ae28d850cc1`; Normal CI [#1554](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43645881692) passed all 27 steps on that exact commit after #1553's stale README inventory was fixed. The later documentation/flake snapshot `b9e45d600e26a53de15aca882ed028255e5581e5` passed exact-commit Nix Flake Check [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43692784975), and its manual Release workflow [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43693008723) completed successfully. The audit follow-ups then reached `03beec8eefd41ed386353abbf00bc04630be79b9`; Normal CI [#1566](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43696760003) passed all 27 workflow-defined steps on that exact pre-update snapshot. Its follow-up is covered by exact-commit Normal CI #1600 on `c4e93db604904529654d3b1b8c53db0754ee3dd9`.
 
-**Current flake input identities on merged main (19 November 2026, after the 2b7cfff lock refresh):** The root system input follows `nixos-unstable` and resolves through `nodes.root.inputs.nixpkgs` to `04906337b6d53e8bb0eaf0470ae9f070a4d4eb55`. The separate Nixpkgs input consumed by `cachyos-kernel` follows `nixos-unstable-small` at `d00708e733dc47417b440d7537b0349f1ee66e22`; it supplies the kernel package set and is **not** the root system/userland Nixpkgs. The CachyOS source itself is pinned to `10e8df08ad828225575f448e6b49ae092132d9a8`. Full-system Build #22 validated this merged-main tuple. The 15 November identities (`d4f25a3e562008648d45bcf2d70bcc7422cad84e` root, `82566dfe91ca5e12bc10b36272280628142f651d` nested, `c9620070e884d55c5b5566e3fd46611ee24c4d3b` CachyOS) are the historical Build #20/#21 input records.
+**Current flake input identities on merged main (24 November 2026; PR #30 merged):** The root system Nixpkgs follows `nixos-unstable` at `2786a2a72088ecf32aea5b3ec52099e6a7cff78f`. The separate CachyOS kernel package-set Nixpkgs follows `nixos-unstable-small` at `616ae05a769a23c143b19746b6a3b06366a9a28f`; it is **not** the root system/userland Nixpkgs. The CachyOS kernel source is pinned to `306480b9096055a06503167f975c027e244dd839`. See [merged PR #30](https://github.com/kUmutUK/nixos-hyprland-vfio/pull/30). The Cachix kernel-cache workflow #3 built the locked RT-Bore-LTO 7.3.5 kernel, but that kernel-only cache job is not a full-system toplevel build.
 
-**PR #30 candidate flake input identities (24 November 2026; branch `auto/flake-update`, not yet merged):** The candidate root system `nixos-unstable` input resolves through `nodes.root.inputs.nixpkgs` to `2786a2a72088ecf32aea5b3ec52099e6a7cff78f`. The separate nested CachyOS Nixpkgs package set follows `nixos-unstable-small` at `616ae05a769a23c143b19746b6a3b06366a9a28f`; it supplies the kernel package set and is **not** the root system/userland Nixpkgs. The candidate CachyOS source is `306480b9096055a06503167f975c027e244dd839`. These are proposed lock values only: Build #22 used the preceding 19 November tuple, so PR #30 still needs a successful Normal CI run and a fresh manual Full NixOS System Build after merge.
+**Full-system build boundary:** the latest retained GitHub full-system result is Build #22 [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44623962158) on source `d845ccfb5dec3daf705b59bc29f2e5f14e4ee767` and the previous 19 November lock tuple (CachyOS `10e8df08ad828225575f448e6b49ae092132d9a8`, root Nixpkgs `04906337b6d53e8bb0eaf0470ae9f070a4d4eb55`, nested Nixpkgs `d00708e733dc47417b440d7537b0349f1ee66e22`). It does not prove a full-system build for the 24 November merged lock or this feature branch. The owner reports that the Flake update/rebuild and UWSM validation were completed successfully on 24 November; this owner confirmation is separate from the retained GitHub build evidence. The feature branch passed exact-source Normal CI #1765 [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/45483814217) on `15358cc68ba23853c7c6053fab5b003ccde9af89`, including all 30 workflow-defined steps. It still needs a fresh manual Full NixOS System Build because it changes the kernel derivation and NixOS runtime modules.
 
 **Latest completed GitHub Actions full-system build (19 November 2026):** manual Full NixOS System Build #22 [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44623962158) succeeded on exact source commit `d845ccfb5dec3daf705b59bc29f2e5f14e4ee767`, the re-published v1.6.0 tag target. It built the complete NixOS system and selected RT-Bore-LTO kernel on the 19 November refreshed locked inputs and verified that the flake lock was not rewritten; it closes the full-system build gate for the current `main` source. The historical Build #21 [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43982447714) on `672d255d4a921c097dd69eae817e8dc9699380d6` (the v1.5.8 tag commit) was 20 commits and 39 changed paths behind the v1.6.0 tag and 26 commits and 39 changed paths behind the audited main baseline. Build #22's exact-commit source is also the currently published v1.6.0 release source, but it does not by itself validate a physical activation, boot, or VM lifecycle on the target host.
+
+**Historical build, release, and CI drift (kept separate from the current feature branch):**
+
+Full-system Build #22 is the latest retained GitHub full-system build; Build #21 is historical. Build #21 on `672d255d4a921c097dd69eae817e8dc9699380d6` was 20 commits and 39 changed paths behind the v1.6.0 tag and 26 commits and 39 changed paths behind the audited pre-update `main` baseline `9e399dcbe96a82a91d03e95fe2251f4e437eadb7`. Build #22 on `d845ccfb5dec3daf705b59bc29f2e5f14e4ee767` [run #22](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44623962158) superseded it on 19 November 2026.
+
+The audited pre-update `main` baseline was six commits and 15 changed paths after the v1.6.0 tag source; `install.sh` differed by 36 insertions and one deletion. Normal CI #1669 [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44603757865) passed that audited pre-update `main` commit `9e399dcbe96a82a91d03e95fe2251f4e437eadb7`; the exact v1.6.0 tag source `3c518e45d979db3234f7628ccbf3979a0057dcf2` separately passed Normal CI #1663 [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44593727498). Release #52 accepted `TARGET_HOST_VALIDATED=true` for the tag source only; it is a maintainer declaration without a retained host transcript.
+
+Before the feature branch expanded the documentation allowlist, `RELEASING.md` and `release.yml` shared 61 matching unique literal paths. The documented history records the expansion from 56 → 61. This feature branch separately carries a 75-path allowlist; those counts refer to different source snapshots.
+
 
 **Owner-reported local full-system build and VM check (16 November 2026):** The owner reported a successful from-scratch NixOS system build and ordinary VM start/shutdown, but supplied no exact source SHA, derivation/command, or booted generation/kernel identity. This remains separate from GitHub Build #21. The 16 November note said `install.sh` had not been tried; Release #54 later accepted a maintainer `TARGET_HOST_VALIDATED=true` declaration for exact source `d845ccfb5dec3daf705b59bc29f2e5f14e4ee767` (the re-published v1.6.0 source), and Release #52 had earlier accepted the same declaration for the `3c518e45d979db3234f7628ccbf3979a0057dcf2` tag source. The supporting host transcript is not retained, so this is not independently reproducible evidence. Installed NixOS `vdb` guest boot, guest networking, saved-state/managed-save restore, and exact-source booted-generation identity remain unverified in the retained technical record.
 
@@ -770,6 +779,7 @@ The OCR script now checks that the model is available before beginning; it repor
 | GameMode | Applies the configured game-time priority and performance settings |
 | Gamescope | Fullscreen and window rules for games |
 | MangoHud | FPS, frametime, GPU/CPU, and temperature overlay |
+| Waybar AMD GPU telemetry | Read-only AMDGPU sysfs statistics in the desktop bar; click to open AMD-enabled `nvtop`. |
 | sched_ext / `scx_bpfland` | BPF-Land is loaded by `scx-loader`; `scxctl stop` returns scheduling to the kernel's RT-Bore/BORE fallback |
 | power-profiles-daemon | Power profile / CPU governor management |
 | Steam / Proton / Wine | Windows game compatibility tools |
@@ -902,7 +912,7 @@ The repeated missing `.ko.BTF.1` failure across two different Rust modules shows
 
 ## Repository map (selected entry points; non-exhaustive)
 
-This is a curated map of selected entry points, not a complete inventory of the 82 tracked files. Use the repository file browser for the full source tree.
+This is a curated map of selected entry points, not a complete inventory of the 91 tracked files. Use the repository file browser for the full source tree.
 
 ```text
 .
@@ -983,6 +993,13 @@ The Bash syntax-check loop is kept in sync with [CONTRIBUTING.md](CONTRIBUTING.m
     scripts/test-backup-vm.sh \
     scripts/vfio-health.sh \
     scripts/test-vfio-health.sh \
+    scripts/waybar-amdgpu.sh \
+    scripts/test-waybar-amdgpu.sh \
+    scripts/host-profile.sh \
+    scripts/test-host-profile.sh \
+    scripts/automated-vm-backup.sh \
+    scripts/test-automated-vm-backup.sh \
+    scripts/benchmark-capture.sh \
     nixos/kernel-manager.sh
   do
     bash -n "$f"
@@ -992,11 +1009,11 @@ The Bash syntax-check loop is kept in sync with [CONTRIBUTING.md](CONTRIBUTING.m
 Run the syntax, formatting, and static-analysis checks used by normal CI:
 
 ```bash
-for f in install.sh scripts/package-source-zip.sh scripts/verify-source-revision.sh scripts/test-source-revision.sh scripts/installer-lock.sh scripts/pci-address.sh scripts/test-installer-lock.sh nixos/hosts/nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh scripts/backup-vm.sh scripts/test-backup-vm.sh scripts/vfio-health.sh scripts/test-vfio-health.sh nixos/kernel-manager.sh; do
+for f in install.sh scripts/package-source-zip.sh scripts/verify-source-revision.sh scripts/test-source-revision.sh scripts/installer-lock.sh scripts/pci-address.sh scripts/test-installer-lock.sh nixos/hosts/nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh scripts/backup-vm.sh scripts/test-backup-vm.sh scripts/vfio-health.sh scripts/test-vfio-health.sh scripts/waybar-amdgpu.sh scripts/test-waybar-amdgpu.sh scripts/host-profile.sh scripts/test-host-profile.sh scripts/automated-vm-backup.sh scripts/test-automated-vm-backup.sh scripts/benchmark-capture.sh nixos/kernel-manager.sh; do
   bash -n "$f"
 done
 find ./nixos -type f -name "*.nix" -print0 | xargs -0 -r nixfmt --check
-shellcheck -S warning install.sh scripts/package-source-zip.sh scripts/verify-source-revision.sh scripts/test-source-revision.sh scripts/installer-lock.sh scripts/pci-address.sh nixos/hosts/nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-lock.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh scripts/backup-vm.sh scripts/test-backup-vm.sh scripts/vfio-health.sh scripts/test-vfio-health.sh nixos/kernel-manager.sh
+shellcheck -S warning install.sh scripts/package-source-zip.sh scripts/verify-source-revision.sh scripts/test-source-revision.sh scripts/installer-lock.sh scripts/pci-address.sh nixos/hosts/nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-lock.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh scripts/backup-vm.sh scripts/test-backup-vm.sh scripts/vfio-health.sh scripts/test-vfio-health.sh scripts/waybar-amdgpu.sh scripts/test-waybar-amdgpu.sh scripts/host-profile.sh scripts/test-host-profile.sh scripts/automated-vm-backup.sh scripts/test-automated-vm-backup.sh scripts/benchmark-capture.sh nixos/kernel-manager.sh
 bash scripts/test-installer-lock.sh
 statix check .
 deadnix .
@@ -1019,6 +1036,9 @@ python3 scripts/test-vm-xml-paths.py
 python3 scripts/test-vm-xml-sync.py
 python3 scripts/test-vm-diagnostic.py
 python3 scripts/test-vm-iso-paths.py
+bash scripts/test-host-profile.sh
+bash scripts/test-automated-vm-backup.sh
+python3 scripts/test-benchmark-report.py
 ```
 
 Build the current LSFG-VK v2 flake output from the NixOS flake directory:

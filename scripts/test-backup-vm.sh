@@ -29,8 +29,7 @@ echo "virsh-stub: unsupported invocation: $*" >&2
 exit 1
 STUB
 
-# qemu-img stub: `convert` writes marker data to its last argument (the
-# destination path) and records the invocation.
+# qemu-img stub: convert writes marker data; check validates that a file exists.
 cat > "$BIN_DIR/qemu-img" <<'STUB'
 #!/usr/bin/env bash
 if [ "${1-}" = "convert" ]; then
@@ -38,6 +37,10 @@ if [ "${1-}" = "convert" ]; then
     shift
   done
   printf 'stub-qcow2-image\n' > "$1"
+  exit 0
+fi
+if [ "${1-}" = "check" ] && [ $# -eq 2 ]; then
+  [ -f "$2" ] || exit 1
   exit 0
 fi
 echo "qemu-img-stub: unsupported invocation: $*" >&2
@@ -67,6 +70,8 @@ OUTPUT="$(run_script "$DEST_DIR" "$SOURCE_DISK")" || fail_test "shut-off backup 
 FINAL_PATH="$DEST_DIR/win10-$(date +%F).qcow2"
 [ -f "$FINAL_PATH" ] || fail_test "published backup file missing: $FINAL_PATH"
 [ -e "$FINAL_PATH.part" ] && fail_test "temporary .part file left behind after success"
+[ -f "$FINAL_PATH.sha256" ] || fail_test "SHA-256 sidecar missing"
+(cd "$DEST_DIR" && sha256sum -c "$(basename "$FINAL_PATH").sha256" >/dev/null) || fail_test "published backup checksum must verify"
 EXPECTED_DIGEST="$(sha256sum "$FINAL_PATH" | awk '{print $1}')"
 case "$OUTPUT" in
   *"backup OK: $FINAL_PATH"*) ;;
@@ -124,4 +129,33 @@ case "$OUTPUT" in
   *) fail_test "a missing destination argument must print the usage block" ;;
 esac
 
-echo "OK: VM disk backup fail-closed guards and atomic publish path passed."
+# 8. Keep only the newest configured number of verified backups.
+RETENTION_DEST="$TMP_DIR/retention-backups"
+mkdir -m 700 -- "$RETENTION_DEST"
+for day in 01 02 03; do
+  name="win10-2026-10-$day.qcow2"
+  printf 'older-backup-%s\n' "$day" > "$RETENTION_DEST/$name"
+  (cd "$RETENTION_DEST" && sha256sum "$name" > "$name.sha256")
+done
+BACKUP_RETENTION_COUNT=2 PATH="$BIN_DIR:$PATH" bash "$SCRIPT" "$RETENTION_DEST" "$SOURCE_DISK" >/dev/null
+[ -f "$RETENTION_DEST/win10-$(date +%F).qcow2" ] || fail_test "newest backup must remain"
+[ -f "$RETENTION_DEST/win10-2026-10-03.qcow2" ] || fail_test "second-newest verified backup must remain"
+[ ! -e "$RETENTION_DEST/win10-2026-10-01.qcow2" ] || fail_test "oldest verified backup must be pruned"
+[ ! -e "$RETENTION_DEST/win10-2026-10-02.qcow2" ] || fail_test "second-oldest verified backup must be pruned"
+
+# 9. An overlapping manual/timer invocation must not run a second conversion.
+LOCK_DEST="$TMP_DIR/locked-backups"
+mkdir -m 700 -- "$LOCK_DEST"
+LOCK_FILE="$LOCK_DEST/.win10.backup.lock"
+(
+  flock -x 9
+  sleep 2
+) 9>"$LOCK_FILE" &
+LOCK_PID=$!
+sleep 0.1
+if OUTPUT="$(run_script "$LOCK_DEST" "$SOURCE_DISK" 2>/dev/null)"; then
+  fail_test "a concurrent backup must be rejected by the per-VM lock"
+fi
+wait "$LOCK_PID"
+
+echo "OK: VM disk backup guards, qcow2 validation, SHA-256, atomic publish, retention, and locking passed."
