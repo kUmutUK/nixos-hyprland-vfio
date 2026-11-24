@@ -453,6 +453,7 @@ in
 
   programs.fish.enable = true;
   programs.hyprland.enable = true;
+  programs.hyprland.withUWSM = true;
   programs.hyprland.xwayland.enable = true;
   xdg.portal = {
     enable = true;
