@@ -60,6 +60,7 @@ HOME_NIX = (ROOT / "nixos/hosts/nixos/home.nix").read_text(encoding="utf-8")
 HOST_SETTINGS = (ROOT / "nixos/hosts/nixos/host-settings.nix").read_text(encoding="utf-8")
 HOST_TEMPLATE = (ROOT / "nixos/hosts/.template/configuration.nix").read_text(encoding="utf-8")
 VM_XML_TEXT = (ROOT / "vm-xml/win10.xml").read_text(encoding="utf-8")
+UUID_DOC = (ROOT / "docs/UUID-AND-MACHINE-IDENTITY.md").read_text(encoding="utf-8")
 REPAIR = (ROOT / "docs/REPAIR-AND-VALIDATION-REPORT.md").read_text(encoding="utf-8")
 UUID_GUIDE = (ROOT / "docs/UUID-AND-MACHINE-IDENTITY.md").read_text(encoding="utf-8")
 OPTISCALER_DOC = (ROOT / "docs/OPTISCALER.md").read_text(encoding="utf-8")
@@ -2363,6 +2364,66 @@ require(
     "the 2026-11-24 third feature wave must stay recorded in the Unreleased changelog",
 )
 
+# 2026-11-24 fourth feature wave: Windows 11 template, read-only virtiofs share,
+# audit-safe USBGuard, and the Cachix activation path. Pin the wiring so later
+# edits cannot silently regress it.
+WIN11_XML_TEXT = (ROOT / "vm-xml/win11.xml").read_text(encoding="utf-8")
+win11_root = ET.parse(ROOT / "vm-xml/win11.xml").getroot()
+require(
+    (ROOT / "vm-xml/win11.xml").is_file()
+    and win11_root.findtext("name") == "win11"
+    and "baf3246e-2397-416f-836c-6c34dd219060" in WIN11_XML_TEXT
+    and "microsoft.com/win/11" in WIN11_XML_TEXT
+    and "edk2-x86_64-secure-code.fd" in WIN11_XML_TEXT
+    and "win11_VARS.fd" in WIN11_XML_TEXT
+    and "<smm state='on'/>" in WIN11_XML_TEXT
+    and "name='secure-boot'" in WIN11_XML_TEXT
+    and "Win11_24H2_English_x64.iso" in WIN11_XML_TEXT
+    and "win11.qcow2" in WIN11_XML_TEXT
+    and "win10.xml" not in WIN11_XML_TEXT.replace("win11", ""),
+    "the Windows 11 template must keep its distinct identity, Secure Boot firmware, SMM, and its own disk/ISO paths",
+)
+require(
+    "type='virtiofs'" in VM_XML_TEXT
+    and "type='virtiofs'" in WIN11_XML_TEXT
+    and "/mnt/media/win-share" in VM_XML_TEXT
+    and "dir='host-share'" in VM_XML_TEXT
+    and "<readonly/>" in VM_XML_TEXT
+    and "systemd.services.libvirtd.path = [ pkgs.virtiofsd ];" in CONFIG
+    and '"d /mnt/media/win-share 0755 root root -"' in CONFIG
+    and "/mnt/media/win-share" in README
+    and "read-only virtiofs" in README
+    and "/mnt/media/win-share" in GAMING_DOC,
+    "both VM templates and the host must keep the read-only virtiofs share wiring",
+)
+require(
+    "services.usbguard = {" in CONFIG
+    and 'implicitPolicyTarget = "allow";' in CONFIG
+    and 'presentDevicePolicy = "keep";' in CONFIG
+    and "audit-safe" in README,
+    "USBGuard must stay in the audit-safe allow/keep mode with the README enforcement roadmap",
+)
+CACHE_WORKFLOW = (ROOT / ".github/workflows/cache.yml").read_text(encoding="utf-8")
+require(
+    "Maintainer binary cache (Cachix) activation" in README
+    and "CACHIX_AUTH_TOKEN" in README
+    and "cachix-action" in CACHE_WORKFLOW
+    and "secrets.CACHIX_AUTH_TOKEN" in CACHE_WORKFLOW,
+    "the README must keep the three-step Cachix activation path matching the wired cache workflow",
+)
+require(
+    "### Windows 11 template and the read-only host file share" in README
+    and "Windows 11 template" in INSTALLATION
+    and "win11.qcow2" in INSTALLATION
+    and "Windows 11 template" in GAMING_DOC
+    and "baf3246e-2397-416f-836c-6c34dd219060" in UUID_DOC,
+    "README, INSTALLATION, GAMING, and the UUID document must cover the Windows 11 template",
+)
+require(
+    "### Windows 11 template, virtiofs share, and USBGuard wave — 2026-11-24" in CHANGELOG,
+    "the 2026-11-24 fourth feature wave must stay recorded in the Unreleased changelog",
+)
+
 home_packages_match = re.search(
     r"(?ms)^  home\.packages = with pkgs; \[(.*?)^  \];",
     HOME_NIX,
@@ -2465,13 +2526,14 @@ require(
     and "default: false" in vm_xml_input
     and "VM_XML_VALIDATED: ${{ inputs.vm_xml_validated }}" in vm_xml_guard
     and "PREVIOUS_TAG: ${{ steps.previous.outputs.tag }}" in vm_xml_guard
-    and 'git diff --quiet "$PREVIOUS_TAG" "$GITHUB_SHA" -- vm-xml/win10.xml' in vm_xml_guard
+    and 'git diff --quiet "$PREVIOUS_TAG" "$GITHUB_SHA" -- vm-xml' in vm_xml_guard
     and 'GITHUB_EVENT_NAME" != "workflow_dispatch"' in vm_xml_guard
     and 'GITHUB_REF" != "refs/heads/main"' in vm_xml_guard
     and 'VM_XML_VALIDATED" != "true"' in vm_xml_guard
     and "Tag-triggered releases cannot use this exception" in RELEASING
     and "vm_xml_validated=true" in RELEASING
-    and "vm-xml/win10.xml" not in documented_release_paths,
+    and "vm-xml/win10.xml" not in documented_release_paths
+    and "vm-xml/win11.xml" not in documented_release_paths,
     "VM XML changes must require a separate manual-main attestation and remain outside the ancestor-build allowlist",
 )
 require(

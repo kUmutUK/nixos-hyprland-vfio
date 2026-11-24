@@ -984,6 +984,12 @@ VM only after the first successful boot.
 > source paths before defining the VM. The fresh-VM bootstrap auto-creates only
 > `/var/lib/libvirt/images/win10new.qcow2`; it does not relocate the template's `/mnt/media`
 > disk or ISO paths automatically.
+> The Windows 11 template (`vm-xml/win11.xml`) follows the same rule with its own
+> host-specific paths: `/mnt/media/win11.qcow2` and `/mnt/media/Win11_24H2_English_x64.iso`
+> (create the disk with `qemu-img create` and download the ISO yourself; the bootstrap
+> helper only manages the win10 default). Both templates also expect the virtiofs share
+> directory `/mnt/media/win-share` to exist; a tmpfiles rule creates it at boot when
+> missing.
 > A missing Windows or VirtIO ISO prevents the VM from starting or completing Windows setup. The third SATA CD-ROM (`sdd`) is intentionally an empty tray for optional NixOS installation media; it is not a required path until you insert an ISO. The command block below runs `scripts/check-vm-iso-paths.py` against the staged XML before creating a VM disk and before `virsh define`; it checks file-backed CD-ROM source paths and accepts the unused empty tray.
 >
 > Regression test: run `bash -n scripts/test-manual-vm-bootstrap.sh && bash scripts/test-manual-vm-bootstrap.sh` from the repository root. It exercises missing-ISO retry, failed/partial disk creation, orphan-disk refusal, safe rollback when another process creates the final XML path concurrently, and successful bootstrap using isolated temporary paths and mocked libvirt/qemu-img/mv commands.

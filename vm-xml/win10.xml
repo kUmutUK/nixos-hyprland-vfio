@@ -190,6 +190,13 @@
     <console type='pty'>
       <target type='serial' port='0'/>
     </console>
+    <filesystem type='mount' accessmode='passthrough'>
+      <driver type='virtiofs' queue='1024'/>
+      <source dir='/mnt/media/win-share'/>
+      <target dir='host-share'/>
+      <readonly/>
+      <address type='pci' domain='0x0000' bus='0x09' slot='0x00' function='0x0'/>
+    </filesystem>
     <input type='mouse' bus='ps2'/>
     <input type='keyboard' bus='ps2'/>
     <tpm model='tpm-crb'>

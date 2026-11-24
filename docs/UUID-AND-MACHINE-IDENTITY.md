@@ -23,6 +23,13 @@ The `<uuid>` in `vm-xml/win10.xml` is a **template identity seed**, not an instr
 The XML synchronization helper follows two separate paths:
 
 - **Genuinely new VM:** it creates a fresh domain UUID and network MAC before publishing the new XML. This prevents two new libvirt domains from sharing the template identity.
+
+The Windows 11 template `vm-xml/win11.xml` carries its own distinct template
+identity seed (`baf3246e-2397-416f-836c-6c34dd219060`) and its own NVRAM image
+`win11_VARS.fd`; the same preserve-or-regenerate rule applies to it. The two
+templates must never share a UUID or NVRAM path, and the win11 MAC seed is
+kept identical to win10's only because the templates never run at the same
+time on this single-GPU host.
 - **Existing VM:** it prefers the registered inactive definition from `virsh dumpxml --inactive`; otherwise it preserves the existing on-disk XML. It synchronizes only the GPU/audio PCI source addresses and keeps the existing UUID, MAC, disk path, and other customizations.
 
 **Do not manually replace the UUID in an existing `win10` domain, and do not copy the template over its deployed XML.** Libvirt uses the domain UUID as persistent identity; changing it can make the same Windows installation appear to be a different domain and can separate it from UUID-associated state, including TPM state. Keep the domain UUID and MAC stable during ordinary updates, XML synchronization, rebuilds, and host maintenance.

@@ -23,7 +23,8 @@ on:
 
       vm_xml_validated:
         description: >-
-          I confirm that a changed vm-xml/win10.xml was checked with libvirt/QEMU
+          I confirm that a changed vm-xml/*.xml template (win10.xml or
+          win11.xml) was checked with libvirt/QEMU
           semantic validation and that both the Windows guest and installed
           NixOS vdb guest completed real boot tests. This is a separate
           maintainer attestation, not an automated CI result.
@@ -223,7 +224,7 @@ jobs:
           vm_xml_changed=0
           if [[ -z "$PREVIOUS_TAG" ]]; then
             vm_xml_changed=1
-          elif ! git diff --quiet "$PREVIOUS_TAG" "$GITHUB_SHA" -- vm-xml/win10.xml; then
+          elif ! git diff --quiet "$PREVIOUS_TAG" "$GITHUB_SHA" -- vm-xml; then
             vm_xml_changed=1
           fi
 
@@ -231,7 +232,7 @@ jobs:
             if [[ "$GITHUB_EVENT_NAME" != "workflow_dispatch" \
               || "$GITHUB_REF" != "refs/heads/main" \
               || "$VM_XML_VALIDATED" != "true" ]]; then
-              echo "::error::vm-xml/win10.xml changed since the previous stable release. A separate vm_xml_validated=true attestation on a manual Release dispatch from main is required."
+              echo "::error::vm-xml/*.xml changed since the previous stable release (win10.xml and the win11 template are both gated). A separate vm_xml_validated=true attestation on a manual Release dispatch from main is required."
               exit 1
             fi
             echo "::warning::The changed VM XML is accepted only by the separate vm_xml_validated maintainer attestation."

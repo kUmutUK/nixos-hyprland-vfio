@@ -687,6 +687,30 @@ sudo virsh define /var/lib/libvirt/win10.xml
 
 VNC listens only on `127.0.0.1`. Use an SSH tunnel for remote viewing; do not expose VNC on all interfaces.
 
+### Windows 11 template and the read-only host file share
+
+`vm-xml/win11.xml` is a second Windows guest template for post-ESU migration:
+the same validated dual-guest topology (same GPU/USB passthrough, disk roles,
+TPM 2.0 `tpm-crb` emulator, ICH9→PipeWire audio), but with the MS-keys Secure
+Boot firmware `edk2-x86_64-secure-code.fd`, `secure-boot`/`enrolled-keys`
+enabled, SMM on, its own UUID/MAC seed, its own `win11_VARS.fd` NVRAM image,
+and its own `/mnt/media/win11.qcow2` disk and Windows 11 installer ISO. The
+validator (`scripts/test-vm-xml.py --guest win11 --xml-path vm-xml/win11.xml`)
+enforces the Secure Boot firmware, SMM, TPM, and identity rules. It has never
+been booted on this host: `qemu-img create` the disk, download the ISO, verify
+the paths, then `virsh define` before first start. It is outside the release
+allowlist and shares the changed-XML attestation gate with `win10.xml`.
+
+Both templates now carry a read-only virtiofs share: the host directory
+`/mnt/media/win-share` (created at boot by a tmpfiles rule when missing)
+appears in the guest as the `host-share` tag. On Windows, install the
+virtio-fs driver from the VirtIO driver ISO; the share mounts as a read-only
+network drive. libvirt spawns the Rust `virtiofsd` from the libvirtd service
+PATH (`systemd.services.libvirtd.path`), so no extra daemon configuration is
+needed. The `<readonly/>` element is enforced by the validator: the guest can
+read host files but cannot write them. Removing read-only mode is an owner
+decision and requires a new `vm_xml_validated` attestation before release.
+
 ## Keyboard shortcuts
 
 `SUPER` is the physical Super key (the `$mainMod` modifier).
@@ -699,6 +723,7 @@ VNC listens only on `127.0.0.1`. Use an SSH tunnel for remote viewing; do not ex
 | `SUPER` + `Q` | Close active window |
 | `SUPER` + `F` | Toggle fullscreen |
 | `SUPER` + `V` | Toggle floating window |
+| `SUPER` + `B` | Clipboard history menu (cliphist + Rofi) |
 | `SUPER` + `Escape` | Lock screen with Hyprlock |
 | `SUPER` + `SHIFT+E` | Exit session |
 | `SUPER` + `SHIFT+C` | Hyprpicker color picker |
@@ -827,6 +852,8 @@ For this reference configuration, ZRAM should have priority 100 ahead of encrypt
 - **RT-Bore-LTO and physical validation:** the upstream source does not publish the ThinLTO variant in its binary cache, so each newly selected upstream revision needs a local build. Historical full-system Build #18 completed on ancestor source commit `c6f4b955475de2ea16bc2b34c59a95dad3a1ae78` and used the preceding CachyOS source; it does not validate the current locked revision `10e8df08ad828225575f448e6b49ae092132d9a8`, root Nixpkgs `04906337b6d53e8bb0eaf0470ae9f070a4d4eb55`, or the derived x86-64-v3 kernel. Full-system Build #20 [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/43653123079) supersedes those older baselines and successfully built the complete NixOS system and selected kernel with its then-current CachyOS/root/nested Nixpkgs inputs. The lock was refreshed again on 19 November 2026, and Full-system Build #22 [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44623962158) has since built the complete system and selected kernel on those refreshed inputs. This verifies compilation for the checked source baseline, not physical-host boot. The 3 November physical kernel/VM test used older CachyOS revision `755712deee259ef7efbfe9154038a270c3d75a87`; the exact kernel SHA booted for that test was not recorded. The 9 November clean-install/VM test does not identify the booted kernel revision. Saved-state/managed-save restore remains unverified. Real-time preemption does not guarantee higher FPS or better frametimes. Retain a known-good boot generation when testing future kernel revisions.
 
 - **Checked-in VM XML compatibility boundary:** `vm-xml/win10.xml` uses the TPM 2.0 emulator profile `default-v1`, which requires libvirt 10.10.0 or newer on the host ([libvirt domain XML documentation](https://libvirt.org/formatdomain.html)). The current XML has four USB `hostdev` entries: two required devices and two optional devices. Each has an explicit guest-side USB port assignment (`address type='usb' ...`). The `<source>` sections identify host devices by vendor/product ID and do not pin host bus/device numbers, which may change after USB re-enumeration. The owner-reported 11 November smoke test used a temporary XML file and host bus/device values; those host locators are not part of this checked-in template and must not be copied into the source. The unmodified dual-guest XML remains outside the release allowlist pending libvirt/QEMU semantic validation and real Windows plus installed-NixOS guest boot tests.
+- **USBGuard runs audit-safe, not enforcing:** the daemon allows unmatched devices and logs verdicts (`implicitPolicyTarget = "allow"`) and keeps already-connected devices in their current state (`presentDevicePolicy = "keep"`), so activation cannot lock out the keyboard or the VM-passed-through mouse. Enforcement is a deliberate owner step: generate an allowlist with `usbguard generate-policy`, review it, switch `implicitPolicyTarget` to `"block"`, and rebuild.
+- **virtiofs share is read-only by design:** both templates share `/mnt/media/win-share` through `virtiofsd` with the `<readonly/>` element enforced by the XML validator. The guest can read host files but never write them; changing that requires a new VM XML validation attestation.
 
 ### Rust/BTF build failure — diagnosis and workaround (2026-11-09)
 
@@ -871,7 +898,7 @@ The repeated missing `.ko.BTF.1` failure across two different Rust modules shows
 
 ## Repository map (selected entry points; non-exhaustive)
 
-This is a curated map of selected entry points, not a complete inventory of the 79 tracked files. Use the repository file browser for the full source tree.
+This is a curated map of selected entry points, not a complete inventory of the 80 tracked files. Use the repository file browser for the full source tree.
 
 ```text
 .
@@ -896,7 +923,8 @@ This is a curated map of selected entry points, not a complete inventory of the 
 │   │       └── hooks/
 │   │           └── qemu
 ├── vm-xml/
-│   └── win10.xml
+│   ├── win10.xml
+│   └── win11.xml
 ├── scripts/
 │   ├── backup-vm.sh
 │   ├── vfio-health.sh
@@ -995,6 +1023,16 @@ nix build .#lsfg-vk-v2
 Normal CI also runs the archive, installer, VM, VFIO hook, generated Lua, ShellCheck, Statix, Deadnix, and Nix evaluation checks. For `install.sh`, this is static and mocked regression coverage only; No end-to-end run of `install.sh` against a live NixOS/libvirt target host has been completed. Normal CI is not a substitute for the manual full NixOS system build when NixOS modules, kernel settings, flake inputs, or other closure-affecting files change. Follow the current full-system build gate in [the repair report](docs/REPAIR-AND-VALIDATION-REPORT.md) and do not release while that gate is open.
 
 ## Releasing
+
+### Maintainer binary cache (Cachix) activation
+
+The manual `Binary cache push (manual)` workflow (`.github/workflows/cache.yml`) is fully wired: it builds the NixOS toplevel, the selected kernel, and the pinned LSFG-VK v2 / MAKO packages, then pushes them to a Cachix cache. Nothing consumes the cache yet, so activating it is a three-step, one-time maintainer task:
+
+1. Create a cache at <https://app.cachix.org> (the workflow expects the name `kumutuk-nixos-hyprland-vfio`; a personal/private scope is fine) and copy the auth token.
+2. Add that token as the `CACHIX_AUTH_TOKEN` secret of this repository (Settings → Secrets and variables → Actions).
+3. Run the workflow once (Actions → Binary cache push (manual) → Run workflow). When it succeeds, copy the `extra-substituters`/`extra-trusted-public-keys` pair Cachix prints into the `nixConfig` block of `nixos/flake.nix` and the `nix.settings` lists of `nixos/hosts/nixos/configuration.nix`, and commit that change separately.
+
+Until step 3's second commit lands, the workflow only uploads; CI and local builds keep the current substitution behavior. The RT-Bore-LTO kernel is not published in any upstream cache, which is exactly what this repository's own cache removes.
 
 See [`RELEASING.md`](RELEASING.md) for the semantic-versioning process, release prerequisites, and GitHub Releases workflow. Normal CI must pass for the exact tagged commit (or manual-release commit), and a successful full NixOS system build must exist for that commit or an ancestor. An ancestor build is accepted automatically only when every intervening change is in the literal allowlist in `.github/workflows/release.yml`. `install.sh` remains outside that automatic allowlist; a post-build installer change normally requires a new full-system build, but a manual Release from `main` can accept it with `target_host_validated` only after the exact current installer was used for a clean installation and the documented boot/Windows VM/GPU-handback/Hyprland checks passed. The checkbox does not bypass exact-commit Normal CI or the requirement for a successful ancestor full-system build.
 

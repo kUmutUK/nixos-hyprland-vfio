@@ -35,6 +35,12 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="allow local USB vendor/product IDs while still validating their numeric format and count",
     )
+    parser.add_argument(
+        "--guest",
+        choices=("win10", "win11"),
+        default="win10",
+        help="guest template identity to validate (win10 keeps Secure Boot off; win11 requires the MS-keys firmware)",
+    )
     return parser.parse_args()
 
 
@@ -54,8 +60,41 @@ def main() -> int:
     if root.tag != "domain":
         return fail("root element must be <domain>")
     name = root.findtext("name")
-    if name != "win10":
-        return fail(f"expected domain name 'win10', found {name!r}")
+    if name != args.guest:
+        return fail(f"expected domain name {args.guest!r}, found {name!r}")
+
+    firmware_features = {
+        feature.get("name"): feature.get("enabled")
+        for feature in root.findall("./os/firmware/feature")
+    }
+    if args.guest == "win11":
+        if firmware_features.get("secure-boot") != "yes":
+            return fail("the win11 template must enable the secure-boot firmware feature")
+        if firmware_features.get("enrolled-keys") != "yes":
+            return fail("the win11 template must use firmware with enrolled keys so Secure Boot can verify Windows bootloaders")
+        loader = root.findtext("./os/loader")
+        if loader != "/run/libvirt/nix-ovmf/edk2-x86_64-secure-code.fd":
+            return fail(f"the win11 template must load the Secure Boot OVMF image edk2-x86_64-secure-code.fd, found {loader!r}")
+        nvram = root.findtext("./os/nvram")
+        if not nvram or not nvram.endswith("/win11_VARS.fd"):
+            return fail(f"the win11 template must keep its own NVRAM image win11_VARS.fd, found {nvram!r}")
+        smm = root.find("./features/smm")
+        if smm is None or smm.get("state") != "on":
+            return fail("the win11 template must enable SMM for Secure Boot variable protection")
+    else:
+        if firmware_features.get("secure-boot") == "yes":
+            return fail("the win10 template stays on the non-Secure-Boot OVMF image; changing it requires a new validation attestation")
+
+    tpm = root.find("./devices/tpm")
+    tpm_backend = tpm.find("./backend") if tpm is not None else None
+    if (
+        tpm is None
+        or tpm.get("model") != "tpm-crb"
+        or tpm_backend is None
+        or tpm_backend.get("type") != "emulator"
+        or tpm_backend.get("version") != "2.0"
+    ):
+        return fail("VM XML must declare the swtpm-backed TPM 2.0 device (tpm-crb emulator)")
 
     sound = root.find("./devices/sound")
     if sound is None or sound.get("model") != "ich9":
@@ -181,6 +220,55 @@ def main() -> int:
     if nixos_tray_source is not None and (nixos_tray_source.attrib or len(nixos_tray_source)):
         return fail("NixOS CD-ROM tray must start empty; attach the installer ISO on demand")
 
+    # The read-only virtiofs share: libvirt spawns the Rust virtiofsd from the
+    # libvirtd service PATH (see configuration.nix), and the guest may only
+    # read the shared host directory. `readonly` is mandatory so a compromised
+    # guest cannot write to host files.
+    filesystems = root.findall("./devices/filesystem[@type='mount']")
+    if len(filesystems) != 1:
+        return fail("VM XML must contain exactly one mount filesystem device (the virtiofs host share)")
+    virtiofs = filesystems[0]
+    virtiofs_driver = virtiofs.find("driver")
+    if virtiofs_driver is None or virtiofs_driver.get("type") != "virtiofs":
+        return fail("the filesystem device must use driver type='virtiofs'")
+    if virtiofs.get("accessmode") != "passthrough":
+        return fail("the virtiofs device must use accessmode='passthrough'")
+    if virtiofs.find("readonly") is None:
+        return fail("the virtiofs device must be read-only; remove <readonly/> only with a new validation attestation")
+    share_source = virtiofs.find("source")
+    share_dir = share_source.get("dir", "").strip() if share_source is not None else ""
+    if not share_dir or not Path(share_dir).is_absolute():
+        return fail(f"the virtiofs source dir must be a non-empty absolute path, found {share_dir!r}")
+    share_target_element = virtiofs.find("target")
+    share_target = (
+        share_target_element.get("dir", "").strip()
+        if share_target_element is not None
+        else ""
+    )
+    if not share_target:
+        return fail("the virtiofs target dir must be a non-empty tag name")
+
+    # Every PCI address in the device topology must be unique. Controllers sit
+    # on bus 0x00 slots; plugged devices sit on the root-port buses, so a
+    # collision means a malformed template.
+    pci_addresses: list[tuple[str, str, str, str]] = []
+    for element in root.iter("address"):
+        if element.get("type") == "pci":
+            address_key = (
+                element.get("domain", ""),
+                element.get("bus", ""),
+                element.get("slot", ""),
+                element.get("function", ""),
+            )
+            if "" in address_key:
+                return fail("every PCI address must declare domain, bus, slot, and function")
+            if address_key in pci_addresses:
+                return fail(
+                    "PCI addresses must be unique across controllers and devices; duplicate: "
+                    + ":".join(address_key)
+                )
+            pci_addresses.append(address_key)
+
     # Keep the two documented, non-optional USB devices as the required
     # template baseline. Additional machine-specific devices are allowed only
     # when their source explicitly marks them optional, so an unplugged phone
@@ -285,7 +373,7 @@ def main() -> int:
             f"XML={sorted(xml_bdfs)}, hook={[hook_gpu, hook_audio]}"
         )
 
-    print("OK: VM XML invariants passed (Q35, separate Windows/NixOS VirtIO disks, optional NixOS disk, three SATA CD-ROMs with an empty NixOS tray, ICH9-to-PipeWire audio association, USB passthrough, and GPU/audio PCI addresses matching the QEMU hook).")
+    print("OK: VM XML invariants passed (Q35, separate Windows/NixOS VirtIO disks, optional NixOS disk, three SATA CD-ROMs with an empty NixOS tray, ICH9-to-PipeWire audio association, USB passthrough, GPU/audio PCI addresses matching the QEMU hook, swtpm TPM 2.0, and the read-only virtiofs host share).")
     print("NOTE: this test does not replace a libvirt/QEMU semantic validation or a real VM boot test.")
     return 0
 

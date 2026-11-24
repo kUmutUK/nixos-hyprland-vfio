@@ -329,6 +329,21 @@ in
     };
   };
 
+  # USB device-policy daemon in audit-safe mode: every device keeps working.
+  # Unmatched devices are allowed and logged (implicitPolicyTarget=allow) and
+  # devices already connected at daemon start keep their current state
+  # (presentDevicePolicy=keep), so a misgenerated rule cannot lock out the
+  # keyboard or the VM-passed-through mouse on activation. Enforcement is a
+  # deliberate later step: generate an allowlist with `usbguard
+  # generate-policy`, review it, switch implicitPolicyTarget to "block", and
+  # rebuild. The IPC socket grants rule inspection to the desktop user.
+  services.usbguard = {
+    enable = true;
+    implicitPolicyTarget = "allow";
+    presentDevicePolicy = "keep";
+    IPCAllowedUsers = [ "root" "localhost" ];
+  };
+
   services.logrotate = {
     enable = true;
     settings = {
@@ -890,6 +905,8 @@ in
 
   virtualisation.libvirtd = {
     enable = true;
+    # swtpm lets the Windows guests use an emulated TPM 2.0 (tpm-crb in both
+    # vm-xml templates; Windows 11 requires it).
     qemu.swtpm.enable = true;
     # When `runAsRoot = false`, QEMU runs as `qemu-libvirtd`. Disk/NVRAM files left
     # owned by root can prevent the guest from starting, so the oneshot service repairs
@@ -899,6 +916,17 @@ in
     # libvirt scans this hook directory: `/var/lib/libvirt/hooks/qemu.d/vfio`.
     hooks.qemu.vfio = vfioHook;
   };
+
+  # The Windows templates carry a read-only virtiofs share of /mnt/media/win-share
+  # (guest tag `host-share`). libvirt spawns the Rust virtiofsd from the
+  # libvirtd service PATH; the module has no dedicated option for it, so it is
+  # added here. The share is deliberately read-only in the XML: a compromised
+  # guest cannot write host files.
+  systemd.services.libvirtd.path = [ pkgs.virtiofsd ];
+  systemd.tmpfiles.rules = [
+    # Created at boot when missing so libvirt never fails on an absent share.
+    "d /mnt/media/win-share 0755 root root -"
+  ];
   programs.virt-manager.enable = true;
 
   services.openssh = {

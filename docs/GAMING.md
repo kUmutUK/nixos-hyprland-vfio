@@ -80,3 +80,20 @@ bound, a missing IOMMU group, hook errors after the last release, or a
 corrupt disk image) and never writes anywhere. Run it any time, including
 while the VM runs — vfio-pci on both functions is reported as the healthy
 in-VM state, not an anomaly.
+
+## Host file share and the Windows 11 template
+
+Both VM templates mount the host directory `/mnt/media/win-share` in the guest
+as a read-only virtiofs share (`host-share`). This is the fast path for game
+installers, save files, and ISO handoffs: no 9p/SMB overhead, and the
+validator enforces the `<readonly/>` element so the guest can never write host
+files. Windows needs the virtio-fs driver from the VirtIO driver ISO once;
+after that the share appears as a read-only drive.
+
+`vm-xml/win11.xml` exists for the post-ESU Windows migration: the same
+GPU-passthrough topology with the MS-keys Secure Boot OVMF firmware, SMM, and
+swtpm TPM 2.0 (already enabled host-side). Nothing about the win10 gaming VM
+changes; the win11 template is a separate domain with its own disk and
+identity, defined only when you choose to migrate. Keep the Windows guest on
+the virtio `vda` disk with the VirtIO drivers for the lowest gaming latency in
+either guest.
