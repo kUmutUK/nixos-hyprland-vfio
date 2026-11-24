@@ -341,7 +341,10 @@ in
     enable = true;
     implicitPolicyTarget = "allow";
     presentDevicePolicy = "keep";
-    IPCAllowedUsers = [ "root" "localhost" ];
+    IPCAllowedUsers = [
+      "root"
+      "localhost"
+    ];
   };
 
   services.logrotate = {
