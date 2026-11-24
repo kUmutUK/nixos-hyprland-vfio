@@ -10,8 +10,8 @@ This file summarizes notable changes in English. The separate Turkish release-by
 - **ADIOS and kernel options:** expose compiled ADIOS as an opt-in NVMe choice while retaining `none` as default; BBRv3 is explicitly selected through the pinned CachyOS kernel package option. KCFI is opt-in; AutoFDO remains disabled.
 - **Offline VM backup:** validate converted qcow2 data, publish and verify SHA-256 sidecars, and apply retention only to verified copies. The weekly timer remains disabled until an external target and matching filesystem UUID are configured. USBGuard remains audit-safe by default.
 - **Audio and benchmarks:** prioritize the analog audio output over monitor HDMI without removing the monitor no-suspend rule. Add local MangoHud CSV capture/reporting for average FPS, 1% low, and frametime p99.
-- **Current CI workflow:** Normal CI defines all 30 workflow-defined steps; the runner-generated `Set up job` entry is not part of the YAML-defined count.
-- **Validation boundary:** mock tests are wired into Normal CI. Exact-branch CI, a full NixOS build, GPU Waybar rendering, headset routing, external-disk backup, real USB enforcement, and CS2 measurements are not claimed until tested.
+- **Current CI workflow:** Normal CI #1765 [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/45483814217) passed all 30 workflow-defined steps on exact feature commit `15358cc68ba23853c7c6053fab5b003ccde9af89`; the runner-generated `Set up job` entry is not part of the YAML-defined count. The benchmark capture command is exercised end-to-end against a temporary MangoHud CSV.
+- **Validation boundary:** a fresh full NixOS system build remains pending for the kernel derivation and NixOS runtime changes. GPU Waybar rendering, headset routing, external-disk backup, real USB enforcement, and CS2 measurements are not claimed until tested.
 
 ### Merged Flake update and owner-confirmed UWSM validation — 2026-11-24
 

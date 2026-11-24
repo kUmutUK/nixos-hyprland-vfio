@@ -7,7 +7,7 @@
 ## Current full-system build and CI status — 2026-11-24
 
 - **Merged Flake inputs (PR #30):** root Nixpkgs `2786a2a72088ecf32aea5b3ec52099e6a7cff78f`, nested CachyOS `nixos-unstable-small` Nixpkgs `616ae05a769a23c143b19746b6a3b06366a9a28f`, CachyOS source `306480b9096055a06503167f975c027e244dd839`. The owner confirms the Flake update/rebuild and UWSM validation completed successfully on 24 November; this is an owner report, not a retained CI transcript.
-- **Current check workflow size:** the feature branch reuses the AMDGPU telemetry regression step for four related host-feature suites; the workflow now defines all 30 workflow-defined steps (GitHub's runner-generated `Set up job` entry is not part of that YAML-defined count). Exact-branch CI is still pending.
+- **Current check workflow size:** the feature branch reuses the AMDGPU telemetry regression step for four related host-feature suites; the workflow now defines all 30 workflow-defined steps (GitHub's runner-generated `Set up job` entry is not part of that YAML-defined count). Normal CI #1765 [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/45483814217) passed all 30 workflow-defined steps on exact feature commit `15358cc68ba23853c7c6053fab5b003ccde9af89`.
 - **Latest retained GitHub full-system build:** Build #22 ([run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44623962158)) succeeded on exact source `d845ccfb5dec3daf705b59bc29f2e5f14e4ee767` using the previous 19 November lock tuple. It does not prove a full-system build of the 24 November merged lock. The owner reports a successful local Flake rebuild after PR #30, but no exact derivation/source transcript is retained here.
 
 **Historical build, release, and CI drift (kept separate from the current feature branch):**
@@ -18,7 +18,7 @@ The audited pre-update `main` baseline was six commits and 15 changed paths afte
 
 Before the feature branch expanded the documentation allowlist, `RELEASING.md` and `release.yml` shared 61 matching unique literal paths. The documented history records the expansion from 56 → 61. This feature branch separately carries a 75-path allowlist; those counts refer to different source snapshots.
 
-- **Feature branch:** `feat/amd-gpu-waybar-telemetry-2026-11-24` contains the proposed Waybar telemetry, host profiles, ADIOS option, explicit BBRv3 and opt-in KCFI, offline VM backup automation, audio priority, and benchmark tools. Runtime changes require exact-branch Normal CI and a fresh manual full-system build before release. No physical feature test or performance gain is claimed.
+- **Feature branch:** `feat/amd-gpu-waybar-telemetry-2026-11-24` contains the proposed Waybar telemetry, host profiles, ADIOS option, explicit BBRv3 and opt-in KCFI, offline VM backup automation, audio priority, and benchmark tools. Exact-commit Normal CI #1765 passed; a fresh manual full-system build is still required before release. No physical feature test or performance gain is claimed.
 - **Release allowlist:** `RELEASING.md` and `release.yml` contain 75 matching unique literal paths on this branch. Runtime-affecting NixOS source and runtime helpers remain outside the documentation-only allowlist and in the pending-build set.
 - **USBGuard:** remains audit-safe by default (`allow/keep`); enforcement is opt-in and requires a reviewed device allowlist. The VM backup timer is disabled until a dedicated external target path and matching filesystem UUID are configured.
 
