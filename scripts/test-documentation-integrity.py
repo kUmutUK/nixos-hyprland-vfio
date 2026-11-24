@@ -2284,14 +2284,13 @@ require(
     "the full-system build workflow must be documented in the release allowlist",
 )
 
-# 2026-11-24 second feature wave: LTS recovery kernel, gamescope session,
-# GameMode/PPD wrapper, BBR3, I/O scheduler rules, wlsunset, VM backup, and
-# the gaming guide. Pin the new settings so later edits cannot silently
-# regress them.
+# 2026-11-24 second feature wave: gamescope session, GameMode/PPD wrapper,
+# BBR3, I/O scheduler rules, wlsunset, VM backup, and the gaming guide.
+# Keep the unused LTS recovery specialisation out of the default system build.
 require(
-    "specialisation.lts-kernel.configuration" in CONFIG
-    and "linuxPackages-cachyos-lts" in CONFIG,
-    "the LTS kernel specialisation must remain available as a recovery boot entry",
+    "specialisation.lts-kernel.configuration" not in CONFIG
+    and "linuxPackages-cachyos-lts" not in CONFIG,
+    "the unnecessary CachyOS LTS recovery kernel specialisation must stay removed",
 )
 require(
     '"tcp_bbr"' in CONFIG
