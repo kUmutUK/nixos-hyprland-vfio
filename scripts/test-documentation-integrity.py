@@ -3103,7 +3103,7 @@ require(
     and "bash scripts/test-waybar-amdgpu.sh" in CHECK_WORKFLOW
     and "scripts/waybar-amdgpu.sh" in CHECK_WORKFLOW
     and "scripts/test-waybar-amdgpu.sh" in CONTRIBUTING
-    and "Waybar AMD GPU telemetry" in CHANGELOG
+    and "AMDGPU Waybar telemetry" in CHANGELOG
     and "Waybar AMD GPU telemetry" in README,
     "Waybar AMD GPU telemetry, nvtop click action, mock-sysfs regression, and documentation must remain connected",
 )
