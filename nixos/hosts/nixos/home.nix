@@ -68,7 +68,6 @@ let
   hyprlockCommand = "${pkgs.hyprlock}/bin/hyprlock";
   hyprpickerCommand = "${pkgs.hyprpicker}/bin/hyprpicker -a && notify-send 'Color' \"$(wl-paste)\" -t 2000";
   pcmanfmDesktopCommand = "${pkgs.pcmanfm}/bin/pcmanfm --desktop";
-  hyprpolkitagentCommand = "${pkgs.hyprpolkitagent}/bin/hyprpolkitagent";
   clipboardTranslateCommand = "sh -c 'T=$(grim -g \"$(slurp)\" - | tesseract - stdout -l eng 2>/dev/null | trans -b :tr); [ -n \"$T\" ] && notify-send -t 10000 \"Translation\" \"$T\"'";
   screenshotCommand = "grim -g \"$(slurp)\" - | wl-copy";
   sattyScreenshotCommand = "grim -g \"$(slurp)\" - | satty -f - | wl-copy";
@@ -77,7 +76,7 @@ let
   # back into the clipboard. Escape in Rofi decodes nothing and leaves the
   # clipboard unchanged.
   clipboardMenuCommand = "cliphist list | rofi -dmenu -i -p Clipboard | cliphist decode | wl-copy";
-  systemdEnvironmentCommand = "${pkgs.bash}/bin/bash -c 'systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE HYPRLAND_INSTANCE_SIGNATURE HYPRLAND_DISPLAY; dbus-update-activation-environment --systemd --all; systemctl --user start gamemode-notify; if [ -n \"$1\" ]; then systemctl --user start mpvpaper-watchdog; fi' sh ${lib.escapeShellArg monitorOutput}";
+  systemdEnvironmentCommand = "${pkgs.bash}/bin/bash -c 'systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE HYPRLAND_INSTANCE_SIGNATURE HYPRLAND_DISPLAY; dbus-update-activation-environment --systemd --all; systemctl --user start hyprpolkitagent.service; systemctl --user start gamemode-notify; if [ -n \"$1\" ]; then systemctl --user start mpvpaper-watchdog; fi' sh ${lib.escapeShellArg monitorOutput}";
   wallpaperMissingCommand = "${pkgs.bash}/bin/bash -c 'if [ -n \"$2\" ] && [ ! -e \"$1\" ]; then notify-send -t 15000 -u critical \"mpvpaper\" \"Live wallpaper file not found: $1. Change wallpaperVideo in nixos/hosts/nixos/host-settings.nix, then restart mpvpaper-watchdog.\"; fi' sh ${lib.escapeShellArg wallpaperVideo} ${lib.escapeShellArg monitorOutput}";
   monitorValidationCommand = "${pkgs.bash}/bin/bash -c 'if [ -n \"$1\" ] && ! hyprctl monitors 2>/dev/null | grep -Fq -- \"Monitor $1 (\"; then notify-send -t 15000 -u critical \"mpvpaper\" \"Monitor output not found: $1. Set monitorOutput in nixos/hosts/nixos/host-settings.nix to the exact hyprctl monitors name.\"; fi' sh ${lib.escapeShellArg monitorOutput}";
 
@@ -429,7 +428,6 @@ let
         hl.exec_cmd("dunst")
         hl.exec_cmd("wl-paste --watch cliphist store")
         hl.exec_cmd("nm-applet --indicator")
-        hl.exec_cmd(${builtins.toJSON hyprpolkitagentCommand})
         hl.exec_cmd("pypr")
         hl.exec_cmd(${builtins.toJSON systemdEnvironmentCommand})
         hl.exec_cmd(${builtins.toJSON wallpaperMissingCommand})
@@ -1713,6 +1711,28 @@ in
   };
 
   systemd.user.services = {
+    # The agent uses the user's imported Wayland/D-Bus environment. Start it
+    # explicitly from systemdEnvironmentCommand after that import, rather than
+    # racing graphical-session startup or spawning an unmanaged compositor child.
+    hyprpolkitagent = {
+      Unit = {
+        Description = "Hyprland Polkit authentication agent";
+        Wants = [ "graphical-session.target" ];
+        After = [ "graphical-session.target" ];
+        PartOf = [ "graphical-session.target" ];
+        ConditionEnvironment = "WAYLAND_DISPLAY";
+      };
+      Service = {
+        Type = "simple";
+        # Nixpkgs installs the executable in libexec (not bin).
+        ExecStart = "${pkgs.hyprpolkitagent}/libexec/hyprpolkitagent";
+        Slice = "session.slice";
+        Restart = "on-failure";
+        RestartSec = 1;
+        TimeoutStopSec = 5;
+      };
+    };
+
     # An empty `monitorOutput` disables live wallpaper for a manual Home Manager setup.
     # The installer requires a real output name before continuing.
     mpvpaper = lib.mkIf (monitorOutput != "") {
