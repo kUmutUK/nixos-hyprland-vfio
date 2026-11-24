@@ -259,22 +259,6 @@ in
     "tcp_bbr"
   ];
 
-  # Known-good recovery boot entry: the same host definition evaluated with
-  # the CachyOS LTS kernel (no LTO, plain x86-64 baseline) from the pinned
-  # nix-cachyos-kernel overlay. It appears as an additional systemd-boot entry
-  # ("...-lts-kernel"); the primary entry, the default boot order, and the
-  # RT-Bore-LTO selection are unchanged. LTS builds faster than the LTO kernel
-  # and does not track the same upstream churn, so it is the fallback when a
-  # new RT-Bore-LTO revision fails on target hardware. mkForce is required
-  # because the flake module assigns boot.kernelPackages at default priority;
-  # the override applies only inside this specialisation's evaluation. VFIO
-  # and the qemu hook depend on module availability, not the kernel variant.
-  # Target-host boot of the LTS specialisation remains unverified until the
-  # next full-system build and activation.
-  specialisation.lts-kernel.configuration = {
-    boot.kernelPackages = lib.mkForce pkgs.cachyosKernels.linuxPackages-cachyos-lts;
-  };
-
   boot.kernel.sysctl = {
     "vm.max_map_count" = 1048576;
     "vm.nr_hugepages" = 0;
