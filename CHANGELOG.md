@@ -4,10 +4,24 @@ This file summarizes notable changes in English. The separate Turkish release-by
 
 ## [Unreleased]
 
+### Additional host performance, backup, and benchmark tools — 2026-11-24
+
+- **Shared gaming profiles:** Desktop, Gaming, Low-Latency, and VM modes coordinate the existing PPD and scx-loader controls. GameMode stores the selected manual profile, temporarily enters Gaming, and restores the previous profile when the final GameMode client exits.
+- **ADIOS and kernel options:** expose compiled ADIOS as an opt-in NVMe choice while retaining `none` as default; BBRv3 is explicitly selected through the pinned CachyOS kernel package option. KCFI is opt-in; AutoFDO remains disabled.
+- **Offline VM backup:** validate converted qcow2 data, publish and verify SHA-256 sidecars, and apply retention only to verified copies. The weekly timer remains disabled until an external target and matching filesystem UUID are configured. USBGuard remains audit-safe by default.
+- **Audio and benchmarks:** prioritize the analog audio output over monitor HDMI without removing the monitor no-suspend rule. Add local MangoHud CSV capture/reporting for average FPS, 1% low, and frametime p99.
+- **Validation boundary:** mock tests are wired into Normal CI. Exact-branch CI, a full NixOS build, GPU Waybar rendering, headset routing, external-disk backup, real USB enforcement, and CS2 measurements are not claimed until tested.
+
+### Merged Flake update and owner-confirmed UWSM validation — 2026-11-24
+
+- Weekly Flake update PR #30 merged. The root Nixpkgs revision is `2786a2a72088ecf32aea5b3ec52099e6a7cff78f`, the nested CachyOS Nixpkgs revision is `616ae05a769a23c143b19746b6a3b06366a9a28f`, and CachyOS source is `306480b9096055a06503167f975c027e244dd839`.
+- The owner confirms the Flake update/rebuild and UWSM validation were completed without issue. This is an owner report, not an independently retained CI or boot transcript; the feature branch still requires its own exact-source build.
+
 ### AMDGPU Waybar telemetry — 2026-11-24
 
 - **Read-only GPU status module:** add a Waybar custom module backed by the kernel AMDGPU sysfs interface. It reports GPU load, VRAM usage, Edge/Junction temperature where exposed, current graphics clock, power, and fan RPM; clicking opens AMD-enabled nvtop in Kitty. No sysfs controls or GPU performance settings are written.
 - **VFIO behavior:** the module displays an unavailable state when no AMD DRM card is exposed, rather than treating a GPU bound to vfio-pci as a script failure. The reader is tested against absent, populated, and partial-sensor fixtures.
+- **JSON output:** the reader uses jq to escape displayed text and multi-line tooltips correctly for Waybar.
 - **Validation boundary:** mock-sysfs regression tests and CI cover formatting/reader behavior. The Waybar rendering, RX 6700 XT sensor availability, and nvtop launch still require activation and a target-host check; this commit does not claim physical validation or a full-system build.
 
 ### Normal CI repository-map and release-allowlist reconciliation — 2026-11-24
