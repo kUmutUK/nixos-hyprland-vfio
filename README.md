@@ -770,6 +770,7 @@ The OCR script now checks that the model is available before beginning; it repor
 | GameMode | Applies the configured game-time priority and performance settings |
 | Gamescope | Fullscreen and window rules for games |
 | MangoHud | FPS, frametime, GPU/CPU, and temperature overlay |
+| Waybar AMD GPU telemetry | Read-only AMDGPU sysfs statistics in the desktop bar; click to open AMD-enabled `nvtop`. |
 | sched_ext / `scx_bpfland` | BPF-Land is loaded by `scx-loader`; `scxctl stop` returns scheduling to the kernel's RT-Bore/BORE fallback |
 | power-profiles-daemon | Power profile / CPU governor management |
 | Steam / Proton / Wine | Windows game compatibility tools |
