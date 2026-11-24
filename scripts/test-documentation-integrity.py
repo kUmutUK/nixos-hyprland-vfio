@@ -1417,8 +1417,10 @@ require(
     and "Full-system Build #21" in REPAIR and "43982447714" in REPAIR
     and "`672d255d4a921c097dd69eae817e8dc9699380d6`" in REPAIR
     and "Full-system Build #22" in REPAIR and "44623962158" in REPAIR
-    and "`d845ccfb5dec3daf705b59bc29f2e5f14e4ee767`" in REPAIR,
-    "repair report must retain historical Builds #18/#19/#20/#21 and identify Build #22 as the latest completed full-system build",
+    and "`d845ccfb5dec3daf705b59bc29f2e5f14e4ee767`" in REPAIR
+    and "45507035118" in REPAIR
+    and "nixos/scripts/waybar-amdgpu.sh" in REPAIR,
+    "repair report must preserve historical build evidence and record the failed current-main attempt and its path cause",
 )
 require(
     "Build #20" in STATE_INDEX and "43653123079" in STATE_INDEX
@@ -1427,8 +1429,10 @@ require(
     and "`672d255d4a921c097dd69eae817e8dc9699380d6`" in STATE_INDEX
     and "Build #22" in STATE_INDEX and "44623962158" in STATE_INDEX
     and "`d845ccfb5dec3daf705b59bc29f2e5f14e4ee767`" in STATE_INDEX
-    and "Build #19" in STATE_INDEX and "43101226875" in STATE_INDEX,
-    "current-state index must identify Build #22 as latest and retain Build #19/#20/#21 as historical",
+    and "Build #19" in STATE_INDEX and "43101226875" in STATE_INDEX
+    and "45507035118" in STATE_INDEX
+    and "nixos/scripts/waybar-amdgpu.sh" in STATE_INDEX,
+    "current-state index must distinguish Build #22 as the last successful build from the later failed current-main attempt",
 )
 require("run #1120" in REPAIR and "run #1120" in STATE_INDEX and "8d1e4585c9cd3f690c1df80ee531008c7e9d30ef" in STATE_INDEX,
         "current-state index must preserve the distinct reviewed-snapshot normal-CI record")
@@ -2053,6 +2057,13 @@ require(
     and 'builtins.readFile "${scriptsDir}/automated-vm-backup.sh"' in CONFIG
     and '"${scriptsDir}/backup-vm.sh"' in CONFIG,
     "embedded NixOS scripts must resolve from either the deployed flake-local copy or the full repository checkout",
+)
+require(
+    "homeScriptsDir =" in HOME_NIX
+    and "builtins.pathExists ../../scripts" in HOME_NIX
+    and "../../../scripts" in HOME_NIX
+    and 'builtins.readFile "${homeScriptsDir}/waybar-amdgpu.sh"' in HOME_NIX,
+    "Home Manager's AMDGPU reader must resolve from either the deployed flake-local scripts copy or the repository-root scripts directory",
 )
 require(
     'sudo cp -a "$REPO/scripts/." /etc/nixos/nixos/scripts/' in README
