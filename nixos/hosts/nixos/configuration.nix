@@ -159,7 +159,7 @@ in
 
   # Media partition
   fileSystems."/mnt/media" = {
-    device = "/dev/disk/by-uuid/34609584-8e72-4a79-b076-5ece7e60ed71";
+    device = "/dev/disk/by-uuid/be7e5220-974b-4d0a-8082-3fe4cd882bcc";
     fsType = "ext4";
     options = [
       "nofail"

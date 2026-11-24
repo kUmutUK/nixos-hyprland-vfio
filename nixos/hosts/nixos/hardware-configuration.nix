@@ -6,7 +6,7 @@
 }:
 
 let
-  rootDev = "/dev/disk/by-uuid/3b5fb93d-b0ab-4e0b-9d41-c5188e766175";
+  rootDev = "/dev/disk/by-uuid/5d1d4f59-cb3d-438b-bb92-c327b2977b5f";
   commonOpts = [
     "noatime"
     "compress=zstd:1"
@@ -28,7 +28,7 @@ in
   ];
 
   boot.initrd.luks.devices."cryptroot" = {
-    device = "/dev/disk/by-uuid/67029ad8-839b-4350-95ae-bfe88154c793";
+    device = "/dev/disk/by-uuid/87ac025e-2596-44ad-9653-24e2885ba05e";
     allowDiscards = true;
     bypassWorkqueues = true;
   };
@@ -89,7 +89,7 @@ in
   };
 
   fileSystems."/boot" = {
-    device = "/dev/disk/by-uuid/0EDA-D913";
+    device = "/dev/disk/by-uuid/123E-4144";
     fsType = "vfat";
     options = [
       "fmask=0077"
@@ -99,7 +99,7 @@ in
 
   swapDevices = [
     {
-      device = "/dev/disk/by-partuuid/316488af-c7df-43a5-b7c1-f35d454a9f63";
+      device = "/dev/disk/by-partuuid/82142abb-4e41-4eb4-a9d7-34acee3b11aa";
       randomEncryption.enable = true;
       priority = 10;
     }
