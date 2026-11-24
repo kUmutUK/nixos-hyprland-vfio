@@ -103,10 +103,10 @@ sudo rmdir /etc/nixos/nixos/hooks 2>/dev/null || true
 sudo install -d -m 0755 /etc/nixos/nixos/scripts
 sudo cp -a "$REPO/scripts/." /etc/nixos/nixos/scripts/
 
-# 5. Copy the new host-settings.nix from the updated repository checkout.
+# 4. Copy the new host-settings.nix from the updated repository checkout.
 sudo install -m 0644 "$REPO/nixos/hosts/nixos/host-settings.nix" /etc/nixos/nixos/hosts/nixos/
 
-# 6. If your monitor/git/wallpaper values differ from the defaults, edit the
+# 5. If your monitor/git/wallpaper values differ from the defaults, edit the
 #    kumutuk.host option defaults in /etc/nixos/nixos/hosts/nixos/host-settings.nix.
 ```
 
