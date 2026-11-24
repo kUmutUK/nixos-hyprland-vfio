@@ -118,7 +118,14 @@ bash scripts/benchmark-capture.sh adios path/to/adios.csv
 The local report stores the kernel, NixOS system generation, CPU/RAM, PPD,
 scx-loader, GameMode, NVMe scheduler, and available AMDGPU sysfs readings.
 When a CSV is supplied it reports average FPS, 1% low FPS (mean of the lowest
-1% of samples), average frametime, and frametime p99. It does not upload data.
+1% of samples), average frametime, and frametime p99. The standalone report
+can also be run directly:
+
+```bash
+python3 scripts/benchmark-report.py path/to/mangohud.csv
+```
+
+The tool is local-only and does not upload data.
 
 ## Shader cache sizing
 

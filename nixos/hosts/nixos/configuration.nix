@@ -554,6 +554,14 @@ in
         }
       ];
     };
+    extraConfig.pipewire."99-lowlatency.conf" = ''
+      context.properties = {
+          default.clock.rate       = 48000
+          default.clock.quantum    = 128
+          default.clock.min-quantum = 128
+          default.clock.max-quantum = 256
+      }
+    '';
     # Prefer onboard analog output over monitor HDMI audio. A saved wpctl default
     # still wins; run "wpctl clear-default" once to allow session priorities.
     wireplumber.extraConfig."52-headphone-default-priority" = {
@@ -572,14 +580,6 @@ in
         }
       ];
     };
-    extraConfig.pipewire."99-lowlatency.conf" = ''
-      context.properties = {
-          default.clock.rate       = 48000
-          default.clock.quantum    = 128
-          default.clock.min-quantum = 128
-          default.clock.max-quantum = 256
-      }
-    '';
   };
 
   programs.kdeconnect.enable = true;

@@ -21,6 +21,8 @@ Run these commands from the repository root. Go is required for the pinned Actio
 
 **Full-system release gate:** Full-system Build #21 on `672d255d4a921c097dd69eae817e8dc9699380d6` is 20 commits and 39 changed paths behind the v1.6.0 tag, and 26 commits and 39 changed paths behind the audited main baseline `9e399dcbe96a82a91d03e95fe2251f4e437eadb7`. Normal CI is not a complete NixOS system build; a fresh full-system build remains required before the next release.
 
+**Historical CI baseline:** Normal CI #1669 [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44603757865) passed on the audited pre-update `main` commit `9e399dcbe96a82a91d03e95fe2251f4e437eadb7`; the exact v1.6.0 tag source `3c518e45d979db3234f7628ccbf3979a0057dcf2` separately passed Normal CI #1663 [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44593727498). The audited baseline was six commits and 15 changed paths after the v1.6.0 tag; `install.sh` changed by 36 insertions and one deletion. Build #21's 20-commit/39-path and 26-commit/39-path distances are historical; Build #22 is the latest retained full-system build.
+
 ```bash
 go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/*.yml
 nix develop ./nixos --command bash -euo pipefail -c '

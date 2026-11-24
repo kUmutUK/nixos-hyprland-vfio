@@ -1415,16 +1415,20 @@ require(
     and "Build #20" in REPAIR and "43653123079" in REPAIR
     and "`46d2b809e4fe9530dde58c85450b3544cf5d1ed0`" in REPAIR
     and "Full-system Build #21" in REPAIR and "43982447714" in REPAIR
-    and "`672d255d4a921c097dd69eae817e8dc9699380d6`" in REPAIR,
-    "repair report must retain historical Builds #18/#19/#20 and identify Build #21 as the latest completed full-system build",
+    and "`672d255d4a921c097dd69eae817e8dc9699380d6`" in REPAIR
+    and "Full-system Build #22" in REPAIR and "44623962158" in REPAIR
+    and "`d845ccfb5dec3daf705b59bc29f2e5f14e4ee767`" in REPAIR,
+    "repair report must retain historical Builds #18/#19/#20/#21 and identify Build #22 as the latest completed full-system build",
 )
 require(
     "Build #20" in STATE_INDEX and "43653123079" in STATE_INDEX
     and "`46d2b809e4fe9530dde58c85450b3544cf5d1ed0`" in STATE_INDEX
     and "Build #21" in STATE_INDEX and "43982447714" in STATE_INDEX
     and "`672d255d4a921c097dd69eae817e8dc9699380d6`" in STATE_INDEX
+    and "Build #22" in STATE_INDEX and "44623962158" in STATE_INDEX
+    and "`d845ccfb5dec3daf705b59bc29f2e5f14e4ee767`" in STATE_INDEX
     and "Build #19" in STATE_INDEX and "43101226875" in STATE_INDEX,
-    "current-state index must identify Build #21 as latest and retain Build #19/#20 as historical",
+    "current-state index must identify Build #22 as latest and retain Build #19/#20/#21 as historical",
 )
 require("run #1120" in REPAIR and "run #1120" in STATE_INDEX and "8d1e4585c9cd3f690c1df80ee531008c7e9d30ef" in STATE_INDEX,
         "current-state index must preserve the distinct reviewed-snapshot normal-CI record")
@@ -3131,7 +3135,7 @@ require(
 )
 
 require(
-    'boot.kernelPackages = rtBoreLtoV3KernelPackages;' in FLAKE
+    'boot.kernelPackages = rtBoreLtoV3KernelPackagesFor config.kumutuk.host.kernelKcfi;' in FLAKE
     and 'nup = "sudo nix flake update --flake /etc/nixos/nixos cachyos-kernel";' in HOME_NIX
     and "CachyOS Kernel Manager" in BTRFS_KERNEL_GUIDE
     and "does not activate the new kernel" in BTRFS_KERNEL_GUIDE,
