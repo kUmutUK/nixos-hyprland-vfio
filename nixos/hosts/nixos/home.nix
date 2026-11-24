@@ -15,11 +15,7 @@ let
   # In a full checkout, scripts/ is at the repository root; in the deployed
   # standalone flake, install.sh stages it inside the flake root. Match the
   # resolver used by configuration.nix so both layouts evaluate identically.
-  homeScriptsDir =
-    if builtins.pathExists ../../scripts then
-      ../../scripts
-    else
-      ../../../scripts;
+  homeScriptsDir = if builtins.pathExists ../../scripts then ../../scripts else ../../../scripts;
 
   makoRenderer = pkgs.callPackage ../../mako-renderer.nix { };
 
