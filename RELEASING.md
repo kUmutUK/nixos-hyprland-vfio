@@ -38,6 +38,7 @@ The dual-guest VM definitions (`vm-xml/win10.xml` and the `vm-xml/win11.xml` Win
    `docs/OPTISCALER.md`,
    `docs/OPTISCALER-MANAGER.md`,
    `docs/MAKO.md`,
+   `docs/SERPANTINUM.md`,
    `docs/BTRFS-AND-KERNEL-MANAGEMENT.md`,
    `docs/archive/DEGISIKLIK_GECMISI.md`,
    `docs/archive/README.md`,

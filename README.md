@@ -80,6 +80,7 @@ Before the feature branch expanded the documentation allowlist, `RELEASING.md` a
 - [Installation](#installation)
 - [Preparing and starting the VM](#preparing-and-starting-the-vm)
 - [Keyboard shortcuts](#keyboard-shortcuts)
+- [Serpantinum desktop shell](#serpantinum-desktop-shell)
 - [Gaming stack](#gaming-stack)
 - [MAKO Renderer for Proton games](#mako-renderer-for-proton-games)
 - [OptiScaler for Proton games](#optiscaler-for-proton-games)
@@ -745,12 +746,15 @@ decision and requires a new `vm_xml_validated` attestation before release.
 | Shortcut | Action |
 |---|---|
 | `SUPER` + `Return` / `C` | Kitty terminal |
-| `SUPER` + `A` | Rofi application launcher |
+| `SUPER` + `A` | Serpantinum application launcher (was Rofi) |
 | `SUPER` + `S` / `SHIFT+S` / `CTRL+S` | Pypr scratchpads: terminal / music / file manager |
 | `SUPER` + `Q` | Close active window |
 | `SUPER` + `F` | Toggle fullscreen |
 | `SUPER` + `V` | Toggle floating window |
-| `SUPER` + `B` | Clipboard history menu (cliphist + Rofi) |
+| `SUPER` + `B` | Serpantinum clipboard history overlay (was Rofi cliphist picker) |
+| `SUPER` + `M` / `N` / `W` | Serpantinum overlays: music / network / wallpaper picker |
+| `SUPER` + `O` / `I` / `U` / `T` | Serpantinum overlays: calendar / system panel / volume slider / keybind cheat sheet |
+| `SUPER` + `SHIFT+B` | Toggle Serpantinum bar autohide |
 | `SUPER` + `Escape` | Lock screen with Hyprlock |
 | `SUPER` + `SHIFT+E` | Exit session |
 | `SUPER` + `SHIFT+C` | Hyprpicker color picker |
@@ -762,10 +766,11 @@ decision and requires a new `vm_xml_validated` attestation before release.
 | `SUPER` + mouse wheel | Cycle workspaces |
 | `SUPER` + left-drag | Move a window |
 | `SUPER` + right-drag | Resize a window |
-| `SUPER` + `1`…`9`, `0` | Switch to workspaces 1–10 |
-| `SUPER` + `SHIFT` + `1`…`0` | Move the active window to a workspace |
+| `SUPER` + `1`…`9`, `0` | Switch to workspaces 1–10 (routed through `serpantinum msg workspace`) |
+| `SUPER` + `SHIFT` + `1`…`0` | Move the active window to a workspace (silent, focus stays) |
 | `SUPER` + `P` | Select a region and copy it |
 | `SUPER` + `SHIFT+P` | Select a region, annotate with Satty, then copy |
+| `Print` | Select a region and open it in the Serpantinum screenshot editor |
 | `SUPER` + `Y` | Toggle WuWa AI automatic translation |
 | `SUPER` + `SHIFT+T` | One-shot OCR and Turkish translation |
 | `SUPER` + `ALT+T` | Toggle mouse-selection translation |
@@ -780,6 +785,12 @@ sudo systemctl status wuwa-gemma-init --no-pager
 ```
 
 The OCR script now checks that the model is available before beginning; it reports an error instead of treating a `null` response as translated text.
+
+## Serpantinum desktop shell
+
+The desktop shell is [Serpantinum](https://github.com/ilyamiro/serpantinum), a Quickshell-based bar, notification daemon, launcher, clipboard overlay, system panel, and optional dock for Wayland compositors. It is imported as a Flake input (`serpantinum`), enabled through its NixOS module (`programs.serpantinum.enable`) and configured through its Home Manager module in `home.nix` (`programs.serpantinum`). The daemon runs as a `systemd --user` service bound to `graphical-session.target`; it is not exec'd from `hyprland.lua`.
+
+It replaces Waybar, Dunst, Rofi, and `nm-applet` as the running shell; those packages stay installed in the system profile as an explicit manual fallback (`waybar`, `dunst`, `rofi -show drun` in a terminal). Hyprlock and hypridle remain the lock/idle authority, mpvpaper keeps owning the live wallpaper, and Pypr scratchpads are unchanged. The integration details, keybind map, settings model, and update/fallback procedures are documented in [the Serpantinum integration guide](docs/SERPANTINUM.md).
 
 ## Gaming stack
 
@@ -926,7 +937,7 @@ The repeated missing `.ko.BTF.1` failure across two different Rust modules shows
 
 ## Repository map (selected entry points; non-exhaustive)
 
-This is a curated map of selected entry points, not a complete inventory of the 91 tracked files. Use the repository file browser for the full source tree.
+This is a curated map of selected entry points, not a complete inventory of the 92 tracked files. Use the repository file browser for the full source tree.
 
 ```text
 .
@@ -966,6 +977,7 @@ This is a curated map of selected entry points, not a complete inventory of the 
     ├── GAMING.md
     ├── BTRFS-AND-KERNEL-MANAGEMENT.md
     ├── OPTISCALER-MANAGER.md
+    ├── SERPANTINUM.md
     └── REPAIR-AND-VALIDATION-REPORT.md
 ```
 
@@ -978,6 +990,7 @@ The root files provide the project entry point, installation guidance, contribut
 - `nixos/kernel-manager.sh`: Rofi-based NixOS kernel manager for live kernel/boot status and explicit Flake operations.
 - `scripts/test-vm-xml-paths.py`, `scripts/test-documentation-integrity.py`, `scripts/test-release-workflow-python.py`, and the other `scripts/test-*.py` files: focused regression checks.
 - `docs/AUDIT-2026-10-28-VM-XML-VFIO.md`: dated historical audit; [the repair and validation report](docs/REPAIR-AND-VALIDATION-REPORT.md) is the current verification record.
+- `docs/SERPANTINUM.md`: Serpantinum desktop-shell integration — what it replaces, what it keeps, the keybind map, the settings model, and update/fallback procedures.
 - `docs/MIGRATION-GUIDE.md`: the 2026-11-19 hosts/ restructure — what moved, how to migrate a deployed host, and the post-merge validation sequence.
 - `docs/BTRFS-AND-KERNEL-MANAGEMENT.md`: Btrfs Assistant's Polkit launcher/agent and declarative CachyOS kernel management on NixOS.
 - `nixos/hosts/.template/`: new-host template with the AMD/VFIO review checklist; copy it to add a second machine.

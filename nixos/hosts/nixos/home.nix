@@ -3,6 +3,11 @@
   pkgs,
   lib,
   osConfig ? { },
+  # Passed by the flake through home-manager.extraSpecialArgs. A standalone
+  # `home-manager switch` (no NixOS flake in scope) leaves this at null and
+  # keeps the previous Waybar/Rofi/Dunst session available from the system
+  # profile instead of the Serpantinum shell.
+  serpantinum ? null,
   ...
 }:
 
@@ -98,11 +103,10 @@ let
   clipboardTranslateCommand = "sh -c 'T=$(grim -g \"$(slurp)\" - | tesseract - stdout -l eng 2>/dev/null | trans -b :tr); [ -n \"$T\" ] && notify-send -t 10000 \"Translation\" \"$T\"'";
   screenshotCommand = "grim -g \"$(slurp)\" - | wl-copy";
   sattyScreenshotCommand = "grim -g \"$(slurp)\" - | satty -f - | wl-copy";
-  # Clipboard history menu: the wl-paste watcher (exec-once below) already
-  # feeds cliphist; this binds a Rofi picker that decodes the chosen entry
-  # back into the clipboard. Escape in Rofi decodes nothing and leaves the
-  # clipboard unchanged.
-  clipboardMenuCommand = "cliphist list | rofi -dmenu -i -p Clipboard | cliphist decode | wl-copy";
+  # Clipboard history is still backed by cliphist; the wl-paste watchers
+  # (exec-once below, text plus image) feed it for both the Serpantinum
+  # clipboard overlay and manual `cliphist` use. Rofi remains installed as a
+  # manual fallback; the Super+B overlay now uses the Serpantinum clipboard.
   systemdEnvironmentCommand = "${pkgs.bash}/bin/bash -c 'systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE HYPRLAND_INSTANCE_SIGNATURE HYPRLAND_DISPLAY; dbus-update-activation-environment --systemd --all; systemctl --user start hyprpolkitagent.service; systemctl --user start gamemode-notify; if [ -n \"$1\" ]; then systemctl --user start mpvpaper-watchdog; fi' sh ${lib.escapeShellArg monitorOutput}";
   wallpaperMissingCommand = "${pkgs.bash}/bin/bash -c 'if [ -n \"$2\" ] && [ ! -e \"$1\" ]; then notify-send -t 15000 -u critical \"mpvpaper\" \"Live wallpaper file not found: $1. Change wallpaperVideo in nixos/hosts/nixos/host-settings.nix, then restart mpvpaper-watchdog.\"; fi' sh ${lib.escapeShellArg wallpaperVideo} ${lib.escapeShellArg monitorOutput}";
   monitorValidationCommand = "${pkgs.bash}/bin/bash -c 'if [ -n \"$1\" ] && ! hyprctl monitors 2>/dev/null | grep -Fq -- \"Monitor $1 (\"; then notify-send -t 15000 -u critical \"mpvpaper\" \"Monitor output not found: $1. Set monitorOutput in nixos/hosts/nixos/host-settings.nix to the exact hyprctl monitors name.\"; fi' sh ${lib.escapeShellArg monitorOutput}";
@@ -352,8 +356,10 @@ let
     hl.animation({ leaf = "border", enabled = true, speed = 10, bezier = "smoothOut" })
     hl.animation({ leaf = "specialWorkspace", enabled = true, speed = 6, bezier = "overshot", style = "slidevert" })
 
-    -- Applications and utility bindings.
-    hl.bind(mainMod .. " + A", hl.dsp.exec_cmd("rofi -show drun"))
+    -- Applications and utility bindings. Super+A previously ran
+    -- `rofi -show drun`; the Serpantinum launcher replaces it (Rofi stays
+    -- installed in the system profile as a manual fallback).
+    hl.bind(mainMod .. " + A", hl.dsp.exec_cmd("serpantinum msg toggle launcher"))
     hl.bind(mainMod .. " + C", hl.dsp.exec_cmd("kitty"))
     hl.bind(mainMod .. " + Q", hl.dsp.window.close())
     hl.bind(mainMod .. " + Return", hl.dsp.exec_cmd("kitty"))
@@ -365,6 +371,21 @@ let
     hl.bind(mainMod .. " + S", hl.dsp.exec_cmd("pypr toggle term"))
     hl.bind(mainMod .. " + SHIFT + S", hl.dsp.exec_cmd("pypr toggle music"))
     hl.bind(mainMod .. " + CTRL + S", hl.dsp.exec_cmd("pypr toggle filemanager"))
+
+    -- Serpantinum shell overlays, on keys free of the bindings above and
+    -- below (upstream defaults collide with this config: Super+C is kitty,
+    -- Super+V is float, Super+H/J/K/L are focus, Super+S are scratchpads).
+    -- Super+B previously opened the Rofi cliphist picker; the Serpantinum
+    -- clipboard overlay reads the same cliphist history (watchers below).
+    hl.bind(mainMod .. " + B", hl.dsp.exec_cmd("serpantinum msg toggle clipboard"))
+    hl.bind(mainMod .. " + M", hl.dsp.exec_cmd("serpantinum msg toggle music"))
+    hl.bind(mainMod .. " + N", hl.dsp.exec_cmd("serpantinum msg toggle network"))
+    hl.bind(mainMod .. " + W", hl.dsp.exec_cmd("serpantinum msg toggle wallpaper"))
+    hl.bind(mainMod .. " + O", hl.dsp.exec_cmd("serpantinum msg toggle calendar"))
+    hl.bind(mainMod .. " + I", hl.dsp.exec_cmd("serpantinum msg toggle system"))
+    hl.bind(mainMod .. " + U", hl.dsp.exec_cmd("serpantinum msg toggle volume"))
+    hl.bind(mainMod .. " + T", hl.dsp.exec_cmd("serpantinum msg toggle settings"))
+    hl.bind(mainMod .. " + SHIFT + B", hl.dsp.exec_cmd("serpantinum msg bar autohide"))
 
     -- Mouse wheel cycles through existing workspaces (not windows).
     hl.bind(mainMod .. " + mouse_down", hl.dsp.focus({ workspace = "e+1" }))
@@ -393,25 +414,36 @@ let
     hl.bind(mainMod .. " + CTRL + J", hl.dsp.window.resize({ x = 0, y = 50, relative = true }))
     hl.bind(mainMod .. " + CTRL + K", hl.dsp.window.resize({ x = 0, y = -50, relative = true }))
 
-    -- Workspaces 1-10 (Super+0 is workspace 10).
+    -- Workspaces 1-10 (Super+0 is workspace 10). Focus is routed through
+    -- `serpantinum msg workspace` (the pattern upstream's own Hyprland
+    -- configuration uses) so the shell's bar indicators track switches
+    -- immediately. The window move keeps the previous silent-move dispatch
+    -- (`follow = false`): upstream's `msg workspace N move` maps to
+    -- `movetoworkspace`, which would pull focus to the moved window.
     for i = 1, 10 do
         local key = i % 10
-        hl.bind(mainMod .. " + " .. key, hl.dsp.focus({ workspace = i }))
+        hl.bind(mainMod .. " + " .. key, hl.dsp.exec_cmd("serpantinum msg workspace " .. i))
         hl.bind(mainMod .. " + SHIFT + " .. key, hl.dsp.window.move({ workspace = i, follow = false }))
     end
     hl.bind(mainMod .. " + G", hl.dsp.group.toggle({}))
     hl.bind(mainMod .. " + Tab", hl.dsp.focus({ workspace = "previous" }))
 
-    -- Multimedia keys; repeating volume binds retain the old binde behavior.
-    hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+"), { locked = true, repeating = true })
-    hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"), { locked = true, repeating = true })
-    hl.bind("XF86AudioMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"), { locked = true })
+    -- Multimedia keys route through the Serpantinum CLI so the bar's volume
+    -- module and on-screen feedback stay in step; repeating binds retain the
+    -- old binde behavior. The commands drive the same PipeWire defaults the
+    -- previous wpctl binds did.
+    hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("serpantinum volume raise"), { locked = true, repeating = true })
+    hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("serpantinum volume lower"), { locked = true, repeating = true })
+    hl.bind("XF86AudioMute", hl.dsp.exec_cmd("serpantinum volume mute-toggle"), { locked = true })
+    hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd("serpantinum volume mic-toggle"), { locked = true })
     hl.bind(mainMod .. " + SHIFT + C", hl.dsp.exec_cmd(${builtins.toJSON hyprpickerCommand}))
     hl.bind(mainMod .. " + SHIFT + E", hl.dsp.exit())
     hl.bind(mainMod .. " + Y", hl.dsp.exec_cmd(${builtins.toJSON "${config.home.homeDirectory}/.config/hypr/scripts/toggle-wuwa.sh"}))
     hl.bind(mainMod .. " + SHIFT + T", hl.dsp.exec_cmd(${builtins.toJSON clipboardTranslateCommand}))
-    hl.bind(mainMod .. " + B", hl.dsp.exec_cmd(${builtins.toJSON clipboardMenuCommand}))
     hl.bind(mainMod .. " + ALT + T", hl.dsp.exec_cmd(${builtins.toJSON "${config.home.homeDirectory}/.config/hypr/scripts/toggle-auto-translate.sh"}))
+    -- Bare Print captures a region into the Serpantinum editor; the grim/satty
+    -- binds above are unchanged.
+    hl.bind("Print", hl.dsp.exec_cmd("serpantinum screenshot --edit"), { locked = true })
     hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(), { mouse = true })
     hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
 
@@ -446,15 +478,21 @@ let
         size = { "monitor_w * 0.6", "monitor_h * 0.6" },
     })
 
-    -- Start the existing desktop tools once, after Hyprland has initialized.
+    -- Start the remaining desktop tools once, after Hyprland has initialized.
+    -- The Serpantinum shell daemon (bar, notifications, launcher, tray,
+    -- network panel) runs as a systemd --user service bound to
+    -- graphical-session.target from Home Manager, so it is not exec'd here.
+    -- Waybar/Dunst/Rofi stay installed in the system profile as a manual
+    -- fallback and are simply no longer autostarted.
     -- Environment import precedes the optional mpvpaper watchdog start.
+    -- The dual wl-paste watchers (text and image) are the variant Serpantinum
+    -- itself deploys; the image watcher additionally records screenshots
+    -- copied to the clipboard into cliphist.
     hl.on("hyprland.start", function()
         hl.exec_cmd(${builtins.toJSON pcmanfmDesktopCommand})
         hl.exec_cmd("hyprctl setcursor Plus-Cursor 20")
-        hl.exec_cmd("waybar")
-        hl.exec_cmd("dunst")
-        hl.exec_cmd("wl-paste --watch cliphist store")
-        hl.exec_cmd("nm-applet --indicator")
+        hl.exec_cmd("wl-paste --type text --watch cliphist store")
+        hl.exec_cmd("wl-paste --type image --watch cliphist store")
         hl.exec_cmd("pypr")
         hl.exec_cmd(${builtins.toJSON systemdEnvironmentCommand})
         hl.exec_cmd(${builtins.toJSON wallpaperMissingCommand})
@@ -824,6 +862,10 @@ let
   };
 in
 {
+  imports = lib.optionals (serpantinum != null) [
+    serpantinum.homeManagerModules.default
+  ];
+
   home.username = "localhost";
   home.homeDirectory = "/home/localhost";
   home.stateVersion = "26.05";
@@ -838,6 +880,93 @@ in
 
   # Verify the active config with `hyprctl configversion` and inspect the log if Lua
   # reports a syntax/API error during startup.
+
+  # Serpantinum desktop shell: bar, notification daemon, app launcher,
+  # clipboard history overlay, system panel, and (when enabled) the dock.
+  # The daemon runs as a systemd --user service bound to
+  # graphical-session.target (see programs.serpantinum.systemd below), so
+  # hyprland.lua no longer execs waybar/dunst/nm-applet. Waybar, Rofi, and
+  # Dunst stay installed in the system profile as an explicit fallback; see
+  # docs/SERPANTINUM.md for the full replacement map. settings mirrors the
+  # shell's settings.json one to one; only the entries that differ from the
+  # upstream defaults are declared here.
+  programs.serpantinum = lib.mkIf (serpantinum != null) {
+    enable = true;
+    # Start serpantinumd with the session (uwsm brings up the graphical
+    # target) and restart it on failure instead of a one-shot exec-once.
+    systemd.enable = true;
+
+    settings = {
+      general = {
+        # The full Turkish translation ships as assets/languages/tr.json.
+        language = "tr";
+        weatherUnit = "metric";
+        # Istanbul coordinates mirror services.wlsunset below.
+        location = {
+          city = "Istanbul";
+          timezone = "Europe/Istanbul";
+          latitude = "41.01";
+          longitude = "28.98";
+        };
+      };
+
+      bar = {
+        position = "top";
+        # Hyprland workspaces are bound Super+1..0 (10 total, Super+0 = 10).
+        workspaceCount = 10;
+        modules = {
+          # Closest mapping of the previous Waybar layout: workspaces and
+          # media (MPRIS) left, clock and weather centered, tray with the
+          # kb/wifi/vol and sysmon (cpu/ram/temp) clusters right.
+          left = [
+            "workspaces"
+            "media"
+          ];
+          center = [
+            [
+              "timedate"
+              "weather"
+            ]
+          ];
+          right = [
+            "tray"
+            [
+              "kb"
+              "wifi"
+              "vol"
+            ]
+            "sysmon"
+          ];
+        };
+      };
+
+      theme = {
+        # Matches the Kitty/GTK/Rofi font used across this configuration;
+        # nerd-fonts.iosevka (installed by the NixOS module) provides the
+        # shell's icon glyphs.
+        fontFamily = "JetBrainsMono Nerd Font";
+        # Material You colors generated from the current wallpaper, the same
+        # idea as the manual `wal -i` workflow kept available through pywal16.
+        matugen = true;
+      };
+
+      notifications = {
+        # Dunst showed every notification by default; do not inherit the
+        # upstream template's do-not-disturb default.
+        dnd = false;
+        position = "top right";
+      };
+
+      # hypridle stays the single idle authority (dim, lock, DPMS, suspend
+      # with the carefully ordered listeners below); Serpantinum's own idle
+      # scheduler would race it, so it is disabled.
+      idle.enabled = false;
+
+      # The dock is off by default; enable it from the shell's settings UI
+      # or here once its interaction with the gaming window rules is checked.
+      dock.enabled = false;
+    };
+  };
 
   dconf.settings = {
     "org/gnome/desktop/interface" = {
