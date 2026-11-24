@@ -26,6 +26,12 @@
     cachyos-nixpkgs.follows = "cachyos-kernel/nixpkgs";
     home-manager.url = "github:nix-community/home-manager";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
+    # Serpantinum desktop shell (bar, notifications, launcher, clipboard,
+    # dock, PipeWire audio engine, and gamma daemon). Its Nixpkgs input is
+    # deliberately NOT followed from the root system: the shell builds
+    # against the Quickshell/Qt revision upstream tests, while the host keeps
+    # its own nixos-unstable userland. See docs/SERPANTINUM.md.
+    serpantinum.url = "github:ilyamiro/serpantinum";
     # Impermanence is intentionally not imported: this configuration does
     # not define a persistent-storage layout. Reintroduce the input only
     # together with matching environment.persistence and Home Manager settings.
@@ -37,6 +43,7 @@
       cachyos-kernel,
       cachyos-nixpkgs,
       home-manager,
+      serpantinum,
       ...
     }:
     let
@@ -79,6 +86,13 @@
         inherit system;
         modules = [
           home-manager.nixosModules.home-manager
+          # Serpantinum system module: registers the PAM service its lock
+          # screen authenticates against, enables Ski as the default file
+          # manager, and defaults the shared prerequisites (NetworkManager,
+          # Bluetooth, i2c, PipeWire, rtkit, power-profiles-daemon, and the
+          # nerd-fonts.iosevka glyph font). Everything it sets uses
+          # mkDefault, so the explicit values in configuration.nix win.
+          serpantinum.nixosModules.default
           ({ pkgs, config, ... }: {
             nixpkgs.config.allowUnfree = true;
             # Keep the NixOS userland on the generic x86_64-linux baseline so
@@ -95,6 +109,11 @@
             # come from the same nixpkgs revision to keep their ABI consistent.
             # Keep shared system packages declared in configuration.nix only;
             # duplicate declarations here make ownership harder to maintain.
+            # home.nix imports serpantinum.homeManagerModules.default through
+            # this extraSpecialArgs entry; standalone Home Manager use (no
+            # flake in scope) degrades to the previous shell-less setup via
+            # the `serpantinum ? null` guard in home.nix.
+            home-manager.extraSpecialArgs = { inherit serpantinum; };
           })
           ./hosts/nixos/configuration.nix
         ];

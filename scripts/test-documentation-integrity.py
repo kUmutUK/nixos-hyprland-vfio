@@ -300,8 +300,8 @@ require(
     and len(documented_release_path_list) == len(documented_release_paths)
     and len(workflow_release_path_list) == len(workflow_release_paths)
     and documented_release_paths == workflow_release_paths
-    and len(workflow_release_paths) == 75,
-    "RELEASING.md and release.yml must contain the same unique exhaustive 75-path literal allowlist",
+    and len(workflow_release_paths) == 76,
+    "RELEASING.md and release.yml must contain the same unique exhaustive 76-path literal allowlist",
 )
 require(
     "git diff --no-renames --name-status" in RELEASE_WORKFLOW
@@ -1477,6 +1477,7 @@ verification_metadata_paths = {
     "docs/OPTISCALER.md",
     "docs/OPTISCALER-MANAGER.md",
     "docs/MAKO.md",
+    "docs/SERPANTINUM.md",
     "docs/BTRFS-AND-KERNEL-MANAGEMENT.md",
     "docs/MIGRATION-GUIDE.md",
     "docs/AUDIT-2026-10-28-VM-XML-VFIO.md",
@@ -2429,10 +2430,15 @@ require(
     "the VFIO health script must keep its injectable sysfs root, the release-record marker, and the disk check",
 )
 require(
-    "clipboardMenuCommand" in HOME_NIX
-    and 'mainMod .. " + B"' in HOME_NIX
-    and "wl-paste --watch cliphist store" in HOME_NIX,
-    "the clipboard history menu must stay bound (mainMod + B) with its cliphist watcher and pipeline",
+    # 2026-11-25 Serpantinum integration: the clipboard overlay replaced the
+    # Rofi cliphist picker; the same cliphist history is fed by the dual
+    # text/image wl-paste watchers the shell itself deploys.
+    'mainMod .. " + B"' in HOME_NIX
+    and "serpantinum msg toggle clipboard" in HOME_NIX
+    and "wl-paste --type text --watch cliphist store" in HOME_NIX
+    and "wl-paste --type image --watch cliphist store" in HOME_NIX
+    and "cliphist list | rofi" not in HOME_NIX,
+    "the Serpantinum clipboard overlay must stay bound (mainMod + B) with the dual cliphist watchers",
 )
 require(
     "pre-commit run --all-files" in PRE_COMMIT_CONFIG

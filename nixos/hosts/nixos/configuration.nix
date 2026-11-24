@@ -500,6 +500,19 @@ in
   programs.hyprland.enable = true;
   programs.hyprland.withUWSM = true;
   programs.hyprland.xwayland.enable = true;
+
+  # Serpantinum desktop shell (https://github.com/ilyamiro/serpantinum):
+  # system-level prerequisites only — the PAM service its lock screen
+  # authenticates against, the Ski file manager default, and mkDefault
+  # fallbacks for shared services (NetworkManager, Bluetooth, i2c, PipeWire,
+  # rtkit, power-profiles-daemon) plus the nerd-fonts.iosevka glyph font.
+  # The explicit settings already present in this file (power-profiles-daemon,
+  # NetworkManager, rtkit, PipeWire, fonts.packages) take precedence over the
+  # module's mkDefault values, so nothing below re-declares them. The user
+  # configuration lives in home.nix under programs.serpantinum; see
+  # docs/SERPANTINUM.md for what the shell replaces and what it keeps.
+  programs.serpantinum.enable = true;
+
   xdg.portal = {
     enable = true;
     extraPortals = with pkgs; [
