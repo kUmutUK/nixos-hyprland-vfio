@@ -78,11 +78,11 @@ case "${1:-}" in
     fi
     ;;
   game-end)
-    if [[ -r "$GAME_RETURN_FILE" ]]; then
-      IFS= read -r RETURN_PROFILE < "$GAME_RETURN_FILE" || RETURN_PROFILE=desktop
-    else
-      RETURN_PROFILE=desktop
+    if [[ ! -r "$GAME_RETURN_FILE" ]]; then
+      echo "No saved pre-game profile; leaving the current profile unchanged."
+      exit 0
     fi
+    IFS= read -r RETURN_PROFILE < "$GAME_RETURN_FILE" || RETURN_PROFILE=desktop
     set_profile "$RETURN_PROFILE"
     rm -f -- "$GAME_RETURN_FILE"
     ;;

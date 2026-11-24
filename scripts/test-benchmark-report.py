@@ -2,6 +2,8 @@
 """Unit tests for the MangoHud CSV summarizer."""
 from pathlib import Path
 import importlib.util
+import os
+import subprocess
 import tempfile
 import unittest
 
@@ -39,6 +41,44 @@ class BenchmarkReportTests(unittest.TestCase):
             csv_path.write_text("no fps here\n", encoding="utf-8")
             with self.assertRaises(ValueError):
                 MODULE.read_samples(csv_path)
+
+
+    def test_capture_script_reads_arguments_and_writes_full_report(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            csv_path = root / "mangohud.csv"
+            csv_path.write_text(
+                "MangoHud version,0.7.x\nOS,Linux\nfps,frametime,gpu_load\n100,10,90\n50,30,95\n",
+                encoding="utf-8",
+            )
+            output_root = root / "benchmarks"
+            env = os.environ.copy()
+            env["BENCHMARK_ROOT"] = str(output_root)
+            result = subprocess.run(
+                [
+                    "bash",
+                    str(Path(__file__).with_name("benchmark-capture.sh")),
+                    "smoke-test",
+                    str(csv_path),
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+            folders = list(output_root.iterdir())
+            self.assertEqual(len(folders), 1)
+            report = (folders[0] / "summary.txt").read_text(encoding="utf-8")
+            metadata = (folders[0] / "system.txt").read_text(encoding="utf-8")
+            self.assertIn("Benchmark captured:", result.stdout)
+            self.assertIn("Average FPS:", report)
+            self.assertIn("1% low FPS:", report)
+            self.assertIn("Frametime p99:", report)
+            self.assertIn("label=smoke-test", metadata)
+            self.assertEqual(
+                (folders[0] / "mangohud.csv").read_text(encoding="utf-8"),
+                csv_path.read_text(encoding="utf-8"),
+            )
 
 
 if __name__ == "__main__":

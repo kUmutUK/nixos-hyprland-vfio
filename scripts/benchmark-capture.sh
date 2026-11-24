@@ -2,14 +2,14 @@
 # Capture benchmark context and optionally summarize an existing MangoHud CSV.
 set -euo pipefail
 
-LABEL="\${1:-}"
-CSV="\${2:-}"
+LABEL="${1:-}"
+CSV="${2:-}"
 if [[ ! "$LABEL" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$ ]]; then
   echo "Usage: scripts/benchmark-capture.sh <label> [mangohud.csv]" >&2
   exit 2
 fi
 
-ROOT="\${BENCHMARK_ROOT:-$HOME/Documents/benchmarks}"
+ROOT="${BENCHMARK_ROOT:-$HOME/Documents/benchmarks}"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 OUT="$ROOT/$STAMP-$LABEL"
 mkdir -p "$OUT"

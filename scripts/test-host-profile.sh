@@ -42,4 +42,9 @@ grep -qx 'ppd set performance' "$PROFILE_TEST_LOG"
 [ "$(cat "$HOST_PROFILE_STATE_DIR/current")" = "low-latency" ]
 [ ! -e "$HOST_PROFILE_STATE_DIR/game-return" ]
 
-echo "OK: host profile routing and GameMode restore passed."
+: > "$PROFILE_TEST_LOG"
+PATH="$BIN:$PATH" bash "$ROOT/scripts/host-profile.sh" game-end >/dev/null
+[ ! -s "$PROFILE_TEST_LOG" ] || { echo "game-end without a matching start must not change PPD/scx" >&2; exit 1; }
+[ "$(cat "$HOST_PROFILE_STATE_DIR/current")" = "low-latency" ]
+
+echo "OK: host profile routing, GameMode restore, and unmatched-end safety passed."
