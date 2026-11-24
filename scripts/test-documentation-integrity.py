@@ -1581,7 +1581,10 @@ if git_checkout and current_head and repair_baseline_match:
             # renamed nixos/{configuration,home}.nix and nixos/hooks/qemu, and diff reports
             # the old locations until a new full-system build resets the verified baseline.
             full_build_pending_paths = {"nixos/hosts/nixos/configuration.nix", "nixos/hosts/nixos/hooks/qemu", "install.sh", "nixos/hosts/nixos/home.nix", "nixos/hosts/nixos/host-settings.nix", "nixos/flake.nix", "nixos/flake.lock", "nixos/hosts/nixos/hardware-configuration.nix", "nixos/mako-renderer.nix", "nixos/hosts/nixos/hooks/README.md", "nixos/configuration.nix", "nixos/home.nix", "nixos/hardware-configuration.nix", "nixos/hooks/qemu"}
-            vm_xml_pending_paths = {"vm-xml/win10.xml"}
+            vm_xml_pending_paths = {
+                "vm-xml/win10.xml",
+                "vm-xml/win11.xml",
+            }
             unexpected = sorted(set(changed) - verification_metadata_paths - full_build_pending_paths - vm_xml_pending_paths)
             require(
                 not unexpected,
@@ -1599,6 +1602,7 @@ if git_checkout and current_head and repair_baseline_match:
             if vm_xml_pending:
                 require(
                     "`vm-xml/win10.xml`" in REPAIR
+                    and "`vm-xml/win11.xml`" in REPAIR
                     and "optional NixOS test disk" in REPAIR
                     and "libvirt/QEMU semantic validation" in REPAIR
                     and "real Windows and NixOS guest boot tests" in REPAIR
@@ -1607,8 +1611,10 @@ if git_checkout and current_head and repair_baseline_match:
                 )
                 require(
                     "vm-xml/win10.xml" not in documented_release_paths
-                    and "vm-xml/win10.xml" not in workflow_release_paths,
-                    "the VM XML template must remain outside the release allowlist until target-VM validation is documented",
+                    and "vm-xml/win10.xml" not in workflow_release_paths
+                    and "vm-xml/win11.xml" not in documented_release_paths
+                    and "vm-xml/win11.xml" not in workflow_release_paths,
+                    "the VM XML templates must remain outside the release allowlist until target-VM validation is documented",
                 )
             if "nixos/hosts/nixos/hooks/qemu" in pending:
                 require(
