@@ -4,6 +4,11 @@ This file summarizes notable changes in English. The separate Turkish release-by
 
 ## [Unreleased]
 
+### Cachix kernel-only push re-scope — 2026-11-24
+
+- **N1 final shape (kernel-only push):** the manual Cachix workflow (`.github/workflows/cache.yml`, now named "CachyOS kernel binary cache (manual)") builds and publishes only the selected RT-Bore-LTO kernel and its runtime closure — not the system toplevel, LSFG-VK v2, or MAKO Renderer — so the project's 5 GB Cachix allocation stays focused on the one component no upstream cache publishes. The write-token guard, the flake.lock-untouched guard, and the disk-space reports are retained; `cachix-action` moves from the v16 push-everything daemon setup to the pinned v17 digest with `pathsToPush` limited to the kernel output. This supersedes the full-push "Binary cache push (manual)" description in the earlier 2026-11-24 waves below. Activation itself remains the maintainer's three steps (create the cache, add the `CACHIX_AUTH_TOKEN` secret, dispatch once); the substituter/trusted-public-key commit into `nixos/flake.nix` and `nixos/hosts/nixos/configuration.nix` lands only after the first successful push.
+- **Validation boundary:** the kernel-only workflow has never run — no cache content and no substituter entry exist yet. Offline documentation-integrity assertions now pin the kernel-only scope (kernel build target, `pathsToPush`, no toplevel/LSFG/MAKO references in the workflow); the README activation section matches. The workflow file is CI-only tooling outside the NixOS closure, so no full-system build gate applies to it.
+
 ### Btrfs Assistant GUI and compsize spelling fix — 2026-11-24
 
 - **compsize spelling fix (evaluation blocker):** the system package list carried `compsite`, an attribute that exists in neither the pinned Nixpkgs revision (`d00708e7`) nor Nixpkgs master, so any rebuild evaluating the system profile would have failed with a missing-attribute error before activation. The intended `compsize` (the Btrfs compression-report tool behind the `btrfs-cmp` shell alias) is confirmed present in the pinned revision. The typo entered with the LTS specialisation wave and never reached evaluation because full-system Nix builds stay gated, so no target-host activation was affected.

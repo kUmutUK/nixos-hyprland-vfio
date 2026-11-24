@@ -2413,9 +2413,17 @@ CACHE_WORKFLOW = (ROOT / ".github/workflows/cache.yml").read_text(encoding="utf-
 require(
     "Maintainer binary cache (Cachix) activation" in README
     and "CACHIX_AUTH_TOKEN" in README
+    and "CachyOS kernel binary cache (manual)" in README
     and "cachix-action" in CACHE_WORKFLOW
-    and "secrets.CACHIX_AUTH_TOKEN" in CACHE_WORKFLOW,
-    "the README must keep the three-step Cachix activation path matching the wired cache workflow",
+    and "secrets.CACHIX_AUTH_TOKEN" in CACHE_WORKFLOW
+    and "boot.kernelPackages.kernel" in CACHE_WORKFLOW
+    and "pathsToPush" in CACHE_WORKFLOW
+    and "CachyOS kernel binary cache (manual)" in CACHE_WORKFLOW
+    and "config.system.build.toplevel" not in CACHE_WORKFLOW
+    and "lsfg-vk-v2" not in CACHE_WORKFLOW
+    and "mako-renderer" not in CACHE_WORKFLOW
+    and "Cachix kernel-only push re-scope" in CHANGELOG,
+    "the README must keep the three-step Cachix activation path matching the wired kernel-only cache workflow",
 )
 require(
     "### Windows 11 template and the read-only host file share" in README

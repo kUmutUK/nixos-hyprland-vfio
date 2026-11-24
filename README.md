@@ -1026,13 +1026,13 @@ Normal CI also runs the archive, installer, VM, VFIO hook, generated Lua, ShellC
 
 ### Maintainer binary cache (Cachix) activation
 
-The manual `Binary cache push (manual)` workflow (`.github/workflows/cache.yml`) is fully wired: it builds the NixOS toplevel, the selected kernel, and the pinned LSFG-VK v2 / MAKO packages, then pushes them to a Cachix cache. Nothing consumes the cache yet, so activating it is a three-step, one-time maintainer task:
+The manual `CachyOS kernel binary cache (manual)` workflow (`.github/workflows/cache.yml`) is fully wired: it builds only the selected RT-Bore-LTO kernel and publishes that output's runtime closure, so the project's 5 GB Cachix allocation stays focused on the one component no upstream cache publishes. Nothing consumes the cache yet, so activating it is a three-step, one-time maintainer task:
 
 1. Create a cache at <https://app.cachix.org> (the workflow expects the name `kumutuk-nixos-hyprland-vfio`; a personal/private scope is fine) and copy the auth token.
 2. Add that token as the `CACHIX_AUTH_TOKEN` secret of this repository (Settings → Secrets and variables → Actions).
-3. Run the workflow once (Actions → Binary cache push (manual) → Run workflow). When it succeeds, copy the `extra-substituters`/`extra-trusted-public-keys` pair Cachix prints into the `nixConfig` block of `nixos/flake.nix` and the `nix.settings` lists of `nixos/hosts/nixos/configuration.nix`, and commit that change separately.
+3. Run the workflow once (Actions → CachyOS kernel binary cache (manual) → Run workflow). When it succeeds, copy the `extra-substituters`/`extra-trusted-public-keys` pair Cachix prints into the `nixConfig` block of `nixos/flake.nix` and the `nix.settings` lists of `nixos/hosts/nixos/configuration.nix`, and commit that change separately.
 
-Until step 3's second commit lands, the workflow only uploads; CI and local builds keep the current substitution behavior. The RT-Bore-LTO kernel is not published in any upstream cache, which is exactly what this repository's own cache removes.
+Until step 3's second commit lands, the workflow only uploads; CI and local builds keep the current substitution behavior. The system toplevel, the pinned LSFG-VK v2 / MAKO Renderer packages, and everything else the default substituters already serve stay out of the cache on purpose.
 
 See [`RELEASING.md`](RELEASING.md) for the semantic-versioning process, release prerequisites, and GitHub Releases workflow. Normal CI must pass for the exact tagged commit (or manual-release commit), and a successful full NixOS system build must exist for that commit or an ancestor. An ancestor build is accepted automatically only when every intervening change is in the literal allowlist in `.github/workflows/release.yml`. `install.sh` remains outside that automatic allowlist; a post-build installer change normally requires a new full-system build, but a manual Release from `main` can accept it with `target_host_validated` only after the exact current installer was used for a clean installation and the documented boot/Windows VM/GPU-handback/Hyprland checks passed. The checkbox does not bypass exact-commit Normal CI or the requirement for a successful ancestor full-system build.
 
