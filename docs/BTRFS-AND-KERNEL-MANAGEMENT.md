@@ -64,7 +64,7 @@ It reports the running kernel, Flake-declared kernel profile, locked `cachyos-ke
 - Full-system rebuild is a separate, explicit activation. It does not update the lock file.
 - The manager reflects the current Flake. It does not offer an LTS choice because the old LTS specialisation has been removed from the current configuration.
 
-The existing Fish aliases remain available: `nup` updates the CachyOS Flake input, while `nrs` builds and activates the currently declared system. The manager is a NixOS front-end, not a port of the CachyOS Kernel Manager.
+The existing Fish aliases remain available: `nup` updates the pinned CachyOS Flake input and lock metadata only; **it does not activate the new kernel**. `nrs` builds and activates the currently declared system. The manager is a NixOS front-end, not a port of the CachyOS Kernel Manager.
 
 ## Read-only checks
 
