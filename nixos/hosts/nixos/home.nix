@@ -850,7 +850,10 @@ in
     exec = "${nixosKernelManager}/bin/nixos-kernel-manager";
     icon = "preferences-system";
     terminal = false;
-    categories = [ "System" "Settings" ];
+    categories = [
+      "System"
+      "Settings"
+    ];
   };
 
   home.pointerCursor = {
