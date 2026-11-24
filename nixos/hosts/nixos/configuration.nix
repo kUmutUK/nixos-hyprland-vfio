@@ -970,11 +970,16 @@ in
     # local experimentation, but users must inspect git diff before rebuilding;
     # it is intentionally a workflow preference, not a reproducibility guarantee.
     warn-dirty = false;
+    # This project's own Cachix cache serves the selected RT-Bore-LTO kernel
+    # closure (no upstream publishes it), so a kernel-input bump downloads
+    # instead of compiling locally for hours once the cache workflow has run.
     substituters = [
+      "https://kumutuk-nixos-hyprland-vfio.cachix.org"
       "https://cache.nixos.org"
       "https://nix-community.cachix.org"
     ];
     trusted-public-keys = [
+      "kumutuk-nixos-hyprland-vfio.cachix.org-1:wgWsd619A9+2Mj+iEDABPbnIB1YqJnVJWt2D7Bv9JTQ="
       "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
       "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
     ];

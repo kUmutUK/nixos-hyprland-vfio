@@ -2410,6 +2410,11 @@ require(
     "USBGuard must stay in the audit-safe allow/keep mode with the README enforcement roadmap",
 )
 CACHE_WORKFLOW = (ROOT / ".github/workflows/cache.yml").read_text(encoding="utf-8")
+CACHE_URL = "https://kumutuk-nixos-hyprland-vfio.cachix.org"
+CACHE_KEY = (
+    "kumutuk-nixos-hyprland-vfio.cachix.org-1:"
+    "wgWsd619A9+2Mj+iEDABPbnIB1YqJnVJWt2D7Bv9JTQ="
+)
 require(
     "Maintainer binary cache (Cachix) activation" in README
     and "CACHIX_AUTH_TOKEN" in README
@@ -2422,8 +2427,15 @@ require(
     and "config.system.build.toplevel" not in CACHE_WORKFLOW
     and "lsfg-vk-v2" not in CACHE_WORKFLOW
     and "mako-renderer" not in CACHE_WORKFLOW
-    and "Cachix kernel-only push re-scope" in CHANGELOG,
-    "the README must keep the three-step Cachix activation path matching the wired kernel-only cache workflow",
+    and "Cachix kernel-only push re-scope" in CHANGELOG
+    and "Cachix kernel cache activated" in CHANGELOG
+    and CACHE_URL in README
+    and CACHE_URL in FLAKE
+    and CACHE_URL in CONFIG
+    and CACHE_KEY in FLAKE
+    and CACHE_KEY in CONFIG,
+    "the README must keep the Cachix activation section, the kernel-only cache wiring, "
+    "and the consumed substituter/public-key pair in flake.nix and configuration.nix",
 )
 require(
     "### Windows 11 template and the read-only host file share" in README
