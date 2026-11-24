@@ -607,7 +607,7 @@ valid as-is; placeholder identity values and paths should be replaced where appl
 | 2 | `monitorOutput` | `"DP-3"` (reference host) | The exact output name used for the Hyprland monitor rule and optional `mpvpaper` wallpaper. The installer detects and asks for the target output; a manually empty value remains a catch-all and disables live wallpaper. |
 | 3 | `gitName` | `"changeme"` | Commits are attributed to a placeholder name. |
 | 4 | `gitEmail` | `"you@example.com"` | Commits are attributed to a placeholder email address. |
-| 5 | `wallpaperVideo` | `~/Downloads/arthur-leywin-the-beginning-after-the-end.3840x2160.mp4` | If the file is missing, `Unit.ConditionPathExists` prevents the service from starting. A login-time warning is shown only when `monitorOutput` is non-empty. |
+| 5 | `wallpaperVideo` | `~/Downloads/Sunless-Lost-from-Light-4K.mp4` | If the file is missing, `Unit.ConditionPathExists` prevents the service from starting. A login-time warning is shown only when `monitorOutput` is non-empty. |
 
 Manual installation is recommended; fill in these values yourself. `install.sh` is optional
 for advanced users migrating an existing NixOS system and carries additional risk because
@@ -626,7 +626,7 @@ defaults in `/mnt/etc/nixos/nixos/hosts/nixos/host-settings.nix` (the `kumutuk.h
 options; the values used to live in home.nix's `let` block). The following is an
 **edited example** of a fully customized file — these are NOT the repository's shipped
 defaults. The actual defaults are the five values in the table above (`"preferred"`,
-`"DP-3"`, `"changeme"`, `"you@example.com"`, and the arthur-leywin wallpaper path);
+`"DP-3"`, `"changeme"`, `"you@example.com"`, and the Sunless wallpaper path);
 copy the shape below only to replace them with your own values:
 
 ```nix
@@ -644,7 +644,7 @@ copy the shape below only to replace them with your own values:
     };
     wallpaperVideo = lib.mkOption {
       type = lib.types.str;
-      default = "/home/localhost/Downloads/wallpaper.mp4";  # was ~/Downloads/arthur-leywin-the-beginning-after-the-end.3840x2160.mp4
+      default = "/home/localhost/Downloads/wallpaper.mp4";  # was ~/Downloads/Sunless-Lost-from-Light-4K.mp4
     };
 ```
 > The Lua `hl.monitor` rule reads `monitorOutput` and `monitorMode` through the host
