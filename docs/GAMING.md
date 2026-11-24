@@ -111,8 +111,8 @@ duration for each comparison. Save a MangoHud CSV, then capture the host state
 and summarize the samples:
 
 ```bash
-scripts/benchmark-capture.sh none path/to/none.csv
-scripts/benchmark-capture.sh adios path/to/adios.csv
+bash scripts/benchmark-capture.sh none path/to/none.csv
+bash scripts/benchmark-capture.sh adios path/to/adios.csv
 ```
 
 The local report stores the kernel, NixOS system generation, CPU/RAM, PPD,
