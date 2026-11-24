@@ -4,15 +4,24 @@ This reference configuration uses NixOS-managed Snapper/Btrfs services and a Fla
 
 ## Btrfs Assistant 2.3.x
 
-The currently locked root Nixpkgs revision provides Btrfs Assistant 2.3.2. In the 2.3.x packaging model, use the privileged launcher for the full GUI:
+The currently locked root Nixpkgs revision provides Btrfs Assistant 2.3.2. Use its privileged launcher for the full GUI:
 
 ```bash
 btrfs-assistant-launcher
 ```
 
-The launcher uses the package's Polkit/pkexec policy to start its privileged GUI path.
+The launcher uses the package's Polkit/pkexec policy to start its privileged GUI path. The plain `btrfs-assistant` entry point can run the UI as the ordinary desktop user. On the reference host, that mode produced:
 
-The graphical authentication agent is a separate user-session service. It must be running for Polkit dialogs to be presented in Hyprland. The reference host's diagnostic log showed `No session for cookie` and `hyprpolkitagent` was absent from the process list, so the password prompt was falling back to a non-graphical path without a registered session agent.
+```text
+Failed to iterate over the subvolumes of "/" : Could not search B-tree
+ERROR: can't perform the search: Operation not permitted
+```
+
+The same read-only `btrfs subvolume list -t /` operation failed as the unprivileged user and succeeded under `sudo`, listing the existing root, home, snapshots, and other subvolumes. This indicates a permission boundary for that operation; it does not by itself indicate Btrfs corruption. The Home Manager Fish alias maps `btrfs-assistant` to `btrfs-assistant-launcher`, so the normal terminal command uses the intended 2.3.x authorization path. Run the GUI as your desktop user and let Polkit request authorization; do not start the GUI with `sudo`.
+
+### Hyprland Polkit authentication agent
+
+The graphical authentication agent is a separate user-session service. It must be running for Polkit dialogs to be presented in Hyprland. The reference host's diagnostic log showed `No session for cookie` while `hyprpolkitagent` was absent from the process list. That means the graphical session had no registered Polkit agent when Btrfs Assistant invoked pkexec.
 
 The Nixpkgs `hyprpolkitagent` package installs its executable at `$out/libexec/hyprpolkitagent`, not `$out/bin/hyprpolkitagent`. Home Manager now defines `hyprpolkitagent.service` with that exact store path and starts it from the existing Hyprland startup callback only after importing `WAYLAND_DISPLAY` and the D-Bus activation environment. This avoids an early-start race and ties the agent lifetime to `graphical-session.target`.
 
@@ -23,15 +32,7 @@ systemctl --user status hyprpolkitagent.service --no-pager
 journalctl --user -b -u hyprpolkitagent.service --no-pager
 ```
 
-The expected state is `active (running)`. Then start `btrfs-assistant-launcher` from the desktop user session; Polkit should present the graphical authorization dialog. Do not run either GUI as root.
- The plain `btrfs-assistant` entry point can run the UI as the ordinary desktop user. On the reference host, that mode produced:
-
-```text
-Failed to iterate over the subvolumes of "/" : Could not search B-tree
-ERROR: can't perform the search: Operation not permitted
-```
-
-The same read-only `btrfs subvolume list -t /` operation failed as the unprivileged user and succeeded under `sudo`, listing the existing root, home, snapshots, and other subvolumes. This indicates a permission boundary for that operation; it does not by itself indicate Btrfs corruption. The Home Manager Fish alias maps `btrfs-assistant` to `btrfs-assistant-launcher` so the ordinary terminal command follows the intended 2.3.x authorization path. Run the GUI as your desktop user and let Polkit request authorization; do not start the GUI with `sudo`.
+The expected state is `active (running)`. Then start `btrfs-assistant-launcher` from the desktop user session; Polkit should present the graphical authorization dialog.
 
 The host already enables `security.polkit`, configures Snapper's `root` and `home` profiles, and enables Snapper timeline/cleanup timers. Keep scheduling declarative: `services.btrfs.autoScrub` and `services.snapper` own automatic maintenance and snapshot cadence. Do not enable Btrfs Assistant's traditional-distro cron scheduling on top of those services.
 
