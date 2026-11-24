@@ -29,6 +29,23 @@ jobs:
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@3138316df39ed29be04236d7ffc686fa525866aa
 
+      - name: Consume the project's Cachix kernel cache (read-only)
+        # No upstream binary cache publishes this ThinLTO kernel; the
+        # project's own Cachix cache populated by `cache.yml` does. A cache
+        # hit proves that exact derivation already compiled in a previous
+        # run, so substitution keeps this workflow an honest release gate:
+        # a kernel configuration or input change produces a different store
+        # path, misses the cache, and compiles as before. The public key is
+        # pinned in this file instead of fetched at run time so the CI trust
+        # root stays reviewable in the repository.
+        run: |
+          sudo mkdir -p /etc/nix
+          {
+            echo 'extra-substituters = https://kumutuk-nixos-hyprland-vfio.cachix.org'
+            echo 'extra-trusted-public-keys = kumutuk-nixos-hyprland-vfio.cachix.org-1:wgWsd619A9+2Mj+iEDABPbnIB1YqJnVJWt2D7Bv9JTQ='
+          } | sudo tee -a /etc/nix/nix.conf
+          sudo systemctl restart nix-daemon
+
       - name: Report available disk space
         run: df -h "$GITHUB_WORKSPACE" "$RUNNER_TEMP"
 

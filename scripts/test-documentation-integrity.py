@@ -27,6 +27,7 @@ RELEASE_WORKFLOW = (ROOT / ".github/workflows/release.yml").read_text(encoding="
 CLIFF_CONFIG = (ROOT / ".git-cliff.toml").read_text(encoding="utf-8")
 CHECK_WORKFLOW = (ROOT / ".github/workflows/check.yml").read_text(encoding="utf-8")
 FULL_SYSTEM_WORKFLOW = (ROOT / ".github/workflows/full-system-build.yml").read_text(encoding="utf-8")
+KERNEL_BUILD = (ROOT / ".github/workflows/kernel-build.yml").read_text(encoding="utf-8")
 VFIO_HOOK = (ROOT / "nixos/hosts/nixos/hooks/qemu").read_text(encoding="utf-8")
 VFIO_HOOK_TEST = (ROOT / "scripts/test-vfio-hook-driver-state.sh").read_text(encoding="utf-8")
 AUDIT = (ROOT / "docs/AUDIT-2026-10-28-VM-XML-VFIO.md").read_text(encoding="utf-8")
@@ -2433,9 +2434,17 @@ require(
     and CACHE_URL in FLAKE
     and CACHE_URL in CONFIG
     and CACHE_KEY in FLAKE
-    and CACHE_KEY in CONFIG,
+    and CACHE_KEY in CONFIG
+    and CACHE_URL in KERNEL_BUILD
+    and CACHE_KEY in KERNEL_BUILD
+    and CACHE_URL in FULL_SYSTEM_WORKFLOW
+    and CACHE_KEY in FULL_SYSTEM_WORKFLOW
+    and "Consume the project's Cachix kernel cache (read-only)" in KERNEL_BUILD
+    and "Consume the project's Cachix kernel cache (read-only)" in FULL_SYSTEM_WORKFLOW
+    and "CI read-only kernel cache consumption" in CHANGELOG,
     "the README must keep the Cachix activation section, the kernel-only cache wiring, "
-    "and the consumed substituter/public-key pair in flake.nix and configuration.nix",
+    "the consumed substituter/public-key pair in flake.nix and configuration.nix, "
+    "and the read-only CI consumption in both build workflows",
 )
 require(
     "### Windows 11 template and the read-only host file share" in README
