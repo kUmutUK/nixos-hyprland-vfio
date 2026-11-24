@@ -10,7 +10,21 @@ The currently locked root Nixpkgs revision provides Btrfs Assistant 2.3.2. In th
 btrfs-assistant-launcher
 ```
 
-The launcher uses the package's Polkit/pkexec policy to start its privileged GUI path. The plain `btrfs-assistant` entry point can run the UI as the ordinary desktop user. On the reference host, that mode produced:
+The launcher uses the package's Polkit/pkexec policy to start its privileged GUI path.
+
+The graphical authentication agent is a separate user-session service. It must be running for Polkit dialogs to be presented in Hyprland. The reference host's diagnostic log showed `No session for cookie` and `hyprpolkitagent` was absent from the process list, so the password prompt was falling back to a non-graphical path without a registered session agent.
+
+The Nixpkgs `hyprpolkitagent` package installs its executable at `$out/libexec/hyprpolkitagent`, not `$out/bin/hyprpolkitagent`. Home Manager now defines `hyprpolkitagent.service` with that exact store path and starts it from the existing Hyprland startup callback only after importing `WAYLAND_DISPLAY` and the D-Bus activation environment. This avoids an early-start race and ties the agent lifetime to `graphical-session.target`.
+
+After rebuilding and logging into Hyprland, verify the service before opening Btrfs Assistant:
+
+```bash
+systemctl --user status hyprpolkitagent.service --no-pager
+journalctl --user -b -u hyprpolkitagent.service --no-pager
+```
+
+The expected state is `active (running)`. Then start `btrfs-assistant-launcher` from the desktop user session; Polkit should present the graphical authorization dialog. Do not run either GUI as root.
+ The plain `btrfs-assistant` entry point can run the UI as the ordinary desktop user. On the reference host, that mode produced:
 
 ```text
 Failed to iterate over the subvolumes of "/" : Could not search B-tree
