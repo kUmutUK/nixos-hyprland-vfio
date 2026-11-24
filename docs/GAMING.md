@@ -55,6 +55,23 @@ best-effort: if it fails, `gamemoded` logs an error and the game runs anyway.
 The mpvpaper watchdog — not GameMode — remains the single authority for the
 live-wallpaper service.
 
+## AMD GPU Waybar telemetry
+
+The `custom/amdgpu` Waybar module reads the kernel's AMDGPU sysfs interface
+without changing power, clocks, fan policy, or performance state. It reports
+GPU busy percentage, VRAM used/total, Edge and Junction temperatures when
+exposed, the current graphics clock, average/instantaneous power, and fan RPM.
+The optional sensor fields are shown as unavailable when the driver does not
+export them. The module refreshes every two seconds; clicking it opens the
+AMD-enabled `nvtop` TUI in Kitty.
+
+The reader selects the first AMD DRM card exposed under
+`/sys/class/drm/card*/device`. On a single-GPU VFIO host, the module reports
+telemetry as unavailable when no AMD DRM card is present (for example while
+the GPU is bound to `vfio-pci`). It does not write to sysfs. The underlying
+interfaces are documented in the
+[Linux kernel AMDGPU monitoring documentation](https://www.kernel.org/doc/html/latest/gpu/amdgpu/thermal.html).
+
 ## Shader cache sizing
 
 `MESA_SHADER_CACHE_MAX_SIZE=12G` (system-wide environment) keeps large games
