@@ -4,6 +4,13 @@ This file summarizes notable changes in English. The separate Turkish release-by
 
 ## [Unreleased]
 
+### Btrfs Assistant launcher and declarative kernel-management guidance — 2026-11-24
+
+- **Btrfs Assistant 2.3.x launch path:** the reference host's direct `btrfs-assistant` invocation ran the Qt UI as the unprivileged desktop user. The user's read-only `btrfs subvolume list /` reproduced `Operation not permitted`, while the same command under sudo enumerated the existing subvolumes successfully; this is an authorization boundary, not evidence of filesystem damage. The 2.3.x package ships `btrfs-assistant-launcher`, which invokes the existing Polkit/pkexec authorization path. Home Manager's Fish alias now maps `btrfs-assistant` to that launcher, and the new guide explains the distinction. Do not run the GUI with sudo.
+- **Upstream 3.0.0 packaging boundary:** 3.0.0 replaces the 2.3.x launcher model with a rootless UI plus a D-Bus-activated privileged helper and changes the package's installed files/services. The currently locked Nixpkgs package remains 2.3.2; no unsafe version-only override is introduced. A 3.0.0 upgrade needs a complete NixOS package integration for its helper, D-Bus activation, systemd unit, and Polkit policy before it can replace 2.3.2.
+- **CachyOS Kernel Manager:** no Arch-style kernel-manager GUI is added. The selected RT-Bore-LTO kernel remains declared by `boot.kernelPackages` in `nixos/flake.nix`; `nup` updates only the CachyOS Flake input and `nrs` performs the explicit rebuild/switch. No kernel setting, Flake lock, Snapper policy, Btrfs mount, or automatic maintenance schedule is changed by this guidance update.
+- **Validation boundary:** documentation-integrity assertions pin the launcher alias and Flake-management guidance. The GUI launch still needs a user-session check through `btrfs-assistant-launcher`; no target-host GUI success is claimed by this commit.
+
 ### Removed CachyOS LTS recovery specialisation — 2026-11-24
 
 - **Single-kernel system build:** removed the optional `specialisation.lts-kernel` boot entry that added `linux-cachyos-lts` (6.18.x) as a second kernel configuration. The default RT-Bore-LTO x86_64-v3 kernel remains unchanged; the LTS variant is no longer part of the configured system build.
