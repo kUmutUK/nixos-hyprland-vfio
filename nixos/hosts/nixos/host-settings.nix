@@ -34,7 +34,7 @@
     };
     wallpaperVideo = lib.mkOption {
       type = lib.types.str;
-      default = "/home/localhost/Downloads/arthur-leywin-the-beginning-after-the-end.3840x2160.mp4";
+      default = "/home/localhost/Downloads/Sunless-Lost-from-Light-4K.mp4";
       description = "Absolute path of the mpvpaper live-wallpaper video.";
     };
     gitName = lib.mkOption {

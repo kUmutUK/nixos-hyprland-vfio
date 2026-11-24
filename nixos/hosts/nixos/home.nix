@@ -20,7 +20,7 @@ let
   hyprlandMonitorMode = hostCfg.monitorMode or "preferred";
   wallpaperVideo =
     hostCfg.wallpaperVideo
-      or "${config.home.homeDirectory}/Downloads/arthur-leywin-the-beginning-after-the-end.3840x2160.mp4";
+      or "${config.home.homeDirectory}/Downloads/Sunless-Lost-from-Light-4K.mp4";
   gitName = hostCfg.gitName or "changeme";
   gitEmail = hostCfg.gitEmail or "you@example.com";
 
@@ -1668,7 +1668,7 @@ in
   # to 4000K; disable here if a session needs full colour accuracy (MangoHud
   # overlays are unaffected either way).
   services.wlsunset = {
-    enable = true;
+    enable = false;
     latitude = "41.01";
     longitude = "28.98";
     temperature.night = 4000;
