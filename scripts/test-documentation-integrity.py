@@ -3032,6 +3032,16 @@ require(
     and "pkexec" in BTRFS_KERNEL_GUIDE,
     "Btrfs Assistant 2.3.x must use the privileged launcher rather than the unprivileged GUI entry point",
 )
+
+require(
+    'ExecStart = "${pkgs.hyprpolkitagent}/libexec/hyprpolkitagent";' in HOME_NIX
+    and "systemctl --user start hyprpolkitagent.service;" in HOME_NIX
+    and "ConditionEnvironment = \"WAYLAND_DISPLAY\";" in HOME_NIX
+    and "hyprpolkitagentCommand" not in HOME_NIX
+    and "/bin/hyprpolkitagent" not in HOME_NIX,
+    "Hyprpolkitagent must run as a managed user service from the Nixpkgs libexec path after Wayland environment import",
+)
+
 require(
     'boot.kernelPackages = rtBoreLtoV3KernelPackages;' in FLAKE
     and 'nup = "sudo nix flake update --flake /etc/nixos/nixos cachyos-kernel";' in HOME_NIX
