@@ -4,6 +4,12 @@ This file summarizes notable changes in English. The separate Turkish release-by
 
 ## [Unreleased]
 
+### Hyprpolkitagent service path and startup fix — 2026-11-24
+
+- **Root cause:** the reference host reported `hyprpolkitagent` absent from its process list, followed by Polkit's `No session for cookie` error when Btrfs Assistant invoked pkexec. The repository had attempted to start `${pkgs.hyprpolkitagent}/bin/hyprpolkitagent` as an unmanaged child in the Hyprland Lua startup callback. The locked Nixpkgs package installs this executable under `libexec`, so the configured path was wrong.
+- **Managed session agent:** Home Manager now defines `hyprpolkitagent.service` with the verified `${pkgs.hyprpolkitagent}/libexec/hyprpolkitagent` path, session.slice placement, restart-on-failure, and graphical-session lifetime. The existing startup environment importer now starts the unit only after importing `WAYLAND_DISPLAY` and the D-Bus activation environment. The obsolete direct-process command and binding are removed.
+- **Regression coverage and validation boundary:** documentation-integrity checks pin the libexec path, user-service startup, Wayland environment guard, and removal of the old invalid /bin path. This corrects the configuration source; the service and graphical Polkit dialog still require the next Home Manager/NixOS activation and an interactive target-host check. No filesystem, Snapper, kernel, Flake lock, or VM identity settings changed.
+
 ### Btrfs Assistant launcher and declarative kernel-management guidance — 2026-11-24
 
 - **Btrfs Assistant 2.3.x launch path:** the reference host's direct `btrfs-assistant` invocation ran the Qt UI as the unprivileged desktop user. The user's read-only `btrfs subvolume list /` reproduced `Operation not permitted`, while the same command under sudo enumerated the existing subvolumes successfully; this is an authorization boundary, not evidence of filesystem damage. The 2.3.x package ships `btrfs-assistant-launcher`, which invokes the existing Polkit/pkexec authorization path. Home Manager's Fish alias now maps `btrfs-assistant` to that launcher, and the new guide explains the distinction. Do not run the GUI with sudo.
