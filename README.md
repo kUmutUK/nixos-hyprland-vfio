@@ -269,6 +269,8 @@ Verify the resulting mount with `findmnt /mnt/media` before building or activati
 
 The shipped configuration requires both a real Btrfs `@home` subvolume and an existing child `@home/.snapshots` subvolume. Their target hardware-configuration entries must use the same Btrfs UUID, the expected `subvol=` values, and `neededForBoot = true` for the snapshot mount. A separately mounted `/home/.snapshots` is optional, but the subvolume itself is not. Do not copy sample UUIDs.
 
+For the supported Btrfs Assistant 2.3.x launch path and Flake-based CachyOS kernel management, see [Btrfs and kernel management](docs/BTRFS-AND-KERNEL-MANAGEMENT.md).
+
 Use the repository checker below in its strict default mode. It validates the configured UUIDs, active `/home` mount, actual Btrfs subvolume names, and the optional exact `/home/.snapshots` mount. The installer calls the same checker with `--allow-missing-snapshots`: a truly absent child is allowed at the early preflight because the installer creates it later inside its rollback-protected transaction; an existing path that is not a Btrfs subvolume is still rejected. The checker uses `sudo` only for privileged `blkid`/Btrfs inspection.
 
 ```bash
