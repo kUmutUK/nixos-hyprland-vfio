@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Read-only AMDGPU telemetry for a Waybar custom module.
 # The optional root override exists only to make the sysfs reader testable.
 set -euo pipefail
