@@ -30,6 +30,8 @@ FULL_SYSTEM_WORKFLOW = (ROOT / ".github/workflows/full-system-build.yml").read_t
 KERNEL_BUILD = (ROOT / ".github/workflows/kernel-build.yml").read_text(encoding="utf-8")
 VFIO_HOOK = (ROOT / "nixos/hosts/nixos/hooks/qemu").read_text(encoding="utf-8")
 VFIO_HOOK_TEST = (ROOT / "scripts/test-vfio-hook-driver-state.sh").read_text(encoding="utf-8")
+AMD_GPU_WAYBAR = (ROOT / "scripts/waybar-amdgpu.sh").read_text(encoding="utf-8")
+AMD_GPU_WAYBAR_TEST = (ROOT / "scripts/test-waybar-amdgpu.sh").read_text(encoding="utf-8")
 AUDIT = (ROOT / "docs/AUDIT-2026-10-28-VM-XML-VFIO.md").read_text(encoding="utf-8")
 ARCHIVE_INDEX = (ROOT / "docs/archive/README.md").read_text(encoding="utf-8")
 CHANGELOG = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
@@ -3084,6 +3086,26 @@ require(
     and "CachyOS Kernel Manager" in BTRFS_KERNEL_GUIDE
     and "does not activate the new kernel" in BTRFS_KERNEL_GUIDE,
     "kernel management guidance must remain aligned with the declared Flake kernel and nup/nrs workflow",
+)
+
+require(
+    "waybarAmdGpu = pkgs.writeShellApplication" in HOME_NIX
+    and '"custom/amdgpu"' in HOME_NIX
+    and '"custom/amdgpu" = {' in HOME_NIX
+    and "nvtopPackages.amd" in HOME_NIX
+    and "gpu_busy_percent" in AMD_GPU_WAYBAR
+    and "mem_info_vram_used" in AMD_GPU_WAYBAR
+    and "temp1_input" in AMD_GPU_WAYBAR
+    and "temp2_input" in AMD_GPU_WAYBAR
+    and "WAYBAR_AMDGPU_SYSFS_ROOT" in AMD_GPU_WAYBAR
+    and "vfio-pci" in AMD_GPU_WAYBAR
+    and "Junction: 78°C" in AMD_GPU_WAYBAR_TEST
+    and "bash scripts/test-waybar-amdgpu.sh" in CHECK_WORKFLOW
+    and "scripts/waybar-amdgpu.sh" in CHECK_WORKFLOW
+    and "scripts/test-waybar-amdgpu.sh" in CONTRIBUTING
+    and "Waybar AMD GPU telemetry" in CHANGELOG
+    and "Waybar AMD GPU telemetry" in README,
+    "Waybar AMD GPU telemetry, nvtop click action, mock-sysfs regression, and documentation must remain connected",
 )
 
 if errors:
