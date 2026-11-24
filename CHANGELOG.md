@@ -4,6 +4,12 @@ This file summarizes notable changes in English. The separate Turkish release-by
 
 ## [Unreleased]
 
+### AMDGPU Waybar telemetry — 2026-11-24
+
+- **Read-only GPU status module:** add a Waybar custom module backed by the kernel AMDGPU sysfs interface. It reports GPU load, VRAM usage, Edge/Junction temperature where exposed, current graphics clock, power, and fan RPM; clicking opens AMD-enabled nvtop in Kitty. No sysfs controls or GPU performance settings are written.
+- **VFIO behavior:** the module displays an unavailable state when no AMD DRM card is exposed, rather than treating a GPU bound to vfio-pci as a script failure. The reader is tested against absent, populated, and partial-sensor fixtures.
+- **Validation boundary:** mock-sysfs regression tests and CI cover formatting/reader behavior. The Waybar rendering, RX 6700 XT sensor availability, and nvtop launch still require activation and a target-host check; this commit does not claim physical validation or a full-system build.
+
 ### Normal CI repository-map and release-allowlist reconciliation — 2026-11-24
 
 - **CI #45454656731 failure (job 138660757443):** XML/workflow checks and formatting passed; the documentation-integrity step failed on exactly two assertions. The README repository map still said 80 tracked files after the new Btrfs/kernel guide brought the Git tree to 81, and the new standalone documentation path was absent from the exact release/documentation/CI allowlists.
