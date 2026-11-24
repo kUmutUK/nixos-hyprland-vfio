@@ -1489,6 +1489,8 @@ in
         snap-diff = "sudo snapper -c root diff";
         btrfs-df = "sudo btrfs filesystem df /";
         btrfs-cmp = "sudo compsize -x /";
+        # Btrfs Assistant 2.3.x requires its pkexec launcher for privileged Btrfs enumeration.
+        btrfs-assistant = "btrfs-assistant-launcher";
         gm-status = "gamemoded -s";
       };
       interactiveShellInit = ''
