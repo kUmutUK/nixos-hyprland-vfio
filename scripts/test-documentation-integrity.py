@@ -68,6 +68,7 @@ OPTISCALER_DOC = (ROOT / "docs/OPTISCALER.md").read_text(encoding="utf-8")
 OPTISCALER_MANAGER_DOC = (ROOT / "docs/OPTISCALER-MANAGER.md").read_text(encoding="utf-8")
 OPTISCALER_MANAGER_SCRIPT = (ROOT / "scripts/optiscaler_manager.py").read_text(encoding="utf-8")
 OPTISCALER_MANAGER_TEST = (ROOT / "scripts/test-optiscaler-manager.py").read_text(encoding="utf-8")
+BTRFS_KERNEL_GUIDE = (ROOT / "docs/BTRFS-AND-KERNEL-MANAGEMENT.md").read_text(encoding="utf-8")
 VM_XML_SYNC = (ROOT / "scripts/sync-vm-xml.py").read_text(encoding="utf-8")
 VM_XML_SYNC_TEST = (ROOT / "scripts/test-vm-xml-sync.py").read_text(encoding="utf-8")
 MANUAL_VM_BOOTSTRAP_TEST = (ROOT / "scripts/test-manual-vm-bootstrap.sh").read_text(encoding="utf-8")
@@ -3022,6 +3023,21 @@ require(
     and "Btrfs Assistant GUI and compsize spelling fix" in CHANGELOG
     and "services.btrfs.autoScrub" in CONFIG,
     "the compsize spelling fix and the Btrfs Assistant GUI must stay pinned in the package list and changelog",
+)
+
+require(
+    'btrfs-assistant = "btrfs-assistant-launcher";' in HOME_NIX
+    and "btrfs-assistant-launcher" in BTRFS_KERNEL_GUIDE
+    and "Could not search B-tree" in BTRFS_KERNEL_GUIDE
+    and "pkexec" in BTRFS_KERNEL_GUIDE,
+    "Btrfs Assistant 2.3.x must use the privileged launcher rather than the unprivileged GUI entry point",
+)
+require(
+    'boot.kernelPackages = rtBoreLtoV3KernelPackages;' in FLAKE
+    and 'nup = "sudo nix flake update --flake /etc/nixos/nixos cachyos-kernel";' in HOME_NIX
+    and "CachyOS Kernel Manager" in BTRFS_KERNEL_GUIDE
+    and "does not activate the new kernel" in BTRFS_KERNEL_GUIDE,
+    "kernel management guidance must remain aligned with the declared Flake kernel and nup/nrs workflow",
 )
 
 if errors:
