@@ -1094,10 +1094,12 @@ if grep -q 'tr_TR\.UTF-8' "$CONFIG" "$HOME_CONFIG"; then
   exit 1
 fi
 
-if ! grep -Fq 'boot.kernelPackages = rtBoreLtoV3KernelPackages;' "$FLAKE" \
+if ! grep -Fq 'boot.kernelPackages = rtBoreLtoV3KernelPackagesFor config.kumutuk.host.kernelKcfi;' "$FLAKE" \
   || ! grep -Fq 'linux-cachyos-rt-bore-lto.override {' "$FLAKE" \
+  || ! grep -Fq 'bbr3 = true;' "$FLAKE" \
+  || ! grep -Fq 'inherit kcfi;' "$FLAKE" \
   || ! grep -Fq 'processorOpt = "x86_64-v3";' "$FLAKE"; then
-  echo "FAIL: the flake must derive its RT-Bore-LTO kernel with the x86-64-v3 processor target." >&2
+  echo "FAIL: the flake must derive the RT-Bore-LTO x86-64-v3 kernel with built-in BBRv3 and opt-in KCFI." >&2
   exit 1
 fi
 
