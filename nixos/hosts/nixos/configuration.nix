@@ -10,8 +10,7 @@ let
   # standalone flake (copied without .git), the required scripts are staged
   # inside this flake root. Prefer the local copy, with the checkout layout
   # retained as the development/CI fallback.
-  scriptsDir =
-    if builtins.pathExists ../../scripts then ../../scripts else ../../../scripts;
+  scriptsDir = if builtins.pathExists ../../scripts then ../../scripts else ../../../scripts;
 
   # Start Hyprland under uwsm (Universal Wayland Session Manager) from the
   # greetd session command: the compositor then runs as the systemd user
