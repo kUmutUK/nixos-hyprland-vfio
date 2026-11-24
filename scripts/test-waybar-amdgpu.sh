@@ -45,6 +45,7 @@ assert "52°" in item["text"]
 for expected in ("Usage: 64", "Edge: 52°C", "Junction: 78°C",
                  "Clock: 2500 MHz", "Power: 145 W", "Fan: 1250 RPM"):
     assert expected in item["tooltip"], (expected, item["tooltip"])
+assert "\nUsage: 64" in item["tooltip"]
 ' "$output"
 
 # Missing optional hwmon counters must not break JSON output.

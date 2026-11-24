@@ -15,6 +15,7 @@ let
     runtimeInputs = with pkgs; [
       coreutils
       gawk
+      jq
     ];
     text = builtins.readFile ../../scripts/waybar-amdgpu.sh;
   };

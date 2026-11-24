@@ -51,8 +51,12 @@ for card_path in "$SYSFS_ROOT"/card[0-9]*; do
   esac
 done
 
+emit_json() {
+  jq -cn --arg text "$1" --arg tooltip "$2" --arg class "$3"     '{text: $text, tooltip: $tooltip, class: $class}'
+}
+
 if [[ -z "$gpu_device" ]]; then
-  printf '{"text":"GPU —","tooltip":"AMD GPU telemetry unavailable (no AMD DRM card found or the GPU is bound to vfio-pci).","class":"unavailable"}\n'
+  emit_json "GPU —" "AMD GPU telemetry unavailable (no AMD DRM card found or the GPU is bound to vfio-pci)." "unavailable"
   exit 0
 fi
 
@@ -142,12 +146,13 @@ if [[ "$edge_raw" =~ ^[0-9]+$ ]]; then
   text="$text · $(format_millicelsius "$edge_raw")°"
 fi
 
-tooltip="AMD GPU (read-only)\\nUsage: $usage_display"
-tooltip="$tooltip\\nVRAM: $vram_display"
-tooltip="$tooltip\\nEdge: $edge_display"
-tooltip="$tooltip\\nJunction: $junction_display"
-tooltip="$tooltip\\nClock: $clock_display"
-tooltip="$tooltip\\nPower: $power_display"
-tooltip="$tooltip\\nFan: $fan_display"
+tooltip="AMD GPU (read-only)"
+tooltip+=\nUsage: '"$usage_display"
+tooltip+=\nVRAM: '"$vram_display"
+tooltip+=\nEdge: '"$edge_display"
+tooltip+=\nJunction: '"$junction_display"
+tooltip+=\nClock: '"$clock_display"
+tooltip+=\nPower: '"$power_display"
+tooltip+=\nFan: '"$fan_display"
 
-printf '{"text":"%s","tooltip":"%s","class":"amd-gpu"}\n' "$text" "$tooltip"
+emit_json "$text" "$tooltip" "amd-gpu"
