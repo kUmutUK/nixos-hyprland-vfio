@@ -4,6 +4,12 @@ This file summarizes notable changes in English. The separate Turkish release-by
 
 ## [Unreleased]
 
+### Standalone flake script paths and deployment layout — 2026-11-25
+
+- **Pure-evaluation path fix:** NixOS now prefers the `scripts/` directory staged inside the standalone deployed flake and falls back to the repository-root `scripts/` directory in a full checkout. This covers the embedded host-profile, automated VM backup, and VM backup script paths without using `--impure`.
+- **Installation guidance:** clean install and manual migration instructions copy the root helper scripts into `/etc/nixos/nixos/scripts/`. The VM templates remain separate at `/etc/nixos/vm-xml/` (or in the persistent checkout's `vm-xml/`); they are not part of Nix flake evaluation.
+- **Validation boundary:** documentation-integrity coverage is added. A fresh NixOS full-system build and target-host activation are still required for this NixOS configuration change; no physical validation is claimed.
+
 ### Additional host performance, backup, and benchmark tools — 2026-11-24
 
 - **Shared gaming profiles:** Desktop, Gaming, Low-Latency, and VM modes coordinate the existing PPD and scx-loader controls. GameMode stores the selected manual profile, temporarily enters Gaming, and restores the previous profile when the final GameMode client exits.

@@ -254,9 +254,23 @@ for file in hosts/nixos/configuration.nix hosts/nixos/home.nix hosts/nixos/host-
 done
 sudo install -d -m 0755 /etc/nixos/nixos/hosts/nixos/hooks
 sudo install -m 0755 "$REPO/nixos/hosts/nixos/hooks/qemu" /etc/nixos/nixos/hosts/nixos/hooks/qemu
+
+# The installed flake is standalone (no .git parent tree), so stage the
+# repository-root scripts inside the flake source for pure evaluation.
+sudo install -d -m 0755 /etc/nixos/nixos/scripts
+sudo cp -a "$REPO/scripts/." /etc/nixos/nixos/scripts/
+
 printf '%s\n' "$SOURCE_REVISION" | sudo tee /etc/nixos/.source-revision >/dev/null
 sudo chmod 0644 /etc/nixos/.source-revision
 ```
+
+**Deployed directory map:** keep the Git checkout outside `/etc/nixos` (for
+example, `~/nixos-hyprland-vfio`). The active flake is `/etc/nixos/nixos`;
+its `scripts/` directory is a copy of the checkout's root-level `scripts/`
+used by NixOS module evaluation. The VM templates are separate: use
+`$REPO/vm-xml/` from the persistent checkout. An optional administrative copy
+belongs at `/etc/nixos/vm-xml/`, beside the flake directory—not at
+`/etc/nixos/nixos/vm-xml/`. The flake does not import VM XML templates.
 
 6. **Preserve machine-specific settings.** If `/etc/nixos/nixos/hosts/nixos/hardware-configuration.nix` does not exist, first verify that `/etc/nixos/hardware-configuration.nix` was generated on this machine, then copy it (never use the repository template as a substitute):
 

@@ -490,10 +490,23 @@ sudo mv /mnt/etc/nixos "$TARGET_BACKUP"
 sudo mkdir -p /mnt/etc/nixos
 # Copy repository contents but do not copy Git history into the target system configuration.
 tar --exclude='./.git' -C /tmp/repo -cf - . | sudo tar --no-same-owner -C /mnt/etc/nixos -xf -
+# The target flake is evaluated as a standalone source (the .git parent is
+# deliberately omitted), so include its embedded script sources under flake root.
+sudo install -d -m 0755 /mnt/etc/nixos/nixos/scripts
+sudo cp -a /tmp/repo/scripts/. /mnt/etc/nixos/nixos/scripts/
 # Pin post-reboot VM tooling to the checkout used for this installation.
 printf '%s\n' "$SOURCE_REVISION" | sudo tee /mnt/etc/nixos/.source-revision >/dev/null
 sudo chmod 0644 /mnt/etc/nixos/.source-revision
 ```
+
+**Directory placement:** `/mnt/etc/nixos/nixos/` is the active flake root
+(`flake.nix`, `flake.lock`, `hosts/`, and the copied `scripts/`). The
+full-repository copy also leaves the checkout's top-level `scripts/` at
+`/mnt/etc/nixos/scripts/`; that copy is distinct from the one under the
+flake root. The VM templates remain at `/mnt/etc/nixos/vm-xml/` and are not
+read during Nix evaluation. After reboot, VM helper commands use the verified
+persistent checkout under `$REPO`, including `$REPO/scripts/` and
+`$REPO/vm-xml/`.
 
 **Configure the optional media mount before installing:**
 

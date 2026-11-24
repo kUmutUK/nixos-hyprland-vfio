@@ -6,6 +6,12 @@
 }:
 
 let
+  # In a repository checkout, scripts/ is next to nixos/. In a deployed
+  # standalone flake (copied without .git), the required scripts are staged
+  # inside this flake root. Prefer the local copy, with the checkout layout
+  # retained as the development/CI fallback.
+  scriptsDir = if builtins.pathExists ../../scripts then ../../scripts else ../../../scripts;
+
   # Start Hyprland under uwsm (Universal Wayland Session Manager) from the
   # greetd session command: the compositor then runs as the systemd user
   # unit wayland-wm@Hyprland.service inside a uwsm-prepared environment,
@@ -148,7 +154,7 @@ let
       scx-loader
       util-linux
     ];
-    text = builtins.readFile ../../../scripts/host-profile.sh;
+    text = builtins.readFile "${scriptsDir}/host-profile.sh";
   };
 
   automatedVmBackup = pkgs.writeShellApplication {
@@ -164,7 +170,7 @@ let
       systemd
       util-linux
     ];
-    text = builtins.readFile ../../../scripts/automated-vm-backup.sh;
+    text = builtins.readFile "${scriptsDir}/automated-vm-backup.sh";
   };
 
   vmBackupEnabled =
@@ -615,7 +621,7 @@ in
       BACKUP_VM_NAME = config.kumutuk.host.vmBackupName;
       BACKUP_RETENTION_COUNT = toString config.kumutuk.host.vmBackupRetention;
       BACKUP_NOTIFICATION_USER = config.kumutuk.host.vmBackupNotificationUser;
-      BACKUP_VM_SCRIPT_PATH = "${../../../scripts/backup-vm.sh}";
+      BACKUP_VM_SCRIPT_PATH = "${scriptsDir}/backup-vm.sh";
       LIBVIRT_DEFAULT_URI = "qemu:///system";
     };
     serviceConfig = {
