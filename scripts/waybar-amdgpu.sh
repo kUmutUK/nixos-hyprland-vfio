@@ -3,7 +3,7 @@
 set -euo pipefail
 export LC_ALL=C
 
-SYSFS_ROOT="\${WAYBAR_AMDGPU_SYSFS_ROOT:-/sys/class/drm}"
+SYSFS_ROOT="${WAYBAR_AMDGPU_SYSFS_ROOT:-/sys/class/drm}"
 
 read_text() {
   local path="$1"
@@ -37,7 +37,7 @@ format_watts() {
 gpu_device=""
 for card_path in "$SYSFS_ROOT"/card[0-9]*; do
   [[ -d "$card_path" ]] || continue
-  card_name="\${card_path##*/}"
+  card_name="${card_path##*/}"
   [[ "$card_name" =~ ^card[0-9]+$ ]] || continue
 
   device_path="$card_path/device"
@@ -135,7 +135,7 @@ if [[ "$usage_display" != "N/A" ]]; then
   text="GPU $usage_display%"
 fi
 if [[ "$vram_display" != "unavailable" ]]; then
-  text="$text · VRAM \${vram_display% GiB}G"
+  text="$text · VRAM ${vram_display% GiB}G"
 fi
 if [[ "$edge_raw" =~ ^[0-9]+$ ]]; then
   text="$text · $(format_millicelsius "$edge_raw")°"
