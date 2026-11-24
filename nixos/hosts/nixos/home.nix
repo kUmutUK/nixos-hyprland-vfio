@@ -9,6 +9,22 @@
 let
   makoRenderer = pkgs.callPackage ../../mako-renderer.nix { };
 
+  # Rofi front-end for the Flake-declared kernel. Mutating actions require confirmation.
+  nixosKernelManager = pkgs.writeShellApplication {
+    name = "nixos-kernel-manager";
+    runtimeInputs = with pkgs; [
+      coreutils
+      gnugrep
+      jq
+      kitty
+      nix
+      rofi
+      sudo
+      systemd
+    ];
+    text = builtins.readFile ../../../scripts/nixos-kernel-manager.sh;
+  };
+
   # Host-specific values (monitor output/mode, wallpaper path, git identity) are
   # defined once in nixos/hosts/nixos/host-settings.nix and read here through
   # osConfig when this module runs under NixOS + home-manager-as-a-module. The
@@ -825,6 +841,16 @@ in
     };
     gtk3.extraCss = gtkCss;
     gtk4.extraCss = gtkCss;
+  };
+
+  xdg.desktopEntries."nixos-kernel-manager" = {
+    name = "NixOS Kernel Manager";
+    genericName = "Kernel and boot manager";
+    comment = "Inspect and manage the Flake-selected NixOS kernel";
+    exec = "${nixosKernelManager}/bin/nixos-kernel-manager";
+    icon = "preferences-system";
+    terminal = false;
+    categories = [ "System" "Settings" ];
   };
 
   home.pointerCursor = {
@@ -1818,6 +1844,7 @@ in
   };
 
   home.packages = with pkgs; [
+    nixosKernelManager
     # P1-2 history: the music scratchpad previously invoked `mpv`, but the package was not
     # installed in either package list; mpvpaper's private PATH did not make it available
     # to the scratchpad. `mpv` is now included in the Home Manager package list.

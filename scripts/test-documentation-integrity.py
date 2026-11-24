@@ -69,6 +69,7 @@ OPTISCALER_MANAGER_DOC = (ROOT / "docs/OPTISCALER-MANAGER.md").read_text(encodin
 OPTISCALER_MANAGER_SCRIPT = (ROOT / "scripts/optiscaler_manager.py").read_text(encoding="utf-8")
 OPTISCALER_MANAGER_TEST = (ROOT / "scripts/test-optiscaler-manager.py").read_text(encoding="utf-8")
 BTRFS_KERNEL_GUIDE = (ROOT / "docs/BTRFS-AND-KERNEL-MANAGEMENT.md").read_text(encoding="utf-8")
+KERNEL_MANAGER_SCRIPT = (ROOT / "scripts/nixos-kernel-manager.sh").read_text(encoding="utf-8")
 VM_XML_SYNC = (ROOT / "scripts/sync-vm-xml.py").read_text(encoding="utf-8")
 VM_XML_SYNC_TEST = (ROOT / "scripts/test-vm-xml-sync.py").read_text(encoding="utf-8")
 MANUAL_VM_BOOTSTRAP_TEST = (ROOT / "scripts/test-manual-vm-bootstrap.sh").read_text(encoding="utf-8")
@@ -1583,7 +1584,7 @@ if git_checkout and current_head and repair_baseline_match:
             # Pre-restructure paths are pending-build paths too: the 2026-11-19 hosts/ move
             # renamed nixos/{configuration,home}.nix and nixos/hooks/qemu, and diff reports
             # the old locations until a new full-system build resets the verified baseline.
-            full_build_pending_paths = {"nixos/hosts/nixos/configuration.nix", "nixos/hosts/nixos/hooks/qemu", "install.sh", "nixos/hosts/nixos/home.nix", "nixos/hosts/nixos/host-settings.nix", "nixos/flake.nix", "nixos/flake.lock", "nixos/hosts/nixos/hardware-configuration.nix", "nixos/mako-renderer.nix", "nixos/hosts/nixos/hooks/README.md", "nixos/configuration.nix", "nixos/home.nix", "nixos/hardware-configuration.nix", "nixos/hooks/qemu"}
+            full_build_pending_paths = {"nixos/hosts/nixos/configuration.nix", "nixos/hosts/nixos/hooks/qemu", "install.sh", "nixos/hosts/nixos/home.nix", "nixos/hosts/nixos/host-settings.nix", "nixos/flake.nix", "nixos/flake.lock", "nixos/hosts/nixos/hardware-configuration.nix", "nixos/mako-renderer.nix", "nixos/hosts/nixos/hooks/README.md", "nixos/configuration.nix", "nixos/home.nix", "nixos/hardware-configuration.nix", "nixos/hooks/qemu", "scripts/nixos-kernel-manager.sh"}
             vm_xml_pending_paths = {
                 "vm-xml/win10.xml",
                 "vm-xml/win11.xml",
@@ -2587,6 +2588,32 @@ require(
     and "docs/BTRFS-AND-KERNEL-MANAGEMENT.md" in RELEASE_WORKFLOW
     and "docs/BTRFS-AND-KERNEL-MANAGEMENT.md" in verification_metadata_paths,
     "the Btrfs/kernel guide must be reflected in README and both matching documentation-only allowlists",
+)
+require(
+    "nixosKernelManager = pkgs.writeShellApplication" in HOME_NIX
+    and "builtins.readFile ../../../scripts/nixos-kernel-manager.sh" in HOME_NIX
+    and 'xdg.desktopEntries."nixos-kernel-manager"' in HOME_NIX,
+    "Home Manager must install the Rofi NixOS Kernel Manager and expose its desktop entry",
+)
+require(
+    "uname -r" in KERNEL_MANAGER_SCRIPT
+    and "bootctl list" in KERNEL_MANAGER_SCRIPT
+    and "nix-env --profile /nix/var/nix/profiles/system --list-generations" in KERNEL_MANAGER_SCRIPT
+    and 'sudo nix flake update --flake "$FLAKE_DIR" cachyos-kernel' in KERNEL_MANAGER_SCRIPT
+    and '"${FLAKE_DIR}#nixosConfigurations.nixos.config.boot.kernelPackages.kernel"' in KERNEL_MANAGER_SCRIPT
+    and 'sudo nixos-rebuild switch --flake "${FLAKE_DIR}#nixos"' in KERNEL_MANAGER_SCRIPT
+    and KERNEL_MANAGER_SCRIPT.count("if confirm_action") == 3
+    and "specialisation.lts-kernel" not in KERNEL_MANAGER_SCRIPT
+    and "pacman -S" not in KERNEL_MANAGER_SCRIPT
+    and "grub-mkconfig" not in KERNEL_MANAGER_SCRIPT,
+    "kernel manager must use read-only NixOS inspection and separately confirmed Flake update/build/switch actions",
+)
+require(
+    "scripts/nixos-kernel-manager.sh" not in documented_release_paths
+    and "scripts/nixos-kernel-manager.sh" not in verification_metadata_paths
+    and "nixos/hosts/nixos/home.nix" not in documented_release_paths
+    and "nixos/hosts/nixos/home.nix" not in verification_metadata_paths,
+    "the runtime manager and Home Manager integration must remain behind the full-system-build release gate",
 )
 require(
     "docs/UUID-AND-MACHINE-IDENTITY.md" in RELEASING

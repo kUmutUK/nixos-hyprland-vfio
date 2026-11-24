@@ -42,18 +42,29 @@ Upstream Btrfs Assistant 3.0.0 (14 October 2026) changes the package architectur
 
 ## CachyOS kernel management on NixOS
 
-CachyOS Kernel Manager is not the control plane for this system. The installed OS is NixOS, and kernel selection is declared in `nixos/flake.nix` through:
+Kernel selection remains declarative in `nixos/flake.nix`:
 
 ```nix
 boot.kernelPackages = rtBoreLtoV3KernelPackages;
 ```
 
-Use the existing Fish aliases:
+The repository now includes a **NixOS Kernel Manager** front-end using the existing Rofi theme. Launch it from the application menu (**NixOS Kernel Manager**) or run:
 
-- `nup` runs `sudo nix flake update --flake /etc/nixos/nixos cachyos-kernel`. It updates the pinned CachyOS kernel Flake input and lock metadata only; **it does not activate the new kernel**.
-- `nrs` runs `sudo nixos-rebuild switch --flake /etc/nixos/nixos#nixos`. This evaluates, builds or substitutes, and activates the declared system generation. Treat this as a separate, intentional step after reviewing the lock diff and build result.
+```bash
+nixos-kernel-manager
+```
 
-Do not install an Arch/AUR kernel manager into the NixOS system or edit the active kernel outside the Flake. Keep the primary RT-Bore-LTO kernel choice, CPU-target setting, module compatibility helper, and input lock intentional and reviewable.
+It reports the running kernel, Flake-declared kernel profile, locked `cachyos-kernel` revision, systemd-boot entries, and NixOS system generations. It can inspect the Flake declaration, build only the selected kernel without activation, update only the `cachyos-kernel` input in `flake.lock`, or run an explicit full-system `nixos-rebuild switch`.
+
+**Safety boundaries:**
+
+- Kernel selection remains in the Flake; the manager does not install Arch/AUR packages, write boot entries, or edit `boot.kernelPackages`.
+- Updating changes only the CachyOS Flake lock entry. It does not build or activate a kernel.
+- Kernel-only build and full-system rebuild are separate actions. Each has a Rofi confirmation; a kernel-only build does not switch the running system.
+- Full-system rebuild is a separate, explicit activation. It does not update the lock file.
+- The manager reflects the current Flake. It does not offer an LTS choice because the old LTS specialisation has been removed from the current configuration.
+
+The existing Fish aliases remain available: `nup` updates the CachyOS Flake input, while `nrs` builds and activates the currently declared system. The manager is a NixOS front-end, not a port of the CachyOS Kernel Manager.
 
 ## Read-only checks
 
