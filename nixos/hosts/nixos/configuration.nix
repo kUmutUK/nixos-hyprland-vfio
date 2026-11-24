@@ -273,14 +273,13 @@ in
   # falls back to its own userspace implementation when the module is absent,
   # so this is an optimization, not a dependency. VFIO is unaffected: ntsync
   # owns no PCI device. Verify availability with `modinfo ntsync`.
-  # `tcp_bbr` loads the BBRv3 congestion-control module so the
-  # net.ipv4.tcp_congestion_control sysctl below can select it.
+  # BBRv3 is built into the selected CachyOS kernel via bbr3 = true in
+  # flake.nix, so no separate tcp_bbr module needs to be loaded.
   boot.kernelModules = [
     "kvm-amd"
     "binder_linux"
     "vfio-pci"
     "ntsync"
-    "tcp_bbr"
   ];
 
   boot.kernel.sysctl = {
@@ -297,13 +296,10 @@ in
     "net.core.wmem_max" = 16777216;
     "net.core.netdev_max_backlog" = 16384;
     "net.ipv4.tcp_fastopen" = 3;
-    # BBR congestion control: CachyOS kernels carry BBRv3 alongside cubic, and
-    # BBR probes available bandwidth instead of reacting to loss with queue
-    # draining, which benefits interactive TCP flows (game traffic, VPNs).
-    # `fq` is the pacing qdisc BBR requires. Cloudflare WARP routes through its
-    # own userspace path and is unaffected. Verify at runtime:
-    # `sysctl net.ipv4.tcp_congestion_control` must report bbr; if the kernel
-    # ever drops BBR, systemd-sysctl logs an error and traffic stays on cubic.
+    # BBRv3 is selected explicitly in the CachyOS kernel derivation. This is
+    # a TCP congestion-control setting, not a CS2 FPS boost or UDP game-traffic
+    # optimization. fq is the pacing qdisc. Verify at runtime with:
+    # sysctl net.ipv4.tcp_congestion_control
     "net.ipv4.tcp_congestion_control" = "bbr";
     "net.core.default_qdisc" = "fq";
   };
