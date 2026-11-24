@@ -4,6 +4,12 @@ This file summarizes notable changes in English. The separate Turkish release-by
 
 ## [Unreleased]
 
+### Normal CI repository-map and release-allowlist reconciliation — 2026-11-24
+
+- **CI #45454656731 failure (job 138660757443):** XML/workflow checks and formatting passed; the documentation-integrity step failed on exactly two assertions. The README repository map still said 80 tracked files after the new Btrfs/kernel guide brought the Git tree to 81, and the new standalone documentation path was absent from the exact release/documentation/CI allowlists.
+- **Correction:** update the README inventory count and repository map; add `docs/BTRFS-AND-KERNEL-MANAGEMENT.md` as one literal documentation-only path to both `RELEASING.md` and the release workflow, and mirror it in the documentation-integrity verification set. The exhaustive allowlist expectation advances from 69 to 70 paths; no wildcard or broad documentation exemption is introduced.
+- **Validation boundary:** this is documentation/allowlist/test metadata only. No NixOS module, kernel, Flake input/lock, Btrfs mount, Snapper, hardware identity, or VM XML changes are included. The new CI run must confirm the corrected assertions.
+
 ### Hyprpolkitagent service path and startup fix — 2026-11-24
 
 - **Root cause:** the reference host reported `hyprpolkitagent` absent from its process list, followed by Polkit's `No session for cookie` error when Btrfs Assistant invoked pkexec. The repository had attempted to start `${pkgs.hyprpolkitagent}/bin/hyprpolkitagent` as an unmanaged child in the Hyprland Lua startup callback. The locked Nixpkgs package installs this executable under `libexec`, so the configured path was wrong.
