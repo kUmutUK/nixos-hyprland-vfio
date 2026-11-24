@@ -232,12 +232,32 @@ in
   # falls back to its own userspace implementation when the module is absent,
   # so this is an optimization, not a dependency. VFIO is unaffected: ntsync
   # owns no PCI device. Verify availability with `modinfo ntsync`.
+  # `tcp_bbr` loads the BBRv3 congestion-control module so the
+  # net.ipv4.tcp_congestion_control sysctl below can select it.
   boot.kernelModules = [
     "kvm-amd"
     "binder_linux"
     "vfio-pci"
     "ntsync"
+    "tcp_bbr"
   ];
+
+  # Known-good recovery boot entry: the same host definition evaluated with
+  # the CachyOS LTS kernel (no LTO, plain x86-64 baseline) from the pinned
+  # nix-cachyos-kernel overlay. It appears as an additional systemd-boot entry
+  # ("...-lts-kernel"); the primary entry, the default boot order, and the
+  # RT-Bore-LTO selection are unchanged. LTS builds faster than the LTO kernel
+  # and does not track the same upstream churn, so it is the fallback when a
+  # new RT-Bore-LTO revision fails on target hardware. mkForce is required
+  # because the flake module assigns boot.kernelPackages at default priority;
+  # the override applies only inside this specialisation's evaluation. VFIO
+  # and the qemu hook depend on module availability, not the kernel variant.
+  # Target-host boot of the LTS specialisation remains unverified until the
+  # next full-system build and activation.
+  specialisation.lts-kernel.configuration = {
+    boot.kernelPackages =
+      lib.mkForce pkgs.cachyosKernels.linuxPackages-cachyos-lts;
+  };
 
   boot.kernel.sysctl = {
     "vm.max_map_count" = 1048576;
@@ -253,6 +273,15 @@ in
     "net.core.wmem_max" = 16777216;
     "net.core.netdev_max_backlog" = 16384;
     "net.ipv4.tcp_fastopen" = 3;
+    # BBR congestion control: CachyOS kernels carry BBRv3 alongside cubic, and
+    # BBR probes available bandwidth instead of reacting to loss with queue
+    # draining, which benefits interactive TCP flows (game traffic, VPNs).
+    # `fq` is the pacing qdisc BBR requires. Cloudflare WARP routes through its
+    # own userspace path and is unaffected. Verify at runtime:
+    # `sysctl net.ipv4.tcp_congestion_control` must report bbr; if the kernel
+    # ever drops BBR, systemd-sysctl logs an error and traffic stays on cubic.
+    "net.ipv4.tcp_congestion_control" = "bbr";
+    "net.core.default_qdisc" = "fq";
   };
 
   # These limits intentionally apply only to the primary user; root, greeter, and
@@ -587,9 +616,18 @@ in
   # The second rule opens the ntsync character device to the default `users`
   # group (0660, tighter than the 0666 used by some upstream examples) so
   # Steam/Proton do not need root for NT sync objects.
+  # The remaining rules pin per-device-class I/O schedulers (CachyOS 60-ioschedulers
+  # style): rotational disks get BFQ fair queuing, NVMe namespaces get `none`
+  # because software queuing only adds latency on multi-queue devices. SATA/SD
+  # SSDs keep the kernel default (mq-deadline). The rules mostly make the
+  # defaults explicit; their real value is automatic correct selection when a
+  # media HDD is added. Note: `none` on NVMe hides queue stats from some
+  # telemetry tools. Unavailable schedulers are ignored by the kernel.
   services.udev.extraRules = ''
     ACTION=="add", SUBSYSTEM=="input", KERNEL=="event*", ENV{ID_INPUT_MOUSE}=="1", ATTRS{idVendor}=="1532", ATTRS{idProduct}=="0098", TAG+="systemd", ENV{SYSTEMD_WANTS}+="mouse-hardware-fix@%k.service"
     KERNEL=="ntsync", MODE="0660", GROUP="users"
+    ACTION=="add|change", KERNEL=="sd[a-z]*|mmcblk[0-9]*", ATTR{queue/rotational}=="1", ATTR{queue/scheduler}="bfq"
+    ACTION=="add|change", KERNEL=="nvme[0-9]*", ATTR{queue/rotational}=="0", ATTR{queue/scheduler}="none"
   '';
 
   # The udev rule starts this template for the matching physical Razer pointer.
@@ -711,10 +749,11 @@ in
     pcmanfm
     imagemagick
     btrfs-progs
-    compsize
+    compsite
     snapper
     nh # nixos-rebuild helper with generation diffs and cleanup
     nvd # side-by-side NixOS generation/package-set diffing
+    nix-output-monitor # live rebuild progress and build-time summary (nom)
     whois # mkpasswd --method yescrypt (password hash setup)
     mpvpaper
     flatpak-builder
@@ -764,8 +803,18 @@ in
         gpu_device = 1;
         amd_performance_level = "high";
       };
-      # Keep `mpvpaper-watchdog` as the single authority for this service. Defining the
-      # same GameMode start/end actions here would make two processes race to manage it.
+      # Switch the power profile on game start/end (CachyOS game-performance
+      # equivalent for the profile half): performance while a game runs,
+      # balanced afterwards — the desktop default this configuration keeps.
+      # powerprofilesctl comes from power-profiles-daemon and authorizes
+      # active local sessions, so no password prompt appears in practice.
+      # These scripts only touch the PPD profile: `mpvpaper-watchdog` remains
+      # the single authority for the live-wallpaper service. A failed switch
+      # is logged by gamemoded and never blocks the game itself.
+      custom = {
+        start = "powerprofilesctl set performance";
+        end = "powerprofilesctl set balanced";
+      };
     };
   };
 
@@ -815,6 +864,16 @@ in
   # compatibility menu. Valve Proton stays the global default; protonup-qt
   # remains available for ad-hoc, unpinned installs.
   programs.steam.extraCompatPackages = [ pkgs.proton-ge-bin ];
+  # Console-like Steam session: one additional entry in the greetd session
+  # list; the default login remains Hyprland. Inside this session, Gamescope
+  # is the compositor, so games page-flip without the desktop layer (Waybar,
+  # mpvpaper, Pyprland) in the frame path. The CS2 per-game gamescope launch
+  # line is unnecessary inside this session; use plain `gamemoderun mangohud
+  # %command%` there. Resolution matches the reference 2560x1440 monitor.
+  programs.steam.gamescopeSession = {
+    enable = true;
+    args = [ "-W" "2560" "-H" "1440" "-f" "--immediate-flips" "--force-grab-cursor" ];
+  };
   services.flatpak.enable = true;
   services.cloudflare-warp.enable = true;
 

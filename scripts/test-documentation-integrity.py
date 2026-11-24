@@ -19,6 +19,7 @@ DISCLAIMER = (ROOT / "DISCLAIMER.md").read_text(encoding="utf-8")
 INSTALLATION = (ROOT / "INSTALLATION.md").read_text(encoding="utf-8")
 CONTRIBUTING = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
 MIGRATION_GUIDE = (ROOT / "docs/MIGRATION-GUIDE.md").read_text(encoding="utf-8")
+GAMING_DOC = (ROOT / "docs/GAMING.md").read_text(encoding="utf-8")
 RELEASING = (ROOT / "RELEASING.md").read_text(encoding="utf-8")
 RELEASE_WORKFLOW = (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
 CLIFF_CONFIG = (ROOT / ".git-cliff.toml").read_text(encoding="utf-8")
@@ -284,8 +285,8 @@ require(
     and len(documented_release_path_list) == len(documented_release_paths)
     and len(workflow_release_path_list) == len(workflow_release_paths)
     and documented_release_paths == workflow_release_paths
-    and len(workflow_release_paths) == 62,
-    "RELEASING.md and release.yml must contain the same unique exhaustive 62-path literal allowlist",
+    and len(workflow_release_paths) == 66,
+    "RELEASING.md and release.yml must contain the same unique exhaustive 66-path literal allowlist",
 )
 require(
     "git diff --no-renames --name-status" in RELEASE_WORKFLOW
@@ -757,14 +758,14 @@ require("scripts/test-vm-xml-structure.py" in CHECK_WORKFLOW, "CI must continue 
 workflow_defined_step_count = len(re.findall(r"(?m)^      - (?:name|uses|run):", CHECK_WORKFLOW))
 workflow_step_note = f"all {workflow_defined_step_count} workflow-defined steps"
 require(
-    workflow_defined_step_count == 27
+    workflow_defined_step_count == 28
     and workflow_step_note in CHANGELOG
     and workflow_step_note in STATE_INDEX
     and workflow_step_note in REPAIR
     and "runner-generated `Set up job` entry" in CHANGELOG
     and "runner-generated `Set up job` entry" in STATE_INDEX
     and "runner-generated `Set up job` entry" in REPAIR,
-    "CI documentation must match the current 27-step YAML workflow and distinguish GitHub's generated setup entry; historical counts remain dated",
+    "CI documentation must match the current 28-step YAML workflow and distinguish GitHub's generated setup entry; historical counts remain dated",
 )
 require(
     "`nixos-unstable`" in INSTALLATION
@@ -1495,6 +1496,10 @@ verification_metadata_paths = {
     "scripts/test-release-workflow-python.py",
     "scripts/test-lsfg-vk-v2.py",
     "scripts/package-source-zip.sh",
+    "scripts/backup-vm.sh",
+    "scripts/test-backup-vm.sh",
+    ".github/renovate.json",
+    "docs/GAMING.md",
 }
 for path in verification_metadata_paths:
     require(path in RELEASE_WORKFLOW, f"release workflow must keep {path!r} in the full-build ancestor allowlist")
@@ -2262,6 +2267,55 @@ require(
 require(
     ".github/workflows/full-system-build.yml" in RELEASING,
     "the full-system build workflow must be documented in the release allowlist",
+)
+
+# 2026-11-24 second feature wave: LTS recovery kernel, gamescope session,
+# GameMode/PPD wrapper, BBR3, I/O scheduler rules, wlsunset, VM backup, and
+# the gaming guide. Pin the new settings so later edits cannot silently
+# regress them.
+require(
+    "specialisation.lts-kernel.configuration" in CONFIG
+    and "linuxPackages-cachyos-lts" in CONFIG,
+    "the LTS kernel specialisation must remain available as a recovery boot entry",
+)
+require(
+    '"tcp_bbr"' in CONFIG
+    and '"net.ipv4.tcp_congestion_control" = "bbr";' in CONFIG
+    and '"net.core.default_qdisc" = "fq";' in CONFIG,
+    "BBR congestion control must stay enabled with the fq pacing qdisc",
+)
+require(
+    'ATTR{queue/rotational}=="1", ATTR{queue/scheduler}="bfq"' in CONFIG
+    and 'ATTR{queue/rotational}=="0", ATTR{queue/scheduler}="none"' in CONFIG,
+    "per-device-class I/O scheduler udev rules must stay enabled",
+)
+require(
+    "programs.steam.gamescopeSession" in CONFIG and '"--immediate-flips"' in CONFIG,
+    "the Gamescope Steam session must remain an additional greetd session entry",
+)
+require(
+    "powerprofilesctl set performance" in CONFIG
+    and "powerprofilesctl set balanced" in CONFIG,
+    "GameMode must keep switching the PPD profile to performance/balanced on game start/end",
+)
+require("nix-output-monitor" in CONFIG, "nix-output-monitor must remain in the system profile")
+require(
+    "services.wlsunset" in HOME_NIX and "temperature.night = 4000;" in HOME_NIX,
+    "the wlsunset night-colour service must stay enabled with its pinned night temperature",
+)
+require(
+    "### LTS recovery kernel, gamescope session, and VM backup wave — 2026-11-24" in CHANGELOG,
+    "the 2026-11-24 second feature wave must stay recorded in the Unreleased changelog",
+)
+require(
+    "# Gaming guide" in GAMING_DOC
+    and "PROTON_NO_NTSYNC=1 %command%" in GAMING_DOC
+    and "programs.steam.extraCompatPackages = [ pkgs.proton-ge-bin ]" in GAMING_DOC,
+    "the gaming guide must keep the NTSync per-game opt-out and the declarative GE Proton reference",
+)
+require(
+    "scripts/backup-vm.sh" in GAMING_DOC,
+    "the gaming guide must reference the VM disk backup script",
 )
 
 home_packages_match = re.search(

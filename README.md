@@ -871,7 +871,7 @@ The repeated missing `.ko.BTF.1` failure across two different Rust modules shows
 
 ## Repository map (selected entry points; non-exhaustive)
 
-This is a curated map of selected entry points, not a complete inventory of the 72 tracked files. Use the repository file browser for the full source tree.
+This is a curated map of selected entry points, not a complete inventory of the 76 tracked files. Use the repository file browser for the full source tree.
 
 ```text
 .
@@ -898,6 +898,7 @@ This is a curated map of selected entry points, not a complete inventory of the 
 ├── vm-xml/
 │   └── win10.xml
 ├── scripts/
+│   ├── backup-vm.sh
 │   ├── optiscaler_manager.py
 │   ├── test-optiscaler-manager.py
 │   ├── test-vm-xml-paths.py
@@ -905,6 +906,7 @@ This is a curated map of selected entry points, not a complete inventory of the 
 │   └── test-release-workflow-python.py
 └── docs/
     ├── AUDIT-2026-10-28-VM-XML-VFIO.md
+    ├── GAMING.md
     ├── OPTISCALER-MANAGER.md
     └── REPAIR-AND-VALIDATION-REPORT.md
 ```
@@ -940,7 +942,9 @@ The Bash syntax-check loop is kept in sync with [CONTRIBUTING.md](CONTRIBUTING.m
     scripts/test-vfio-hook-driver-state.sh \
     scripts/test-installer-invariants.sh \
     scripts/test-installer-rollback.sh \
-    scripts/test-manual-vm-bootstrap.sh
+    scripts/test-manual-vm-bootstrap.sh \
+    scripts/backup-vm.sh \
+    scripts/test-backup-vm.sh
   do
     bash -n "$f"
   done
@@ -949,11 +953,11 @@ The Bash syntax-check loop is kept in sync with [CONTRIBUTING.md](CONTRIBUTING.m
 Run the syntax, formatting, and static-analysis checks used by normal CI:
 
 ```bash
-for f in install.sh scripts/package-source-zip.sh scripts/verify-source-revision.sh scripts/test-source-revision.sh scripts/installer-lock.sh scripts/pci-address.sh scripts/test-installer-lock.sh nixos/hosts/nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh; do
+for f in install.sh scripts/package-source-zip.sh scripts/verify-source-revision.sh scripts/test-source-revision.sh scripts/installer-lock.sh scripts/pci-address.sh scripts/test-installer-lock.sh nixos/hosts/nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh scripts/backup-vm.sh scripts/test-backup-vm.sh; do
   bash -n "$f"
 done
 find ./nixos -type f -name "*.nix" -print0 | xargs -0 -r nixfmt --check
-shellcheck -S warning install.sh scripts/package-source-zip.sh scripts/verify-source-revision.sh scripts/test-source-revision.sh scripts/installer-lock.sh scripts/pci-address.sh nixos/hosts/nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-lock.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh
+shellcheck -S warning install.sh scripts/package-source-zip.sh scripts/verify-source-revision.sh scripts/test-source-revision.sh scripts/installer-lock.sh scripts/pci-address.sh nixos/hosts/nixos/hooks/qemu scripts/test-vfio-hook-driver-state.sh scripts/test-installer-invariants.sh scripts/test-installer-lock.sh scripts/test-installer-rollback.sh scripts/test-manual-vm-bootstrap.sh scripts/backup-vm.sh scripts/test-backup-vm.sh
 bash scripts/test-installer-lock.sh
 statix check .
 deadnix .

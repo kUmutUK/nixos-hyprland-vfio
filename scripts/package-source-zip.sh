@@ -62,7 +62,9 @@ expected_executables = {
     for path in (
         "install.sh",
         "nixos/hosts/nixos/hooks/qemu",
+        "scripts/backup-vm.sh",
         "scripts/package-source-zip.sh",
+        "scripts/test-backup-vm.sh",
         "scripts/test-installer-invariants.sh",
         "scripts/test-installer-rollback.sh",
         "scripts/test-manual-vm-bootstrap.sh",

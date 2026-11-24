@@ -1,0 +1,11 @@
+{
+  "$schema": "https://docs.renovatebot.com/schema.json",
+  "description": "Update pinned GitHub Actions digests only. Flake inputs are already refreshed by the weekly flake-update workflow; automerge stays off so every dependency bump keeps a human review. This file takes effect once the Renovate GitHub App is installed and enabled for this repository; until then it is inert configuration.",
+  "extends": ["config:recommended"],
+  "enabledManagers": ["github-actions"],
+  "automerge": false,
+  "timezone": "Europe/Istanbul",
+  "labels": ["dependencies"],
+  "rangeStrategy": "bump",
+  "commitBody": "Renovate proposes only reviewed updates: the release and CI workflows pin actions by digest, and every Renovate PR still passes the full check workflow before merge."
+}
