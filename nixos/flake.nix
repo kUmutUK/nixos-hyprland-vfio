@@ -53,14 +53,18 @@
         config.allowUnfree = true;
       };
       cachyosKernelHelpers = cachyosPkgs.callPackage "${cachyos-kernel}/helpers.nix" { };
-      rtBoreLtoV3KernelFor = kcfi: cachyos-kernel.legacyPackages.${system}.linux-cachyos-rt-bore-lto.override {
-        processorOpt = "x86_64-v3";
-        bbr3 = true;
-        inherit kcfi;
-      };
-      rtBoreLtoV3KernelPackagesFor = kcfi: cachyosKernelHelpers.kernelModuleLLVMOverride (
-        cachyosPkgs.linuxKernel.packagesFor (rtBoreLtoV3KernelFor kcfi)
-      );
+      rtBoreLtoV3KernelFor =
+        kcfi:
+        cachyos-kernel.legacyPackages.${system}.linux-cachyos-rt-bore-lto.override {
+          processorOpt = "x86_64-v3";
+          bbr3 = true;
+          inherit kcfi;
+        };
+      rtBoreLtoV3KernelPackagesFor =
+        kcfi:
+        cachyosKernelHelpers.kernelModuleLLVMOverride (
+          cachyosPkgs.linuxKernel.packagesFor (rtBoreLtoV3KernelFor kcfi)
+        );
       # LSFG-VK v2 is licensed CC BY-NC-ND 4.0, so allow it explicitly for this
       # standalone package output while keeping the main package set unchanged.
       pkgsUnfree = import nixpkgs {

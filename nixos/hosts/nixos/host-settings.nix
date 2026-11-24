@@ -60,7 +60,10 @@
       description = "sched_ext policy scx-loader starts by default. All enum values ship in the scx.rustscheds package set the service already installs; scxctl stop returns to the kernel BORE/EEVDF policy.";
     };
     nvmeScheduler = lib.mkOption {
-      type = lib.types.enum [ "none" "adios" ];
+      type = lib.types.enum [
+        "none"
+        "adios"
+      ];
       default = "none";
       description = "NVMe I/O scheduler. ADIOS is compiled into the pinned CachyOS kernel; none remains the reference default until target-host benchmarks justify a change.";
     };
@@ -70,7 +73,10 @@
       description = "Opt-in Clang KCFI kernel control-flow integrity. Enabling it changes the kernel derivation and requires a full-system build and boot test.";
     };
     usbguardMode = lib.mkOption {
-      type = lib.types.enum [ "audit" "enforce" ];
+      type = lib.types.enum [
+        "audit"
+        "enforce"
+      ];
       default = "audit";
       description = "USBGuard policy. Keep audit unless a generated, reviewed rules.conf explicitly allows every required host and VM USB device.";
     };

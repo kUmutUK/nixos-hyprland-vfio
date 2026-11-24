@@ -142,19 +142,33 @@ let
 
   hostProfile = pkgs.writeShellApplication {
     name = "host-profile";
-    runtimeInputs = with pkgs; [ coreutils power-profiles-daemon scx-loader util-linux ];
+    runtimeInputs = with pkgs; [
+      coreutils
+      power-profiles-daemon
+      scx-loader
+      util-linux
+    ];
     text = builtins.readFile ../../../scripts/host-profile.sh;
   };
 
   automatedVmBackup = pkgs.writeShellApplication {
     name = "automated-vm-backup";
-    runtimeInputs = with pkgs; [ coreutils findutils gawk gnugrep libnotify libvirt qemu systemd util-linux ];
+    runtimeInputs = with pkgs; [
+      coreutils
+      findutils
+      gawk
+      gnugrep
+      libnotify
+      libvirt
+      qemu
+      systemd
+      util-linux
+    ];
     text = builtins.readFile ../../../scripts/automated-vm-backup.sh;
   };
 
   vmBackupEnabled =
-    config.kumutuk.host.vmBackupTarget != ""
-    && config.kumutuk.host.vmBackupTargetUUID != "";
+    config.kumutuk.host.vmBackupTarget != "" && config.kumutuk.host.vmBackupTargetUUID != "";
 
   # `wuwa-auto.sh` requests the custom Ollama alias `wuwa-gemma`, based on
   # `aya-expanse:8b`. The Modelfile below defines that alias for the systemd service.
@@ -189,11 +203,13 @@ in
       message = "The Hyprland Lua configuration requires Hyprland 0.55.0 or newer.";
     }
     {
-      assertion = (config.kumutuk.host.vmBackupTarget == "") == (config.kumutuk.host.vmBackupTargetUUID == "");
+      assertion =
+        (config.kumutuk.host.vmBackupTarget == "") == (config.kumutuk.host.vmBackupTargetUUID == "");
       message = "Set both kumutuk.host.vmBackupTarget and vmBackupTargetUUID, or leave both empty to disable automatic VM backups.";
     }
     {
-      assertion = config.kumutuk.host.vmBackupTarget == "" || lib.hasPrefix "/" config.kumutuk.host.vmBackupTarget;
+      assertion =
+        config.kumutuk.host.vmBackupTarget == "" || lib.hasPrefix "/" config.kumutuk.host.vmBackupTarget;
       message = "kumutuk.host.vmBackupTarget must be an absolute external mountpoint.";
     }
   ];
@@ -544,11 +560,15 @@ in
       "monitor.alsa.rules" = [
         {
           matches = [ { "node.name" = "~alsa_output.*analog-stereo.*"; } ];
-          actions.update-props = { "priority.session" = 2200; };
+          actions.update-props = {
+            "priority.session" = 2200;
+          };
         }
         {
           matches = [ { "node.name" = "~alsa_output.*hdmi-stereo.*"; } ];
-          actions.update-props = { "priority.session" = 1000; };
+          actions.update-props = {
+            "priority.session" = 1000;
+          };
         }
       ];
     };
@@ -583,7 +603,10 @@ in
   # are configured in host-settings.nix. An absent or wrong disk is never a target.
   systemd.services.vm-backup = lib.mkIf vmBackupEnabled {
     description = "Verified offline Windows VM disk backup";
-    after = [ "local-fs.target" "libvirtd.service" ];
+    after = [
+      "local-fs.target"
+      "libvirtd.service"
+    ];
     requires = [ "local-fs.target" ];
     environment = {
       BACKUP_TARGET = config.kumutuk.host.vmBackupTarget;
