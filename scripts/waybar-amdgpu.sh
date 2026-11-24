@@ -156,24 +156,3 @@ tooltip+=$'\nPower: '"$power_display"
 tooltip+=$'\nFan: '"$fan_display"
 
 emit_json "$text" "$tooltip" "amd-gpu"
-\nUsage: '"$usage_display"
-tooltip+=
-emit_json "$text" "$tooltip" "amd-gpu"
-\nVRAM: '"$vram_display"
-tooltip+=
-emit_json "$text" "$tooltip" "amd-gpu"
-\nEdge: '"$edge_display"
-tooltip+=
-emit_json "$text" "$tooltip" "amd-gpu"
-\nJunction: '"$junction_display"
-tooltip+=
-emit_json "$text" "$tooltip" "amd-gpu"
-\nClock: '"$clock_display"
-tooltip+=
-emit_json "$text" "$tooltip" "amd-gpu"
-\nPower: '"$power_display"
-tooltip+=
-emit_json "$text" "$tooltip" "amd-gpu"
-\nFan: '"$fan_display"
-
-emit_json "$text" "$tooltip" "amd-gpu"
