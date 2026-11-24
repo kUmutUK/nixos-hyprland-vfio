@@ -19,8 +19,7 @@ let
   monitorOutput = hostCfg.monitorOutput or "DP-3";
   hyprlandMonitorMode = hostCfg.monitorMode or "preferred";
   wallpaperVideo =
-    hostCfg.wallpaperVideo
-      or "${config.home.homeDirectory}/Downloads/Sunless-Lost-from-Light-4K.mp4";
+    hostCfg.wallpaperVideo or "${config.home.homeDirectory}/Downloads/Sunless-Lost-from-Light-4K.mp4";
   gitName = hostCfg.gitName or "changeme";
   gitEmail = hostCfg.gitEmail or "you@example.com";
 
