@@ -1,23 +1,19 @@
-name: CachyOS kernel binary cache (manual)
+name: Binary cache push (manual)
 
-# Build only the selected RT-Bore-LTO kernel and publish that output's
-# runtime closure. Do not cache the complete NixOS toplevel or unrelated
-# packages: this keeps the project's 5 GB Cachix allocation focused on the
-# custom kernel.
+# Pushes the built NixOS system toplevel, the selected kernel, and the pinned
+# LSFG-VK v2 / MAKO Renderer packages to a Cachix binary cache. The RT-Bore-LTO
+# kernel is not published upstream, so caching it removes repeated multi-hour
+# local rebuilds for the maintainer and contributors.
 #
-# One-time setup:
-#   1. Create a PUBLIC Cachix cache named:
-#      kumutuk-nixos-hyprland-vfio
-#      (Managed by Cachix signing is recommended).
-#   2. Create a cache write token and add it to GitHub Actions secrets as
-#      CACHIX_AUTH_TOKEN.
-#   3. After the first successful push, copy the cache's public signing key
-#      from its Cachix dashboard into nixos/flake.nix and
-#      nixos/hosts/nixos/configuration.nix to enable downloads.
-#
-# This workflow publishes only. It does not alter the kernel configuration,
-# flake inputs, lock file, VFIO settings, or host-specific machine identity.
-
+# Setup (one-time, by the maintainer):
+#   1. Create a cache at https://app.cachix.org/ named e.g.
+#      kumutuk-nixos-hyprland-vfio (personal/private scope is fine).
+#   2. Add the CACHIX_AUTH_TOKEN secret to this repository.
+#   3. Copy the "extra-substituters"/"extra-trusted-public-keys" pair printed by
+#      Cachix into the nixConfig block of nixos/flake.nix and into the
+#      nix.settings.substituters/trusted-public-keys lists of
+#      nixos/hosts/nixos/configuration.nix, then commit that change separately.
+# Until step 3 is committed, this workflow only uploads; nothing consumes it.
 on:
   workflow_dispatch:
 
@@ -25,12 +21,11 @@ permissions:
   contents: read
 
 concurrency:
-  group: cache-push-kernel-${{ github.ref }}
+  group: cache-push-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  push-kernel:
-    name: Build and publish selected kernel only
+  push:
     runs-on: ubuntu-24.04
     timeout-minutes: 360
     steps:
@@ -39,45 +34,37 @@ jobs:
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@3138316df39ed29be04236d7ffc686fa525866aa
 
-      - name: Verify Cachix write token is configured
-        env:
-          CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
-        run: |
-          set -euo pipefail
-          if [ -z "${CACHIX_AUTH_TOKEN}" ]; then
-            echo "::error::Add a Cachix write token as the CACHIX_AUTH_TOKEN GitHub Actions secret."
-            exit 1
-          fi
-          echo "Cachix write token is present."
-
       - name: Report available disk space
         run: df -h "$GITHUB_WORKSPACE" "$RUNNER_TEMP"
 
-      - name: Build the configured RT-Bore-LTO kernel
-        id: kernel
+      - name: Install Cachix
+        uses: cachix/cachix-action@fc01fd1a27c834c27f9e2bdd0b9319a2b0b2e00f # v16
+        with:
+          name: kumutuk-nixos-hyprland-vfio
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+          # Push only; do not activate the cache for this run's own substitution.
+          useCache: false
+
+      - name: Build and push the complete system
         working-directory: nixos
         run: |
           set -euo pipefail
-          kernel_out="$(nix build --no-link --print-out-paths --show-trace \
-            --no-update-lock-file \
-            .#nixosConfigurations.nixos.config.boot.kernelPackages.kernel)"
-          test -d "$kernel_out"
-          printf 'Kernel output: %s\n' "$kernel_out"
-          printf 'out=%s\n' "$kernel_out" >> "$GITHUB_OUTPUT"
+          nix build --no-link --show-trace --no-update-lock-file \
+            .#nixosConfigurations.nixos.config.system.build.toplevel
+          echo "  system toplevel pushed"
 
-      - name: Publish only the kernel output and its runtime closure
-        uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
-        with:
-          name: kumutuk-nixos-hyprland-vfio
-          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
-          skipAddingSubstituter: true
-          useDaemon: false
-          pathsToPush: ${{ steps.kernel.outputs.out }}
+      - name: Build and push the pinned packages
+        working-directory: nixos
+        run: |
+          set -euo pipefail
+          nix build --no-link --no-update-lock-file .#lsfg-vk-v2
+          nix build --no-link --no-update-lock-file .#mako-renderer
+          echo "  pinned packages pushed"
 
       - name: Verify the lock file was not rewritten
         run: |
           if ! git diff --quiet -- nixos/flake.lock; then
-            echo "::error::flake.lock changed during the kernel cache build."
+            echo "::error::flake.lock changed during the cache push."
             git --no-pager diff -- nixos/flake.lock
             exit 1
           fi
