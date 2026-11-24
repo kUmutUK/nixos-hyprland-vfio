@@ -39,7 +39,7 @@ show_overview() {
   printf 'Flake directory      : %s\n' "$FLAKE_DIR"
   printf 'Current system       : %s\n' "$(readlink -f /run/current-system 2>/dev/null || printf unknown)"
   printf '\n\033[1;36mSystemd-boot entries\033[0m\n'
-  SYSTEMD_PAGER=cat bootctl list --no-pager 2>&1 || true
+  env SYSTEMD_PAGER=cat bootctl list --no-pager 2>&1 || true
   printf '\n\033[1;36mNixOS system generations\033[0m\n'
   nix-env --profile /nix/var/nix/profiles/system --list-generations 2>&1 || true
   printf '\nThe manager does not use pacman/AUR or edit boot entries directly.\n'
@@ -49,7 +49,7 @@ show_overview() {
 
 show_boot_entries() {
   printf '\033[1;36mSystemd-boot entries\033[0m\n\n'
-  SYSTEMD_PAGER=cat bootctl list --no-pager 2>&1 || true
+  env SYSTEMD_PAGER=cat bootctl list --no-pager 2>&1 || true
   pause_terminal
 }
 
