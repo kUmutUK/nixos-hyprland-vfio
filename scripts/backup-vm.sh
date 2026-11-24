@@ -44,6 +44,7 @@ command -v sha256sum >/dev/null 2>&1 || fail "sha256sum not found in PATH"
 command -v find >/dev/null 2>&1 || fail "find not found in PATH"
 command -v sort >/dev/null 2>&1 || fail "sort not found in PATH"
 command -v rm >/dev/null 2>&1 || fail "rm not found in PATH"
+command -v flock >/dev/null 2>&1 || fail "flock not found in PATH"
 [[ "$VM_NAME" =~ ^[A-Za-z0-9._-]+$ ]] || fail "BACKUP_VM_NAME contains unsupported characters"
 [ -f "$SOURCE_DISK" ] || fail "source disk image not found: $SOURCE_DISK"
 [ -d "$DEST_DIR" ] || fail "destination directory not found: $DEST_DIR"
@@ -58,6 +59,11 @@ STATE="$(virsh domstate "$VM_NAME" 2>/dev/null || true)"
 if [ "$STATE" != "shut off" ]; then
   fail "VM '$VM_NAME' is not shut off (state: ${STATE:-unknown}); refusing to back up a live disk"
 fi
+
+# Serialize manual and timer-driven backups that target the same destination.
+LOCK_PATH="${BACKUP_LOCK_FILE:-$DEST_DIR/.${VM_NAME}.backup.lock}"
+exec 9>"$LOCK_PATH" || fail "cannot open backup lock: $LOCK_PATH"
+flock -n 9 || fail "another backup for VM '$VM_NAME' is already running"
 
 STAMP="$(date +%F)"
 FINAL_PATH="$DEST_DIR/${VM_NAME}-${STAMP}.qcow2"

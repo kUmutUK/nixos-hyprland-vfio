@@ -2,7 +2,7 @@
 # Coordinate the existing PPD and scx-loader controls without adding a second daemon.
 set -euo pipefail
 
-STATE_DIR="${HOST_PROFILE_STATE_DIR:-/run/kumutuk-host-profile}"
+STATE_DIR="${HOST_PROFILE_STATE_DIR:-${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/kumutuk-host-profile}"
 PROFILE_FILE="$STATE_DIR/current"
 GAME_RETURN_FILE="$STATE_DIR/game-return"
 LOCK_FILE="$STATE_DIR/lock"
