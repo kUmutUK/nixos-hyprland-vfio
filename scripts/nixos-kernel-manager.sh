@@ -123,7 +123,7 @@ main_menu() {
       'Build selected kernel only (no activation)' \
       'Update CachyOS Flake input (lock only)' \
       'Rebuild and switch current Flake' \
-      'Exit' | rofi -dmenu -i -no-custom -p 'KERNEL MANAGER' \
+      'Exit' | rofi -dmenu -i -no-custom -p "$APP_TITLE" \
         -mesg "$summary" -theme-str 'window { width: 56%; } listview { lines: 7; }' || true)"
     case "$choice" in
       'Kernel and system overview') launch_terminal 'Kernel overview' overview ;;
