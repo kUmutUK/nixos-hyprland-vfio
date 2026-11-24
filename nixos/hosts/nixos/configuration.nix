@@ -584,15 +584,11 @@ in
   # Intercept only the Razer DeathAdder Essential pointer node (1532:0098).
   # The daemon clones it through uinput, filters scroll bounce, and leaves other
   # mice, keyboard interfaces, and all physical mouse buttons untouched.
+  # The second rule opens the ntsync character device to the default `users`
+  # group (0660, tighter than the 0666 used by some upstream examples) so
+  # Steam/Proton do not need root for NT sync objects.
   services.udev.extraRules = ''
     ACTION=="add", SUBSYSTEM=="input", KERNEL=="event*", ENV{ID_INPUT_MOUSE}=="1", ATTRS{idVendor}=="1532", ATTRS{idProduct}=="0098", TAG+="systemd", ENV{SYSTEMD_WANTS}+="mouse-hardware-fix@%k.service"
-  '';
-
-  # The ntsync character device is root-only by default; grant the default
-  # `users` group read/write so Steam/Proton do not need root for NT sync
-  # objects. 0660 with the users group is tighter than the 0666 used by some
-  # upstream examples.
-  services.udev.extraRules = ''
     KERNEL=="ntsync", MODE="0660", GROUP="users"
   '';
 
@@ -818,7 +814,7 @@ in
   # manual protonup-qt downloads, and selectable per game in Steam's
   # compatibility menu. Valve Proton stays the global default; protonup-qt
   # remains available for ad-hoc, unpinned installs.
-  programs.steam.extraCompatPackages = [ pkgs.proton-ge-custom ];
+  programs.steam.extraCompatPackages = [ pkgs.proton-ge-bin ];
   services.flatpak.enable = true;
   services.cloudflare-warp.enable = true;
 

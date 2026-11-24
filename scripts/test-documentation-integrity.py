@@ -2248,7 +2248,7 @@ require(
 )
 require("services.fwupd.enable = true;" in CONFIG, "fwupd must stay enabled for LVFS firmware updates")
 require(
-    "programs.steam.extraCompatPackages = [ pkgs.proton-ge-custom ];" in CONFIG,
+    "programs.steam.extraCompatPackages = [ pkgs.proton-ge-bin ];" in CONFIG,
     "GE Proton must stay pinned declaratively through programs.steam.extraCompatPackages",
 )
 require(
