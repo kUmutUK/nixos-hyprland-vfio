@@ -69,7 +69,7 @@ OPTISCALER_MANAGER_DOC = (ROOT / "docs/OPTISCALER-MANAGER.md").read_text(encodin
 OPTISCALER_MANAGER_SCRIPT = (ROOT / "scripts/optiscaler_manager.py").read_text(encoding="utf-8")
 OPTISCALER_MANAGER_TEST = (ROOT / "scripts/test-optiscaler-manager.py").read_text(encoding="utf-8")
 BTRFS_KERNEL_GUIDE = (ROOT / "docs/BTRFS-AND-KERNEL-MANAGEMENT.md").read_text(encoding="utf-8")
-KERNEL_MANAGER_SCRIPT = (ROOT / "scripts/nixos-kernel-manager.sh").read_text(encoding="utf-8")
+KERNEL_MANAGER_SCRIPT = (ROOT / "nixos/kernel-manager.sh").read_text(encoding="utf-8")
 VM_XML_SYNC = (ROOT / "scripts/sync-vm-xml.py").read_text(encoding="utf-8")
 VM_XML_SYNC_TEST = (ROOT / "scripts/test-vm-xml-sync.py").read_text(encoding="utf-8")
 MANUAL_VM_BOOTSTRAP_TEST = (ROOT / "scripts/test-manual-vm-bootstrap.sh").read_text(encoding="utf-8")
@@ -1114,7 +1114,7 @@ require(
     and "expected_mode = 0o755 if name in tracked_executables else 0o644" in SOURCE_ZIP_HELPER
     and "entry.create_system = 3" in SOURCE_ZIP_HELPER
     and "os.replace(normalized_path, archive_path)" in SOURCE_ZIP_HELPER
-    and '"scripts/nixos-kernel-manager.sh",' in SOURCE_ZIP_HELPER,
+    and '"nixos/kernel-manager.sh",' in SOURCE_ZIP_HELPER,
     "canonical source packaging must validate Unix creator and exact permissions for every tracked file",
 )
 require(
@@ -1585,7 +1585,7 @@ if git_checkout and current_head and repair_baseline_match:
             # Pre-restructure paths are pending-build paths too: the 2026-11-19 hosts/ move
             # renamed nixos/{configuration,home}.nix and nixos/hooks/qemu, and diff reports
             # the old locations until a new full-system build resets the verified baseline.
-            full_build_pending_paths = {"nixos/hosts/nixos/configuration.nix", "nixos/hosts/nixos/hooks/qemu", "install.sh", "nixos/hosts/nixos/home.nix", "nixos/hosts/nixos/host-settings.nix", "nixos/flake.nix", "nixos/flake.lock", "nixos/hosts/nixos/hardware-configuration.nix", "nixos/mako-renderer.nix", "nixos/hosts/nixos/hooks/README.md", "nixos/configuration.nix", "nixos/home.nix", "nixos/hardware-configuration.nix", "nixos/hooks/qemu", "scripts/nixos-kernel-manager.sh"}
+            full_build_pending_paths = {"nixos/hosts/nixos/configuration.nix", "nixos/hosts/nixos/hooks/qemu", "install.sh", "nixos/hosts/nixos/home.nix", "nixos/hosts/nixos/host-settings.nix", "nixos/flake.nix", "nixos/flake.lock", "nixos/hosts/nixos/hardware-configuration.nix", "nixos/mako-renderer.nix", "nixos/hosts/nixos/hooks/README.md", "nixos/configuration.nix", "nixos/home.nix", "nixos/hardware-configuration.nix", "nixos/hooks/qemu", "nixos/kernel-manager.sh"}
             vm_xml_pending_paths = {
                 "vm-xml/win10.xml",
                 "vm-xml/win11.xml",
@@ -2592,7 +2592,7 @@ require(
 )
 require(
     "nixosKernelManager = pkgs.writeShellApplication" in HOME_NIX
-    and "builtins.readFile ../../../scripts/nixos-kernel-manager.sh" in HOME_NIX
+    and "builtins.readFile ../../kernel-manager.sh" in HOME_NIX
     and 'xdg.desktopEntries."nixos-kernel-manager"' in HOME_NIX,
     "Home Manager must install the Rofi NixOS Kernel Manager and expose its desktop entry",
 )
@@ -2610,8 +2610,8 @@ require(
     "kernel manager must use read-only NixOS inspection and separately confirmed Flake update/build/switch actions",
 )
 require(
-    "scripts/nixos-kernel-manager.sh" not in documented_release_paths
-    and "scripts/nixos-kernel-manager.sh" not in verification_metadata_paths
+    "nixos/kernel-manager.sh" not in documented_release_paths
+    and "nixos/kernel-manager.sh" not in verification_metadata_paths
     and "nixos/hosts/nixos/home.nix" not in documented_release_paths
     and "nixos/hosts/nixos/home.nix" not in verification_metadata_paths,
     "the runtime manager and Home Manager integration must remain behind the full-system-build release gate",

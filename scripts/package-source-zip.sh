@@ -73,7 +73,7 @@ expected_executables = {
         "scripts/test-vfio-hook-driver-state.sh",
         "scripts/verify-source-revision.sh",
         "scripts/vfio-health.sh",
-        "scripts/nixos-kernel-manager.sh",
+        "nixos/kernel-manager.sh",
     )
 }
 if tracked_executables != expected_executables:

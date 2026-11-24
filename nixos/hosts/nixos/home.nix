@@ -22,7 +22,7 @@ let
       sudo
       systemd
     ];
-    text = builtins.readFile ../../../scripts/nixos-kernel-manager.sh;
+    text = builtins.readFile ../../kernel-manager.sh;
   };
 
   # Host-specific values (monitor output/mode, wallpaper path, git identity) are
