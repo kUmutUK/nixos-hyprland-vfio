@@ -76,7 +76,16 @@ The whole change can land as one commit, but if you prefer reviewable steps:
 
 ## Migrating a deployed host
 
-The deployed tree keeps the same structure, so only file locations change.
+The deployed flake lives at `/etc/nixos/nixos`, so the rebuild target remains
+`/etc/nixos/nixos#nixos`. Because the deployed flake is copied without the
+repository's parent `.git` tree, also copy the repository-root `scripts/`
+directory into `/etc/nixos/nixos/scripts/`; the configuration resolves its
+embedded scripts from that flake-local directory when present, and falls back
+to the repository-root `scripts/` directory in a full checkout. Keep
+`vm-xml/` separate from the flake: it is a repository-level VM-template/tooling
+directory, not a Nix import. In a full repository copy it belongs at
+`/etc/nixos/vm-xml/`; the post-reboot VM tooling should use the persistent
+checkout's `$REPO/vm-xml/` and `$REPO/scripts/`.
 
 ```bash
 # 1. Back up the current deployed tree.
@@ -90,10 +99,14 @@ sudo mv /etc/nixos/nixos/hardware-configuration.nix /etc/nixos/nixos/hosts/nixos
 sudo mv /etc/nixos/nixos/hooks/qemu          /etc/nixos/nixos/hosts/nixos/hooks/
 sudo rmdir /etc/nixos/nixos/hooks 2>/dev/null || true
 
-# 3. Copy the new host-settings.nix from the updated repository checkout.
+# 3. Stage the root-level helper scripts inside the standalone flake source.
+sudo install -d -m 0755 /etc/nixos/nixos/scripts
+sudo cp -a "$REPO/scripts/." /etc/nixos/nixos/scripts/
+
+# 5. Copy the new host-settings.nix from the updated repository checkout.
 sudo install -m 0644 "$REPO/nixos/hosts/nixos/host-settings.nix" /etc/nixos/nixos/hosts/nixos/
 
-# 4. If your monitor/git/wallpaper values differ from the defaults, edit the
+# 6. If your monitor/git/wallpaper values differ from the defaults, edit the
 #    kumutuk.host option defaults in /etc/nixos/nixos/hosts/nixos/host-settings.nix.
 ```
 
