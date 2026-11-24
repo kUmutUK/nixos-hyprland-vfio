@@ -4,6 +4,11 @@ This file summarizes notable changes in English. The separate Turkish release-by
 
 ## [Unreleased]
 
+### Removed CachyOS LTS recovery specialisation — 2026-11-24
+
+- **Single-kernel system build:** removed the optional `specialisation.lts-kernel` boot entry that added `linux-cachyos-lts` (6.18.x) as a second kernel configuration. The default RT-Bore-LTO x86_64-v3 kernel remains unchanged; the LTS variant is no longer part of the configured system build.
+
+
 ### UWSM session experiment (branch `experiment/uwsm-session`) — 2026-11-24
 
 - **Compositor under systemd user management:** on the experiment branch only, the greetd session wrapper starts Hyprland with `uwsm start -- <Hyprland>`, so the compositor runs as the systemd user unit `wayland-wm@Hyprland.service` in a uwsm-prepared environment, and session shutdown stops that unit and unexports the session environment. `HYPRLAND_CONFIG` is still exported inside the wrapper before `uwsm start`; uwsm saves the calling environment and applies it to the session, so the Lua config path still does not depend on `environment.d` or a pre-imported user environment.
