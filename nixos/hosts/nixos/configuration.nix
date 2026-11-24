@@ -140,6 +140,22 @@ let
     ${builtins.readFile ./hooks/qemu}
   '';
 
+  hostProfile = pkgs.writeShellApplication {
+    name = "host-profile";
+    runtimeInputs = with pkgs; [ coreutils power-profiles-daemon scx-loader util-linux ];
+    text = builtins.readFile ../../../scripts/host-profile.sh;
+  };
+
+  automatedVmBackup = pkgs.writeShellApplication {
+    name = "automated-vm-backup";
+    runtimeInputs = with pkgs; [ coreutils findutils gawk gnugrep libnotify libvirt qemu systemd util-linux ];
+    text = builtins.readFile ../../../scripts/automated-vm-backup.sh;
+  };
+
+  vmBackupEnabled =
+    config.kumutuk.host.vmBackupTarget != ""
+    && config.kumutuk.host.vmBackupTargetUUID != "";
+
   # `wuwa-auto.sh` requests the custom Ollama alias `wuwa-gemma`, based on
   # `aya-expanse:8b`. The Modelfile below defines that alias for the systemd service.
   cfgpkg = pkgs.ollama-rocm;
@@ -171,6 +187,14 @@ in
     {
       assertion = lib.versionAtLeast config.programs.hyprland.package.version "0.55.0";
       message = "The Hyprland Lua configuration requires Hyprland 0.55.0 or newer.";
+    }
+    {
+      assertion = (config.kumutuk.host.vmBackupTarget == "") == (config.kumutuk.host.vmBackupTargetUUID == "");
+      message = "Set both kumutuk.host.vmBackupTarget and vmBackupTargetUUID, or leave both empty to disable automatic VM backups.";
+    }
+    {
+      assertion = config.kumutuk.host.vmBackupTarget == "" || lib.hasPrefix "/" config.kumutuk.host.vmBackupTarget;
+      message = "kumutuk.host.vmBackupTarget must be an absolute external mountpoint.";
     }
   ];
 
@@ -340,7 +364,10 @@ in
   # rebuild. The IPC socket grants rule inspection to the desktop user.
   services.usbguard = {
     enable = true;
-    implicitPolicyTarget = "allow";
+    # Enforcement is opt-in only after /etc/usbguard/rules.conf has been generated
+    # from this host's real USB inventory and reviewed against keyboard, mouse,
+    # and VM passthrough devices.
+    implicitPolicyTarget = if config.kumutuk.host.usbguardMode == "enforce" then "block" else "allow";
     presentDevicePolicy = "keep";
     IPCAllowedUsers = [
       "root"
@@ -515,6 +542,20 @@ in
         }
       ];
     };
+    # Prefer onboard analog output over monitor HDMI audio. A saved wpctl default
+    # still wins; run "wpctl clear-default" once to allow session priorities.
+    wireplumber.extraConfig."52-headphone-default-priority" = {
+      "monitor.alsa.rules" = [
+        {
+          matches = [ { "node.name" = "~alsa_output.*analog-stereo.*"; } ];
+          actions.update-props = { "priority.session" = 2200; };
+        }
+        {
+          matches = [ { "node.name" = "~alsa_output.*hdmi-stereo.*"; } ];
+          actions.update-props = { "priority.session" = 1000; };
+        }
+      ];
+    };
     extraConfig.pipewire."99-lowlatency.conf" = ''
       context.properties = {
           default.clock.rate       = 48000
@@ -541,6 +582,44 @@ in
   # mail notification is disabled because this host runs no mail transport.
   services.smartd.enable = true;
   services.smartd.notifications.mail.enable = false;
+
+  # Disabled until both a dedicated external mountpoint and its filesystem UUID
+  # are configured in host-settings.nix. An absent or wrong disk is never a target.
+  systemd.services.vm-backup = lib.mkIf vmBackupEnabled {
+    description = "Verified offline Windows VM disk backup";
+    after = [ "local-fs.target" "libvirtd.service" ];
+    requires = [ "local-fs.target" ];
+    environment = {
+      BACKUP_TARGET = config.kumutuk.host.vmBackupTarget;
+      BACKUP_TARGET_UUID = config.kumutuk.host.vmBackupTargetUUID;
+      BACKUP_SOURCE_DISK = config.kumutuk.host.vmBackupSourceDisk;
+      BACKUP_VM_NAME = config.kumutuk.host.vmBackupName;
+      BACKUP_RETENTION_COUNT = toString config.kumutuk.host.vmBackupRetention;
+      BACKUP_NOTIFICATION_USER = config.kumutuk.host.vmBackupNotificationUser;
+      BACKUP_VM_SCRIPT_PATH = "${../../../scripts/backup-vm.sh}";
+      LIBVIRT_DEFAULT_URI = "qemu:///system";
+    };
+    serviceConfig = {
+      Type = "oneshot";
+      User = "root";
+      Group = "root";
+      ExecStart = "${automatedVmBackup}/bin/automated-vm-backup";
+      ProtectSystem = "strict";
+      ReadWritePaths = [ config.kumutuk.host.vmBackupTarget ];
+      NoNewPrivileges = true;
+    };
+  };
+
+  systemd.timers.vm-backup = lib.mkIf vmBackupEnabled {
+    description = "Weekly offline Windows VM backup timer";
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnCalendar = "Sun 04:00";
+      Persistent = true;
+      RandomizedDelaySec = "30m";
+      Unit = "vm-backup.service";
+    };
+  };
 
   # LVFS firmware updates through `fwupdmgr` (UEFI/NVMe). Keep a known-good
   # boot generation available before applying UEFI-level updates.
@@ -640,18 +719,15 @@ in
   # The second rule opens the ntsync character device to the default `users`
   # group (0660, tighter than the 0666 used by some upstream examples) so
   # Steam/Proton do not need root for NT sync objects.
-  # The remaining rules pin per-device-class I/O schedulers (CachyOS 60-ioschedulers
-  # style): rotational disks get BFQ fair queuing, NVMe namespaces get `none`
-  # because software queuing only adds latency on multi-queue devices. SATA/SD
-  # SSDs keep the kernel default (mq-deadline). The rules mostly make the
-  # defaults explicit; their real value is automatic correct selection when a
-  # media HDD is added. Note: `none` on NVMe hides queue stats from some
-  # telemetry tools. Unavailable schedulers are ignored by the kernel.
+  # The remaining rules pin per-device-class I/O schedulers: rotational disks
+  # get BFQ, while NVMe policy is selected in host-settings. The pinned
+  # CachyOS kernel includes ADIOS; none remains the default until benchmarks
+  # on the reference MP600 CORE XT justify a change.
   services.udev.extraRules = ''
     ACTION=="add", SUBSYSTEM=="input", KERNEL=="event*", ENV{ID_INPUT_MOUSE}=="1", ATTRS{idVendor}=="1532", ATTRS{idProduct}=="0098", TAG+="systemd", ENV{SYSTEMD_WANTS}+="mouse-hardware-fix@%k.service"
     KERNEL=="ntsync", MODE="0660", GROUP="users"
     ACTION=="add|change", KERNEL=="sd[a-z]*|mmcblk[0-9]*", ATTR{queue/rotational}=="1", ATTR{queue/scheduler}="bfq"
-    ACTION=="add|change", KERNEL=="nvme[0-9]*", ATTR{queue/rotational}=="0", ATTR{queue/scheduler}="none"
+    ACTION=="add|change", KERNEL=="nvme[0-9]*", ATTR{queue/rotational}=="0", ATTR{queue/scheduler}="${config.kumutuk.host.nvmeScheduler}"
   '';
 
   # The udev rule starts this template for the matching physical Razer pointer.
@@ -702,6 +778,7 @@ in
   security.pam.services.hyprlock = { };
 
   environment.systemPackages = with pkgs; [
+    hostProfile
     brave-origin
     kitty
     waybar
@@ -844,8 +921,9 @@ in
       # the single authority for the live-wallpaper service. A failed switch
       # is logged by gamemoded and never blocks the game itself.
       custom = {
-        start = "powerprofilesctl set performance";
-        end = "powerprofilesctl set balanced";
+        # GameMode enters Gaming and restores the manually selected profile on exit.
+        start = "${hostProfile}/bin/host-profile game-start";
+        end = "${hostProfile}/bin/host-profile game-end";
       };
     };
   };

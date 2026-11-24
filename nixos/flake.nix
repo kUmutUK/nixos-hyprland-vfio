@@ -53,11 +53,13 @@
         config.allowUnfree = true;
       };
       cachyosKernelHelpers = cachyosPkgs.callPackage "${cachyos-kernel}/helpers.nix" { };
-      rtBoreLtoV3Kernel = cachyos-kernel.legacyPackages.${system}.linux-cachyos-rt-bore-lto.override {
+      rtBoreLtoV3KernelFor = kcfi: cachyos-kernel.legacyPackages.${system}.linux-cachyos-rt-bore-lto.override {
         processorOpt = "x86_64-v3";
+        bbr3 = true;
+        inherit kcfi;
       };
-      rtBoreLtoV3KernelPackages = cachyosKernelHelpers.kernelModuleLLVMOverride (
-        cachyosPkgs.linuxKernel.packagesFor rtBoreLtoV3Kernel
+      rtBoreLtoV3KernelPackagesFor = kcfi: cachyosKernelHelpers.kernelModuleLLVMOverride (
+        cachyosPkgs.linuxKernel.packagesFor (rtBoreLtoV3KernelFor kcfi)
       );
       # LSFG-VK v2 is licensed CC BY-NC-ND 4.0, so allow it explicitly for this
       # standalone package output while keeping the main package set unchanged.
@@ -73,7 +75,7 @@
         inherit system;
         modules = [
           home-manager.nixosModules.home-manager
-          ({ pkgs, ... }: {
+          ({ pkgs, config, ... }: {
             nixpkgs.config.allowUnfree = true;
             # Keep the NixOS userland on the generic x86_64-linux baseline so
             # ordinary system packages can use standard x86-64 binary substitutes.
@@ -84,7 +86,7 @@
             # Nixpkgs revision used by the kernel flake. RT-Bore, RT, and ThinLTO
             # remain enabled; only the kernel CPU baseline is raised.
             nixpkgs.overlays = [ cachyos-kernel.overlays.pinned ];
-            boot.kernelPackages = rtBoreLtoV3KernelPackages;
+            boot.kernelPackages = rtBoreLtoV3KernelPackagesFor config.kumutuk.host.kernelKcfi;
             # Hyprland, its companion tools, and xdg-desktop-portal-hyprland
             # come from the same nixpkgs revision to keep their ABI consistent.
             # Keep shared system packages declared in configuration.nix only;
