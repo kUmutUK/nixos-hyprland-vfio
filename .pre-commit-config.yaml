@@ -1,0 +1,37 @@
+# Pre-commit hooks mirroring the CI gates in .github/workflows/check.yml.
+# CI does not run pre-commit; this file is contributor convenience and must
+# stay aligned with the workflow's tool list. Run inside the flake dev shell
+# (it provides pre-commit, nixfmt, shellcheck, statix, and deadnix):
+#
+#   nix develop ./nixos --command pre-commit run --all-files
+#
+# All hooks are `language: system`, so they use the dev shell's pinned tools
+# instead of downloading their own environments.
+repos:
+  - repo: local
+    hooks:
+      - id: nixfmt
+        name: nixfmt (CI's read-only formatting gate)
+        entry: nixfmt
+        language: system
+        files: \.nix$
+      - id: shellcheck
+        name: shellcheck -S warning (CI's file list)
+        entry: shellcheck -S warning
+        language: system
+        files: (^|/)install\.sh$|^scripts/[^/]+\.sh$|^nixos/hosts/nixos/hooks/qemu$
+      - id: statix
+        name: statix check (CI lint gate)
+        entry: statix check
+        language: system
+        files: \.nix$
+      - id: deadnix
+        name: deadnix (CI dead-code gate)
+        entry: deadnix
+        language: system
+        files: \.nix$
+      - id: bash-syntax
+        name: bash -n (CI syntax loop)
+        entry: bash -n
+        language: system
+        files: (^|/)install\.sh$|^scripts/[^/]+\.sh$|^nixos/hosts/nixos/hooks/qemu$

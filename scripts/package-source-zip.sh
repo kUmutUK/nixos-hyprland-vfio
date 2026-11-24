@@ -69,8 +69,10 @@ expected_executables = {
         "scripts/test-installer-rollback.sh",
         "scripts/test-manual-vm-bootstrap.sh",
         "scripts/test-source-revision.sh",
+        "scripts/test-vfio-health.sh",
         "scripts/test-vfio-hook-driver-state.sh",
         "scripts/verify-source-revision.sh",
+        "scripts/vfio-health.sh",
     )
 }
 if tracked_executables != expected_executables:

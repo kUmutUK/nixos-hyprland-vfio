@@ -20,6 +20,8 @@ INSTALLATION = (ROOT / "INSTALLATION.md").read_text(encoding="utf-8")
 CONTRIBUTING = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
 MIGRATION_GUIDE = (ROOT / "docs/MIGRATION-GUIDE.md").read_text(encoding="utf-8")
 GAMING_DOC = (ROOT / "docs/GAMING.md").read_text(encoding="utf-8")
+PRE_COMMIT_CONFIG = (ROOT / ".pre-commit-config.yaml").read_text(encoding="utf-8")
+VFIO_HEALTH = (ROOT / "scripts/vfio-health.sh").read_text(encoding="utf-8")
 RELEASING = (ROOT / "RELEASING.md").read_text(encoding="utf-8")
 RELEASE_WORKFLOW = (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
 CLIFF_CONFIG = (ROOT / ".git-cliff.toml").read_text(encoding="utf-8")
@@ -285,8 +287,8 @@ require(
     and len(documented_release_path_list) == len(documented_release_paths)
     and len(workflow_release_path_list) == len(workflow_release_paths)
     and documented_release_paths == workflow_release_paths
-    and len(workflow_release_paths) == 66,
-    "RELEASING.md and release.yml must contain the same unique exhaustive 66-path literal allowlist",
+    and len(workflow_release_paths) == 69,
+    "RELEASING.md and release.yml must contain the same unique exhaustive 69-path literal allowlist",
 )
 require(
     "git diff --no-renames --name-status" in RELEASE_WORKFLOW
@@ -401,7 +403,9 @@ require(
     and 'allowInsecurePredicate = _: true;' not in FLAKE
     and "NixOS userland stays on the generic `x86_64-linux` host-platform baseline" in README
     and 'applied **only to the CachyOS RT-Bore-LTO kernel**' in README
-    and 'config.default_sched = "scx_bpfland"' in CONFIG
+    and "config.default_sched = config.kumutuk.host.schedScheduler;" in CONFIG
+    and "schedScheduler = lib.mkOption" in HOST_SETTINGS
+    and 'default = "scx_bpfland";' in HOST_SETTINGS
     and "enableRootSlice = true;" in CONFIG
     and "enableUserSlices = true;" in CONFIG
     and '"zswap.enabled=0"' in CONFIG
@@ -758,14 +762,14 @@ require("scripts/test-vm-xml-structure.py" in CHECK_WORKFLOW, "CI must continue 
 workflow_defined_step_count = len(re.findall(r"(?m)^      - (?:name|uses|run):", CHECK_WORKFLOW))
 workflow_step_note = f"all {workflow_defined_step_count} workflow-defined steps"
 require(
-    workflow_defined_step_count == 28
+    workflow_defined_step_count == 29
     and workflow_step_note in CHANGELOG
     and workflow_step_note in STATE_INDEX
     and workflow_step_note in REPAIR
     and "runner-generated `Set up job` entry" in CHANGELOG
     and "runner-generated `Set up job` entry" in STATE_INDEX
     and "runner-generated `Set up job` entry" in REPAIR,
-    "CI documentation must match the current 28-step YAML workflow and distinguish GitHub's generated setup entry; historical counts remain dated",
+    "CI documentation must match the current 29-step YAML workflow and distinguish GitHub's generated setup entry; historical counts remain dated",
 )
 require(
     "`nixos-unstable`" in INSTALLATION
@@ -1498,7 +1502,10 @@ verification_metadata_paths = {
     "scripts/package-source-zip.sh",
     "scripts/backup-vm.sh",
     "scripts/test-backup-vm.sh",
+    "scripts/vfio-health.sh",
+    "scripts/test-vfio-health.sh",
     ".github/renovate.json",
+    ".pre-commit-config.yaml",
     "docs/GAMING.md",
 }
 for path in verification_metadata_paths:
@@ -2316,6 +2323,44 @@ require(
 require(
     "scripts/backup-vm.sh" in GAMING_DOC,
     "the gaming guide must reference the VM disk backup script",
+)
+
+# 2026-11-24 third feature wave: VFIO health script, sched_ext policy option,
+# clipboard menu, and pre-commit hooks. Pin the wiring so later edits cannot
+# silently regress it.
+require(
+    "scripts/vfio-health.sh" in GAMING_DOC,
+    "the gaming guide must reference the VFIO health script",
+)
+require(
+    "sched_ext policy scx-loader starts by default" in HOST_SETTINGS
+    and '"scx_lavd"' in HOST_SETTINGS
+    and '"scx_cake"' in HOST_SETTINGS
+    and '"scx_p2pq"' in HOST_SETTINGS,
+    "the host-settings scheduler enum must keep the rustscheds policy names",
+)
+require(
+    "VFIO_HEALTH_SYS_ROOT" in VFIO_HEALTH
+    and "restoring the GPU to the host" in VFIO_HEALTH
+    and "qemu-img check" in VFIO_HEALTH,
+    "the VFIO health script must keep its injectable sysfs root, the release-record marker, and the disk check",
+)
+require(
+    "clipboardMenuCommand" in HOME_NIX
+    and 'mainMod .. " + B"' in HOME_NIX
+    and "wl-paste --watch cliphist store" in HOME_NIX,
+    "the clipboard history menu must stay bound (mainMod + B) with its cliphist watcher and pipeline",
+)
+require(
+    "pre-commit run --all-files" in PRE_COMMIT_CONFIG
+    and "nixfmt" in PRE_COMMIT_CONFIG
+    and "shellcheck" in PRE_COMMIT_CONFIG
+    and "statix" in PRE_COMMIT_CONFIG,
+    "the pre-commit config must keep the dev-shell hook set",
+)
+require(
+    "### VFIO health, scheduler option, and pre-commit wave — 2026-11-24" in CHANGELOG,
+    "the 2026-11-24 third feature wave must stay recorded in the Unreleased changelog",
 )
 
 home_packages_match = re.search(

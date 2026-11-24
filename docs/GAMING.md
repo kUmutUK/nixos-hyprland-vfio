@@ -63,10 +63,20 @@ recompiles and startup stutter on later launches. The cache is per-user under
 `~/.cache` and can reach 12 GiB; DXVK/Proton keep their separate caches inside
 game prefixes.
 
-## VM disk backup
+## VM backup and health checks
 
 `scripts/backup-vm.sh` creates a compressed, SHA-256-reported copy of the
 Windows guest's qcow2 disk while the VM is shut off; see the script header for
 the fail-closed guards. Back up to a mounted external disk, not to the media
 partition that stores the live image. Snapper snapshots protect the host
 Btrfs system only — the Windows disk has no other backup path.
+
+`scripts/vfio-health.sh` is the read-only counterpart for between VM runs: it
+reports the resolved IOMMU groups and the current driver behind both GPU PCI
+functions, scans the vfio hook log for ERROR/CRITICAL lines since the last VM
+release record, and runs a read-only `qemu-img check` over the Windows disk.
+It exits non-zero when a check flags an anomaly (a function with no driver
+bound, a missing IOMMU group, hook errors after the last release, or a
+corrupt disk image) and never writes anywhere. Run it any time, including
+while the VM runs — vfio-pci on both functions is reported as the healthy
+in-VM state, not an anomaly.

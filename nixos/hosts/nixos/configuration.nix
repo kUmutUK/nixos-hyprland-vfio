@@ -355,9 +355,13 @@ in
 
   # BPF-Land is the selected sched_ext policy. The kernel's RT-Bore/BORE scheduler
   # remains the fallback whenever sched_ext is stopped or cannot be activated.
+  # The policy name comes from host-settings (kumutuk.host.schedScheduler);
+  # every enum value ships in the scx.rustscheds package set the service
+  # installs, so switching to lavd/rusty/flash/p2pq/cake is a one-line
+  # host-settings change and needs no extra package wiring.
   services.scx-loader = {
     enable = true;
-    config.default_sched = "scx_bpfland";
+    config.default_sched = config.kumutuk.host.schedScheduler;
   };
 
   # Three components can change CPU scheduling/priority for distinct purposes:

@@ -108,6 +108,9 @@
           statix
           deadnix
           shellcheck
+          # pre-commit runs .pre-commit-config.yaml; its local hooks reuse the
+          # tools above from this shell, so no hook downloads its own.
+          pre-commit
           nix-output-monitor
           git
           coreutils

@@ -73,6 +73,11 @@ let
   clipboardTranslateCommand = "sh -c 'T=$(grim -g \"$(slurp)\" - | tesseract - stdout -l eng 2>/dev/null | trans -b :tr); [ -n \"$T\" ] && notify-send -t 10000 \"Translation\" \"$T\"'";
   screenshotCommand = "grim -g \"$(slurp)\" - | wl-copy";
   sattyScreenshotCommand = "grim -g \"$(slurp)\" - | satty -f - | wl-copy";
+  # Clipboard history menu: the wl-paste watcher (exec-once below) already
+  # feeds cliphist; this binds a Rofi picker that decodes the chosen entry
+  # back into the clipboard. Escape in Rofi decodes nothing and leaves the
+  # clipboard unchanged.
+  clipboardMenuCommand = "cliphist list | rofi -dmenu -i -p Clipboard | cliphist decode | wl-copy";
   systemdEnvironmentCommand = "${pkgs.bash}/bin/bash -c 'systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE HYPRLAND_INSTANCE_SIGNATURE HYPRLAND_DISPLAY; dbus-update-activation-environment --systemd --all; systemctl --user start gamemode-notify; if [ -n \"$1\" ]; then systemctl --user start mpvpaper-watchdog; fi' sh ${lib.escapeShellArg monitorOutput}";
   wallpaperMissingCommand = "${pkgs.bash}/bin/bash -c 'if [ -n \"$2\" ] && [ ! -e \"$1\" ]; then notify-send -t 15000 -u critical \"mpvpaper\" \"Live wallpaper file not found: $1. Change wallpaperVideo in nixos/hosts/nixos/host-settings.nix, then restart mpvpaper-watchdog.\"; fi' sh ${lib.escapeShellArg wallpaperVideo} ${lib.escapeShellArg monitorOutput}";
   monitorValidationCommand = "${pkgs.bash}/bin/bash -c 'if [ -n \"$1\" ] && ! hyprctl monitors 2>/dev/null | grep -Fq -- \"Monitor $1 (\"; then notify-send -t 15000 -u critical \"mpvpaper\" \"Monitor output not found: $1. Set monitorOutput in nixos/hosts/nixos/host-settings.nix to the exact hyprctl monitors name.\"; fi' sh ${lib.escapeShellArg monitorOutput}";
@@ -380,6 +385,7 @@ let
     hl.bind(mainMod .. " + SHIFT + E", hl.dsp.exit())
     hl.bind(mainMod .. " + Y", hl.dsp.exec_cmd(${builtins.toJSON "${config.home.homeDirectory}/.config/hypr/scripts/toggle-wuwa.sh"}))
     hl.bind(mainMod .. " + SHIFT + T", hl.dsp.exec_cmd(${builtins.toJSON clipboardTranslateCommand}))
+    hl.bind(mainMod .. " + B", hl.dsp.exec_cmd(${builtins.toJSON clipboardMenuCommand}))
     hl.bind(mainMod .. " + ALT + T", hl.dsp.exec_cmd(${builtins.toJSON "${config.home.homeDirectory}/.config/hypr/scripts/toggle-auto-translate.sh"}))
     hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(), { mouse = true })
     hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
