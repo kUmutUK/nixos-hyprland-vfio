@@ -23,6 +23,7 @@ RELEASING = (ROOT / "RELEASING.md").read_text(encoding="utf-8")
 RELEASE_WORKFLOW = (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
 CLIFF_CONFIG = (ROOT / ".git-cliff.toml").read_text(encoding="utf-8")
 CHECK_WORKFLOW = (ROOT / ".github/workflows/check.yml").read_text(encoding="utf-8")
+FULL_SYSTEM_WORKFLOW = (ROOT / ".github/workflows/full-system-build.yml").read_text(encoding="utf-8")
 VFIO_HOOK = (ROOT / "nixos/hosts/nixos/hooks/qemu").read_text(encoding="utf-8")
 VFIO_HOOK_TEST = (ROOT / "scripts/test-vfio-hook-driver-state.sh").read_text(encoding="utf-8")
 AUDIT = (ROOT / "docs/AUDIT-2026-10-28-VM-XML-VFIO.md").read_text(encoding="utf-8")
@@ -283,8 +284,8 @@ require(
     and len(documented_release_path_list) == len(documented_release_paths)
     and len(workflow_release_path_list) == len(workflow_release_paths)
     and documented_release_paths == workflow_release_paths
-    and len(workflow_release_paths) == 61,
-    "RELEASING.md and release.yml must contain the same unique exhaustive 61-path literal allowlist",
+    and len(workflow_release_paths) == 62,
+    "RELEASING.md and release.yml must contain the same unique exhaustive 62-path literal allowlist",
 )
 require(
     "git diff --no-renames --name-status" in RELEASE_WORKFLOW
@@ -1438,6 +1439,7 @@ verification_metadata_paths = {
     ".github/workflows/release.yml",
     ".github/workflows/cache.yml",
     ".github/workflows/flake-update.yml",
+    ".github/workflows/full-system-build.yml",
     ".gitignore",
     "CHANGELOG.md",
     "CONTRIBUTING.md",
@@ -2224,6 +2226,43 @@ if package_start >= 0 and package_end > package_start:
     require("\n    steam\n" not in CONFIG[package_start:package_end], "Steam must not be redundantly listed in environment.systemPackages")
     require("\n    bibata-cursors\n" not in CONFIG[package_start:package_end], "the original Bibata theme must not be separately exposed as a system cursor choice")
 require("programs.steam.enable = true;" in CONFIG, "Steam must remain enabled through programs.steam.enable")
+
+# 2026-11-24 host gaming and maintenance feature wave: pin the new settings so
+# later edits cannot silently regress them.
+require(
+    '"ntsync"' in CONFIG and 'KERNEL=="ntsync"' in CONFIG,
+    "NTSync kernel-module loading and its udev permission rule must remain enabled together",
+)
+require(
+    'MESA_SHADER_CACHE_MAX_SIZE = "12G";' in CONFIG,
+    "the Mesa shader-cache ceiling must stay pinned at 12G",
+)
+require(
+    "boot.loader.systemd-boot.configurationLimit = 20;" in CONFIG,
+    "the systemd-boot entry limit must stay bounded at 20",
+)
+require(
+    "services.smartd.enable = true;" in CONFIG
+    and "notifications.mail.enable = false;" in CONFIG,
+    "S.M.A.R.T. monitoring must stay enabled with journal-only notifications",
+)
+require("services.fwupd.enable = true;" in CONFIG, "fwupd must stay enabled for LVFS firmware updates")
+require(
+    "programs.steam.extraCompatPackages = [ pkgs.proton-ge-custom ];" in CONFIG,
+    "GE Proton must stay pinned declaratively through programs.steam.extraCompatPackages",
+)
+require(
+    "### Host gaming and maintenance feature wave — 2026-11-24" in CHANGELOG,
+    "the 2026-11-24 feature wave must stay recorded in the Unreleased changelog",
+)
+require(
+    "workflow_dispatch:" in FULL_SYSTEM_WORKFLOW and "cron: '0 5 * * 2'" in FULL_SYSTEM_WORKFLOW,
+    "the full-system build workflow must keep manual dispatch and the weekly Tuesday 05:00 UTC schedule",
+)
+require(
+    ".github/workflows/full-system-build.yml" in RELEASING,
+    "the full-system build workflow must be documented in the release allowlist",
+)
 
 home_packages_match = re.search(
     r"(?ms)^  home\.packages = with pkgs; \[(.*?)^  \];",
