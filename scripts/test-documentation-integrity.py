@@ -3138,7 +3138,9 @@ require(
     'boot.kernelPackages = rtBoreLtoV3KernelPackagesFor config.kumutuk.host.kernelKcfi;' in FLAKE
     and 'nup = "sudo nix flake update --flake /etc/nixos/nixos cachyos-kernel";' in HOME_NIX
     and "CachyOS Kernel Manager" in BTRFS_KERNEL_GUIDE
-    and "does not activate the new kernel" in BTRFS_KERNEL_GUIDE,
+    and "does not activate the new kernel" in BTRFS_KERNEL_GUIDE
+    and "rtBoreLtoV3KernelPackagesFor config.kumutuk.host.kernelKcfi" in BTRFS_KERNEL_GUIDE
+    and "rtBoreLtoV3KernelPackagesFor config\\.kumutuk\\.host\\.kernelKcfi" in KERNEL_MANAGER_SCRIPT,
     "kernel management guidance must remain aligned with the declared Flake kernel and nup/nrs workflow",
 )
 

@@ -45,7 +45,7 @@ Upstream Btrfs Assistant 3.0.0 (14 October 2026) changes the package architectur
 Kernel selection remains declarative in `nixos/flake.nix`:
 
 ```nix
-boot.kernelPackages = rtBoreLtoV3KernelPackages;
+boot.kernelPackages = rtBoreLtoV3KernelPackagesFor config.kumutuk.host.kernelKcfi;
 ```
 
 The repository now includes a **NixOS Kernel Manager** front-end using the existing Rofi theme. Launch it from the application menu (**NixOS Kernel Manager**) or run:
