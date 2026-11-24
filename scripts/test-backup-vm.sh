@@ -143,4 +143,19 @@ BACKUP_RETENTION_COUNT=2 PATH="$BIN_DIR:$PATH" bash "$SCRIPT" "$RETENTION_DEST" 
 [ ! -e "$RETENTION_DEST/win10-2026-10-01.qcow2" ] || fail_test "oldest verified backup must be pruned"
 [ ! -e "$RETENTION_DEST/win10-2026-10-02.qcow2" ] || fail_test "second-oldest verified backup must be pruned"
 
-echo "OK: VM disk backup guards, qcow2 validation, SHA-256 sidecar, atomic publish, and retention passed."
+# 9. An overlapping manual/timer invocation must not run a second conversion.
+LOCK_DEST="$TMP_DIR/locked-backups"
+mkdir -m 700 -- "$LOCK_DEST"
+LOCK_FILE="$LOCK_DEST/.win10.backup.lock"
+(
+  flock -x 9
+  sleep 2
+) 9>"$LOCK_FILE" &
+LOCK_PID=$!
+sleep 0.1
+if OUTPUT="$(run_script "$LOCK_DEST" "$SOURCE_DISK" 2>/dev/null)"; then
+  fail_test "a concurrent backup must be rejected by the per-VM lock"
+fi
+wait "$LOCK_PID"
+
+echo "OK: VM disk backup guards, qcow2 validation, SHA-256, atomic publish, retention, and locking passed."
