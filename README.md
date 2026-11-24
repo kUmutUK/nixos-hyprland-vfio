@@ -902,7 +902,7 @@ The repeated missing `.ko.BTF.1` failure across two different Rust modules shows
 
 ## Repository map (selected entry points; non-exhaustive)
 
-This is a curated map of selected entry points, not a complete inventory of the 80 tracked files. Use the repository file browser for the full source tree.
+This is a curated map of selected entry points, not a complete inventory of the 81 tracked files. Use the repository file browser for the full source tree.
 
 ```text
 .
@@ -940,6 +940,7 @@ This is a curated map of selected entry points, not a complete inventory of the 
 └── docs/
     ├── AUDIT-2026-10-28-VM-XML-VFIO.md
     ├── GAMING.md
+    ├── BTRFS-AND-KERNEL-MANAGEMENT.md
     ├── OPTISCALER-MANAGER.md
     └── REPAIR-AND-VALIDATION-REPORT.md
 ```
@@ -953,6 +954,7 @@ The root files provide the project entry point, installation guidance, contribut
 - `scripts/test-vm-xml-paths.py`, `scripts/test-documentation-integrity.py`, `scripts/test-release-workflow-python.py`, and the other `scripts/test-*.py` files: focused regression checks.
 - `docs/AUDIT-2026-10-28-VM-XML-VFIO.md`: dated historical audit; [the repair and validation report](docs/REPAIR-AND-VALIDATION-REPORT.md) is the current verification record.
 - `docs/MIGRATION-GUIDE.md`: the 2026-11-19 hosts/ restructure — what moved, how to migrate a deployed host, and the post-merge validation sequence.
+- `docs/BTRFS-AND-KERNEL-MANAGEMENT.md`: Btrfs Assistant's Polkit launcher/agent and declarative CachyOS kernel management on NixOS.
 - `nixos/hosts/.template/`: new-host template with the AMD/VFIO review checklist; copy it to add a second machine.
 - `.git-cliff.toml`, `RELEASING.md`, and `.github/workflows/release.yml`: release-note generation, release procedure, and automated release workflow.
 
