@@ -77,10 +77,10 @@ jobs:
         uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
         with:
           name: kumutuk-nixos-hyprland-vfio
-          authToken: \${{ secrets.CACHIX_AUTH_TOKEN }}
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
           skipAddingSubstituter: true
           useDaemon: false
-          pathsToPush: \${{ steps.kernel.outputs.paths }}
+          pathsToPush: ${{ steps.kernel.outputs.paths }}
 
       - name: Verify the lock file was not rewritten
         run: |
