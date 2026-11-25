@@ -608,6 +608,9 @@ in
   virtualisation.waydroid.enable = true;
   virtualisation.waydroid.package = pkgs.waydroid-nftables;
   security.polkit.enable = true;
+  # NixOS keeps the setuid pkexec entry point outside the Nix store; the app's
+  # restricted Polkit helper and Btrfs Assistant launcher use this wrapper.
+  security.polkit.enablePkexecWrapper = true;
   services.udisks2.enable = true;
   services.gvfs.enable = true;
   # fstrim stays off: every Btrfs mount already uses discard=async and the LUKS

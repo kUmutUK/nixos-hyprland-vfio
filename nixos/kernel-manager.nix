@@ -14,7 +14,6 @@
   gnused,
   kitty,
   nix,
-  polkit,
   systemd,
   util-linux,
 }:
@@ -22,6 +21,9 @@
 let
   polkitHelper = writeShellScriptBin "nixos-kernel-manager-polkit-helper" ''
     set -euo pipefail
+    export SYSTEMD_PAGER=cat
+    export SYSTEMD_COLORS=0
+    export LC_ALL=C
     export PATH="${
       lib.makeBinPath [
         bash
@@ -38,13 +40,37 @@ let
     }:/run/current-system/sw/bin:/run/current-system/sw/sbin"
 
     if [ "$#" -ne 2 ]; then
-      echo "Usage: nixos-kernel-manager-polkit-helper <update-cachyos|rebuild-switch> <flake-path>" >&2
+      echo "Usage: nixos-kernel-manager-polkit-helper <inspect-system|update-cachyos|rebuild-switch> <flake-path>" >&2
       exit 2
     fi
     action="$1"
     flake_ref="$2"
     allowed_flake="/etc/nixos/nixos"
     case "$action" in
+      inspect-system)
+        if [ "$flake_ref" != "$allowed_flake" ]; then
+          echo "Only the managed NixOS Flake at $allowed_flake may be inspected." >&2
+          exit 2
+        fi
+        if [ ! -f "$allowed_flake/flake.nix" ] || [ ! -f "$allowed_flake/flake.lock" ]; then
+          echo "Both flake.nix and flake.lock must exist in $allowed_flake." >&2
+          exit 2
+        fi
+        if ! boot_entries="$(bootctl list --no-pager 2>&1)"; then
+          printf '%s\n' "$boot_entries" >&2
+          exit 1
+        fi
+        if ! generations="$(nix-env --profile /nix/var/nix/profiles/system --list-generations 2>&1)"; then
+          printf '%s\n' "$generations" >&2
+          exit 1
+        fi
+        printf '%s\n' "__KERNEL_MANAGER_BOOT_ENTRIES_BEGIN__"
+        printf '%s\n' "$boot_entries"
+        printf '%s\n' "__KERNEL_MANAGER_BOOT_ENTRIES_END__"
+        printf '%s\n' "__KERNEL_MANAGER_GENERATIONS_BEGIN__"
+        printf '%s\n' "$generations"
+        printf '%s\n' "__KERNEL_MANAGER_GENERATIONS_END__"
+        ;;
       update-cachyos)
         if [ "$flake_ref" != "$allowed_flake" ]; then
           echo "Only the managed NixOS Flake at $allowed_flake may be updated." >&2
@@ -131,7 +157,6 @@ stdenv.mkDerivation {
           bash
           kitty
           nix
-          polkit
           systemd
         ]
       }" \

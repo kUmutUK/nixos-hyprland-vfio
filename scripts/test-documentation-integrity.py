@@ -2752,20 +2752,31 @@ require(
     and "qt6.qtwayland" in KERNEL_MANAGER_PACKAGE
     and "kernel-manager.cpp" in KERNEL_MANAGER_PACKAGE
     and "nixos-kernel-manager.svg" in KERNEL_MANAGER_PACKAGE
+    and "  polkit," not in KERNEL_MANAGER_PACKAGE
     and "QMainWindow" in KERNEL_MANAGER_GUI
     and "QStackedWidget" in KERNEL_MANAGER_GUI
     and "QFrame#metricCard" in KERNEL_MANAGER_GUI
     and 'QProcess::startDetached(QStringLiteral("kitty")' in KERNEL_MANAGER_GUI
+    and 'QTimer::singleShot(150, this, [this]() { refreshBootInformation(); });' in KERNEL_MANAGER_GUI
+    and 'QStringLiteral("inspect-system")' in KERNEL_MANAGER_GUI
+    and "polkitInspectionProcess" in KERNEL_MANAGER_GUI
+    and "Waiting for graphical administrator authorization" in KERNEL_MANAGER_GUI
     and KERNEL_MANAGER_GUI.count("if (!confirmAction(") == 3
     and 'polkitCommand(QStringLiteral("update-cachyos"), flakeDir)' in KERNEL_MANAGER_GUI
     and "nix build --no-link --print-out-paths --show-trace --no-update-lock-file %1" in KERNEL_MANAGER_GUI
     and 'polkitCommand(QStringLiteral("rebuild-switch"), flakeDir + QStringLiteral("#nixos"))' in KERNEL_MANAGER_GUI
     and "KERNEL_MANAGER_POLKIT_HELPER" in KERNEL_MANAGER_GUI
-    and "pkexec %1 %2 %3" in KERNEL_MANAGER_GUI
+    and '"/run/wrappers/bin/pkexec %1 %2 %3"' in KERNEL_MANAGER_GUI
+    and 'QStringLiteral("/run/wrappers/bin/pkexec")' in KERNEL_MANAGER_GUI
     and 'writeShellScriptBin "nixos-kernel-manager-polkit-helper"' in KERNEL_MANAGER_PACKAGE
     and 'allowed_flake="/etc/nixos/nixos"' in KERNEL_MANAGER_PACKAGE
     and 'if [ "$flake_ref" != "$allowed_flake" ]' in KERNEL_MANAGER_PACKAGE
-    and 'if [ "$flake_ref" != "$allowed_flake#nixos" ]' in KERNEL_MANAGER_PACKAGE,
+    and 'if [ "$flake_ref" != "$allowed_flake#nixos" ]' in KERNEL_MANAGER_PACKAGE
+    and "inspect-system)" in KERNEL_MANAGER_PACKAGE
+    and "bootctl list --no-pager" in KERNEL_MANAGER_PACKAGE
+    and "nix-env --profile /nix/var/nix/profiles/system --list-generations" in KERNEL_MANAGER_PACKAGE
+    and "__KERNEL_MANAGER_BOOT_ENTRIES_BEGIN__" in KERNEL_MANAGER_PACKAGE
+    and "__KERNEL_MANAGER_GENERATIONS_BEGIN__" in KERNEL_MANAGER_PACKAGE,
     "Kernel Manager must be a native Qt desktop application with separate confirmed update/build/switch actions",
 )
 require(
@@ -3233,6 +3244,7 @@ require(
     and "compsize" in CONFIG
     and "btrfs-assistant" in CONFIG
     and "polkit" in CONFIG
+    and "security.polkit.enablePkexecWrapper = true;" in CONFIG
     and "Btrfs Assistant GUI and compsize spelling fix" in CHANGELOG
     and "services.btrfs.autoScrub" in CONFIG,
     "the compsize spelling fix and the Btrfs Assistant GUI must stay pinned in the package list and changelog",
@@ -3242,7 +3254,9 @@ require(
     'btrfs-assistant = "btrfs-assistant-launcher";' in HOME_NIX
     and "btrfs-assistant-launcher" in BTRFS_KERNEL_GUIDE
     and "Could not search B-tree" in BTRFS_KERNEL_GUIDE
-    and "pkexec" in BTRFS_KERNEL_GUIDE,
+    and "pkexec" in BTRFS_KERNEL_GUIDE
+    and "security.polkit.enablePkexecWrapper" in BTRFS_KERNEL_GUIDE
+    and "setuid entry point at `/run/wrappers/bin/pkexec`" in BTRFS_KERNEL_GUIDE,
     "Btrfs Assistant 2.3.x must use the privileged launcher rather than the unprivileged GUI entry point",
 )
 
@@ -3260,6 +3274,9 @@ require(
     'boot.kernelPackages = rtBoreLtoV3KernelPackagesFor config.kumutuk.host.kernelKcfi;' in FLAKE
     and 'nup = "sudo nix flake update --flake /etc/nixos/nixos cachyos-kernel";' in HOME_NIX
     and "CachyOS Kernel Manager" in BTRFS_KERNEL_GUIDE
+    and "At startup, the app invokes the immutable Polkit helper" in BTRFS_KERNEL_GUIDE
+    and "do not launch the whole GUI with `sudo` or `pkexec`" in BTRFS_KERNEL_GUIDE
+    and "setuid wrapper at `/run/wrappers/bin/pkexec`" in BTRFS_KERNEL_GUIDE
     and "does not activate the new kernel" in BTRFS_KERNEL_GUIDE
     and "rtBoreLtoV3KernelPackagesFor config.kumutuk.host.kernelKcfi" in BTRFS_KERNEL_GUIDE
     and "rtBoreLtoV3KernelPackagesFor config\\.kumutuk\\.host\\.kernelKcfi" in KERNEL_MANAGER_SCRIPT,
