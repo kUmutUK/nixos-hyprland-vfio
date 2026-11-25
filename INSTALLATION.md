@@ -977,10 +977,12 @@ VM only after the first successful boot.
 > `<hostdev>` entries in total: these two required devices (Razer mouse `1532:0098`, Apple
 > keyboard `05ac:024f`) plus two optional passthrough slots for `12d1:107d` (Huawei USB
 > composite device) and `18d1:d00d` (Google ADB/Fastboot device). The two optional entries
-> are commented-out targets in the template's device list; a boot fails if their hardware is
-> absent while the entries stay enabled, so remove or comment out unused optional hostdevs
-> before first start. Check `lsusb -nn` for `12d1:107d` / `18d1:d00d` presence just like the
-> required pair above.
+> Both optional entries are active XML elements with `startupPolicy='optional'` on
+> their `<source>` elements. libvirt may skip an optional device when it is absent;
+> they are not commented out and do not need to be removed solely because a device
+> is disconnected. Check `lsusb -nn` to identify the device before using it, and keep
+> the two required keyboard/mouse passthrough entries unless intentionally changing
+> the host input design.
 >
 > **Other fixed VM parameters in the template:** the domain uses 6 vCPUs, 16,777,216 KiB
 > (16 GiB) of memory, an emulated TPM 2.0 (`tpm-crb`) with an `emulator` backend, UEFI/OVMF
