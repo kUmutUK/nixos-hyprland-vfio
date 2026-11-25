@@ -3403,6 +3403,12 @@ require(
     "repair report must preserve release-attestation and current-main full-system-build boundaries",
 )
 require(
+    "PR #48" in README
+    and "PR #48" in STATE_INDEX
+    and "PR #48" in REPAIR,
+    "the current-state documents must identify the in-progress audit reconciliation PR",
+)
+require(
     "76 matching unique literal paths" in RELEASING
     and "v1.6.3" in RELEASING
     and "Historical exceptions are incidents, not precedent" in RELEASING,
