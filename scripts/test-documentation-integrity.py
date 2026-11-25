@@ -2766,26 +2766,31 @@ require(
     and "QFrame#sidebar" not in KERNEL_MANAGER_GUI
     and "QPushButton#navButton" not in KERNEL_MANAGER_GUI
     and 'QProcess::startDetached(QStringLiteral("kitty")' in KERNEL_MANAGER_GUI
-    and 'QTimer::singleShot(150, this, [this]() { refreshBootInformation(); });' in KERNEL_MANAGER_GUI
+    and 'QTimer::singleShot(150, this, [this]() { startPolkitSession(); });' in KERNEL_MANAGER_GUI
+    and 'QStringLiteral("session")' in KERNEL_MANAGER_GUI
     and 'QStringLiteral("inspect-system")' in KERNEL_MANAGER_GUI
-    and "polkitInspectionProcess" in KERNEL_MANAGER_GUI
-    and "Waiting for graphical administrator authorization" in KERNEL_MANAGER_GUI
+    and "polkitSessionProcess" in KERNEL_MANAGER_GUI
+    and "privilegedRequestPending" in KERNEL_MANAGER_GUI
+    and "Authenticate once to enable system information and privileged actions." in KERNEL_MANAGER_GUI
+    and "No new password prompt is needed." in KERNEL_MANAGER_GUI
+    and KERNEL_MANAGER_GUI.count('QStringLiteral("/run/wrappers/bin/pkexec")') == 1
     and KERNEL_MANAGER_GUI.count("if (!confirmAction(") == 3
-    and 'polkitCommand(QStringLiteral("update-cachyos"), flakeDir)' in KERNEL_MANAGER_GUI
+    and 'runPrivilegedAction(QStringLiteral("update-cachyos")' in KERNEL_MANAGER_GUI
     and "nix build --no-link --print-out-paths --show-trace --no-update-lock-file %1" in KERNEL_MANAGER_GUI
-    and 'polkitCommand(QStringLiteral("rebuild-switch"), flakeDir + QStringLiteral("#nixos"))' in KERNEL_MANAGER_GUI
+    and 'runPrivilegedAction(QStringLiteral("rebuild-switch")' in KERNEL_MANAGER_GUI
     and "KERNEL_MANAGER_POLKIT_HELPER" in KERNEL_MANAGER_GUI
-    and '"/run/wrappers/bin/pkexec %1 %2 %3"' in KERNEL_MANAGER_GUI
-    and 'QStringLiteral("/run/wrappers/bin/pkexec")' in KERNEL_MANAGER_GUI
+    and "polkitCommand(" not in KERNEL_MANAGER_GUI
     and 'writeShellScriptBin "nixos-kernel-manager-polkit-helper"' in KERNEL_MANAGER_PACKAGE
     and 'allowed_flake="/etc/nixos/nixos"' in KERNEL_MANAGER_PACKAGE
-    and 'if [ "$flake_ref" != "$allowed_flake" ]' in KERNEL_MANAGER_PACKAGE
-    and 'if [ "$flake_ref" != "$allowed_flake#nixos" ]' in KERNEL_MANAGER_PACKAGE
+    and 'if [ "$#" -ne 1 ] || [ "$1" != "session" ]' in KERNEL_MANAGER_PACKAGE
+    and "while IFS= read -r action; do" in KERNEL_MANAGER_PACKAGE
     and "inspect-system)" in KERNEL_MANAGER_PACKAGE
+    and "update-cachyos)" in KERNEL_MANAGER_PACKAGE
+    and "rebuild-switch)" in KERNEL_MANAGER_PACKAGE
     and "bootctl list --no-pager" in KERNEL_MANAGER_PACKAGE
     and "nix-env --profile /nix/var/nix/profiles/system --list-generations" in KERNEL_MANAGER_PACKAGE
-    and "__KERNEL_MANAGER_BOOT_ENTRIES_BEGIN__" in KERNEL_MANAGER_PACKAGE
-    and "__KERNEL_MANAGER_GENERATIONS_BEGIN__" in KERNEL_MANAGER_PACKAGE,
+    and "__KM_SESSION_READY__" in KERNEL_MANAGER_PACKAGE
+    and "__KM_ACTION_END__:inspect-system" in KERNEL_MANAGER_PACKAGE,
     "Kernel Manager must be a native Qt desktop application with separate confirmed update/build/switch actions",
 )
 require(
