@@ -25,7 +25,7 @@ only consumes it as a pinned input and remains under its own license.
 | Volume keys | `wpctl` binds | `serpantinum volume …` CLI (drives the same PipeWire defaults, keeps the bar in sync) |
 | Lock screen | Hyprlock | **Unchanged** — Hyprlock stays the lock authority |
 | Idle handling | hypridle | **Unchanged** — hypridle stays the single idle authority; the shell's own idle scheduler is disabled to avoid double lock/dpms/suspend |
-| Live wallpaper | mpvpaper + watchdog | **Unchanged** — mpvpaper keeps owning the video wallpaper layer; the shell's wallpaper picker manages still images and Matugen theming |
+| Live wallpaper | mpvpaper + watchdog | mpvpaper owns the video layer on Wayland layer-shell `bottom`, above Serpantinum's `background` wallpaper surface; the shell picker manages still images and Matugen theming |
 | Scratchpads | Pyprland | **Unchanged** |
 | Screenshots | `grim`/`slurp`/`satty` binds | **Unchanged**; bare `Print` additionally opens the Serpantinum screenshot editor |
 | Waybar AMD-GPU telemetry | Waybar custom module | Not carried into the bar (the sysmon module covers cpu/ram/temp); the script, `scripts/waybar-amdgpu.sh`, its tests, and manual Waybar fallback all remain |
@@ -57,6 +57,7 @@ to get the previous stack back for comparison or recovery.
   automatically starts `hyprpolkitagent.service`; the Hyprland startup callback
   imports the live Wayland/D-Bus environment and restarts the agent to avoid
   an authentication-dialog startup race.
+- Wallpaper layer ordering: Serpantinum's `WallpaperEngine.qml` uses `WlrLayer.Background`; the live `mpvpaper` service is explicitly assigned layer-shell `bottom` (one level above `background`, still below normal windows). This avoids startup-order-dependent occlusion between the two wallpaper surfaces. The Brave/GameMode watchdog and mpvpaper auto-pause behavior are unchanged.
 - `hyprland.lua` (generated from `home.nix`): the autostart block no longer
   execs `waybar`, `dunst`, or `nm-applet`; the `wl-paste --watch cliphist store`
   watcher became the dual text/image watchers Serpantinum itself deploys.
