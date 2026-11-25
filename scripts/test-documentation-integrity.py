@@ -3244,6 +3244,7 @@ require(
     and "compsize" in CONFIG
     and "btrfs-assistant" in CONFIG
     and "polkit" in CONFIG
+    and "security.polkit.enablePkexecWrapper = true;" in CONFIG
     and "Btrfs Assistant GUI and compsize spelling fix" in CHANGELOG
     and "services.btrfs.autoScrub" in CONFIG,
     "the compsize spelling fix and the Btrfs Assistant GUI must stay pinned in the package list and changelog",
@@ -3253,7 +3254,9 @@ require(
     'btrfs-assistant = "btrfs-assistant-launcher";' in HOME_NIX
     and "btrfs-assistant-launcher" in BTRFS_KERNEL_GUIDE
     and "Could not search B-tree" in BTRFS_KERNEL_GUIDE
-    and "pkexec" in BTRFS_KERNEL_GUIDE,
+    and "pkexec" in BTRFS_KERNEL_GUIDE
+    and "security.polkit.enablePkexecWrapper" in BTRFS_KERNEL_GUIDE
+    and "setuid entry point at `/run/wrappers/bin/pkexec`" in BTRFS_KERNEL_GUIDE,
     "Btrfs Assistant 2.3.x must use the privileged launcher rather than the unprivileged GUI entry point",
 )
 
