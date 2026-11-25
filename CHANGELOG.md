@@ -4,6 +4,12 @@ This file summarizes notable changes in English. The separate Turkish release-by
 
 ## [Unreleased]
 
+### Make Cachix signature trust daemon-owned — 2026-11-25
+
+- Keep the Cachix and Nix Community URLs in the flake's `extra-substituters`, but remove the duplicated `extra-trusted-public-keys` flake setting. Nix restricts changes to `trusted-public-keys` for untrusted clients; the signing keys remain in the root-managed NixOS daemon configuration at `nix.settings.trusted-public-keys`.
+- Correct the cache verification guidance: querying a path directly from the remote store proves that the cache advertises it, but does not prove that the active daemon accepts its signature or will substitute it. Document a no-build dry-run of the exact kernel flake output and the expected fetch-versus-build distinction.
+- No kernel options, inputs, VM XML, PCI/USB identities, UUIDs, or runtime preferences are changed. No new host rebuild or physical validation is claimed; the full-system build gate remains separate.
+
 ### Fix Home Manager's standalone-flake script path — 2026-11-25
 
 - Resolve the Waybar AMDGPU helper from the flake-local `scripts/` directory when deployed as a standalone flake, with the repository-root `scripts/` directory retained as the full-checkout fallback. This aligns `home.nix` with the resolver already used by `configuration.nix`.
