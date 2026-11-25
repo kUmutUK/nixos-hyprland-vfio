@@ -2752,6 +2752,7 @@ require(
     and "qt6.qtwayland" in KERNEL_MANAGER_PACKAGE
     and "kernel-manager.cpp" in KERNEL_MANAGER_PACKAGE
     and "nixos-kernel-manager.svg" in KERNEL_MANAGER_PACKAGE
+    and "  polkit," not in KERNEL_MANAGER_PACKAGE
     and "QMainWindow" in KERNEL_MANAGER_GUI
     and "QStackedWidget" in KERNEL_MANAGER_GUI
     and "QFrame#metricCard" in KERNEL_MANAGER_GUI
@@ -2765,7 +2766,8 @@ require(
     and "nix build --no-link --print-out-paths --show-trace --no-update-lock-file %1" in KERNEL_MANAGER_GUI
     and 'polkitCommand(QStringLiteral("rebuild-switch"), flakeDir + QStringLiteral("#nixos"))' in KERNEL_MANAGER_GUI
     and "KERNEL_MANAGER_POLKIT_HELPER" in KERNEL_MANAGER_GUI
-    and "pkexec %1 %2 %3" in KERNEL_MANAGER_GUI
+    and '"/run/wrappers/bin/pkexec %1 %2 %3"' in KERNEL_MANAGER_GUI
+    and 'QStringLiteral("/run/wrappers/bin/pkexec")' in KERNEL_MANAGER_GUI
     and 'writeShellScriptBin "nixos-kernel-manager-polkit-helper"' in KERNEL_MANAGER_PACKAGE
     and 'allowed_flake="/etc/nixos/nixos"' in KERNEL_MANAGER_PACKAGE
     and 'if [ "$flake_ref" != "$allowed_flake" ]' in KERNEL_MANAGER_PACKAGE
@@ -3271,6 +3273,7 @@ require(
     and "CachyOS Kernel Manager" in BTRFS_KERNEL_GUIDE
     and "At startup, the app invokes the immutable Polkit helper" in BTRFS_KERNEL_GUIDE
     and "do not launch the whole GUI with `sudo` or `pkexec`" in BTRFS_KERNEL_GUIDE
+    and "setuid wrapper at `/run/wrappers/bin/pkexec`" in BTRFS_KERNEL_GUIDE
     and "does not activate the new kernel" in BTRFS_KERNEL_GUIDE
     and "rtBoreLtoV3KernelPackagesFor config.kumutuk.host.kernelKcfi" in BTRFS_KERNEL_GUIDE
     and "rtBoreLtoV3KernelPackagesFor config\\.kumutuk\\.host\\.kernelKcfi" in KERNEL_MANAGER_SCRIPT,
