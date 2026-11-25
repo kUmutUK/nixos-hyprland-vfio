@@ -818,10 +818,8 @@ in
   # and `grep -c pam_unix /etc/pam.d/hyprlock`.
   security.pam.services.hyprlock = { };
 
-  environment.systemPackages = [
+  environment.systemPackages = with pkgs; [
     heliumBrowser
-  ]
-  ++ (with pkgs; [
     hostProfile
     brave-origin
     kitty
@@ -925,7 +923,7 @@ in
     # `wuwa-auto.sh` previously tried to call an undefined `argos-translate` command,
     # so fast translation always failed and every request fell back to Ollama. The
     # `translate-shell` command (`trans`) is not a drop-in replacement for Argos.
-  ]);
+  ];
 
   # The `/nix/persist/home` tmpfiles rule was removed because Home Manager persistence
   # and the impermanence module are disabled. On its own, the rule created an unused
