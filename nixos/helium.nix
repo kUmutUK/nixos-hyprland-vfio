@@ -24,7 +24,7 @@ appimageTools.wrapType2 (finalAttrs: {
     install -Dm444 ${finalAttrs.contents}/helium.desktop "$out/share/applications/helium.desktop"
     install -Dm444 ${finalAttrs.contents}/helium.png "$out/share/icons/hicolor/256x256/apps/helium.png"
     wrapProgram "$out/bin/helium" \
-      --add-flags "\\''${NIXOS_OZONE_WL:+\\''${WAYLAND_DISPLAY:+--ozone-platform-hint=auto}}"
+      --add-flags "\''${NIXOS_OZONE_WL:+\''${WAYLAND_DISPLAY:+--ozone-platform-hint=auto}}"
   '';
 
   meta = {
