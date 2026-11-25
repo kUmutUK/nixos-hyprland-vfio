@@ -24,18 +24,20 @@ let
     export SYSTEMD_PAGER=cat
     export SYSTEMD_COLORS=0
     export LC_ALL=C
-    export PATH="${lib.makeBinPath [
-      bash
-      coreutils
-      findutils
-      gawk
-      git
-      gnugrep
-      gnused
-      nix
-      systemd
-      util-linux
-    ]}:/run/current-system/sw/bin:/run/current-system/sw/sbin"
+    export PATH="${
+      lib.makeBinPath [
+        bash
+        coreutils
+        findutils
+        gawk
+        git
+        gnugrep
+        gnused
+        nix
+        systemd
+        util-linux
+      ]
+    }:/run/current-system/sw/bin:/run/current-system/sw/sbin"
 
     if [ "$#" -ne 1 ] || [ "$1" != "session" ]; then
       echo "Usage: nixos-kernel-manager-polkit-helper session" >&2
@@ -155,12 +157,14 @@ stdenv.mkDerivation {
 
   postFixup = ''
     wrapQtApp "$out/bin/nixos-kernel-manager" \
-      --prefix PATH : "${lib.makeBinPath [
-        bash
-        kitty
-        nix
-        systemd
-      ]}" \
+      --prefix PATH : "${
+        lib.makeBinPath [
+          bash
+          kitty
+          nix
+          systemd
+        ]
+      }" \
       --set KERNEL_MANAGER_POLKIT_HELPER "${polkitHelper}/bin/nixos-kernel-manager-polkit-helper"
   '';
 
