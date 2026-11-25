@@ -2756,6 +2756,10 @@ require(
     and "QStackedWidget" in KERNEL_MANAGER_GUI
     and "QFrame#metricCard" in KERNEL_MANAGER_GUI
     and 'QProcess::startDetached(QStringLiteral("kitty")' in KERNEL_MANAGER_GUI
+    and 'QTimer::singleShot(150, this, [this]() { refreshBootInformation(); });' in KERNEL_MANAGER_GUI
+    and 'QStringLiteral("inspect-system")' in KERNEL_MANAGER_GUI
+    and "polkitInspectionProcess" in KERNEL_MANAGER_GUI
+    and "Waiting for graphical administrator authorization" in KERNEL_MANAGER_GUI
     and KERNEL_MANAGER_GUI.count("if (!confirmAction(") == 3
     and 'polkitCommand(QStringLiteral("update-cachyos"), flakeDir)' in KERNEL_MANAGER_GUI
     and "nix build --no-link --print-out-paths --show-trace --no-update-lock-file %1" in KERNEL_MANAGER_GUI
@@ -2765,7 +2769,12 @@ require(
     and 'writeShellScriptBin "nixos-kernel-manager-polkit-helper"' in KERNEL_MANAGER_PACKAGE
     and 'allowed_flake="/etc/nixos/nixos"' in KERNEL_MANAGER_PACKAGE
     and 'if [ "$flake_ref" != "$allowed_flake" ]' in KERNEL_MANAGER_PACKAGE
-    and 'if [ "$flake_ref" != "$allowed_flake#nixos" ]' in KERNEL_MANAGER_PACKAGE,
+    and 'if [ "$flake_ref" != "$allowed_flake#nixos" ]' in KERNEL_MANAGER_PACKAGE
+    and "inspect-system)" in KERNEL_MANAGER_PACKAGE
+    and "bootctl list --no-pager" in KERNEL_MANAGER_PACKAGE
+    and "nix-env --profile /nix/var/nix/profiles/system --list-generations" in KERNEL_MANAGER_PACKAGE
+    and "__KERNEL_MANAGER_BOOT_ENTRIES_BEGIN__" in KERNEL_MANAGER_PACKAGE
+    and "__KERNEL_MANAGER_GENERATIONS_BEGIN__" in KERNEL_MANAGER_PACKAGE,
     "Kernel Manager must be a native Qt desktop application with separate confirmed update/build/switch actions",
 )
 require(
@@ -3260,6 +3269,8 @@ require(
     'boot.kernelPackages = rtBoreLtoV3KernelPackagesFor config.kumutuk.host.kernelKcfi;' in FLAKE
     and 'nup = "sudo nix flake update --flake /etc/nixos/nixos cachyos-kernel";' in HOME_NIX
     and "CachyOS Kernel Manager" in BTRFS_KERNEL_GUIDE
+    and "At startup, the app invokes the immutable Polkit helper" in BTRFS_KERNEL_GUIDE
+    and "does not launch the whole GUI with `sudo` or `pkexec`" in BTRFS_KERNEL_GUIDE
     and "does not activate the new kernel" in BTRFS_KERNEL_GUIDE
     and "rtBoreLtoV3KernelPackagesFor config.kumutuk.host.kernelKcfi" in BTRFS_KERNEL_GUIDE
     and "rtBoreLtoV3KernelPackagesFor config\\.kumutuk\\.host\\.kernelKcfi" in KERNEL_MANAGER_SCRIPT,
