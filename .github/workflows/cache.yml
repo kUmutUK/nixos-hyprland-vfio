@@ -14,8 +14,8 @@ name: CachyOS kernel binary cache (manual)
 #   2. Create a cache write token and add it to GitHub Actions secrets as
 #      CACHIX_AUTH_TOKEN.
 #   3. After the first successful push, copy the cache's public signing key
-#      from its Cachix dashboard into nixos/flake.nix and
-#      nixos/hosts/nixos/configuration.nix to enable downloads.
+#      from its Cachix dashboard into nixos/hosts/nixos/configuration.nix.
+#      Keep restricted trusted-public-keys daemon settings out of flake nixConfig.
 #
 # This workflow publishes only. It does not alter the kernel configuration,
 # flake inputs, lock file, VFIO settings, or host-specific machine identity.
