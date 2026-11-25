@@ -2754,8 +2754,17 @@ require(
     and "nixos-kernel-manager.svg" in KERNEL_MANAGER_PACKAGE
     and "  polkit," not in KERNEL_MANAGER_PACKAGE
     and "QMainWindow" in KERNEL_MANAGER_GUI
-    and "QStackedWidget" in KERNEL_MANAGER_GUI
-    and "QFrame#metricCard" in KERNEL_MANAGER_GUI
+    and "QTableWidget#kernelTable" in KERNEL_MANAGER_GUI
+    and "QLabel#introTitle" in KERNEL_MANAGER_GUI
+    and "QDialog" in KERNEL_MANAGER_GUI
+    and "System info" in KERNEL_MANAGER_GUI
+    and "Flake config" in KERNEL_MANAGER_GUI
+    and "Update source" in KERNEL_MANAGER_GUI
+    and "Build kernel" in KERNEL_MANAGER_GUI
+    and "Rebuild & switch" in KERNEL_MANAGER_GUI
+    and "QStackedWidget" not in KERNEL_MANAGER_GUI
+    and "QFrame#sidebar" not in KERNEL_MANAGER_GUI
+    and "QPushButton#navButton" not in KERNEL_MANAGER_GUI
     and 'QProcess::startDetached(QStringLiteral("kitty")' in KERNEL_MANAGER_GUI
     and 'QTimer::singleShot(150, this, [this]() { refreshBootInformation(); });' in KERNEL_MANAGER_GUI
     and 'QStringLiteral("inspect-system")' in KERNEL_MANAGER_GUI
