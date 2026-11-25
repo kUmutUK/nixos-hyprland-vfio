@@ -1,7 +1,9 @@
 name: CachyOS kernel binary cache (manual)
 
-# Build only the selected RT-Bore-LTO kernel and publish that output's
-# runtime closure. Do not cache the complete NixOS toplevel or unrelated
+# Build the selected RT-Bore-LTO kernel's complete set of declared outputs
+# (out, modules, and dev) and publish those output paths plus their runtime
+# closures. Publishing only the default "out" leaves split outputs unavailable
+# to NixOS system builds. Do not cache the complete NixOS toplevel or unrelated
 # packages: this keeps the project's 5 GB Cachix allocation focused on the
 # custom kernel.
 #
@@ -12,8 +14,8 @@ name: CachyOS kernel binary cache (manual)
 #   2. Create a cache write token and add it to GitHub Actions secrets as
 #      CACHIX_AUTH_TOKEN.
 #   3. After the first successful push, copy the cache's public signing key
-#      from its Cachix dashboard into nixos/flake.nix and
-#      nixos/hosts/nixos/configuration.nix to enable downloads.
+#      from its Cachix dashboard into nixos/hosts/nixos/configuration.nix.
+#      Keep restricted trusted-public-keys daemon settings out of flake nixConfig.
 #
 # This workflow publishes only. It does not alter the kernel configuration,
 # flake inputs, lock file, VFIO settings, or host-specific machine identity.
@@ -53,26 +55,43 @@ jobs:
       - name: Report available disk space
         run: df -h "$GITHUB_WORKSPACE" "$RUNNER_TEMP"
 
-      - name: Build the configured RT-Bore-LTO kernel
+      - name: Consume the existing Cachix kernel output (read-only)
+        # Reuse the already-published default output while filling the missing
+        # split outputs, rather than downloading/building it again on the runner.
+        run: |
+          sudo mkdir -p /etc/nix
+          {
+            echo 'extra-substituters = https://kumutuk-nixos-hyprland-vfio.cachix.org'
+            echo 'extra-trusted-public-keys = kumutuk-nixos-hyprland-vfio.cachix.org-1:wgWsd619A9+2Mj+iEDABPbnIB1YqJnVJWt2D7Bv9JTQ='
+          } | sudo tee -a /etc/nix/nix.conf
+          sudo systemctl restart nix-daemon
+
+      - name: Build every declared RT-Bore-LTO kernel output
         id: kernel
         working-directory: nixos
         run: |
           set -euo pipefail
-          kernel_out="$(nix build --no-link --print-out-paths --show-trace \
+          kernel_outputs="$(nix build --no-link --print-out-paths --show-trace \
             --no-update-lock-file \
-            .#nixosConfigurations.nixos.config.boot.kernelPackages.kernel)"
-          test -d "$kernel_out"
-          printf 'Kernel output: %s\n' "$kernel_out"
-          printf 'out=%s\n' "$kernel_out" >> "$GITHUB_OUTPUT"
+            '.#nixosConfigurations.nixos.config.boot.kernelPackages.kernel^*')"
+          test -n "$kernel_outputs"
+          while IFS= read -r kernel_path; do
+            test -e "$kernel_path"
+            printf 'Kernel output: %s\n' "$kernel_path"
+          done <<< "$kernel_outputs"
 
-      - name: Publish only the kernel output and its runtime closure
+          # cachix-action's pathsToPush accepts a whitespace-separated list.
+          kernel_paths="$(printf '%s\n' "$kernel_outputs" | paste -sd ' ' -)"
+          printf 'paths=%s\n' "$kernel_paths" >> "$GITHUB_OUTPUT"
+
+      - name: Publish all kernel outputs and their runtime closures
         uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
         with:
           name: kumutuk-nixos-hyprland-vfio
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
           skipAddingSubstituter: true
           useDaemon: false
-          pathsToPush: ${{ steps.kernel.outputs.out }}
+          pathsToPush: ${{ steps.kernel.outputs.paths }}
 
       - name: Verify the lock file was not rewritten
         run: |

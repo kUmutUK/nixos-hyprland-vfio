@@ -4,6 +4,12 @@ This file summarizes notable changes in English. The separate Turkish release-by
 
 ## [Unreleased]
 
+### Publish all CachyOS kernel outputs to Cachix — 2026-11-25
+
+- Change the manual cache publisher from the kernel's default `out` output to all declared outputs using Nix's `^*` selector. The workflow first consumes the existing project cache read-only, then builds and supplies the `out`, `modules`, and `dev` paths as a whitespace-separated `pathsToPush` list, with each output's runtime closure.
+- The existing cache run published the default output only. Re-run the manual cache workflow after this change is merged to backfill the split outputs for the current lock; then verify all three paths and the full-system dry-build before another activation.
+- No kernel options, flake inputs, VM XML, PCI/USB identities, UUIDs, or runtime preferences are changed.
+
 ### Make Cachix signature trust daemon-owned — 2026-11-25
 
 - Keep the Cachix and Nix Community URLs in the flake's `extra-substituters`, but remove the duplicated `extra-trusted-public-keys` flake setting. Nix restricts changes to `trusted-public-keys` for untrusted clients; the signing keys remain in the root-managed NixOS daemon configuration at `nix.settings.trusted-public-keys`.

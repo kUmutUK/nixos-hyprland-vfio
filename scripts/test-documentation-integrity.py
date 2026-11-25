@@ -2516,7 +2516,12 @@ require(
     and "cachix-action" in CACHE_WORKFLOW
     and "secrets.CACHIX_AUTH_TOKEN" in CACHE_WORKFLOW
     and "boot.kernelPackages.kernel" in CACHE_WORKFLOW
-    and "pathsToPush" in CACHE_WORKFLOW
+    and "kernel^*" in CACHE_WORKFLOW
+    and "kernel_outputs" in CACHE_WORKFLOW
+    and "pathsToPush: ${{ steps.kernel.outputs.paths }}" in CACHE_WORKFLOW
+    and "Consume the existing Cachix kernel output (read-only)" in CACHE_WORKFLOW
+    and CACHE_URL in CACHE_WORKFLOW
+    and CACHE_KEY in CACHE_WORKFLOW
     and "CachyOS kernel binary cache (manual)" in CACHE_WORKFLOW
     and "config.system.build.toplevel" not in CACHE_WORKFLOW
     and "lsfg-vk-v2" not in CACHE_WORKFLOW
@@ -2526,7 +2531,10 @@ require(
     and CACHE_URL in README
     and CACHE_URL in FLAKE
     and CACHE_URL in CONFIG
-    and "nix build --dry-run --no-link" in README
+    and "nixos-rebuild dry-build" in README
+    and "Nix `^*` output selector" in README
+    and "LOCAL MISSING" in README
+    and "CACHIX MISSING" in README
     and "trusted-public-keys" in README
     and CACHE_KEY not in FLAKE
     and "extra-trusted-public-keys" not in FLAKE
