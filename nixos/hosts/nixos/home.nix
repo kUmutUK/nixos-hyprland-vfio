@@ -1926,6 +1926,8 @@ in
         ExecStart = lib.concatStringsSep " " (
           map escapeSystemdExecArg [
             "${pkgs.mpvpaper}/bin/mpvpaper"
+            "-l"
+            "bottom"
             "-p"
             "--mpv-options"
             "loop=inf"
