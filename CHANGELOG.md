@@ -4,6 +4,12 @@ This file summarizes notable changes in English. The separate Turkish release-by
 
 ## [Unreleased]
 
+### Integrate Helium Browser on NixOS — 2026-11-25
+
+- Add Helium 0.22.4.1 for x86-64 from the official Linux AppImage, pinned to GitHub's published SHA-256 digest. The local Nix expression uses Nixpkgs `appimageTools`, carries the upstream desktop entry/icon, and exposes a `helium` package output for CI and manual builds.
+- Add the browser to `environment.systemPackages`; request Ozone Wayland auto-detection only when both NixOS Wayland environment variables are present. No `--no-sandbox` flag is added. Brave remains installed and no default-browser/MIME, Waybar, or mpvpaper rules are changed.
+- The Nix wrapper is community-maintained; upstream publishes the AppImage but does not list Nix as an officially maintained packaging format. Normal CI's package build, a fresh full-system build, and target-host desktop/runtime validation are still required. No activation or physical test is claimed.
+
 ### Publish all CachyOS kernel outputs to Cachix — 2026-11-25
 
 - Change the manual cache publisher from the kernel's default `out` output to all declared outputs using Nix's `^*` selector. The workflow first consumes the existing project cache read-only, then builds and supplies the `out`, `modules`, and `dev` paths as a whitespace-separated `pathsToPush` list, with each output's runtime closure.

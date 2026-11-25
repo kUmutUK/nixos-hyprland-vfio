@@ -76,6 +76,7 @@
       };
       lsfgVkV2Package = pkgsUnfree.callPackage ./lsfg-vk-v2.nix { };
       makoRendererPackage = pkgs.callPackage ./mako-renderer.nix { };
+      heliumPackage = pkgs.callPackage ./helium.nix { };
     in
     {
       nixosConfigurations.nixos = nixpkgs.lib.nixosSystem {
@@ -119,6 +120,7 @@
       packages.${system} = {
         lsfg-vk-v2 = lsfgVkV2Package;
         mako-renderer = makoRendererPackage;
+        helium = heliumPackage;
       };
 
       # The README uses `nix develop`; expose one flake dev shell rather than a

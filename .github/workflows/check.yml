@@ -223,12 +223,13 @@ jobs:
           nix develop . --no-update-lock-file --command luac -p "$lua_file"
           echo "  generated Hyprland Lua syntax OK"
 
-      - name: Build the pinned LSFG-VK v2 and MAKO packages
+      - name: Build the pinned LSFG-VK v2, MAKO, and Helium packages
         working-directory: nixos
         run: |
           nix build --no-link --no-update-lock-file .#lsfg-vk-v2
-          # Build the pinned MAKO Renderer package.
+          # Build the pinned MAKO Renderer and official Helium AppImage wrapper.
           nix build --no-link --no-update-lock-file .#mako-renderer
+          nix build --no-link --no-update-lock-file .#helium
 
       # These are required gates. statix.toml disables only the style-only
       # repeated_keys lint because this repository intentionally uses flat dotted

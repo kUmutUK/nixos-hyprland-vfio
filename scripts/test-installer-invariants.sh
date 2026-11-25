@@ -341,20 +341,20 @@ if ! grep -q '^validate_nixos_source_files() {' "$preflight_function"; then
   echo "FAIL: could not locate validate_nixos_source_files() for its regression test." >&2
   exit 1
 fi
-if ! grep -Fq 'REQUIRED_NIXOS_SOURCE_FILES=(hosts/nixos/configuration.nix hosts/nixos/home.nix hosts/nixos/host-settings.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix)' "$INSTALLER"; then
-  echo "FAIL: installer source preflight must declare seven Nix sources (including the host settings module) and a separate QEMU hook list." >&2
+if ! grep -Fq 'REQUIRED_NIXOS_SOURCE_FILES=(hosts/nixos/configuration.nix hosts/nixos/home.nix hosts/nixos/host-settings.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix helium.nix)' "$INSTALLER"; then
+  echo "FAIL: installer source preflight must declare eight Nix sources (including the host settings module) and a separate QEMU hook list." >&2
   exit 1
 fi
 cat > "$preflight_dir/harness.sh" <<'BASH'
 set -euo pipefail
 REPO_DIR="$1"
-REQUIRED_NIXOS_SOURCE_FILES=(hosts/nixos/configuration.nix hosts/nixos/home.nix hosts/nixos/host-settings.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix)
+REQUIRED_NIXOS_SOURCE_FILES=(hosts/nixos/configuration.nix hosts/nixos/home.nix hosts/nixos/host-settings.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix helium.nix)
 REQUIRED_NIXOS_RUNTIME_FILES=(hosts/nixos/hooks/qemu)
 error() { printf '%s\\n' "$*" >&2; return 1; }
 source "$2"
 validate_nixos_source_files
 BASH
-for file in hosts/nixos/configuration.nix hosts/nixos/home.nix hosts/nixos/host-settings.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix hosts/nixos/hooks/qemu; do
+for file in hosts/nixos/configuration.nix hosts/nixos/home.nix hosts/nixos/host-settings.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix helium.nix hosts/nixos/hooks/qemu; do
   printf 'valid %s\\n' "$file" > "$preflight_dir/repo/nixos/$file"
 done
 if ! bash "$preflight_dir/harness.sh" "$preflight_dir/repo" "$preflight_function"; then
@@ -363,7 +363,7 @@ if ! bash "$preflight_dir/harness.sh" "$preflight_dir/repo" "$preflight_function
 fi
 
 # Every required Nix source and the QEMU hook must fail closed when missing or empty.
-for file in hosts/nixos/configuration.nix hosts/nixos/home.nix hosts/nixos/host-settings.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix hosts/nixos/hooks/qemu; do
+for file in hosts/nixos/configuration.nix hosts/nixos/home.nix hosts/nixos/host-settings.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix helium.nix hosts/nixos/hooks/qemu; do
   source_file="$preflight_dir/repo/nixos/$file"
   mv "$source_file" "$source_file.saved"
   if bash "$preflight_dir/harness.sh" "$preflight_dir/repo" "$preflight_function" >/dev/null 2>&1; then
@@ -505,7 +505,7 @@ fi
 if ! grep -Fq 'LSFG-VK schema' "$README" \
   || ! grep -Fq 'v2 `[[profile]]` profile format' "$README" \
   || ! grep -Fq 'python3 scripts/test-lsfg-vk-v2.py' "$ROOT/.github/workflows/check.yml" \
-  || ! grep -Fq 'Build the pinned LSFG-VK v2 and MAKO packages' "$ROOT/.github/workflows/check.yml"; then
+  || ! grep -Fq 'Build the pinned LSFG-VK v2, MAKO, and Helium packages' "$ROOT/.github/workflows/check.yml"; then
   echo "FAIL: the documented LSFG-VK v2 schema decision must match the CI test/build contract." >&2
   exit 1
 fi
@@ -520,10 +520,14 @@ if [ ! -s "$ROOT/nixos/mako-renderer.nix" ]; then
   echo "FAIL: required MAKO Renderer package expression is missing or empty." >&2
   exit 1
 fi
-if ! grep -Fq 'REQUIRED_NIXOS_SOURCE_FILES=(hosts/nixos/configuration.nix hosts/nixos/home.nix hosts/nixos/host-settings.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix)' "$INSTALLER" \
+if [ ! -s "$ROOT/nixos/helium.nix" ]; then
+  echo "FAIL: required Helium Browser package expression is missing or empty." >&2
+  exit 1
+fi
+if ! grep -Fq 'REQUIRED_NIXOS_SOURCE_FILES=(hosts/nixos/configuration.nix hosts/nixos/home.nix hosts/nixos/host-settings.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix helium.nix)' "$INSTALLER" \
   || ! grep -Fq 'for file in "${REQUIRED_NIXOS_SOURCE_FILES[@]}" "${REQUIRED_NIXOS_RUNTIME_FILES[@]}"; do' "$INSTALLER" \
   || ! grep -Fq 'for f in "${REQUIRED_NIXOS_SOURCE_FILES[@]}"; do' "$INSTALLER"; then
-  echo "FAIL: installer preflight and deployment must require/copy the seven Nix expressions (host files plus flake-root packages)." >&2
+  echo "FAIL: installer preflight and deployment must require/copy the eight Nix expressions (host files plus flake-root packages)." >&2
   exit 1
 fi
 transaction_block="$(sed -n '/^TRANSACTION_PATHS=(/,/^)/p' "$INSTALLER")"
@@ -541,7 +545,12 @@ if ! grep -Fq '"$NIXOS_FLAKE_DIR/mako-renderer.nix"' <<< "$transaction_block" \
   echo "FAIL: installer rollback transaction and backup list must include mako-renderer.nix." >&2
   exit 1
 fi
-if [ "$(grep -Fc 'for file in hosts/nixos/configuration.nix hosts/nixos/home.nix hosts/nixos/host-settings.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix; do' "$README")" -lt 2 ]; then
+if ! grep -Fq '"$NIXOS_FLAKE_DIR/helium.nix"' <<< "$transaction_block" \
+  || ! grep -Fq '"$NIXOS_FLAKE_DIR/helium.nix"' <<< "$backup_block"; then
+  echo "FAIL: installer rollback transaction and backup list must include helium.nix." >&2
+  exit 1
+fi
+if [ "$(grep -Fc 'for file in hosts/nixos/configuration.nix hosts/nixos/home.nix hosts/nixos/host-settings.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix helium.nix; do' "$README")" -lt 2 ]; then
   echo "FAIL: README manual migration loops must include host files and lsfg-vk-v2.nix." >&2
   exit 1
 fi

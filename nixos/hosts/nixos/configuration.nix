@@ -41,6 +41,9 @@ let
   # pabloaul NixOS module is v1-only and cannot read the v2 profile schema.
   lsfgVkV2 = pkgs.callPackage ../../lsfg-vk-v2.nix { };
 
+  # Official Helium AppImage wrapped through Nixpkgs appimageTools.
+  heliumBrowser = pkgs.callPackage ../../helium.nix { };
+
   # Pin the tested upstream scroll-bounce filter. Build its C++ daemon and
   # platform-independent filter tests directly; runtime needs only evdev/uinput.
   mouseHardwareFix = pkgs.stdenv.mkDerivation {
@@ -816,6 +819,7 @@ in
   security.pam.services.hyprlock = { };
 
   environment.systemPackages = with pkgs; [
+    heliumBrowser
     hostProfile
     brave-origin
     kitty
