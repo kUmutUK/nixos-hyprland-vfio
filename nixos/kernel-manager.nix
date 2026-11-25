@@ -20,7 +20,7 @@
 
 let
   polkitHelper = writeShellScriptBin "nixos-kernel-manager-polkit-helper" ''
-    set -euo pipefail
+    set -uo pipefail
     export SYSTEMD_PAGER=cat
     export SYSTEMD_COLORS=0
     export LC_ALL=C
@@ -39,71 +39,77 @@ let
       ]
     }:/run/current-system/sw/bin:/run/current-system/sw/sbin"
 
-    if [ "$#" -ne 2 ]; then
-      echo "Usage: nixos-kernel-manager-polkit-helper <inspect-system|update-cachyos|rebuild-switch> <flake-path>" >&2
+    if [ "$#" -ne 1 ] || [ "$1" != "session" ]; then
+      echo "Usage: nixos-kernel-manager-polkit-helper session" >&2
       exit 2
     fi
-    action="$1"
-    flake_ref="$2"
+
     allowed_flake="/etc/nixos/nixos"
-    case "$action" in
-      inspect-system)
-        if [ "$flake_ref" != "$allowed_flake" ]; then
-          echo "Only the managed NixOS Flake at $allowed_flake may be inspected." >&2
-          exit 2
-        fi
-        if [ ! -f "$allowed_flake/flake.nix" ] || [ ! -f "$allowed_flake/flake.lock" ]; then
-          echo "Both flake.nix and flake.lock must exist in $allowed_flake." >&2
-          exit 2
-        fi
-        if ! boot_entries="$(bootctl list --no-pager 2>&1)"; then
-          printf '%s\n' "$boot_entries" >&2
-          exit 1
-        fi
-        if ! generations="$(nix-env --profile /nix/var/nix/profiles/system --list-generations 2>&1)"; then
-          printf '%s\n' "$generations" >&2
-          exit 1
-        fi
-        printf '%s\n' "__KERNEL_MANAGER_BOOT_ENTRIES_BEGIN__"
-        printf '%s\n' "$boot_entries"
-        printf '%s\n' "__KERNEL_MANAGER_BOOT_ENTRIES_END__"
-        printf '%s\n' "__KERNEL_MANAGER_GENERATIONS_BEGIN__"
-        printf '%s\n' "$generations"
-        printf '%s\n' "__KERNEL_MANAGER_GENERATIONS_END__"
-        ;;
-      update-cachyos)
-        if [ "$flake_ref" != "$allowed_flake" ]; then
-          echo "Only the managed NixOS Flake at $allowed_flake may be updated." >&2
-          exit 2
-        fi
-        flake_dir="$allowed_flake"
-        if [ ! -f "$flake_dir/flake.nix" ] || [ ! -f "$flake_dir/flake.lock" ]; then
-          echo "Both flake.nix and flake.lock must exist in $flake_dir." >&2
-          exit 2
-        fi
-        exec nix flake update --flake "$flake_dir" cachyos-kernel
-        ;;
-      rebuild-switch)
-        if [ "$flake_ref" != "$allowed_flake#nixos" ]; then
-          echo "Only $allowed_flake#nixos may be activated." >&2
-          exit 2
-        fi
-        flake_dir="$allowed_flake"
-        if [ ! -f "$flake_dir/flake.nix" ] || [ ! -f "$flake_dir/flake.lock" ]; then
-          echo "Both flake.nix and flake.lock must exist in $flake_dir." >&2
-          exit 2
-        fi
-        if [ ! -x /run/current-system/sw/bin/nixos-rebuild ]; then
-          echo "nixos-rebuild was not found in the active NixOS system profile." >&2
-          exit 127
-        fi
-        exec /run/current-system/sw/bin/nixos-rebuild switch --flake "$flake_ref"
-        ;;
-      *)
-        echo "Unsupported privileged Kernel Manager action: $action" >&2
-        exit 2
-        ;;
-    esac
+    if [ ! -f "$allowed_flake/flake.nix" ] || [ ! -f "$allowed_flake/flake.lock" ]; then
+      echo "Both flake.nix and flake.lock must exist in $allowed_flake." >&2
+      exit 2
+    fi
+
+    printf '%s\n' "__KM_SESSION_READY__"
+    while IFS= read -r action; do
+      case "$action" in
+        inspect-system)
+          printf '%s\n' "__KM_ACTION_BEGIN__:inspect-system"
+          result=0
+
+          printf '%s\n' "__KM_BOOT_BEGIN__"
+          if boot_entries="$(bootctl list --no-pager 2>&1)"; then
+            printf '%s\n' "$boot_entries"
+          else
+            command_status=$?
+            printf '%s\n' "$boot_entries"
+            result="$command_status"
+          fi
+          printf '%s\n' "__KM_BOOT_END__"
+
+          printf '%s\n' "__KM_GENERATIONS_BEGIN__"
+          if generations="$(nix-env --profile /nix/var/nix/profiles/system --list-generations 2>&1)"; then
+            printf '%s\n' "$generations"
+          else
+            command_status=$?
+            printf '%s\n' "$generations"
+            result="$command_status"
+          fi
+          printf '%s\n' "__KM_GENERATIONS_END__"
+          printf '%s\n' "__KM_ACTION_END__:inspect-system:$result"
+          ;;
+        update-cachyos)
+          printf '%s\n' "__KM_ACTION_BEGIN__:update-cachyos"
+          if nix flake update --flake "$allowed_flake" cachyos-kernel 2>&1; then
+            result=0
+          else
+            result=$?
+          fi
+          printf '%s\n' "__KM_ACTION_END__:update-cachyos:$result"
+          ;;
+        rebuild-switch)
+          printf '%s\n' "__KM_ACTION_BEGIN__:rebuild-switch"
+          if [ ! -x /run/current-system/sw/bin/nixos-rebuild ]; then
+            echo "nixos-rebuild was not found in the active NixOS system profile." >&2
+            result=127
+          elif /run/current-system/sw/bin/nixos-rebuild switch --flake "$allowed_flake#nixos" 2>&1; then
+            result=0
+          else
+            result=$?
+          fi
+          printf '%s\n' "__KM_ACTION_END__:rebuild-switch:$result"
+          ;;
+        exit)
+          printf '%s\n' "__KM_SESSION_CLOSED__"
+          break
+          ;;
+        *)
+          printf '%s\n' "__KM_ACTION_BEGIN__:invalid"
+          echo "Unsupported privileged Kernel Manager request." >&2
+          printf '%s\n' "__KM_ACTION_END__:invalid:2"
+          ;;
+      esac
+    done
   '';
 in
 stdenv.mkDerivation {
@@ -123,7 +129,6 @@ stdenv.mkDerivation {
     qt6.qtwayland
   ];
 
-  # Wrap manually so the Qt plugin path and action-tool PATH are both retained.
   dontWrapQtApps = true;
 
   buildPhase = ''

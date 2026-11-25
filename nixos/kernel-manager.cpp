@@ -1,12 +1,13 @@
 #include <QApplication>
+#include <QCloseEvent>
+#include <QDialog>
 #include <QAbstractItemView>
 #include <QHeaderView>
-#include <QList>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
 #include <QFrame>
-#include <QGridLayout>
+#include <QDialog>
 #include <QHBoxLayout>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -15,12 +16,11 @@
 #include <QMainWindow>
 #include <QMessageBox>
 #include <QPlainTextEdit>
+#include <QPointer>
 #include <QProcess>
 #include <QProcessEnvironment>
 #include <QPushButton>
 #include <QStringList>
-#include <QScrollArea>
-#include <QStackedWidget>
 #include <QStatusBar>
 #include <QTimer>
 #include <QTableWidget>
@@ -28,7 +28,6 @@
 #include <QVBoxLayout>
 #include <QWidget>
 
-#include <functional>
 
 namespace {
 const QString kAppName = QStringLiteral("NixOS Kernel Manager");
@@ -85,31 +84,6 @@ QString shellQuote(QString value)
     return QStringLiteral("'") + value + QStringLiteral("'");
 }
 
-QFrame *makeCard(const QString &title, const QString &value, const QString &description,
-                 QWidget *parent = nullptr)
-{
-    auto *card = new QFrame(parent);
-    card->setObjectName(QStringLiteral("metricCard"));
-    auto *layout = new QVBoxLayout(card);
-    layout->setContentsMargins(19, 17, 19, 18);
-    layout->setSpacing(8);
-
-    auto *heading = new QLabel(title, card);
-    heading->setObjectName(QStringLiteral("cardHeading"));
-    auto *mainValue = new QLabel(value, card);
-    mainValue->setObjectName(QStringLiteral("metricValue"));
-    mainValue->setWordWrap(true);
-    auto *detail = new QLabel(description, card);
-    detail->setObjectName(QStringLiteral("mutedText"));
-    detail->setWordWrap(true);
-
-    layout->addWidget(heading);
-    layout->addWidget(mainValue);
-    layout->addWidget(detail);
-    layout->addStretch();
-    return card;
-}
-
 QPlainTextEdit *makeOutputPane(QWidget *parent = nullptr)
 {
     auto *output = new QPlainTextEdit(parent);
@@ -125,196 +99,165 @@ QPlainTextEdit *makeOutputPane(QWidget *parent = nullptr)
 class KernelManagerWindow final : public QMainWindow {
 public:
     KernelManagerWindow()
+        : flakeDir(flakeDirectory())
     {
         setWindowTitle(kAppName);
-        setMinimumSize(940, 650);
-        resize(1180, 760);
+        setMinimumSize(760, 520);
+        resize(920, 590);
         setStyleSheet(styleSheetText());
 
         buildWindow();
-        refreshState();
-        statusBar()->showMessage(QStringLiteral("Read-only inspection · NixOS declarative kernel management"));
-        // Let the window paint before pkexec asks the active Polkit agent to authenticate.
-        QTimer::singleShot(150, this, [this]() { refreshBootInformation(); });
+        statusBar()->showMessage(QStringLiteral("NixOS declarative kernel management"));
+        QTimer::singleShot(0, this, [this]() { refreshState(); });
+        // Show the desktop window before the graphical Polkit agent asks for authentication.
+        QTimer::singleShot(150, this, [this]() { startPolkitSession(); });
+    }
+
+protected:
+    void closeEvent(QCloseEvent *event) override
+    {
+        if (pendingPrivilegedAction == QStringLiteral("update-cachyos") ||
+            pendingPrivilegedAction == QStringLiteral("rebuild-switch")) {
+            QMessageBox::information(
+                this, QStringLiteral("Operation still running"),
+                QStringLiteral("Wait for the privileged operation to finish before closing Kernel Manager."));
+            event->ignore();
+            return;
+        }
+        QProcess *sessionProcess = polkitSessionProcess;
+        if (sessionProcess && sessionProcess->state() != QProcess::NotRunning) {
+            if (polkitSessionReady) {
+                sessionProcess->write("exit\n");
+                sessionProcess->waitForBytesWritten(500);
+            }
+            if (!sessionProcess->waitForFinished(1500)) {
+                sessionProcess->terminate();
+                if (!sessionProcess->waitForFinished(1000))
+                    sessionProcess->kill();
+            }
+        }
+        QMainWindow::closeEvent(event);
     }
 
 private:
-    QString flakeDir = flakeDirectory();
+    QString flakeDir;
+    QString runningKernelRelease;
+    QString bootEntriesText = QStringLiteral("Waiting for graphical administrator authorization…");
+    QString generationsText = QStringLiteral("Waiting for graphical administrator authorization…");
 
-    QStackedWidget *pages = nullptr;
-    QLabel *pageTitle = nullptr;
-    QLabel *runningKernelValue = nullptr;
-    QLabel *profileValue = nullptr;
-    QLabel *revisionValue = nullptr;
-    QLabel *systemValue = nullptr;
-    QLabel *overviewFlakeValue = nullptr;
-    QLabel *bootStatus = nullptr;
-    QPlainTextEdit *bootOutput = nullptr;
-    QPlainTextEdit *generationOutput = nullptr;
-    QPlainTextEdit *flakeOutput = nullptr;
     QTableWidget *kernelTable = nullptr;
-    QTableWidget *bootTable = nullptr;
     QLabel *kernelInventoryStatus = nullptr;
-    QList<QPushButton *> navigationButtons;
-    QProcess *polkitInspectionProcess = nullptr;
+    QLabel *runningKernelLabel = nullptr;
+    QLabel *inputRevisionLabel = nullptr;
+    QLabel *authorizationStatus = nullptr;
+    QProcess *polkitSessionProcess = nullptr;
+    QProcess *kernelEvaluationProcess = nullptr;
+    QPointer<QDialog> operationDialog;
+    QPointer<QPlainTextEdit> operationOutput;
+    QString polkitOutputBuffer;
+    QString currentPrivilegedAction;
+    QString pendingPrivilegedAction;
+    bool polkitSessionReady = false;
+    bool privilegedRequestPending = false;
+    bool capturingBootEntries = false;
+    bool capturingGenerations = false;
 
     static QString styleSheetText()
     {
         return QStringLiteral(R"(
             QWidget {
-                background: #11141b;
-                color: #edf0f7;
+                background: #25292f;
+                color: #e8ebef;
                 font-family: "Inter", "Noto Sans", sans-serif;
                 font-size: 13px;
             }
-            QFrame#sidebar {
-                background: #171b24;
-                border-right: 1px solid #29303c;
-            }
-            QLabel#brandMark {
-                background: #69aee8;
-                color: #20232c;
-                border-radius: 13px;
-                font-size: 21px;
-                font-weight: 800;
-                padding: 7px;
-            }
-            QLabel#brandTitle {
-                font-size: 15px;
-                font-weight: 700;
-            }
-            QLabel#brandSubtitle, QLabel#mutedText, QLabel#pageSubtitle {
-                color: #9ca7b8;
-            }
-            QLabel#eyebrow {
-                color: #69aee8;
-                font-size: 11px;
-                font-weight: 700;
-                letter-spacing: 1px;
-            }
-            QLabel#pageTitle {
-                font-size: 25px;
-                font-weight: 750;
-            }
-            QLabel#heroValue {
-                font-size: 27px;
-                font-weight: 750;
-                color: #ffffff;
-            }
-            QLabel#metricValue {
+            QLabel#introTitle {
+                color: #f4f6f8;
                 font-size: 19px;
                 font-weight: 700;
-                color: #f5f6fa;
             }
-            QLabel#cardHeading {
-                color: #b9c2d0;
-                font-size: 12px;
+            QLabel#mutedText {
+                color: #aeb6c1;
+            }
+            QLabel#sectionTitle {
+                color: #dce2e9;
+                font-size: 13px;
                 font-weight: 650;
             }
-            QLabel#statusPill {
-                background: #1d3b34;
-                color: #9be2c4;
-                border: 1px solid #2c6856;
-                border-radius: 10px;
-                padding: 6px 11px;
-                font-size: 11px;
-                font-weight: 750;
+            QLabel#statusText {
+                color: #aeb6c1;
+                font-size: 12px;
             }
-            QFrame#heroCard, QFrame#metricCard, QFrame#actionCard, QFrame#sectionCard {
-                background: #1a202b;
-                border: 1px solid #2c3543;
-                border-radius: 15px;
+            QTableWidget#kernelTable {
+                background: #1e2228;
+                alternate-background-color: #252a31;
+                color: #e8ebef;
+                border: 1px solid #424a55;
+                border-radius: 5px;
+                gridline-color: transparent;
+                selection-background-color: #168bd2;
+                selection-color: #ffffff;
             }
-            QFrame#heroCard {
-                background: #202631;
-                border: 1px solid #3a3541;
+            QTableWidget#kernelTable::item {
+                padding: 7px 9px;
+                border-bottom: 1px solid #303740;
             }
-            QPushButton#navButton {
-                background: transparent;
-                color: #aeb8c8;
+            QHeaderView::section {
+                background: #343a42;
+                color: #dce2e9;
+                padding: 8px 9px;
                 border: none;
-                border-radius: 9px;
-                text-align: left;
-                padding: 12px 14px;
-                font-size: 13px;
+                border-right: 1px solid #424a55;
+                border-bottom: 1px solid #4a535f;
                 font-weight: 600;
             }
-            QPushButton#navButton:hover {
-                background: #242b37;
-                color: #ffffff;
+            QPushButton {
+                background: #373e47;
+                color: #e7ebf0;
+                border: 1px solid #4a535f;
+                border-radius: 5px;
+                padding: 7px 12px;
+                min-height: 27px;
+                font-weight: 550;
             }
-            QPushButton#navButton:checked {
-                background: #20364a;
-                color: #c2e2ff;
-                border-left: 3px solid #69aee8;
-                padding-left: 11px;
+            QPushButton:hover {
+                background: #424b56;
+                border-color: #65717f;
+            }
+            QPushButton:pressed {
+                background: #2c323a;
             }
             QPushButton#primaryButton {
-                background: #69aee8;
-                color: #25232b;
-                border: none;
-                border-radius: 9px;
-                padding: 10px 15px;
-                font-weight: 750;
-            }
-            QPushButton#primaryButton:hover {
-                background: #8bc7fa;
-            }
-            QPushButton#secondaryButton {
-                background: #293241;
-                color: #e5eaf3;
-                border: 1px solid #3a4658;
-                border-radius: 9px;
-                padding: 9px 14px;
+                background: #167fbd;
+                border-color: #2999d8;
+                color: #ffffff;
                 font-weight: 650;
             }
-            QPushButton#secondaryButton:hover {
-                background: #354153;
+            QPushButton#primaryButton:hover {
+                background: #2194d4;
             }
             QPlainTextEdit#outputPane {
-                background: #10141c;
-                color: #cbd5e1;
-                border: 1px solid #303948;
-                border-radius: 11px;
-                padding: 12px;
-                selection-background-color: #285b82;
+                background: #1b1f25;
+                color: #dce2e9;
+                border: 1px solid #424a55;
+                border-radius: 5px;
+                padding: 9px;
+                selection-background-color: #168bd2;
                 font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace;
                 font-size: 12px;
             }
-            QTableWidget#kernelTable, QTableWidget#bootTable {
-                background: #171c23;
-                alternate-background-color: #202832;
-                color: #edf0f7;
-                border: 1px solid #37414d;
-                border-radius: 8px;
-                gridline-color: transparent;
-                selection-background-color: #24537b;
-                selection-color: #ffffff;
-            }
-            QTableWidget#kernelTable::item, QTableWidget#bootTable::item {
-                padding: 9px 10px;
-                border-bottom: 1px solid #303944;
-            }
-            QHeaderView::section {
-                background: #222a33;
-                color: #c8d3df;
-                padding: 9px 10px;
-                border: none;
-                border-bottom: 1px solid #3a4654;
-                font-weight: 700;
-            }
-            QTableCornerButton::section {
-                background: #222a33;
-                border: none;
-            }
             QStatusBar {
-                background: #171b24;
-                color: #aab4c4;
-                border-top: 1px solid #29303c;
+                background: #20242a;
+                color: #aeb6c1;
+                border-top: 1px solid #3c444e;
             }
-            QScrollArea, QScrollArea > QWidget > QWidget {
-                background: transparent;
-                border: none;
+            QFrame#separator {
+                color: #414953;
+                background: #414953;
+                max-height: 1px;
+            }
+            QDialog {
+                background: #25292f;
             }
         )");
     }
@@ -322,146 +265,27 @@ private:
     void buildWindow()
     {
         auto *central = new QWidget(this);
-        auto *root = new QHBoxLayout(central);
-        root->setContentsMargins(0, 0, 0, 0);
-        root->setSpacing(0);
+        auto *layout = new QVBoxLayout(central);
+        layout->setContentsMargins(22, 18, 22, 14);
+        layout->setSpacing(11);
 
-        auto *sidebar = new QFrame(central);
-        sidebar->setObjectName(QStringLiteral("sidebar"));
-        sidebar->setFixedWidth(226);
-        auto *sideLayout = new QVBoxLayout(sidebar);
-        sideLayout->setContentsMargins(18, 24, 18, 20);
-        sideLayout->setSpacing(12);
+        auto *title = new QLabel(QStringLiteral("NixOS Kernel Manager"), central);
+        title->setObjectName(QStringLiteral("introTitle"));
+        layout->addWidget(title);
 
-        auto *brandRow = new QHBoxLayout();
-        auto *mark = new QLabel(QStringLiteral("K"), sidebar);
-        mark->setObjectName(QStringLiteral("brandMark"));
-        mark->setAlignment(Qt::AlignCenter);
-        mark->setFixedSize(42, 42);
-        auto *brandText = new QVBoxLayout();
-        auto *brand = new QLabel(QStringLiteral("Kernel Manager"), sidebar);
-        brand->setObjectName(QStringLiteral("brandTitle"));
-        auto *brandSubtitle = new QLabel(QStringLiteral("NixOS · CachyOS"), sidebar);
-        brandSubtitle->setObjectName(QStringLiteral("brandSubtitle"));
-        brandText->addWidget(brand);
-        brandText->addWidget(brandSubtitle);
-        brandRow->addWidget(mark);
-        brandRow->addLayout(brandText);
-        brandRow->addStretch();
-        sideLayout->addLayout(brandRow);
-        sideLayout->addSpacing(24);
+        auto *description = new QLabel(
+            QStringLiteral("View the kernel selected by your NixOS Flake. Update its source, build it, "
+                           "or activate the system using the actions below."),
+            central);
+        description->setObjectName(QStringLiteral("mutedText"));
+        description->setWordWrap(true);
+        layout->addWidget(description);
 
-        auto *navLabel = new QLabel(QStringLiteral("WORKSPACE"), sidebar);
-        navLabel->setObjectName(QStringLiteral("eyebrow"));
-        sideLayout->addWidget(navLabel);
+        auto *kernelHeading = new QLabel(QStringLiteral("Configured kernel"), central);
+        kernelHeading->setObjectName(QStringLiteral("sectionTitle"));
+        layout->addWidget(kernelHeading);
 
-        pages = new QStackedWidget(central);
-        addNavigation(sideLayout, QStringLiteral("Kernel catalogue"), 0);
-        addNavigation(sideLayout, QStringLiteral("Boot entries"), 1);
-        addNavigation(sideLayout, QStringLiteral("Kernel configuration"), 2);
-        addNavigation(sideLayout, QStringLiteral("Kernel actions"), 3);
-        sideLayout->addStretch();
-
-        auto *sideNote = new QLabel(
-            QStringLiteral("Declarative kernel management\nNo direct bootloader edits"),
-            sidebar);
-        sideNote->setObjectName(QStringLiteral("brandSubtitle"));
-        sideNote->setWordWrap(true);
-        sideLayout->addWidget(sideNote);
-
-        auto *content = new QWidget(central);
-        auto *contentLayout = new QVBoxLayout(content);
-        contentLayout->setContentsMargins(30, 25, 30, 18);
-        contentLayout->setSpacing(18);
-
-        auto *header = new QHBoxLayout();
-        auto *headingColumn = new QVBoxLayout();
-        pageTitle = new QLabel(QStringLiteral("Kernel catalogue"), content);
-        pageTitle->setObjectName(QStringLiteral("pageTitle"));
-        auto *subtitle = new QLabel(
-            QStringLiteral("Review the active CachyOS kernel, boot entries and declarative Flake selection."),
-            content);
-        subtitle->setObjectName(QStringLiteral("pageSubtitle"));
-        headingColumn->addWidget(pageTitle);
-        headingColumn->addWidget(subtitle);
-        header->addLayout(headingColumn);
-        header->addStretch();
-        auto *refreshButton = new QPushButton(QStringLiteral("Refresh status"), content);
-        refreshButton->setObjectName(QStringLiteral("secondaryButton"));
-        connect(refreshButton, &QPushButton::clicked, this, [this]() {
-            refreshState();
-            refreshBootInformation();
-        });
-        header->addWidget(refreshButton, 0, Qt::AlignVCenter);
-        contentLayout->addLayout(header);
-
-        pages->addWidget(createOverviewPage());
-        pages->addWidget(createBootPage());
-        pages->addWidget(createFlakePage());
-        pages->addWidget(createActionsPage());
-        contentLayout->addWidget(pages, 1);
-
-        root->addWidget(sidebar);
-        root->addWidget(content, 1);
-        setCentralWidget(central);
-        setStatusBar(new QStatusBar(this));
-        if (!navigationButtons.isEmpty())
-            navigationButtons.first()->setChecked(true);
-    }
-
-    void addNavigation(QVBoxLayout *layout, const QString &label, int pageIndex)
-    {
-        auto *button = new QPushButton(label, this);
-        button->setObjectName(QStringLiteral("navButton"));
-        button->setCheckable(true);
-        button->setCursor(Qt::PointingHandCursor);
-        navigationButtons.append(button);
-        layout->addWidget(button);
-        connect(button, &QPushButton::clicked, this, [this, pageIndex, button, label]() {
-            for (auto *nav : navigationButtons)
-                nav->setChecked(nav == button);
-            pages->setCurrentIndex(pageIndex);
-            pageTitle->setText(label);
-            if (pageIndex == 1)
-                refreshBootInformation();
-            if (pageIndex == 2)
-                refreshFlakeInformation();
-        });
-    }
-
-    QWidget *createOverviewPage()
-    {
-        auto *page = new QWidget(this);
-        auto *layout = new QVBoxLayout(page);
-        layout->setContentsMargins(0, 0, 0, 0);
-        layout->setSpacing(17);
-
-        auto *hero = new QFrame(page);
-        hero->setObjectName(QStringLiteral("heroCard"));
-        auto *heroLayout = new QHBoxLayout(hero);
-        heroLayout->setContentsMargins(23, 20, 23, 21);
-        auto *heroText = new QVBoxLayout();
-        auto *eyebrow = new QLabel(QStringLiteral("CURRENTLY RUNNING"), hero);
-        eyebrow->setObjectName(QStringLiteral("eyebrow"));
-        runningKernelValue = new QLabel(QStringLiteral("Detecting kernel…"), hero);
-        runningKernelValue->setObjectName(QStringLiteral("heroValue"));
-        auto *heroDescription = new QLabel(
-            QStringLiteral("This is the kernel currently booted by the running system."),
-            hero);
-        heroDescription->setObjectName(QStringLiteral("mutedText"));
-        heroText->addWidget(eyebrow);
-        heroText->addWidget(runningKernelValue);
-        heroText->addWidget(heroDescription);
-        heroLayout->addLayout(heroText);
-        heroLayout->addStretch();
-        auto *runningPill = new QLabel(QStringLiteral("●  RUNNING"), hero);
-        runningPill->setObjectName(QStringLiteral("statusPill"));
-        heroLayout->addWidget(runningPill, 0, Qt::AlignTop);
-        layout->addWidget(hero);
-        auto *kernelTitle = new QLabel(QStringLiteral("KERNEL PACKAGE"), page);
-        kernelTitle->setObjectName(QStringLiteral("eyebrow"));
-        layout->addWidget(kernelTitle);
-        kernelTable = new QTableWidget(0, 4, page);
+        kernelTable = new QTableWidget(0, 4, central);
         kernelTable->setObjectName(QStringLiteral("kernelTable"));
         kernelTable->setHorizontalHeaderLabels(QStringList{
             QStringLiteral("Kernel"), QStringLiteral("Version"),
@@ -477,295 +301,216 @@ private:
         kernelTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
         kernelTable->setAlternatingRowColors(true);
         kernelTable->setShowGrid(false);
-        kernelTable->setMinimumHeight(100);
-        kernelTable->setMaximumHeight(140);
+        kernelTable->setMinimumHeight(86);
+        kernelTable->setMaximumHeight(126);
         layout->addWidget(kernelTable);
-        kernelInventoryStatus = new QLabel(QStringLiteral("Loading Flake-selected kernel…"), page);
+
+        kernelInventoryStatus = new QLabel(QStringLiteral("Reading the Flake-selected kernel…"), central);
         kernelInventoryStatus->setObjectName(QStringLiteral("mutedText"));
+        kernelInventoryStatus->setWordWrap(true);
         layout->addWidget(kernelInventoryStatus);
 
+        auto *systemRow = new QHBoxLayout();
+        runningKernelLabel = new QLabel(QStringLiteral("Running kernel: detecting…"), central);
+        runningKernelLabel->setObjectName(QStringLiteral("statusText"));
+        inputRevisionLabel = new QLabel(QStringLiteral("CachyOS source: checking…"), central);
+        inputRevisionLabel->setObjectName(QStringLiteral("statusText"));
+        systemRow->addWidget(runningKernelLabel, 1);
+        systemRow->addWidget(inputRevisionLabel, 0, Qt::AlignRight);
+        layout->addLayout(systemRow);
 
-        auto *grid = new QGridLayout();
-        grid->setHorizontalSpacing(13);
-        grid->setVerticalSpacing(13);
-        auto *profileCard = makeCard(
-            QStringLiteral("CONFIGURED KERNEL"),
-            QStringLiteral("Loading…"),
-            QStringLiteral("Kernel expression from the NixOS Flake."),
-            page);
-        profileValue = profileCard->findChild<QLabel *>(QStringLiteral("metricValue"));
-        auto *revisionCard = makeCard(
-            QStringLiteral("CACHYOS SOURCE REVISION"),
-            QStringLiteral("Loading…"),
-            QStringLiteral("Locked cachyos-kernel input in flake.lock."),
-            page);
-        revisionValue = revisionCard->findChild<QLabel *>(QStringLiteral("metricValue"));
-        auto *systemCard = makeCard(
-            QStringLiteral("ACTIVE SYSTEM GENERATION"),
-            QStringLiteral("Loading…"),
-            QStringLiteral("Resolved /run/current-system target."),
-            page);
-        systemValue = systemCard->findChild<QLabel *>(QStringLiteral("metricValue"));
-        auto *flakeCard = makeCard(
-            QStringLiteral("FLAKE DIRECTORY"),
-            flakeDir,
-            QStringLiteral("Source used by kernel-manager actions."),
-            page);
-        overviewFlakeValue = flakeCard->findChild<QLabel *>(QStringLiteral("metricValue"));
-        grid->addWidget(profileCard, 0, 0);
-        grid->addWidget(revisionCard, 0, 1);
-        grid->addWidget(systemCard, 1, 0);
-        grid->addWidget(flakeCard, 1, 1);
-        layout->addLayout(grid);
+        authorizationStatus = new QLabel(
+            QStringLiteral("Waiting for graphical administrator authorization…"), central);
+        authorizationStatus->setObjectName(QStringLiteral("statusText"));
+        authorizationStatus->setWordWrap(true);
+        layout->addWidget(authorizationStatus);
 
-        auto *tip = new QFrame(page);
-        tip->setObjectName(QStringLiteral("sectionCard"));
-        auto *tipLayout = new QVBoxLayout(tip);
-        tipLayout->setContentsMargins(18, 15, 18, 16);
-        auto *tipTitle = new QLabel(QStringLiteral("Safe by design"), tip);
-        tipTitle->setObjectName(QStringLiteral("cardHeading"));
-        auto *tipText = new QLabel(
-            QStringLiteral("Inspection is read-only. Updating the CachyOS lock input, building the kernel, "
-                           "and switching the complete NixOS system are separate actions with their own "
-                           "confirmation prompts."),
-            tip);
-        tipText->setObjectName(QStringLiteral("mutedText"));
-        tipText->setWordWrap(true);
-        tipLayout->addWidget(tipTitle);
-        tipLayout->addWidget(tipText);
-        layout->addWidget(tip);
-        layout->addStretch();
-        return wrapInScrollArea(page);
-    }
+        auto *separator = new QFrame(central);
+        separator->setObjectName(QStringLiteral("separator"));
+        separator->setFrameShape(QFrame::HLine);
+        separator->setFrameShadow(QFrame::Plain);
+        layout->addWidget(separator);
 
-    QWidget *createBootPage()
-    {
-        auto *page = new QWidget(this);
-        auto *layout = new QVBoxLayout(page);
-        layout->setContentsMargins(0, 0, 0, 0);
-        layout->setSpacing(12);
+        auto *buttonRow = new QHBoxLayout();
+        buttonRow->setSpacing(7);
 
-        auto *description = new QLabel(
-            QStringLiteral("Read-only view of systemd-boot entries and NixOS system generations."),
-            page);
-        description->setObjectName(QStringLiteral("mutedText"));
-        layout->addWidget(description);
+        auto *systemInfoButton = new QPushButton(QStringLiteral("System info"), central);
+        connect(systemInfoButton, &QPushButton::clicked, this, [this]() { showSystemInformation(); });
+        buttonRow->addWidget(systemInfoButton);
 
-        auto *bootTitle = new QLabel(QStringLiteral("SYSTEMD-BOOT ENTRIES"), page);
-        bootTitle->setObjectName(QStringLiteral("eyebrow"));
-        bootOutput = makeOutputPane(page);
-        bootOutput->setMinimumHeight(205);
-        bootStatus = new QLabel(QStringLiteral("Refresh to inspect the boot entries."), page);
-        bootStatus->setObjectName(QStringLiteral("mutedText"));
-        auto *generationTitle = new QLabel(QStringLiteral("NIXOS SYSTEM GENERATIONS"), page);
-        generationTitle->setObjectName(QStringLiteral("eyebrow"));
-        generationOutput = makeOutputPane(page);
-        generationOutput->setMinimumHeight(155);
-        layout->addWidget(bootTitle);
-        layout->addWidget(bootOutput, 2);
-        layout->addWidget(bootStatus);
-        layout->addWidget(generationTitle);
-        layout->addWidget(generationOutput, 1);
-        return wrapInScrollArea(page);
-    }
+        auto *flakeButton = new QPushButton(QStringLiteral("Flake config"), central);
+        connect(flakeButton, &QPushButton::clicked, this, [this]() { showFlakeConfiguration(); });
+        buttonRow->addWidget(flakeButton);
 
-    QWidget *createFlakePage()
-    {
-        auto *page = new QWidget(this);
-        auto *layout = new QVBoxLayout(page);
-        layout->setContentsMargins(0, 0, 0, 0);
-        layout->setSpacing(12);
-        auto *description = new QLabel(
-            QStringLiteral("The selected kernel stays declarative in nixos/flake.nix. "
-                           "This page only displays the current declaration."),
-            page);
-        description->setObjectName(QStringLiteral("mutedText"));
-        auto *path = new QLabel(flakeDir + QStringLiteral("/flake.nix"), page);
-        path->setObjectName(QStringLiteral("eyebrow"));
-        flakeOutput = makeOutputPane(page);
-        layout->addWidget(description);
-        layout->addWidget(path);
-        layout->addWidget(flakeOutput, 1);
-        return wrapInScrollArea(page);
-    }
+        auto *refreshButton = new QPushButton(QStringLiteral("Refresh"), central);
+        connect(refreshButton, &QPushButton::clicked, this, [this]() {
+            refreshState();
+            if (polkitSessionReady)
+                sendPrivilegedRequest(QStringLiteral("inspect-system"));
+            else
+                startPolkitSession();
+        });
+        buttonRow->addWidget(refreshButton);
 
-    QWidget *createActionsPage()
-    {
-        auto *page = new QWidget(this);
-        auto *layout = new QVBoxLayout(page);
-        layout->setContentsMargins(0, 0, 0, 0);
-        layout->setSpacing(14);
+        buttonRow->addStretch();
 
-        auto *description = new QLabel(
-            QStringLiteral("System inspection and privileged actions use the graphical Polkit prompt. "
-                           "Kernel-only builds remain unprivileged; action output is shown in Kitty."),
-            page);
-        description->setObjectName(QStringLiteral("mutedText"));
-        description->setWordWrap(true);
-        layout->addWidget(description);
-        layout->addWidget(makeActionCard(
-            QStringLiteral("Update CachyOS Flake input"),
-            QStringLiteral("Updates only the cachyos-kernel entry in flake.lock. "
-                           "It does not build or activate a kernel."),
-            QStringLiteral("Update lock input"),
-            [this]() { updateFlakeInput(); },
-            page));
-        layout->addWidget(makeActionCard(
-            QStringLiteral("Build selected kernel only"),
-            QStringLiteral("Builds the kernel selected by this Flake. "
-                           "A cache miss may require a long local build; no system switch occurs."),
-            QStringLiteral("Build kernel"),
-            [this]() { buildKernelOnly(); },
-            page));
-        layout->addWidget(makeActionCard(
-            QStringLiteral("Rebuild and switch NixOS"),
-            QStringLiteral("Runs nixos-rebuild switch for the complete current Flake. "
-                           "This activates a new system generation and does not update flake.lock."),
-            QStringLiteral("Rebuild and switch"),
-            [this]() { rebuildAndSwitch(); },
-            page,
-            true));
-        layout->addStretch();
-        return wrapInScrollArea(page);
-    }
+        auto *updateButton = new QPushButton(QStringLiteral("Update source"), central);
+        connect(updateButton, &QPushButton::clicked, this, [this]() { updateFlakeInput(); });
+        buttonRow->addWidget(updateButton);
 
-    QWidget *wrapInScrollArea(QWidget *page)
-    {
-        auto *scroll = new QScrollArea(this);
-        scroll->setWidgetResizable(true);
-        scroll->setFrameShape(QFrame::NoFrame);
-        scroll->setWidget(page);
-        return scroll;
-    }
+        auto *buildButton = new QPushButton(QStringLiteral("Build kernel"), central);
+        connect(buildButton, &QPushButton::clicked, this, [this]() { buildKernelOnly(); });
+        buttonRow->addWidget(buildButton);
 
-    QWidget *makeActionCard(const QString &title, const QString &description,
-                            const QString &buttonText, const std::function<void()> &callback,
-                            QWidget *parent, bool destructive = false)
-    {
-        auto *card = new QFrame(parent);
-        card->setObjectName(QStringLiteral("actionCard"));
-        auto *row = new QHBoxLayout(card);
-        row->setContentsMargins(19, 17, 19, 17);
-        row->setSpacing(18);
-        auto *textColumn = new QVBoxLayout();
-        auto *heading = new QLabel(title, card);
-        heading->setObjectName(QStringLiteral("metricValue"));
-        auto *detail = new QLabel(description, card);
-        detail->setObjectName(QStringLiteral("mutedText"));
-        detail->setWordWrap(true);
-        textColumn->addWidget(heading);
-        textColumn->addWidget(detail);
-        row->addLayout(textColumn, 1);
-        auto *button = new QPushButton(buttonText, card);
-        button->setObjectName(destructive ? QStringLiteral("secondaryButton")
-                                          : QStringLiteral("primaryButton"));
-        button->setMinimumWidth(150);
-        connect(button, &QPushButton::clicked, this, callback);
-        row->addWidget(button, 0, Qt::AlignVCenter);
-        return card;
+        auto *switchButton = new QPushButton(QStringLiteral("Rebuild & switch"), central);
+        switchButton->setObjectName(QStringLiteral("primaryButton"));
+        connect(switchButton, &QPushButton::clicked, this, [this]() { rebuildAndSwitch(); });
+        buttonRow->addWidget(switchButton);
+
+        layout->addLayout(buttonRow);
+        layout->addStretch(1);
+
+        setCentralWidget(central);
+        setStatusBar(new QStatusBar(this));
     }
 
     void refreshState()
     {
         const QString flake = readFile(flakeDir + QStringLiteral("/flake.nix"));
         const QString lock = readFile(flakeDir + QStringLiteral("/flake.lock"));
-        if (runningKernelValue)
-            runningKernelValue->setText(runReadOnly(QStringLiteral("uname"), {QStringLiteral("-r")}, 2500));
-        if (profileValue) {
-            const bool knownProfile =
-                flake.contains(QStringLiteral("rtBoreLtoV3KernelPackagesFor config.kumutuk.host.kernelKcfi"));
-            profileValue->setText(knownProfile
-                ? QStringLiteral("CachyOS RT-Bore-LTO")
-                : (flake.isEmpty() ? QStringLiteral("Flake unavailable")
-                                   : QStringLiteral("Custom Flake expression")));
-        }
-        if (revisionValue) {
-            QString revision = QStringLiteral("unknown");
-            const QJsonDocument document = QJsonDocument::fromJson(lock.toUtf8());
-            if (document.isObject()) {
-                const QJsonObject nodes = document.object().value(QStringLiteral("nodes")).toObject();
-                const QJsonObject kernel = nodes.value(QStringLiteral("cachyos-kernel")).toObject();
-                revision = kernel.value(QStringLiteral("locked")).toObject()
-                               .value(QStringLiteral("rev")).toString(QStringLiteral("unknown"));
-            }
-            revisionValue->setText(revision.left(12));
-            revisionValue->setToolTip(revision);
-        }
-        if (systemValue) {
-            const QString target = QFileInfo(QStringLiteral("/run/current-system")).canonicalFilePath();
-            systemValue->setText(target.isEmpty() ? QStringLiteral("Not available") : target);
-        }
-        if (overviewFlakeValue)
-            overviewFlakeValue->setText(flakeDir);
 
-        refreshKernelInventory();
-        refreshFlakeInformation();
-        statusBar()->showMessage(
-            flake.isEmpty() || lock.isEmpty()
-                ? QStringLiteral("Flake files are missing or unreadable · check the configured directory")
-                : QStringLiteral("Status refreshed · inspection did not change the system"),
-            6000);
-    }
+        runningKernelRelease = runReadOnly(
+            QStringLiteral("uname"), {QStringLiteral("-r")}, 2500);
+        runningKernelLabel->setText(
+            QStringLiteral("Running kernel: %1").arg(runningKernelRelease));
 
+        QString revision = QStringLiteral("unknown");
+        const QJsonDocument document = QJsonDocument::fromJson(lock.toUtf8());
+        if (document.isObject()) {
+            const QJsonObject nodes = document.object().value(QStringLiteral("nodes")).toObject();
+            const QJsonObject kernel = nodes.value(QStringLiteral("cachyos-kernel")).toObject();
+            revision = kernel.value(QStringLiteral("locked")).toObject()
+                           .value(QStringLiteral("rev")).toString(QStringLiteral("unknown"));
+        }
+        inputRevisionLabel->setText(
+            QStringLiteral("CachyOS source: %1").arg(revision.left(12)));
+        inputRevisionLabel->setToolTip(revision);
 
-    void refreshKernelInventory()
-    {
-        if (!kernelTable || !kernelInventoryStatus)
+        if (flake.isEmpty() || lock.isEmpty()) {
+            kernelTable->setRowCount(1);
+            setKernelCell(0, 0, QStringLiteral("Flake unavailable"));
+            setKernelCell(0, 1, QStringLiteral("—"));
+            setKernelCell(0, 2, QStringLiteral("NixOS Flake"));
+            setKernelCell(0, 3, QStringLiteral("Unavailable"));
+            kernelInventoryStatus->setText(
+                QStringLiteral("Both flake.nix and flake.lock must be readable in %1.").arg(flakeDir));
+            statusBar()->showMessage(QStringLiteral("Flake files are missing or unreadable"), 6000);
             return;
-        const QString flake = readFile(flakeDir + QStringLiteral("/flake.nix"));
-        const QString running = runReadOnly(QStringLiteral("uname"), {QStringLiteral("-r")}, 2500);
-        QString version = runReadOnly(QStringLiteral("nix"), {
-            QStringLiteral("eval"), QStringLiteral("--raw"),
-            QStringLiteral("--no-update-lock-file"),
-            flakeDir + QStringLiteral("#nixosConfigurations.nixos.config.boot.kernelPackages.kernel.modDirVersion")
-        }, 30000);
-        const bool failed = version.isEmpty() || version.contains(QStringLiteral("error:")) ||
-            version.contains(QStringLiteral("did not finish within")) ||
-            version.startsWith(QStringLiteral("Could not start"));
-        const bool known = flake.contains(QStringLiteral("rtBoreLtoV3KernelPackagesFor config.kumutuk.host.kernelKcfi"));
-        const QString name = flake.isEmpty() ? QStringLiteral("Flake unavailable") :
-            (known ? QStringLiteral("CachyOS RT-Bore-LTO") : QStringLiteral("Flake-selected kernel"));
+        }
+
+        const bool knownProfile =
+            flake.contains(QStringLiteral("rtBoreLtoV3KernelPackagesFor config.kumutuk.host.kernelKcfi"));
+        const QString name = knownProfile
+            ? QStringLiteral("CachyOS RT-Bore-LTO")
+            : QStringLiteral("Flake-selected kernel");
         const QString category = flake.contains(QStringLiteral("processorOpt = \"x86_64-v3\""))
-            ? QStringLiteral("x86-64-v3") : QStringLiteral("NixOS Flake");
-        if (failed)
-            version = QStringLiteral("Not available");
-        const bool isRunning = !failed && (running == version || running.startsWith(version + QLatin1Char('-')));
+            ? QStringLiteral("x86-64-v3")
+            : QStringLiteral("NixOS Flake");
+
         kernelTable->setRowCount(1);
-        kernelTable->setItem(0, 0, new QTableWidgetItem(name));
-        kernelTable->setItem(0, 1, new QTableWidgetItem(version));
-        kernelTable->setItem(0, 2, new QTableWidgetItem(category));
-        auto *status = new QTableWidgetItem(flake.isEmpty() ? QStringLiteral("Unavailable") :
-            (isRunning ? QStringLiteral("Running") : QStringLiteral("Configured")));
-        status->setTextAlignment(Qt::AlignCenter);
-        kernelTable->setItem(0, 3, status);
-        kernelTable->setRowHeight(0, 40);
-        kernelInventoryStatus->setText(flake.isEmpty()
-            ? QStringLiteral("Set NIXOS_CONFIG_FLAKE to the deployed NixOS Flake directory.")
-            : (failed ? QStringLiteral("Flake found, but the configured kernel version could not be evaluated.")
-                      : QStringLiteral("NixOS kernel selection stays declarative · build and activation are separate.")));
+        setKernelCell(0, 0, name);
+        setKernelCell(0, 1, QStringLiteral("Evaluating…"));
+        setKernelCell(0, 2, category);
+        setKernelCell(0, 3, QStringLiteral("Configured"));
+        kernelTable->setRowHeight(0, 35);
+        kernelInventoryStatus->setText(
+            QStringLiteral("Kernel selection stays in the Flake. Build and system activation are separate."));
+        statusBar()->showMessage(QStringLiteral("Kernel configuration refreshed"), 4000);
+
+        startKernelEvaluation();
     }
 
-    void refreshBootInformation()
+    void setKernelCell(int row, int column, const QString &value)
     {
-        if (!bootOutput || !generationOutput || polkitInspectionProcess)
-            return;
-        if (!requirePolkitHelper()) {
-            const QString failure = QStringLiteral("The restricted Polkit helper is unavailable. Rebuild NixOS before retrying.");
-            bootOutput->setPlainText(failure);
-            generationOutput->setPlainText(failure);
-            return;
-        }
+        auto *item = new QTableWidgetItem(value);
+        if (column == 3)
+            item->setTextAlignment(Qt::AlignCenter);
+        kernelTable->setItem(row, column, item);
+        if (row == 0)
+            kernelTable->setRowHeight(0, 35);
+    }
 
-        const QString pkexec = QStringLiteral("/run/wrappers/bin/pkexec");
-        const QString helper = qEnvironmentVariable("KERNEL_MANAGER_POLKIT_HELPER");
+    void startKernelEvaluation()
+    {
+        if (kernelEvaluationProcess)
+            return;
 
         auto *process = new QProcess(this);
-        polkitInspectionProcess = process;
-        process->setProgram(pkexec);
+        kernelEvaluationProcess = process;
+        process->setProcessChannelMode(QProcess::MergedChannels);
+
+        connect(process, &QProcess::finished, this,
+                [this, process](int exitCode, QProcess::ExitStatus exitStatus) {
+            const QString output = QString::fromLocal8Bit(process->readAll()).trimmed();
+            if (kernelEvaluationProcess == process)
+                kernelEvaluationProcess = nullptr;
+            process->deleteLater();
+
+            if (exitStatus != QProcess::NormalExit || exitCode != 0 || output.isEmpty() ||
+                output.contains(QStringLiteral("error:"))) {
+                setKernelCell(0, 1, QStringLiteral("Not available"));
+                setKernelCell(0, 3, QStringLiteral("Evaluation failed"));
+                kernelInventoryStatus->setText(output.isEmpty()
+                    ? QStringLiteral("The configured kernel version could not be evaluated.")
+                    : output);
+                return;
+            }
+
+            const bool running = runningKernelRelease == output ||
+                runningKernelRelease.startsWith(output + QLatin1Char('-'));
+            setKernelCell(0, 1, output);
+            setKernelCell(0, 3, running ? QStringLiteral("Running") : QStringLiteral("Next boot"));
+            kernelInventoryStatus->setText(running
+                ? QStringLiteral("The configured kernel matches the running kernel.")
+                : QStringLiteral("The configured kernel differs from the running kernel. Rebuild and switch to activate it."));
+        });
+
+        connect(process, &QProcess::errorOccurred, this,
+                [this, process](QProcess::ProcessError error) {
+            if (error != QProcess::FailedToStart)
+                return;
+            if (kernelEvaluationProcess == process)
+                kernelEvaluationProcess = nullptr;
+            setKernelCell(0, 1, QStringLiteral("Not available"));
+            setKernelCell(0, 3, QStringLiteral("Evaluation failed"));
+            kernelInventoryStatus->setText(
+                QStringLiteral("Could not start nix: %1").arg(process->errorString()));
+            process->deleteLater();
+        });
+
+        process->start(QStringLiteral("nix"), {
+            QStringLiteral("eval"),
+            QStringLiteral("--raw"),
+            QStringLiteral("--no-update-lock-file"),
+            flakeDir + QStringLiteral("#nixosConfigurations.nixos.config.boot.kernelPackages.kernel.modDirVersion")
+        });
+    }
+
+    void startPolkitSession()
+    {
+        if (polkitSessionProcess && polkitSessionProcess->state() != QProcess::NotRunning)
+            return;
+        if (!requirePolkitHelper())
+            return;
+
+        auto *process = new QProcess(this);
+        polkitSessionProcess = process;
+        polkitSessionReady = false;
+        polkitOutputBuffer.clear();
+        process->setProgram(QStringLiteral("/run/wrappers/bin/pkexec"));
         process->setArguments({
-            helper,
-            QStringLiteral("inspect-system"),
-            kDefaultFlake
+            qEnvironmentVariable("KERNEL_MANAGER_POLKIT_HELPER"),
+            QStringLiteral("session")
         });
         QProcessEnvironment environment = QProcessEnvironment::systemEnvironment();
         environment.insert(QStringLiteral("SYSTEMD_PAGER"), QStringLiteral("cat"));
@@ -773,103 +518,280 @@ private:
         process->setProcessEnvironment(environment);
         process->setProcessChannelMode(QProcess::MergedChannels);
 
-        bootOutput->setPlainText(QStringLiteral("Waiting for graphical administrator authorization…"));
-        generationOutput->setPlainText(QStringLiteral("Waiting for graphical administrator authorization…"));
-        if (bootStatus)
-            bootStatus->setText(QStringLiteral("Polkit authentication required for system-level inspection"));
+        authorizationStatus->setText(
+            QStringLiteral("Authenticate once to enable system information and privileged actions."));
         statusBar()->showMessage(QStringLiteral("Waiting for the graphical Polkit authorization dialog…"));
+
+        connect(process, &QProcess::readyReadStandardOutput, this, [this, process]() {
+            if (process != polkitSessionProcess)
+                return;
+            polkitOutputBuffer += QString::fromLocal8Bit(process->readAllStandardOutput());
+            qsizetype newline = -1;
+            while ((newline = polkitOutputBuffer.indexOf(QLatin1Char('\n'))) >= 0) {
+                QString line = polkitOutputBuffer.left(newline);
+                polkitOutputBuffer.remove(0, newline + 1);
+                if (line.endsWith(QLatin1Char('\r')))
+                    line.chop(1);
+                handlePolkitSessionLine(line);
+            }
+        });
 
         connect(process, &QProcess::finished, this,
                 [this, process](int exitCode, QProcess::ExitStatus exitStatus) {
-            const QString output = QString::fromLocal8Bit(process->readAll()).trimmed();
-            if (polkitInspectionProcess == process)
-                polkitInspectionProcess = nullptr;
+            if (process != polkitSessionProcess) {
+                process->deleteLater();
+                return;
+            }
+            polkitSessionProcess = nullptr;
+            polkitSessionReady = false;
+            privilegedRequestPending = false;
+            pendingPrivilegedAction.clear();
             process->deleteLater();
 
             if (exitStatus != QProcess::NormalExit || exitCode != 0) {
-                const QString failure = output.isEmpty()
-                    ? QStringLiteral("Polkit authorization was cancelled or the privileged inspection failed.")
-                    : output;
-                if (bootOutput)
-                    bootOutput->setPlainText(failure);
-                if (generationOutput)
-                    generationOutput->setPlainText(failure);
-                if (bootStatus)
-                    bootStatus->setText(QStringLiteral("System inspection was not authorized"));
-                if (statusBar())
-                    statusBar()->showMessage(QStringLiteral("Polkit authorization was not completed"), 6000);
-                return;
+                authorizationStatus->setText(
+                    QStringLiteral("Authorization ended. Press Refresh to authenticate again."));
+                statusBar()->showMessage(
+                    QStringLiteral("Polkit session ended; privileged actions are unavailable"), 7000);
+            } else if (!currentPrivilegedAction.isEmpty()) {
+                authorizationStatus->setText(
+                    QStringLiteral("The privileged session ended during an operation."));
             }
-
-            const QString bootBegin = QStringLiteral("__KERNEL_MANAGER_BOOT_ENTRIES_BEGIN__");
-            const QString bootEnd = QStringLiteral("__KERNEL_MANAGER_BOOT_ENTRIES_END__");
-            const QString generationsBegin = QStringLiteral("__KERNEL_MANAGER_GENERATIONS_BEGIN__");
-            const QString generationsEnd = QStringLiteral("__KERNEL_MANAGER_GENERATIONS_END__");
-            const qsizetype bootStart = output.indexOf(bootBegin);
-            const qsizetype bootFinish = output.indexOf(bootEnd, bootStart + bootBegin.size());
-            const qsizetype generationsStart = output.indexOf(generationsBegin);
-            const qsizetype generationsFinish =
-                output.indexOf(generationsEnd, generationsStart + generationsBegin.size());
-
-            if (bootStart < 0 || bootFinish < 0 ||
-                generationsStart < 0 || generationsFinish < 0) {
-                const QString failure =
-                    QStringLiteral("The privileged helper returned incomplete inspection data.\n%1").arg(output);
-                if (bootOutput)
-                    bootOutput->setPlainText(failure);
-                if (generationOutput)
-                    generationOutput->setPlainText(failure);
-                if (bootStatus)
-                    bootStatus->setText(QStringLiteral("Incomplete Polkit inspection result"));
-                return;
-            }
-
-            if (bootOutput) {
-                bootOutput->setPlainText(output.mid(
-                    bootStart + bootBegin.size(), bootFinish - bootStart - bootBegin.size()).trimmed());
-            }
-            if (generationOutput) {
-                generationOutput->setPlainText(output.mid(
-                    generationsStart + generationsBegin.size(),
-                    generationsFinish - generationsStart - generationsBegin.size()).trimmed());
-            }
-            if (bootStatus)
-                bootStatus->setText(QStringLiteral("Privileged read-only inspection · no boot entry or generation changed"));
-            if (statusBar())
-                statusBar()->showMessage(QStringLiteral("System boot entries and generations loaded"), 5000);
         });
 
         connect(process, &QProcess::errorOccurred, this,
                 [this, process](QProcess::ProcessError error) {
             if (error != QProcess::FailedToStart)
                 return;
+            if (process == polkitSessionProcess) {
+                polkitSessionProcess = nullptr;
+                polkitSessionReady = false;
+                privilegedRequestPending = false;
+                pendingPrivilegedAction.clear();
+            }
             const QString failure =
-                QStringLiteral("Could not start pkexec: %1").arg(process->errorString());
-            if (polkitInspectionProcess == process)
-                polkitInspectionProcess = nullptr;
-            if (bootOutput)
-                bootOutput->setPlainText(failure);
-            if (generationOutput)
-                generationOutput->setPlainText(failure);
-            if (bootStatus)
-                bootStatus->setText(QStringLiteral("Polkit inspection could not start"));
-            if (statusBar())
-                statusBar()->showMessage(QStringLiteral("Could not start the Polkit inspection helper"), 6000);
+                QStringLiteral("Could not start the Polkit session: %1").arg(process->errorString());
+            authorizationStatus->setText(failure);
+            statusBar()->showMessage(failure, 7000);
             process->deleteLater();
         });
 
         process->start();
     }
 
-    void refreshFlakeInformation()
+    bool sendPrivilegedRequest(const QString &action)
     {
-        if (!flakeOutput)
-            return;
-        const QString flake = readFile(flakeDir + QStringLiteral("/flake.nix"));
-        if (flake.isEmpty()) {
-            flakeOutput->setPlainText(QStringLiteral("Could not read %1/flake.nix").arg(flakeDir));
+        if (!polkitSessionReady || !polkitSessionProcess ||
+            polkitSessionProcess->state() != QProcess::Running) {
+            authorizationStatus->setText(
+                QStringLiteral("Authenticate first. Press Refresh to start a Polkit session."));
+            return false;
+        }
+        if (privilegedRequestPending) {
+            authorizationStatus->setText(
+                QStringLiteral("A system operation is already running. Wait for it to finish."));
+            return false;
+        }
+        const QByteArray request = action.toUtf8() + '\n';
+        if (polkitSessionProcess->write(request) != request.size()) {
+            authorizationStatus->setText(
+                QStringLiteral("Could not send the operation to the privileged session."));
+            return false;
+        }
+        privilegedRequestPending = true;
+        pendingPrivilegedAction = action;
+        return true;
+    }
+
+    void handlePolkitSessionLine(const QString &line)
+    {
+        if (line == QStringLiteral("__KM_SESSION_READY__")) {
+            polkitSessionReady = true;
+            authorizationStatus->setText(
+                QStringLiteral("Administrator authorization active · no more password prompts while this window stays open."));
+            statusBar()->showMessage(QStringLiteral("Authorized for this application session"), 5000);
+            sendPrivilegedRequest(QStringLiteral("inspect-system"));
             return;
         }
+
+        if (line.startsWith(QStringLiteral("__KM_ACTION_BEGIN__:"))) {
+            currentPrivilegedAction = line.mid(QStringLiteral("__KM_ACTION_BEGIN__:").size());
+            capturingBootEntries = false;
+            capturingGenerations = false;
+            if (operationOutput && currentPrivilegedAction != QStringLiteral("inspect-system"))
+                operationOutput->clear();
+            return;
+        }
+        if (line == QStringLiteral("__KM_BOOT_BEGIN__")) {
+            bootEntriesText.clear();
+            capturingBootEntries = true;
+            capturingGenerations = false;
+            return;
+        }
+        if (line == QStringLiteral("__KM_BOOT_END__")) {
+            capturingBootEntries = false;
+            return;
+        }
+        if (line == QStringLiteral("__KM_GENERATIONS_BEGIN__")) {
+            generationsText.clear();
+            capturingGenerations = true;
+            capturingBootEntries = false;
+            return;
+        }
+        if (line == QStringLiteral("__KM_GENERATIONS_END__")) {
+            capturingGenerations = false;
+            return;
+        }
+
+        if (line.startsWith(QStringLiteral("__KM_ACTION_END__:"))) {
+            const QString payload = line.mid(QStringLiteral("__KM_ACTION_END__:").size());
+            const QStringList fields = payload.split(QLatin1Char(':'));
+            const QString action = fields.value(0);
+            bool exitCodeValid = false;
+            const int exitCode = fields.value(1).toInt(&exitCodeValid);
+            const bool succeeded = exitCodeValid && exitCode == 0;
+
+            if (action == QStringLiteral("inspect-system")) {
+                authorizationStatus->setText(succeeded
+                    ? QStringLiteral("Administrator authorization active · system information is ready.")
+                    : QStringLiteral("Authorized, but system information could not be read. See System info."));
+            } else {
+                if (operationOutput) {
+                    operationOutput->appendPlainText(succeeded
+                        ? QStringLiteral("\nOperation completed successfully.")
+                        : QStringLiteral("\nOperation failed with exit code %1.").arg(exitCodeValid ? exitCode : -1));
+                }
+                statusBar()->showMessage(succeeded
+                    ? QStringLiteral("Operation completed")
+                    : QStringLiteral("Operation failed · see the operation output"), 7000);
+            }
+
+            currentPrivilegedAction.clear();
+            privilegedRequestPending = false;
+            pendingPrivilegedAction.clear();
+            capturingBootEntries = false;
+            capturingGenerations = false;
+
+            if (action != QStringLiteral("inspect-system") && succeeded) {
+                refreshState();
+                if (action == QStringLiteral("rebuild-switch"))
+                    sendPrivilegedRequest(QStringLiteral("inspect-system"));
+            }
+            return;
+        }
+
+        if (capturingBootEntries) {
+            if (!bootEntriesText.isEmpty())
+                bootEntriesText.append(QLatin1Char('\n'));
+            bootEntriesText.append(line);
+            return;
+        }
+        if (capturingGenerations) {
+            if (!generationsText.isEmpty())
+                generationsText.append(QLatin1Char('\n'));
+            generationsText.append(line);
+            return;
+        }
+        if (!line.isEmpty() && operationOutput &&
+            currentPrivilegedAction != QStringLiteral("inspect-system")) {
+            operationOutput->appendPlainText(line);
+        } else if (!line.isEmpty() && currentPrivilegedAction == QStringLiteral("inspect-system")) {
+            statusBar()->showMessage(line, 5000);
+        }
+    }
+
+    void runPrivilegedAction(const QString &action, const QString &title)
+    {
+        if (!polkitSessionReady || !polkitSessionProcess) {
+            QMessageBox::warning(
+                this, QStringLiteral("Authorization required"),
+                QStringLiteral("The Polkit session is not active. Press Refresh and authenticate once."));
+            return;
+        }
+        if (privilegedRequestPending || !currentPrivilegedAction.isEmpty()) {
+            QMessageBox::information(
+                this, QStringLiteral("Operation in progress"),
+                QStringLiteral("Wait for the current privileged operation to finish."));
+            return;
+        }
+
+        auto *dialog = new QDialog(this);
+        dialog->setAttribute(Qt::WA_DeleteOnClose);
+        dialog->setWindowTitle(title);
+        dialog->resize(720, 430);
+        auto *layout = new QVBoxLayout(dialog);
+        layout->setContentsMargins(14, 12, 14, 12);
+        layout->setSpacing(8);
+
+        auto *description = new QLabel(
+            QStringLiteral("Using the already-authorized session. No new password prompt is needed."),
+            dialog);
+        description->setObjectName(QStringLiteral("mutedText"));
+        description->setWordWrap(true);
+        layout->addWidget(description);
+
+        auto *output = makeOutputPane(dialog);
+        output->setMinimumHeight(300);
+        output->setPlainText(QStringLiteral("Starting operation…"));
+        layout->addWidget(output, 1);
+
+        auto *closeButton = new QPushButton(QStringLiteral("Close"), dialog);
+        connect(closeButton, &QPushButton::clicked, dialog, &QDialog::accept);
+        auto *buttonRow = new QHBoxLayout();
+        buttonRow->addStretch();
+        buttonRow->addWidget(closeButton);
+        layout->addLayout(buttonRow);
+
+        operationDialog = dialog;
+        operationOutput = output;
+        dialog->show();
+
+        if (!sendPrivilegedRequest(action)) {
+            output->appendPlainText(QStringLiteral("Could not start the operation."));
+            return;
+        }
+        statusBar()->showMessage(title + QStringLiteral(" started"), 5000);
+    }
+
+    void showSystemInformation()
+    {
+        QDialog dialog(this);
+        dialog.setWindowTitle(QStringLiteral("System information"));
+        dialog.setMinimumSize(720, 560);
+        auto *layout = new QVBoxLayout(&dialog);
+        layout->setContentsMargins(16, 14, 16, 14);
+        layout->setSpacing(9);
+
+        auto *bootLabel = new QLabel(QStringLiteral("Systemd-boot entries"), &dialog);
+        bootLabel->setObjectName(QStringLiteral("sectionTitle"));
+        layout->addWidget(bootLabel);
+        auto *bootPane = makeOutputPane(&dialog);
+        bootPane->setMinimumHeight(175);
+        bootPane->setPlainText(bootEntriesText);
+        layout->addWidget(bootPane, 1);
+
+        auto *generationLabel = new QLabel(QStringLiteral("NixOS system generations"), &dialog);
+        generationLabel->setObjectName(QStringLiteral("sectionTitle"));
+        layout->addWidget(generationLabel);
+        auto *generationPane = makeOutputPane(&dialog);
+        generationPane->setMinimumHeight(145);
+        generationPane->setPlainText(generationsText);
+        layout->addWidget(generationPane, 1);
+
+        auto *closeButton = new QPushButton(QStringLiteral("Close"), &dialog);
+        connect(closeButton, &QPushButton::clicked, &dialog, &QDialog::accept);
+        auto *buttonRow = new QHBoxLayout();
+        buttonRow->addStretch();
+        buttonRow->addWidget(closeButton);
+        layout->addLayout(buttonRow);
+        dialog.exec();
+    }
+
+    QString flakeConfigurationText() const
+    {
+        const QString flake = readFile(flakeDir + QStringLiteral("/flake.nix"));
+        if (flake.isEmpty())
+            return QStringLiteral("Could not read %1/flake.nix").arg(flakeDir);
 
         const QStringList lines = flake.split(QLatin1Char('\n'));
         QStringList selected;
@@ -879,16 +801,43 @@ private:
                 lines.at(i).contains(QStringLiteral("kernelKcfi"))) {
                 const qsizetype first = qMax<qsizetype>(0, i - 4);
                 const qsizetype last = qMin<qsizetype>(lines.size() - 1, i + 5);
-                for (qsizetype n = first; n <= last; ++n)
+                for (qsizetype n = first; n <= last; ++n) {
                     selected.append(QStringLiteral("%1  %2")
-                                        .arg(static_cast<qlonglong>(n + 1), 4)
-                                        .arg(lines.at(n)));
+                        .arg(static_cast<qlonglong>(n + 1), 4)
+                        .arg(lines.at(n)));
+                }
                 selected.append(QString());
             }
         }
-        flakeOutput->setPlainText(selected.isEmpty()
+        return selected.isEmpty()
             ? QStringLiteral("No boot.kernelPackages declaration was found.")
-            : selected.join(QLatin1Char('\n')));
+            : selected.join(QLatin1Char('\n'));
+    }
+
+    void showFlakeConfiguration()
+    {
+        QDialog dialog(this);
+        dialog.setWindowTitle(QStringLiteral("Kernel Flake configuration"));
+        dialog.setMinimumSize(720, 500);
+        auto *layout = new QVBoxLayout(&dialog);
+        layout->setContentsMargins(16, 14, 16, 14);
+        layout->setSpacing(9);
+
+        auto *path = new QLabel(flakeDir, &dialog);
+        path->setObjectName(QStringLiteral("mutedText"));
+        layout->addWidget(path);
+
+        auto *output = makeOutputPane(&dialog);
+        output->setPlainText(flakeConfigurationText());
+        layout->addWidget(output, 1);
+
+        auto *closeButton = new QPushButton(QStringLiteral("Close"), &dialog);
+        connect(closeButton, &QPushButton::clicked, &dialog, &QDialog::accept);
+        auto *buttonRow = new QHBoxLayout();
+        buttonRow->addStretch();
+        buttonRow->addWidget(closeButton);
+        layout->addLayout(buttonRow);
+        dialog.exec();
     }
 
     bool confirmAction(const QString &title, const QString &message)
@@ -930,7 +879,7 @@ private:
         const QString pkexec = QStringLiteral("/run/wrappers/bin/pkexec");
         if (!QFileInfo(pkexec).isExecutable()) {
             QMessageBox::critical(this, QStringLiteral("Polkit is unavailable"),
-                QStringLiteral("The NixOS setuid Polkit wrapper at /run/wrappers/bin/pkexec is missing. Rebuild NixOS with security.polkit enabled."));
+                QStringLiteral("The NixOS setuid Polkit wrapper at /run/wrappers/bin/pkexec is missing. Rebuild with security.polkit.enablePkexecWrapper enabled."));
             return false;
         }
         const QString helper = qEnvironmentVariable("KERNEL_MANAGER_POLKIT_HELPER");
@@ -940,13 +889,6 @@ private:
             return false;
         }
         return true;
-    }
-
-    QString polkitCommand(const QString &action, const QString &argument) const
-    {
-        const QString helper = qEnvironmentVariable("KERNEL_MANAGER_POLKIT_HELPER");
-        return QStringLiteral("/run/wrappers/bin/pkexec %1 %2 %3")
-            .arg(shellQuote(helper), action, shellQuote(argument));
     }
 
     bool requireFlakeFiles()
@@ -959,7 +901,7 @@ private:
         QMessageBox::critical(
             this,
             QStringLiteral("NixOS Flake not found"),
-            QStringLiteral("Both flake.nix and flake.lock must exist in:\\n%1\\n\\n"
+            QStringLiteral("Both flake.nix and flake.lock must exist in:\n%1\n\n"
                            "Set NIXOS_CONFIG_FLAKE to the deployed Flake directory or repair the source tree.")
                 .arg(flakeDir));
         return false;
@@ -971,13 +913,12 @@ private:
             return;
         if (!confirmAction(
                 QStringLiteral("Update CachyOS Flake input?"),
-                QStringLiteral("Polkit will show the graphical authentication dialog. "
-                               "The restricted helper updates only cachyos-kernel in flake.lock. "
-                               "No kernel build or system activation will start.")))
+                QStringLiteral("This uses the already-authorized helper session. "
+                               "It updates only cachyos-kernel in flake.lock. "
+                               "No additional password prompt, kernel build, or system activation is needed.")))
             return;
-        openTerminalAction(
-            QStringLiteral("CachyOS Flake input update"),
-            polkitCommand(QStringLiteral("update-cachyos"), flakeDir));
+        runPrivilegedAction(QStringLiteral("update-cachyos"),
+                            QStringLiteral("CachyOS Flake input update"));
     }
 
     void buildKernelOnly()
@@ -1003,13 +944,12 @@ private:
             return;
         if (!confirmAction(
                 QStringLiteral("Rebuild and switch the complete NixOS system?"),
-                QStringLiteral("Polkit will open the Hyprland graphical authentication dialog. "
-                               "The helper runs only nixos-rebuild switch for this Flake. "
-                               "No password is entered into or passed through Kitty.")))
+                QStringLiteral("This reuses the already-authorized helper session. "
+                               "It runs only nixos-rebuild switch for this Flake. "
+                               "No additional password prompt is required.")))
             return;
-        openTerminalAction(
-            QStringLiteral("NixOS rebuild and switch"),
-            polkitCommand(QStringLiteral("rebuild-switch"), flakeDir + QStringLiteral("#nixos")));
+        runPrivilegedAction(QStringLiteral("rebuild-switch"),
+                            QStringLiteral("NixOS rebuild and switch"));
     }
 };
 
