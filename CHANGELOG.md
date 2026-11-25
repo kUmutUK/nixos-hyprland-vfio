@@ -25,6 +25,12 @@ This file summarizes notable changes in English. The separate Turkish release-by
 - The existing cache run published the default output only. Re-run the manual cache workflow after this change is merged to backfill the split outputs for the current lock; then verify all three paths and the full-system dry-build before another activation.
 - No kernel options, flake inputs, VM XML, PCI/USB identities, UUIDs, or runtime preferences are changed.
 
+### Bootstrap Cachix in clean Live ISO installs — 2026-11-25
+
+- Pass the project's public Cachix substituter and signing keys directly to the root-run `nixos-install` command. The target system's `nix.settings` are not active in the Live ISO that performs the first build.
+- Require the manual cache workflow to have published all three outputs (`out`, `modules`, and `dev`) for the exact locked kernel before claiming a cache-only clean install. Missing outputs or an untrusted signature still cause Nix to fall back to a local build.
+- Extend the documentation-integrity regression to keep the Live ISO cache bootstrap and trust settings in the installation guide.
+
 ### Make Cachix signature trust daemon-owned — 2026-11-25
 
 - Keep the Cachix and Nix Community URLs in the flake's `extra-substituters`, but remove the duplicated `extra-trusted-public-keys` flake setting. Nix restricts changes to `trusted-public-keys` for untrusted clients; the signing keys remain in the root-managed NixOS daemon configuration at `nix.settings.trusted-public-keys`.
