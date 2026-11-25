@@ -818,7 +818,10 @@ in
   # and `grep -c pam_unix /etc/pam.d/hyprlock`.
   security.pam.services.hyprlock = { };
 
-  environment.systemPackages = [ heliumBrowser ] ++ (with pkgs; [
+  environment.systemPackages = [
+    heliumBrowser
+  ]
+  ++ (with pkgs; [
     hostProfile
     brave-origin
     kitty
