@@ -222,7 +222,7 @@ printf 'Backup saved to %s\n' "$BACKUP"
 
 ```bash
 REPO="$HOME/nixos-hyprland-vfio"   # same checkout path as above
-for file in hosts/nixos/configuration.nix hosts/nixos/home.nix hosts/nixos/host-settings.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix helium.nix; do
+for file in hosts/nixos/configuration.nix hosts/nixos/home.nix hosts/nixos/host-settings.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix helium.nix kernel-manager.nix kernel-manager.cpp; do
   target="/etc/nixos/nixos/$file"
   if [ -f "$target" ]; then
     diff -u "$target" "$REPO/nixos/$file" || test "$?" -eq 1
@@ -237,7 +237,7 @@ grep -nE 'system\.stateVersion|home\.stateVersion' \
   /home/localhost/.config/home-manager/home.nix 2>/dev/null || true
 ```
 
-5. After reviewing that diff and the values above, copy all eight required Nix/flake files. This overwrites their corresponding target files, so do not run it before making and checking the backup:
+5. After reviewing that diff and the values above, copy all ten required Nix/flake and native application source files. This overwrites their corresponding target files, so do not run it before making and checking the backup:
 
 ```bash
 set -Eeuo pipefail
@@ -252,7 +252,7 @@ if [ -n "$(git -C "$REPO" status --porcelain --untracked-files=all)" ]; then
   exit 1
 fi
 sudo install -d -m 0755 /etc/nixos/nixos/hosts/nixos
-for file in hosts/nixos/configuration.nix hosts/nixos/home.nix hosts/nixos/host-settings.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix helium.nix; do
+for file in hosts/nixos/configuration.nix hosts/nixos/home.nix hosts/nixos/host-settings.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix helium.nix kernel-manager.nix kernel-manager.cpp; do
   sudo install -D -m 0644 "$REPO/nixos/$file" "/etc/nixos/nixos/$file"
 done
 sudo install -d -m 0755 /etc/nixos/nixos/hosts/nixos/hooks
@@ -859,6 +859,7 @@ This launches a 1440×1440 game surface in fullscreen and stretches it to a 2560
 - `hypridle` requests suspend after 3600 seconds (one hour); the configured `before_sleep_cmd` invokes Hyprlock before suspension.
 
 - **Brave integration:** This repository installs the `brave-origin` Nixpkgs package through `environment.systemPackages`. Waybar's MPRIS player list and the `mpvpaper-watchdog` class filter use the `brave-origin` application identifier; Waybar's title rewrite separately matches Brave window titles. The Brave-specific rules therefore target the repository-installed package. The watchdog's independent GameMode behavior is unchanged.
+- **NixOS Kernel Manager:** the application-menu launcher is a native Qt 6 desktop window built from `nixos/kernel-manager.nix` and `nixos/kernel-manager.cpp`. Its Overview, Boot entries, Flake configuration, and Kernel actions pages mirror the standalone app experience of LSFG-VK and MAKO; update/build/switch actions have separate confirmations and show full command output in Kitty. `nixos/kernel-manager.sh` remains only as a legacy terminal/Rofi fallback.
 - **Helium Browser integration:** `nixos/helium.nix` wraps the official x86-64 Helium 0.22.4.1 AppImage with Nixpkgs `appimageTools`, installs its upstream desktop entry/icon, and requests Ozone Wayland auto-detection only when `NIXOS_OZONE_WL` and `WAYLAND_DISPLAY` are set. This is a community-maintained Nix wrapper, not an upstream-supported Nix package; the official upstream download is the AppImage. Helium is installed alongside Brave: no default-browser/MIME association, Brave package, Waybar MPRIS rule, or `mpvpaper-watchdog` rule is changed.
 - **VG27AQ1A DisplayPort audio resume:** `services.pipewire.wireplumber.extraConfig` matches only the reference-host sink `alsa_output.pci-0000_0b_00.1.hdmi-stereo-extra4` and sets `session.suspend-timeout-seconds = 0`. The reference-host owner reported that the 2–3 second audio delay after pausing and resuming media disappeared with this rule in a temporary user-level WirePlumber drop-in. The declaration is in `nixos/hosts/nixos/configuration.nix`. Release #32's general `TARGET_HOST_VALIDATED=true` target-host attestation does not log a rule-specific check of this sink; activation of this exact rule and its persistence after reboot remain unverified. This leaves other sinks' idle-suspend behavior unchanged. See the [pinned NixOS WirePlumber module](https://github.com/NixOS/nixpkgs/blob/f4a03c008967841f2a0b3cb7c436fc6fc31671f6/nixos/modules/services/desktops/pipewire/wireplumber.nix) and [WirePlumber ALSA rules documentation](https://pipewire.pages.freedesktop.org/wireplumber/daemon/configuration/modifying_configuration.html).
 - `render.cm_auto_hdr = 0` disables Hyprland's automatic switch to HDR when a fullscreen application needs it; it does not force HDR or 10-bit output. This is a deliberate Home Manager runtime setting. The v1.4.7 clean-install/VM validation did not separately measure HDR transitions, 10-bit output, or display-switch flicker; see [Hyprland's render options](https://wiki.hypr.land/configuring/core/config-options/).
@@ -940,7 +941,7 @@ The repeated missing `.ko.BTF.1` failure across two different Rust modules shows
 
 ## Repository map (selected entry points; non-exhaustive)
 
-This is a curated map of selected entry points, not a complete inventory of the 93 tracked files. Use the repository file browser for the full source tree.
+This is a curated map of selected entry points, not a complete inventory of the 95 tracked files. Use the repository file browser for the full source tree.
 
 ```text
 .
@@ -956,6 +957,8 @@ This is a curated map of selected entry points, not a complete inventory of the 
 │   ├── lsfg-vk-v2.nix
 │   ├── mako-renderer.nix
 │   ├── helium.nix
+│   ├── kernel-manager.nix
+│   ├── kernel-manager.cpp
 │   ├── hosts/
 │   │   ├── .template/
 │   │   └── nixos/
@@ -988,10 +991,10 @@ This is a curated map of selected entry points, not a complete inventory of the 
 The root files provide the project entry point, installation guidance, contribution requirements, release procedure, and safety disclaimers. The NixOS directory owns the system/Home Manager modules and pinned package expressions; `vm-xml/` holds the Windows guest template; `scripts/` contains installer, maintenance, and regression helpers; `docs/` contains supporting technical guides and historical/current review reports.
 
 - `nixos/hosts/nixos/configuration.nix`, `nixos/hosts/nixos/home.nix`, `nixos/flake.nix`, and `nixos/flake.lock`: NixOS modules, Home Manager configuration, flake outputs, and locked inputs.
-- `nixos/lsfg-vk-v2.nix`: pinned LSFG-VK v2 package definition; `nixos/mako-renderer.nix`: optional MAKO Renderer package; `nixos/helium.nix`: hash-pinned Helium AppImage package.
+- `nixos/lsfg-vk-v2.nix`: pinned LSFG-VK v2 package; `nixos/mako-renderer.nix`: MAKO Renderer package; `nixos/helium.nix`: hash-pinned Helium AppImage package; `nixos/kernel-manager.nix` and `nixos/kernel-manager.cpp`: native Qt 6 Kernel Manager application.
 - `nixos/hosts/nixos/hooks/qemu` and `vm-xml/win10.xml`: VFIO handoff hook and Windows guest template.
 - `scripts/optiscaler_manager.py` and `scripts/test-optiscaler-manager.py`: optional per-game manager and its offline regression suite; see [the manager guide](docs/OPTISCALER-MANAGER.md).
-- `nixos/kernel-manager.sh`: Rofi-based NixOS kernel manager for live kernel/boot status and explicit Flake operations.
+- `nixos/kernel-manager.cpp`: Qt 6 desktop UI with Overview, Boot entries, Flake configuration, and Kernel actions pages. It follows the standalone application style of LSFG-VK and MAKO; mutating actions use separate confirmation dialogs and open Kitty for visible command output. `nixos/kernel-manager.sh` remains a legacy terminal/Rofi fallback source and is no longer the desktop launcher.
 - `scripts/test-vm-xml-paths.py`, `scripts/test-documentation-integrity.py`, `scripts/test-release-workflow-python.py`, and the other `scripts/test-*.py` files: focused regression checks.
 - `docs/AUDIT-2026-10-28-VM-XML-VFIO.md`: dated historical audit; [the repair and validation report](docs/REPAIR-AND-VALIDATION-REPORT.md) is the current verification record.
 - `docs/SERPANTINUM.md`: Serpantinum desktop-shell integration — what it replaces, what it keeps, the keybind map, the settings model, and update/fallback procedures.
@@ -1072,12 +1075,13 @@ bash scripts/test-automated-vm-backup.sh
 python3 scripts/test-benchmark-report.py
 ```
 
-Build the current LSFG-VK v2 flake output from the NixOS flake directory:
+Build the LSFG-VK v2, Helium, and native Qt Kernel Manager flake outputs from the NixOS flake directory:
 
 ```bash
 cd nixos
 nix build .#lsfg-vk-v2
 nix build .#helium
+nix build .#kernel-manager
 ```
 
 Normal CI also runs the archive, installer, VM, VFIO hook, generated Lua, ShellCheck, Statix, Deadnix, and Nix evaluation checks. For `install.sh`, this is static and mocked regression coverage only; No end-to-end run of `install.sh` against a live NixOS/libvirt target host has been completed. Normal CI is not a substitute for the manual full NixOS system build when NixOS modules, kernel settings, flake inputs, or other closure-affecting files change. Follow the current full-system build gate in [the repair report](docs/REPAIR-AND-VALIDATION-REPORT.md) and do not release while that gate is open.

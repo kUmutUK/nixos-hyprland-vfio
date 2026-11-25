@@ -48,19 +48,19 @@ Kernel selection remains declarative in `nixos/flake.nix`:
 boot.kernelPackages = rtBoreLtoV3KernelPackagesFor config.kumutuk.host.kernelKcfi;
 ```
 
-The repository now includes a **NixOS Kernel Manager** front-end using the existing Rofi theme. Launch it from the application menu (**NixOS Kernel Manager**) or run:
+The repository now includes a **native Qt 6 NixOS Kernel Manager desktop app**, using the same standalone-window approach as the LSFG-VK and MAKO applications. It has a sidebar and dedicated Overview, Boot entries, Flake configuration, and Kernel actions pages. Its dark palette and rose accent are aligned with the surrounding desktop theme. Launch it from the application menu (**NixOS Kernel Manager**) or run:
 
 ```bash
 nixos-kernel-manager
 ```
 
-It reports the running kernel, Flake-declared kernel profile, locked `cachyos-kernel` revision, systemd-boot entries, and NixOS system generations. It can inspect the Flake declaration, build only the selected kernel without activation, update only the `cachyos-kernel` input in `flake.lock`, or run an explicit full-system `nixos-rebuild switch`.
+It reports the running kernel, Flake-declared kernel profile, locked `cachyos-kernel` revision, systemd-boot entries, NixOS system generations, and the selected kernel declaration. The Overview and inspection pages are read-only. Kernel actions are presented as separate cards: updating only the `cachyos-kernel` input in `flake.lock`, building only the selected kernel without activation, or running an explicit full-system `nixos-rebuild switch`. Every mutating action has a Qt confirmation dialog; after confirmation, Kitty opens with the full command output and a close-on-Enter prompt.
 
 **Safety boundaries:**
 
 - Kernel selection remains in the Flake; the manager does not install Arch/AUR packages, write boot entries, or edit `boot.kernelPackages`.
 - Updating changes only the CachyOS Flake lock entry. It does not build or activate a kernel.
-- Kernel-only build and full-system rebuild are separate actions. Each has a Rofi confirmation; a kernel-only build does not switch the running system.
+- Kernel-only build and full-system rebuild are separate actions. Each has its own Qt confirmation dialog; a kernel-only build does not switch the running system.
 - Full-system rebuild is a separate, explicit activation. It does not update the lock file.
 - The manager reflects the current Flake. It does not offer an LTS choice because the old LTS specialisation has been removed from the current configuration.
 

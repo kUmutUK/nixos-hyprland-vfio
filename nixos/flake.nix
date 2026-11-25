@@ -77,6 +77,7 @@
       lsfgVkV2Package = pkgsUnfree.callPackage ./lsfg-vk-v2.nix { };
       makoRendererPackage = pkgs.callPackage ./mako-renderer.nix { };
       heliumPackage = pkgs.callPackage ./helium.nix { };
+      kernelManagerPackage = pkgs.callPackage ./kernel-manager.nix { };
     in
     {
       nixosConfigurations.nixos = nixpkgs.lib.nixosSystem {
@@ -116,11 +117,13 @@
         ];
       };
 
-      # Expose the pinned LSFG-VK v2 and optional MAKO Renderer packages for CI/contributors.
+      # Expose the pinned LSFG-VK v2, MAKO Renderer, Helium, and Qt Kernel Manager
+      # outputs for CI/contributors.
       packages.${system} = {
         lsfg-vk-v2 = lsfgVkV2Package;
         mako-renderer = makoRendererPackage;
         helium = heliumPackage;
+        kernel-manager = kernelManagerPackage;
       };
 
       # The README uses `nix develop`; expose one flake dev shell rather than a

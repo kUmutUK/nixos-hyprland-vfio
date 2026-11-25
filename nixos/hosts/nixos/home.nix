@@ -30,21 +30,8 @@ let
     text = builtins.readFile "${homeScriptsDir}/waybar-amdgpu.sh";
   };
 
-  # Rofi front-end for the Flake-declared kernel. Mutating actions require confirmation.
-  nixosKernelManager = pkgs.writeShellApplication {
-    name = "nixos-kernel-manager";
-    runtimeInputs = with pkgs; [
-      coreutils
-      gnugrep
-      jq
-      kitty
-      nix
-      rofi
-      sudo
-      systemd
-    ];
-    text = builtins.readFile ../../kernel-manager.sh;
-  };
+  # Native Qt 6 desktop application, matching the standalone LSFG-VK and MAKO UIs.
+  nixosKernelManager = pkgs.callPackage ../../kernel-manager.nix { };
 
   # Host-specific values (monitor output/mode, wallpaper path, git identity) are
   # defined once in nixos/hosts/nixos/host-settings.nix and read here through
@@ -1002,9 +989,9 @@ in
   xdg.desktopEntries."nixos-kernel-manager" = {
     name = "NixOS Kernel Manager";
     genericName = "Kernel and boot manager";
-    comment = "Inspect and manage the Flake-selected NixOS kernel";
+    comment = "Native Qt desktop interface for the Flake-selected NixOS kernel";
     exec = "${nixosKernelManager}/bin/nixos-kernel-manager";
-    icon = "preferences-system";
+    icon = "nixos-kernel-manager";
     terminal = false;
     categories = [
       "System"

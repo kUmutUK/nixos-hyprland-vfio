@@ -4,6 +4,12 @@ This file summarizes notable changes in English. The separate Turkish release-by
 
 ## [Unreleased]
 
+### Native Qt NixOS Kernel Manager application — 2026-11-25
+
+- Replace the desktop-launched Rofi menu with a standalone Qt 6 window patterned after the independent LSFG-VK and MAKO application experience: sidebar navigation, status cards, boot entries, Flake inspection, and separate action cards.
+- Preserve the declarative kernel model and the existing three confirmed operations: update only `cachyos-kernel` in `flake.lock`, build only the selected kernel without activation, or run a full `nixos-rebuild switch`. Command execution stays visible in Kitty for sudo prompts and build output; no bootloader editing or LTS selection is introduced.
+- Package the UI and custom icon as a native Nix flake output, install it through Home Manager, and add its two sources to installer preflight, backup, deployment, and rollback. Normal CI compiles the Qt application; fresh full-system build and target-host UI validation remain outstanding.
+
 ### Integrate Helium Browser on NixOS — 2026-11-25
 
 - Add Helium 0.22.4.1 for x86-64 from the official Linux AppImage, pinned to GitHub's published SHA-256 digest. The local Nix expression uses Nixpkgs `appimageTools`, carries the upstream desktop entry/icon, and exposes a `helium` package output for CI and manual builds.
