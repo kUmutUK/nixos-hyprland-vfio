@@ -1,5 +1,6 @@
 #include <QApplication>
 #include <QCloseEvent>
+#include <QDialog>
 #include <QAbstractItemView>
 #include <QHeaderView>
 #include <QDir>
@@ -115,7 +116,8 @@ public:
 protected:
     void closeEvent(QCloseEvent *event) override
     {
-        if (currentPrivilegedAction == QStringLiteral("update-cachyos") ||
+        if (privilegedRequestPending ||
+            currentPrivilegedAction == QStringLiteral("update-cachyos") ||
             currentPrivilegedAction == QStringLiteral("rebuild-switch")) {
             QMessageBox::information(
                 this, QStringLiteral("Operation still running"),
@@ -659,16 +661,18 @@ private:
                 statusBar()->showMessage(succeeded
                     ? QStringLiteral("Operation completed")
                     : QStringLiteral("Operation failed · see the operation output"), 7000);
-                if (succeeded) {
-                    refreshState();
-                    if (action == QStringLiteral("rebuild-switch"))
-                        sendPrivilegedRequest(QStringLiteral("inspect-system"));
-                }
             }
+
             currentPrivilegedAction.clear();
             privilegedRequestPending = false;
             capturingBootEntries = false;
             capturingGenerations = false;
+
+            if (action != QStringLiteral("inspect-system") && succeeded) {
+                refreshState();
+                if (action == QStringLiteral("rebuild-switch"))
+                    sendPrivilegedRequest(QStringLiteral("inspect-system"));
+            }
             return;
         }
 
@@ -700,7 +704,7 @@ private:
                 QStringLiteral("The Polkit session is not active. Press Refresh and authenticate once."));
             return;
         }
-        if (!currentPrivilegedAction.isEmpty()) {
+        if (privilegedRequestPending || !currentPrivilegedAction.isEmpty()) {
             QMessageBox::information(
                 this, QStringLiteral("Operation in progress"),
                 QStringLiteral("Wait for the current privileged operation to finish."));
