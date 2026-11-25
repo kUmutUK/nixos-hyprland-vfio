@@ -1,4 +1,6 @@
 #include <QApplication>
+#include <QAbstractItemView>
+#include <QHeaderView>
 #include <QList>
 #include <QDir>
 #include <QFile>
@@ -6,6 +8,7 @@
 #include <QFrame>
 #include <QGridLayout>
 #include <QHBoxLayout>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLabel>
@@ -19,6 +22,8 @@
 #include <QScrollArea>
 #include <QStackedWidget>
 #include <QStatusBar>
+#include <QTableWidget>
+#include <QTableWidgetItem>
 #include <QVBoxLayout>
 #include <QWidget>
 
@@ -127,7 +132,7 @@ public:
 
         buildWindow();
         refreshState();
-        statusBar()->showMessage(QStringLiteral("Read-only system inspection · changes always require confirmation"));
+        statusBar()->showMessage(QStringLiteral("Read-only inspection · NixOS declarative kernel management"));
     }
 
 private:
@@ -144,6 +149,9 @@ private:
     QPlainTextEdit *bootOutput = nullptr;
     QPlainTextEdit *generationOutput = nullptr;
     QPlainTextEdit *flakeOutput = nullptr;
+    QTableWidget *kernelTable = nullptr;
+    QTableWidget *bootTable = nullptr;
+    QLabel *kernelInventoryStatus = nullptr;
     QList<QPushButton *> navigationButtons;
 
     static QString styleSheetText()
@@ -160,7 +168,7 @@ private:
                 border-right: 1px solid #29303c;
             }
             QLabel#brandMark {
-                background: #eab2c2;
+                background: #69aee8;
                 color: #20232c;
                 border-radius: 13px;
                 font-size: 21px;
@@ -175,7 +183,7 @@ private:
                 color: #9ca7b8;
             }
             QLabel#eyebrow {
-                color: #eab2c2;
+                color: #69aee8;
                 font-size: 11px;
                 font-weight: 700;
                 letter-spacing: 1px;
@@ -232,13 +240,13 @@ private:
                 color: #ffffff;
             }
             QPushButton#navButton:checked {
-                background: #352a34;
-                color: #f2bfd0;
-                border-left: 3px solid #eab2c2;
+                background: #20364a;
+                color: #c2e2ff;
+                border-left: 3px solid #69aee8;
                 padding-left: 11px;
             }
             QPushButton#primaryButton {
-                background: #eab2c2;
+                background: #69aee8;
                 color: #25232b;
                 border: none;
                 border-radius: 9px;
@@ -246,7 +254,7 @@ private:
                 font-weight: 750;
             }
             QPushButton#primaryButton:hover {
-                background: #f2c4d1;
+                background: #8bc7fa;
             }
             QPushButton#secondaryButton {
                 background: #293241;
@@ -265,9 +273,35 @@ private:
                 border: 1px solid #303948;
                 border-radius: 11px;
                 padding: 12px;
-                selection-background-color: #704a5d;
+                selection-background-color: #285b82;
                 font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace;
                 font-size: 12px;
+            }
+            QTableWidget#kernelTable, QTableWidget#bootTable {
+                background: #171c23;
+                alternate-background-color: #202832;
+                color: #edf0f7;
+                border: 1px solid #37414d;
+                border-radius: 8px;
+                gridline-color: transparent;
+                selection-background-color: #24537b;
+                selection-color: #ffffff;
+            }
+            QTableWidget#kernelTable::item, QTableWidget#bootTable::item {
+                padding: 9px 10px;
+                border-bottom: 1px solid #303944;
+            }
+            QHeaderView::section {
+                background: #222a33;
+                color: #c8d3df;
+                padding: 9px 10px;
+                border: none;
+                border-bottom: 1px solid #3a4654;
+                font-weight: 700;
+            }
+            QTableCornerButton::section {
+                background: #222a33;
+                border: none;
             }
             QStatusBar {
                 background: #171b24;
@@ -318,9 +352,9 @@ private:
         sideLayout->addWidget(navLabel);
 
         pages = new QStackedWidget(central);
-        addNavigation(sideLayout, QStringLiteral("Overview"), 0);
+        addNavigation(sideLayout, QStringLiteral("Kernel catalogue"), 0);
         addNavigation(sideLayout, QStringLiteral("Boot entries"), 1);
-        addNavigation(sideLayout, QStringLiteral("Flake configuration"), 2);
+        addNavigation(sideLayout, QStringLiteral("Kernel configuration"), 2);
         addNavigation(sideLayout, QStringLiteral("Kernel actions"), 3);
         sideLayout->addStretch();
 
@@ -338,10 +372,10 @@ private:
 
         auto *header = new QHBoxLayout();
         auto *headingColumn = new QVBoxLayout();
-        pageTitle = new QLabel(QStringLiteral("Overview"), content);
+        pageTitle = new QLabel(QStringLiteral("Kernel catalogue"), content);
         pageTitle->setObjectName(QStringLiteral("pageTitle"));
         auto *subtitle = new QLabel(
-            QStringLiteral("Inspect the running kernel and manage the Flake-selected build."),
+            QStringLiteral("Review the active CachyOS kernel, boot entries and declarative Flake selection."),
             content);
         subtitle->setObjectName(QStringLiteral("pageSubtitle"));
         headingColumn->addWidget(pageTitle);
