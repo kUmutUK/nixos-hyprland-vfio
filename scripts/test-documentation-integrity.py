@@ -2321,6 +2321,8 @@ require(
     'for cursor in "$src"/cursors/*;' in plus_cursor_definition
     and 'ln -sfn "$src/cursors/plus" "$theme/cursors/$(basename "$cursor")"' in plus_cursor_definition
     and "Every cursor shape resolves to the plus glyph" in plus_cursor_definition
+    and 'Bibata-Modern-Classic' in plus_cursor_definition
+    and "(black)" in plus_cursor_definition
     and "Inherits=" not in plus_cursor_definition
     and "for alias in left_ptr default arrow top_left_arrow pointer hand hand1 hand2 text xterm wait watch progress busy help crosshair;" in plus_cursor_definition
     and 'name = "Plus-Cursor";' in HOME_NIX
