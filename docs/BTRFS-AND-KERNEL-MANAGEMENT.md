@@ -48,7 +48,7 @@ Kernel selection remains declarative in `nixos/flake.nix`:
 boot.kernelPackages = rtBoreLtoV3KernelPackagesFor config.kumutuk.host.kernelKcfi;
 ```
 
-The repository now includes a **native Qt 6 NixOS Kernel Manager desktop app**, using the same standalone-window approach as the LSFG-VK and MAKO applications. It has a sidebar and dedicated Kernel catalogue, Boot entries, Kernel configuration, and Kernel actions pages. Its dark palette uses a CachyOS-inspired blue accent. Launch it from the application menu (**NixOS Kernel Manager**) or run:
+The repository includes a **native Qt 6 NixOS Kernel Manager desktop app**. Its layout follows the compact, table-first approach of CachyOS Kernel Manager: one main window, a kernel/version/category/status table, a short status line, and a small row of action buttons. System information and the Flake kernel expression open in separate read-only dialogs rather than occupying permanent navigation pages. The layout borrows the visual simplicity, not CachyOS's Arch package-install behavior: this app manages the single kernel declared by the NixOS Flake and does not install or remove arbitrary kernel packages. Launch it from the application menu (**NixOS Kernel Manager**) or run:
 
 ```bash
 nixos-kernel-manager
