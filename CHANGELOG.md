@@ -6,7 +6,7 @@ This file summarizes notable changes in English. The separate Turkish release-by
 
 ### Publish all CachyOS kernel outputs to Cachix — 2026-11-25
 
-- Change the manual cache publisher from the kernel's default \`out\` output to all declared outputs using Nix's \`^*\` selector. The workflow now builds and supplies the \`out\`, \`modules\`, and \`dev\` paths as a whitespace-separated \`pathsToPush\` list, with each output's runtime closure.
+- Change the manual cache publisher from the kernel's default `out` output to all declared outputs using Nix's `^*` selector. The workflow now builds and supplies the `out`, `modules`, and `dev` paths as a whitespace-separated `pathsToPush` list, with each output's runtime closure.
 - The existing cache run published the default output only. Re-run the manual cache workflow after this change is merged to backfill the split outputs for the current lock; then verify all three paths and the full-system dry-build before another activation.
 - No kernel options, flake inputs, VM XML, PCI/USB identities, UUIDs, or runtime preferences are changed.
 
