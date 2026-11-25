@@ -222,7 +222,7 @@ printf 'Backup saved to %s\n' "$BACKUP"
 
 ```bash
 REPO="$HOME/nixos-hyprland-vfio"   # same checkout path as above
-for file in hosts/nixos/configuration.nix hosts/nixos/home.nix hosts/nixos/host-settings.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix helium.nix; do
+for file in hosts/nixos/configuration.nix hosts/nixos/home.nix hosts/nixos/host-settings.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix helium.nix kernel-manager.nix kernel-manager.cpp; do
   target="/etc/nixos/nixos/$file"
   if [ -f "$target" ]; then
     diff -u "$target" "$REPO/nixos/$file" || test "$?" -eq 1
@@ -237,7 +237,7 @@ grep -nE 'system\.stateVersion|home\.stateVersion' \
   /home/localhost/.config/home-manager/home.nix 2>/dev/null || true
 ```
 
-5. After reviewing that diff and the values above, copy all eight required Nix/flake files. This overwrites their corresponding target files, so do not run it before making and checking the backup:
+5. After reviewing that diff and the values above, copy all ten required Nix/flake and native application source files. This overwrites their corresponding target files, so do not run it before making and checking the backup:
 
 ```bash
 set -Eeuo pipefail
@@ -252,7 +252,7 @@ if [ -n "$(git -C "$REPO" status --porcelain --untracked-files=all)" ]; then
   exit 1
 fi
 sudo install -d -m 0755 /etc/nixos/nixos/hosts/nixos
-for file in hosts/nixos/configuration.nix hosts/nixos/home.nix hosts/nixos/host-settings.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix helium.nix; do
+for file in hosts/nixos/configuration.nix hosts/nixos/home.nix hosts/nixos/host-settings.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix helium.nix kernel-manager.nix kernel-manager.cpp; do
   sudo install -D -m 0644 "$REPO/nixos/$file" "/etc/nixos/nixos/$file"
 done
 sudo install -d -m 0755 /etc/nixos/nixos/hosts/nixos/hooks
@@ -940,7 +940,7 @@ The repeated missing `.ko.BTF.1` failure across two different Rust modules shows
 
 ## Repository map (selected entry points; non-exhaustive)
 
-This is a curated map of selected entry points, not a complete inventory of the 93 tracked files. Use the repository file browser for the full source tree.
+This is a curated map of selected entry points, not a complete inventory of the 95 tracked files. Use the repository file browser for the full source tree.
 
 ```text
 .
@@ -956,6 +956,8 @@ This is a curated map of selected entry points, not a complete inventory of the 
 │   ├── lsfg-vk-v2.nix
 │   ├── mako-renderer.nix
 │   ├── helium.nix
+│   ├── kernel-manager.nix
+│   ├── kernel-manager.cpp
 │   ├── hosts/
 │   │   ├── .template/
 │   │   └── nixos/
@@ -988,10 +990,10 @@ This is a curated map of selected entry points, not a complete inventory of the 
 The root files provide the project entry point, installation guidance, contribution requirements, release procedure, and safety disclaimers. The NixOS directory owns the system/Home Manager modules and pinned package expressions; `vm-xml/` holds the Windows guest template; `scripts/` contains installer, maintenance, and regression helpers; `docs/` contains supporting technical guides and historical/current review reports.
 
 - `nixos/hosts/nixos/configuration.nix`, `nixos/hosts/nixos/home.nix`, `nixos/flake.nix`, and `nixos/flake.lock`: NixOS modules, Home Manager configuration, flake outputs, and locked inputs.
-- `nixos/lsfg-vk-v2.nix`: pinned LSFG-VK v2 package definition; `nixos/mako-renderer.nix`: optional MAKO Renderer package; `nixos/helium.nix`: hash-pinned Helium AppImage package.
+- `nixos/lsfg-vk-v2.nix`: pinned LSFG-VK v2 package; `nixos/mako-renderer.nix`: MAKO Renderer package; `nixos/helium.nix`: hash-pinned Helium AppImage package; `nixos/kernel-manager.nix` and `nixos/kernel-manager.cpp`: native Qt 6 Kernel Manager application.
 - `nixos/hosts/nixos/hooks/qemu` and `vm-xml/win10.xml`: VFIO handoff hook and Windows guest template.
 - `scripts/optiscaler_manager.py` and `scripts/test-optiscaler-manager.py`: optional per-game manager and its offline regression suite; see [the manager guide](docs/OPTISCALER-MANAGER.md).
-- `nixos/kernel-manager.sh`: Rofi-based NixOS kernel manager for live kernel/boot status and explicit Flake operations.
+- `nixos/kernel-manager.cpp`: Qt 6 desktop UI with Overview, Boot entries, Flake configuration, and Kernel actions pages. It follows the standalone application style of LSFG-VK and MAKO; mutating actions use separate confirmation dialogs and open Kitty for visible command output. `nixos/kernel-manager.sh` remains a legacy terminal/Rofi fallback source and is no longer the desktop launcher.
 - `scripts/test-vm-xml-paths.py`, `scripts/test-documentation-integrity.py`, `scripts/test-release-workflow-python.py`, and the other `scripts/test-*.py` files: focused regression checks.
 - `docs/AUDIT-2026-10-28-VM-XML-VFIO.md`: dated historical audit; [the repair and validation report](docs/REPAIR-AND-VALIDATION-REPORT.md) is the current verification record.
 - `docs/SERPANTINUM.md`: Serpantinum desktop-shell integration — what it replaces, what it keeps, the keybind map, the settings model, and update/fallback procedures.
@@ -1072,12 +1074,13 @@ bash scripts/test-automated-vm-backup.sh
 python3 scripts/test-benchmark-report.py
 ```
 
-Build the current LSFG-VK v2 flake output from the NixOS flake directory:
+Build the LSFG-VK v2, Helium, and native Qt Kernel Manager flake outputs from the NixOS flake directory:
 
 ```bash
 cd nixos
 nix build .#lsfg-vk-v2
 nix build .#helium
+nix build .#kernel-manager
 ```
 
 Normal CI also runs the archive, installer, VM, VFIO hook, generated Lua, ShellCheck, Statix, Deadnix, and Nix evaluation checks. For `install.sh`, this is static and mocked regression coverage only; No end-to-end run of `install.sh` against a live NixOS/libvirt target host has been completed. Normal CI is not a substitute for the manual full NixOS system build when NixOS modules, kernel settings, flake inputs, or other closure-affecting files change. Follow the current full-system build gate in [the repair report](docs/REPAIR-AND-VALIDATION-REPORT.md) and do not release while that gate is open.
