@@ -2519,6 +2519,9 @@ require(
     and "kernel^*" in CACHE_WORKFLOW
     and "kernel_outputs" in CACHE_WORKFLOW
     and "pathsToPush: ${{ steps.kernel.outputs.paths }}" in CACHE_WORKFLOW
+    and "Consume the existing Cachix kernel output (read-only)" in CACHE_WORKFLOW
+    and CACHE_URL in CACHE_WORKFLOW
+    and CACHE_KEY in CACHE_WORKFLOW
     and "CachyOS kernel binary cache (manual)" in CACHE_WORKFLOW
     and "config.system.build.toplevel" not in CACHE_WORKFLOW
     and "lsfg-vk-v2" not in CACHE_WORKFLOW
