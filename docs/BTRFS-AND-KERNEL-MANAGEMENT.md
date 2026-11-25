@@ -23,7 +23,7 @@ The same read-only `btrfs subvolume list -t /` operation failed as the unprivile
 
 The graphical authentication agent is a separate user-session service. It must be running for Polkit dialogs to be presented in Hyprland. The reference host's diagnostic log showed `No session for cookie` while `hyprpolkitagent` was absent from the process list. That means the graphical session had no registered Polkit agent when Btrfs Assistant invoked pkexec.
 
-The Nixpkgs `hyprpolkitagent` package installs its executable at `$out/libexec/hyprpolkitagent`, not `$out/bin/hyprpolkitagent`. Home Manager now defines `hyprpolkitagent.service` with that exact store path and starts it from the existing Hyprland startup callback only after importing `WAYLAND_DISPLAY` and the D-Bus activation environment. This avoids an early-start race and ties the agent lifetime to `graphical-session.target`.
+The Nixpkgs `hyprpolkitagent` package installs its executable at `$out/libexec/hyprpolkitagent`, not `$out/bin/hyprpolkitagent`. Home Manager defines `hyprpolkitagent.service` with that exact store path and enables it for `graphical-session.target`. Serpantinum is started by systemd/uwsm on that same target, so the graphical authentication agent starts with the desktop session and stops when the session ends. The Hyprland startup callback also imports `WAYLAND_DISPLAY` and the D-Bus activation environment, then restarts the agent to cover any environment-import race.
 
 After rebuilding and logging into Hyprland, verify the service before opening Btrfs Assistant:
 
@@ -48,20 +48,21 @@ Kernel selection remains declarative in `nixos/flake.nix`:
 boot.kernelPackages = rtBoreLtoV3KernelPackagesFor config.kumutuk.host.kernelKcfi;
 ```
 
-The repository now includes a **native Qt 6 NixOS Kernel Manager desktop app**, using the same standalone-window approach as the LSFG-VK and MAKO applications. It has a sidebar and dedicated Overview, Boot entries, Flake configuration, and Kernel actions pages. Its dark palette and rose accent are aligned with the surrounding desktop theme. Launch it from the application menu (**NixOS Kernel Manager**) or run:
+The repository now includes a **native Qt 6 NixOS Kernel Manager desktop app**, using the same standalone-window approach as the LSFG-VK and MAKO applications. It has a sidebar and dedicated Kernel catalogue, Boot entries, Kernel configuration, and Kernel actions pages. Its dark palette uses a CachyOS-inspired blue accent. Launch it from the application menu (**NixOS Kernel Manager**) or run:
 
 ```bash
 nixos-kernel-manager
 ```
 
-It reports the running kernel, Flake-declared kernel profile, locked `cachyos-kernel` revision, systemd-boot entries, NixOS system generations, and the selected kernel declaration. The Overview and inspection pages are read-only. Kernel actions are presented as separate cards: updating only the `cachyos-kernel` input in `flake.lock`, building only the selected kernel without activation, or running an explicit full-system `nixos-rebuild switch`. Every mutating action has a Qt confirmation dialog; after confirmation, Kitty opens with the full command output and a close-on-Enter prompt.
+It reports the running kernel, Flake-declared kernel profile, evaluated kernel version, locked `cachyos-kernel` revision, systemd-boot entries, and NixOS system generations. Inspection remains read-only. Kernel actions are separated: updating only the `cachyos-kernel` input in `flake.lock`, building only the selected kernel without activation, or running an explicit full-system `nixos-rebuild switch`. Each action has a Qt confirmation dialog and Kitty shows the complete command output. The lock update and system switch run through a fixed, immutable Polkit helper via `pkexec`; the build stays unprivileged. The system switch invokes the Hyprland Polkit agent for graphical authentication, not a terminal sudo prompt.
 
 **Safety boundaries:**
 
 - Kernel selection remains in the Flake; the manager does not install Arch/AUR packages, write boot entries, or edit `boot.kernelPackages`.
-- Updating changes only the CachyOS Flake lock entry. It does not build or activate a kernel.
-- Kernel-only build and full-system rebuild are separate actions. Each has its own Qt confirmation dialog; a kernel-only build does not switch the running system.
-- Full-system rebuild is a separate, explicit activation. It does not update the lock file.
+- Updating changes only the CachyOS Flake lock entry through the restricted Polkit helper. It does not build or activate a kernel.
+- Kernel-only build runs as the desktop user through the Nix daemon; it does not request administrator authorization or switch the running system.
+- Full-system rebuild is a separate, explicit activation through the restricted `pkexec` helper and the graphical Polkit agent. It does not update the lock file.
+- The helper accepts only the two supported operations (CachyOS lock-input update and the configured `#nixos` system switch); it does not provide a root shell, arbitrary command execution, or passwordless sudo.
 - The manager reflects the current Flake. It does not offer an LTS choice because the old LTS specialisation has been removed from the current configuration.
 
 The existing Fish aliases remain available: `nup` updates the pinned CachyOS Flake input and lock metadata only; **it does not activate the new kernel**. `nrs` builds and activates the currently declared system. The manager is a NixOS front-end, not a port of the CachyOS Kernel Manager.

@@ -53,7 +53,10 @@ to get the previous stack back for comparison or recovery.
   and configures `programs.serpantinum` — `systemd.enable = true` runs
   `serpantinumd start` as a user service bound to `graphical-session.target`
   (uwsm brings the target up), so the shell restarts on failure and stops with
-  the session instead of being an unmanaged `exec-once`.
+  the session instead of being an unmanaged `exec-once`. The same target also
+  automatically starts `hyprpolkitagent.service`; the Hyprland startup callback
+  imports the live Wayland/D-Bus environment and restarts the agent to avoid
+  an authentication-dialog startup race.
 - `hyprland.lua` (generated from `home.nix`): the autostart block no longer
   execs `waybar`, `dunst`, or `nm-applet`; the `wl-paste --watch cliphist store`
   watcher became the dual text/image watchers Serpantinum itself deploys.
