@@ -2248,21 +2248,39 @@ require(
 require('Description = "Stop the live wallpaper while Brave windows or GameMode are active."' in HOME_NIX, "mpvpaper watchdog description must cover Brave and GameMode")
 hypridle_start = HOME_NIX.index("listener = [")
 hypridle_listeners = HOME_NIX[hypridle_start:HOME_NIX.index("\n      ];", hypridle_start)]
-lock_timeout_pos = hypridle_listeners.find("timeout = 300;")
-lock_command_pos = hypridle_listeners.find(
-    'on-timeout = "${pkgs.hyprlock}/bin/hyprlock";',
-    lock_timeout_pos,
+
+
+def hypridle_listener_timeout(command: str) -> tuple[int, int] | None:
+    """Return the listener position and timeout for one exact action."""
+    matches: list[tuple[int, int]] = []
+    for listener in re.finditer(r"(?ms)^\s*\{\s*(.*?)^\s*\}", hypridle_listeners):
+        body = listener.group(1)
+        if command not in body:
+            continue
+        timeout = re.search(r"(?m)^\s*timeout\s*=\s*(\d+)\s*;", body)
+        if timeout is not None:
+            matches.append((listener.start(), int(timeout.group(1))))
+    return matches[0] if len(matches) == 1 else None
+
+
+brightness_listener = hypridle_listener_timeout(
+    "${pkgs.brightnessctl}/bin/brightnessctl -s set 70%"
 )
-dpms_timeout_pos = hypridle_listeners.find("timeout = 305;")
-dpms_command_pos = hypridle_listeners.find(
-    'on-timeout = "${pkgs.hyprland}/bin/hyprctl dispatch dpms off";',
-    dpms_timeout_pos,
+lock_listener = hypridle_listener_timeout(
+    'on-timeout = "${pkgs.hyprlock}/bin/hyprlock";'
+)
+dpms_listener = hypridle_listener_timeout(
+    'on-timeout = "${pkgs.hyprland}/bin/hyprctl dispatch dpms off";'
+)
+suspend_listener = hypridle_listener_timeout(
+    'on-timeout = "${pkgs.systemd}/bin/systemctl suspend";'
 )
 require(
-    lock_timeout_pos >= 0 and lock_command_pos > lock_timeout_pos
-    and dpms_timeout_pos > lock_command_pos and dpms_command_pos > dpms_timeout_pos
-    and "timeout = 600;" not in hypridle_listeners,
-    "Hypridle must lock at 300 seconds before DPMS powers the display off at 305 seconds",
+    brightness_listener is not None and lock_listener is not None
+    and dpms_listener is not None and suspend_listener is not None
+    and brightness_listener[0] < lock_listener[0] < dpms_listener[0] < suspend_listener[0]
+    and brightness_listener[1] < lock_listener[1] < dpms_listener[1] < suspend_listener[1],
+    "Hypridle must dim, lock, power off, and suspend in strictly increasing timeout order",
 )
 require(
     "gpu_device = 1;" in CONFIG and "gpu_device = 1" in CONTRIBUTING
