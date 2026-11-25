@@ -21,7 +21,6 @@
 #include <QStringList>
 #include <QScrollArea>
 #include <QStackedWidget>
-#include <QStandardPaths>
 #include <QStatusBar>
 #include <QTimer>
 #include <QTableWidget>
@@ -757,14 +756,8 @@ private:
             return;
         }
 
-        const QString pkexec = QStandardPaths::findExecutable(QStringLiteral("pkexec"));
+        const QString pkexec = QStringLiteral("/run/wrappers/bin/pkexec");
         const QString helper = qEnvironmentVariable("KERNEL_MANAGER_POLKIT_HELPER");
-        if (pkexec.isEmpty()) {
-            const QString failure = QStringLiteral("pkexec was not found in PATH.");
-            bootOutput->setPlainText(failure);
-            generationOutput->setPlainText(failure);
-            return;
-        }
 
         auto *process = new QProcess(this);
         polkitInspectionProcess = process;
@@ -934,9 +927,10 @@ private:
 
     bool requirePolkitHelper()
     {
-        if (QStandardPaths::findExecutable(QStringLiteral("pkexec")).isEmpty()) {
+        const QString pkexec = QStringLiteral("/run/wrappers/bin/pkexec");
+        if (!QFileInfo(pkexec).isExecutable()) {
             QMessageBox::critical(this, QStringLiteral("Polkit is unavailable"),
-                QStringLiteral("pkexec was not found. Rebuild NixOS with the Kernel Manager Polkit integration."));
+                QStringLiteral("The NixOS setuid Polkit wrapper at /run/wrappers/bin/pkexec is missing. Rebuild NixOS with security.polkit enabled."));
             return false;
         }
         const QString helper = qEnvironmentVariable("KERNEL_MANAGER_POLKIT_HELPER");
@@ -951,7 +945,7 @@ private:
     QString polkitCommand(const QString &action, const QString &argument) const
     {
         const QString helper = qEnvironmentVariable("KERNEL_MANAGER_POLKIT_HELPER");
-        return QStringLiteral("pkexec %1 %2 %3")
+        return QStringLiteral("/run/wrappers/bin/pkexec %1 %2 %3")
             .arg(shellQuote(helper), action, shellQuote(argument));
     }
 
