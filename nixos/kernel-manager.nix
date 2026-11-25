@@ -3,6 +3,7 @@
   stdenv,
   pkg-config,
   qt6,
+  makeWrapper,
   bash,
   kitty,
   nix,
@@ -20,6 +21,7 @@ stdenv.mkDerivation {
   nativeBuildInputs = [
     pkg-config
     qt6.wrapQtAppsHook
+    makeWrapper
   ];
   buildInputs = [
     qt6.qtbase
