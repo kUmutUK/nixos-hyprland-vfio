@@ -116,9 +116,8 @@ public:
 protected:
     void closeEvent(QCloseEvent *event) override
     {
-        if (privilegedRequestPending ||
-            currentPrivilegedAction == QStringLiteral("update-cachyos") ||
-            currentPrivilegedAction == QStringLiteral("rebuild-switch")) {
+        if (pendingPrivilegedAction == QStringLiteral("update-cachyos") ||
+            pendingPrivilegedAction == QStringLiteral("rebuild-switch")) {
             QMessageBox::information(
                 this, QStringLiteral("Operation still running"),
                 QStringLiteral("Wait for the privileged operation to finish before closing Kernel Manager."));
@@ -157,6 +156,7 @@ private:
     QPointer<QPlainTextEdit> operationOutput;
     QString polkitOutputBuffer;
     QString currentPrivilegedAction;
+    QString pendingPrivilegedAction;
     bool polkitSessionReady = false;
     bool privilegedRequestPending = false;
     bool capturingBootEntries = false;
@@ -545,6 +545,7 @@ private:
             polkitSessionProcess = nullptr;
             polkitSessionReady = false;
             privilegedRequestPending = false;
+            pendingPrivilegedAction.clear();
             process->deleteLater();
 
             if (exitStatus != QProcess::NormalExit || exitCode != 0) {
@@ -566,6 +567,7 @@ private:
                 polkitSessionProcess = nullptr;
                 polkitSessionReady = false;
                 privilegedRequestPending = false;
+                pendingPrivilegedAction.clear();
             }
             const QString failure =
                 QStringLiteral("Could not start the Polkit session: %1").arg(process->errorString());
@@ -597,6 +599,7 @@ private:
             return false;
         }
         privilegedRequestPending = true;
+        pendingPrivilegedAction = action;
         return true;
     }
 
@@ -665,6 +668,7 @@ private:
 
             currentPrivilegedAction.clear();
             privilegedRequestPending = false;
+            pendingPrivilegedAction.clear();
             capturingBootEntries = false;
             capturingGenerations = false;
 
