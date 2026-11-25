@@ -615,7 +615,7 @@ while [[ ! "$hypr_mon_mode" =~ ^(preferred|[0-9]{3,5}x[0-9]{3,5}(@[0-9]{1,3}([.]
 done
 
 echo ""
-wallpaper_video="$TARGET_HOME/Downloads/arthur-leywin-the-beginning-after-the-end.3840x2160.mp4"
+wallpaper_video="$TARGET_HOME/Downloads/Sunless-Lost-from-Light-4K.mp4"
 expand_home_prefix() {
   local value="$1"
 # shellcheck disable=SC2088

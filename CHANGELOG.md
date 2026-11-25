@@ -1,6 +1,6 @@
 # Changelog
 
-This file summarizes notable changes in English. The separate Turkish release-by-release history file formerly kept at `docs/archive/DEGISIKLIK_GECMISI.md` was removed from the current tree on 15 November 2026; its last committed version remains available [in Git history at the pre-removal commit](https://github.com/kUmutUK/nixos-hyprland-vfio/blob/a0fa8ca557c53810230eb8d42b2edd1e79365460/docs/archive/DEGISIKLIK_GECMISI.md). The root `DEGISIKLIK_GECMISI.md` is an English current-state index. Dated third-level headings under `[Unreleased]` are editorial event labels, not dated release sections; the top-level `[Unreleased]` bucket itself remains undated. The retained external-audit sequence begins at audit five because records for audits 1–4 are not retained; the broad 3 November 2026 cross-check is intentionally unnumbered.
+This file summarizes notable changes in English. The separate Turkish release-by-release history file formerly kept at `docs/archive/DEGISIKLIK_GECMISI.md` was removed from the current tree on 15 November 2026; its last committed version remains available [in Git history at the pre-removal commit](https://github.com/kUmutUK/nixos-hyprland-vfio/blob/a0fa8ca557c53810230eb8d42b2edd1e79365460/docs/archive/DEGISIKLIK_GECMISI.md). The root `DEGISIKLIK_GECMISI.md` is an English current-state index. Dated third-level headings under `[Unreleased]` are editorial event labels, not dated release sections; the top-level `[Unreleased]` bucket itself remains undated. The retained external-audit sequence begins at audit five because records for audits 1–4 are not retained; the broad 3 November 2026 cross-check is intentionally unnumbered. Detailed event notes are retained as a development worklog; published versions below record the exact release cut, source commit, and archive provenance.
 
 ## [Unreleased]
 
@@ -96,12 +96,11 @@ This file summarizes notable changes in English. The separate Turkish release-by
 - **Single-kernel system build:** removed the optional `specialisation.lts-kernel` boot entry that added `linux-cachyos-lts` (6.18.x) as a second kernel configuration. The default RT-Bore-LTO x86_64-v3 kernel remains unchanged; the LTS variant is no longer part of the configured system build.
 
 
-### UWSM session experiment (branch `experiment/uwsm-session`) — 2026-11-24
+### UWSM session integration (PR #31 merged) — 2026-11-24
 
-- **Compositor under systemd user management:** on the experiment branch only, the greetd session wrapper starts Hyprland with `uwsm start -- <Hyprland>`, so the compositor runs as the systemd user unit `wayland-wm@Hyprland.service` in a uwsm-prepared environment, and session shutdown stops that unit and unexports the session environment. `HYPRLAND_CONFIG` is still exported inside the wrapper before `uwsm start`; uwsm saves the calling environment and applies it to the session, so the Lua config path still does not depend on `environment.d` or a pre-imported user environment.
-- **Failure semantics:** if `uwsm start` exits non-zero (for example the user manager or its D-Bus socket is not reachable from greetd), the wrapper falls back to the previous direct Hyprland exec, so this change cannot lose the graphical login. `uwsm check may-start` is deliberately unused: its login-shell-parent and tty-foreground checks target shell-profile autostart, not a display-manager session command, and would always fail under tuigreet.
-- **Deliberately untouched during the experiment:** the manual environment import and unit starts in `home.nix` (`systemdEnvironmentCommand`) and the `hyprland.start` exec list stay exactly as on main, so the session-wrapper change is the only variable; uwsm's own environment export and `wayland-session` target activation now run in parallel with them. Removing the now-duplicated manual import is a follow-up for after host validation, not part of this branch.
-- **Status and merge criteria:** branch-only until the reference host validates it. After login, `systemctl --user status wayland-wm@Hyprland.service` must show the compositor unit active (not the fallback path); Waybar, Dunst, Rofi, the Pypr scratchpads, and the Hyprlock path must work; one full Windows-VM start/stop with GPU handback must pass; and a normal logout must leave no lingering `wayland-wm@` units. Merging to `main` additionally requires the usual pending-build gate (a full NixOS system build on the merged commit) because this changes host session behavior.
+- The greetd session wrapper on main starts Hyprland with `uwsm start -- <Hyprland>`; the compositor runs as `wayland-wm@Hyprland.service` in a UWSM-prepared environment. `HYPRLAND_CONFIG` is exported before the UWSM call and is carried into the managed session.
+- If UWSM startup fails, the wrapper falls back to the direct Hyprland exec so a missing user-manager/D-Bus socket does not remove the graphical login. `uwsm check may-start` remains unused because its login-shell-parent and foreground-TTY checks are not designed for a greetd session.
+- PR #31 merged this integration into main. The owner reported a successful UWSM rebuild/login check on 24 November; that is a host report, not a retained CI runtime transcript. Full-system Build #25 later passed on the PR #35 merge commit and included the merged UWSM source.
 
 ### CI read-only kernel cache consumption — 2026-11-24
 
@@ -111,12 +110,13 @@ This file summarizes notable changes in English. The separate Turkish release-by
 ### Cachix kernel cache activated — 2026-11-24
 
 - **N1 closed (cache live and consumed):** Cachix cache workflow run #3 (147 minutes on the GitHub runner) built the locked kernel — `linux-cachyos-rt-bore-lto-7.3.5` from the PR #30 merged lock (CachyOS source `306480b9096055a06503167f975c027e244dd839`, nested Nixpkgs `616ae05a769a23c143b19746b6a3b06366a9a28f`) — and published it with its runtime closure to the public Cachix cache `kumutuk-nixos-hyprland-vfio`. The substituter URL and public key `kumutuk-nixos-hyprland-vfio.cachix.org-1:wgWsd619A9+2Mj+iEDABPbnIB1YqJnVJWt2D7Bv9JTQ=` are now wired into the `nixConfig` block of `nixos/flake.nix` and the `nix.settings` substituters/trusted-public-keys lists of `nixos/hosts/nixos/configuration.nix`, ahead of `cache.nixos.org` and the Nix Community cache, so the locked kernel downloads instead of compiling for hours. The kernel narinfo is served and was verified reachable before these entries were committed; the README activation section and the flake-cache bullet now describe the live cache.
-- **Validation boundary:** host-side substitution takes effect at the next `nixos-rebuild` on the target host. The `configuration.nix` change is runtime-affecting and stays pending the next full-system build per the pending-build gate, together with the rest of the pending configuration changes since the last completed full-system build and the PR #30 lock refresh (the 7.3.5 kernel has no completed full-system build yet). CI and the cache workflow build without accepting the flake's `nixConfig`, so they do not consume the new substituter.
+- **Validation boundary at the 24 November checkpoint:** host-side substitution takes effect at the next `nixos-rebuild` on the target host. The configuration change remained pending a full-system build at this dated checkpoint; Full-system Build #25 subsequently evaluated and built the merged lock and selected 7.3.5 kernel on exact commit `56ed16581bb45d22b4c24186fb00e0c6e11439de`. That result does not prove host activation or cover later runtime changes after Build #25. CI workflows configure the public cache directly in the runner rather than relying on the flake's `nixConfig`.
 
 ### Cachix kernel-only push re-scope — 2026-11-24
 
-- **N1 final shape (kernel-only push):** the manual Cachix workflow (`.github/workflows/cache.yml`, now named "CachyOS kernel binary cache (manual)") builds and publishes only the selected RT-Bore-LTO kernel and its runtime closure — not the system toplevel, LSFG-VK v2, or MAKO Renderer — so the project's 5 GB Cachix allocation stays focused on the one component no upstream cache publishes. The write-token guard, the flake.lock-untouched guard, and the disk-space reports are retained; `cachix-action` moves from the v16 push-everything daemon setup to the pinned v17 digest with `pathsToPush` limited to the kernel output. This supersedes the full-push "Binary cache push (manual)" description in the earlier 2026-11-24 waves below. Activation itself remains the maintainer's three steps (create the cache, add the `CACHIX_AUTH_TOKEN` secret, dispatch once); the substituter/trusted-public-key commit into `nixos/flake.nix` and `nixos/hosts/nixos/configuration.nix` lands only after the first successful push.
-- **Validation boundary:** the kernel-only workflow has never run — no cache content and no substituter entry exist yet. Offline documentation-integrity assertions now pin the kernel-only scope (kernel build target, `pathsToPush`, no toplevel/LSFG/MAKO references in the workflow); the README activation section matches. The workflow file is CI-only tooling outside the NixOS closure, so no full-system build gate applies to it.
+- **N1 initial kernel-only push design (historical pre-run note):** the manual Cachix workflow was narrowed to the selected RT-Bore-LTO kernel and its runtime closure, not the system toplevel, LSFG-VK v2, or MAKO Renderer. At this initial design checkpoint the workflow had not yet run; the later Cachix run #3 successfully built the locked 7.3.5 kernel and published its default `out` output and closure. The write-token guard, flake.lock-untouched guard, and disk-space reports were retained as the workflow evolved.
+- **Later cache-output expansion (25 November):** the manual publisher now requests all declared kernel outputs (`out`, `modules`, and `dev`) through Nix's `^*` selector and includes each output's runtime closure. The existing cache run proves publication of the default `out` output only. Re-run the manual workflow to backfill `modules` and `dev` for the current lock; do not claim those outputs are already cached until that run completes and substitution is checked.
+- **Validation boundary:** the cache workflow is CI tooling outside the NixOS system closure; completing it is not a full-system build and does not validate target-host activation.
 
 ### Btrfs Assistant GUI and compsize spelling fix — 2026-11-24
 
@@ -147,14 +147,14 @@ This file summarizes notable changes in English. The separate Turkish release-by
 - **LTS recovery boot entry (specialisation):** `specialisation.lts-kernel` evaluates the same host with the CachyOS LTS kernel (`linuxPackages-cachyos-lts` from the pinned nix-cachyos-kernel overlay, no LTO, plain x86-64). It appears as an additional systemd-boot entry; the primary entry and default boot order are unchanged, and `boot.kernelPackages` uses `mkForce` so the override applies only inside the specialisation. This implements the known-good boot belt the README recommends for testing new RT-Bore-LTO revisions. Target-host boot of the LTS entry remains unverified pending the next full-system build and activation.
 - **Gamescope Steam session:** `programs.steam.gamescopeSession` adds one console-style entry to the greetd session list (default login stays Hyprland; the desktop layer is untouched). Games page-flip at 2560x1440 fullscreen with immediate flips and a grabbed cursor; the CS2 per-game gamescope launch line is unnecessary inside this session.
 - **GameMode power-profile wrapper:** GameMode `custom.start`/`custom.end` switch power-profiles-daemon to `performance` while a game runs and back to `balanced` on exit — the profile half of CachyOS's game-performance wrapper. Best-effort: a failed switch is logged and never blocks the game. The mpvpaper watchdog remains the single authority for the live-wallpaper service.
-- **BBR3 congestion control:** `tcp_bbr` joins `boot.kernelModules` and sysctl selects `bbr` with the `fq` pacing qdisc. CachyOS kernels ship BBRv3; if a future kernel drops it, systemd-sysctl logs an error and traffic stays on cubic. WARP's userspace path is unaffected.
+- **BBR3 congestion control:** the pinned CachyOS derivation enables BBRv3 through `bbr3 = true;`; NixOS sysctl selects `bbr` with the `fq` pacing qdisc. `tcp_bbr` is not separately added to `boot.kernelModules`. If a future locked kernel no longer provides BBRv3, systemd-sysctl logs an error and traffic stays on cubic. WARP's userspace path is unaffected.
 - **I/O scheduler udev rules:** rotational disks get BFQ, NVMe namespaces get `none` (CachyOS 60-ioschedulers style); SATA SSDs keep the kernel default. Mostly explicit defaults; the real value is automatic correct selection when a media HDD is added. `none` on NVMe hides queue stats from some telemetry tools (documented in the configuration comment).
-- **Night colour (wlsunset):** Home Manager `services.wlsunset` runs as a systemd user service with Istanbul coordinates and a 4000K night temperature (matches the Europe/Istanbul timezone; adjust per location).
+- **Night colour (wlsunset):** Home Manager declares `services.wlsunset` with Istanbul coordinates and a 4000K night temperature, but `enable = false`; no wlsunset systemd user service is started. The coordinates are retained as an explicit opt-in value and should not be described as an active night-colour shift.
 - **VM disk backup script:** `scripts/backup-vm.sh` creates a compressed qcow2 copy of the Windows guest disk (`/mnt/media/win10new.qcow2` by default) with fail-closed guards: only a "shut off" VM, never overwrites, publishes via atomic rename from a `.part` file, and reports the SHA-256. `scripts/test-backup-vm.sh` regression-tests all guards with stub `virsh`/`qemu-img` binaries; CI runs it as a new check step and shellcheck covers both scripts. Back up to a mounted external disk, not the media partition.
 - **Gaming guide (docs/GAMING.md):** documents NTSync behavior and the per-game `PROTON_NO_NTSYNC=1` opt-out, declarative GE Proton selection, the Gamescope session, the GameMode/PPD profile switching, and the 12G shader cache.
 - **Renovate configuration (.github/renovate.json):** proposes GitHub Actions digest updates only (`enabledManagers: github-actions`), automerge off; flake inputs stay with the weekly flake-update workflow. Inert until the Renovate GitHub App is installed on the repository.
 - **nix-output-monitor** joins `nh`/`nvd` in the system profile (live rebuild progress via `nom`).
-- **Validation boundary:** all offline regression suites, the new backup-script test, YAML/JSON syntax checks, and the canonical ZIP packaging pass locally; runtime-affecting changes (`configuration.nix`, `home.nix`) remain pending the next full-system build and target-host activation/boot validation, per the existing pending-build gate. Documentation-integrity assertions now pin the LTS specialisation, BBR sysctls, I/O scheduler rules, gamescope session, GameMode profile scripts, wlsunset, the gaming guide, and this changelog entry.
+- **Validation boundary:** offline regression suites and packaging checks cover the declared feature behavior; runtime activation remains a separate gate. Documentation-integrity assertions pin the disabled wlsunset declaration, BBR3 package option/sysctl selection, I/O scheduler rules, gamescope session, GameMode profile scripts, the gaming guide, and this changelog entry.
 
 ### Host gaming and maintenance feature wave — 2026-11-24
 
@@ -495,14 +495,44 @@ This file summarizes notable changes in English. The separate Turkish release-by
 - H1 is already corrected in the archived [1.2.2] entry and dated preface: pinned Nixpkgs defines Hyprland `0.56.2` / hyprlock `0.9.6`; `0.54.3 / 0.9.5` is marked as the incorrect earlier statement. H3 and H4 remain documented historical anomalies; no old release description is rewritten and no missing Build #14 event is inferred.
 - **Second reconciliation CI failure:** Nix Flake Check [#1383](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42998196145) failed on `36c13be1558d70822edf9432fe6cca3507f6d8e5` at the documentation-integrity assertion `README must distinguish the immutable v1.5.0 release ZIP from later main-branch documentation`. Commit `edf78e8` restored `The v1.5.0 asset will not be rewritten`; [#1384](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42998456098) then passed on exact commit `edf78e8559a289dda5da01467ce0082da2c38188`.
 
-## [v1.5.9] - 2026-11-19
+## [v1.6.3] - 2026-11-25
 
-### Release and validation provenance
+### Release and source provenance
 
-- Published by Release workflow run #49 ([run 44548011675](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44548011675), 19 November 2026) from exact tag/source commit `d8484ab9083d9c9c71551b0147fa2591e2dbd8a1`.
-- GitHub Release metadata records the canonical source ZIP as 496,851 bytes with SHA-256 `5639e8b2fff7140b52a84e93756c2c3e0a8b6311a33d43aebcae430526601c84`; the asset was independently re-hashed to that value on 19 November 2026.
-- The tag range over v1.5.8 included the hosts/ layout restructure, the host-settings module, the 61-path release allowlist repair, deprecated xorg alias replacements, and the release-preparation documentation sequence.
-- Superseded the same day by v1.6.0.
+- Published by Release run #68 (`45664211940`), GitHub Release ID `458419724`, from exact source commit `10855920163a545f3e407e16c2352ff52ca5eff1`.
+- GitHub records the canonical source ZIP as 612,292 bytes with SHA-256 `f121cae7b4bed1ffb71de65b74c9a6f5888ad675bb67fdc89f80080dadf2ac47`; Normal CI #1832 (`45662641897`) passed on the exact tag source.
+- Release #68 accepted the separate target-host and VM XML attestation inputs for this exact source. These are maintainer declarations; their supporting transcripts are not committed. Full-system Build #25 is an ancestor build, not an exact build of the v1.6.3 source.
+
+### Highlights
+
+- Add the native Qt 6 NixOS Kernel Manager with a compact CachyOS-inspired table, one Polkit session for scoped privileged actions, and separate kernel-only build / full-system switch operations.
+- Integrate Helium 0.22.4.1 from the official Linux AppImage through a community-maintained Nix wrapper; Brave remains installed and no default-browser association is changed.
+- Correct the Home Manager script resolver for standalone-flake and full-checkout layouts, place mpvpaper above Serpantinum's background layer, and publish all declared kernel outputs to the Cachix cache.
+- Keep the source archive deterministic and provenance-bound to the exact tagged commit.
+
+## [v1.6.2] - 2026-11-25
+
+### Release and source provenance
+
+- Published as GitHub Release ID `457881094` on 25 November 2026 from exact tag/source commit `f6b70cced16c0acf3955e191ab4768cc948a5510`.
+- GitHub records a 594,709-byte source ZIP with SHA-256 `36b4f288b8744989477e4f609250ae661e4694b7fb669a676110fd2f15a0dcc5`.
+
+### Highlights
+
+- Integrate the Serpantinum desktop shell and session keybindings while keeping Waybar, Dunst, and Rofi as manual fallbacks.
+- Add read-only AMDGPU sysfs telemetry for the manual Waybar bar, coordinated host gaming profiles, verified offline VM backup, and MangoHud benchmark capture/reporting.
+- Keep optional NVMe ADIOS and USBGuard enforcement opt-in; preserve explicit validation boundaries for hardware, VM, and performance tests.
+
+## [v1.6.1] - 2026-11-24
+
+### Release and source provenance
+
+- Published as GitHub Release ID `457186399` on 24 November 2026 from exact tag/source commit `15346bbcfff27a56560386b725f935e0a6602803`.
+- GitHub records a 561,685-byte source ZIP with SHA-256 `8962d9359547c2e751d3c3a0ecfb84e4ef7b0548e5a62b44455b14c9360886af`.
+
+### Highlights
+
+- Merge the UWSM session integration and the weekly Flake-lock update workflow, with the usual separation between successful CI evaluation, full-system compilation, and owner-reported host validation.
 
 ## [v1.6.0] - 2026-11-20
 
@@ -511,9 +541,18 @@ This file summarizes notable changes in English. The separate Turkish release-by
 - **Current publication (20 November 2026):** the currently published v1.6.0 GitHub Release is ID `452397681`, published by Release workflow run #54 ([run 44696855597](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44696855597)) from exact tag/source commit `d845ccfb5dec3daf705b59bc29f2e5f14e4ee767`. GitHub Release metadata records the canonical source ZIP as 510,143 bytes with SHA-256 `977b1eed45673c022946cb04b997c4172c3c5c9b122d32838a3cd02a0a4fe057`; the asset was downloaded and independently re-hashed to that value on 20 November 2026. The v1.6.0 tag object now targets `d845ccfb5dec3daf705b59bc29f2e5f14e4ee767` (created by github-actions on the 20 November re-publication dispatch; the earlier tag object was deleted before it).
 - The exact re-published source commit `d845ccfb5dec3daf705b59bc29f2e5f14e4ee767` is covered by successful push-triggered Normal CI #1683 ([run 44622481259](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44622481259)) and by manual Full NixOS System Build #22 ([run 44623962158](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44623962158)), which built the complete system and selected kernel on the 19 November refreshed locked inputs and verified the lock was not rewritten. Physical-host activation, boot, and VM lifecycle on this exact source remain unverified.
 - Release #54 accepted `TARGET_HOST_VALIDATED=true` for exact source `d845ccfb5dec3daf705b59bc29f2e5f14e4ee767`; this is a maintainer declaration without a committed transcript. Its dispatch also supplied `VM_XML_VALIDATED=true`, and because `vm-xml/win10.xml` changed between v1.5.9 and this source (the ICH9 sound device now binds to the PipeWire backend), the separate changed-XML gate ran and accepted the input as a maintainer attestation. It is not independent guest-boot evidence: installed-NixOS `vdb` guest boot, guest networking, and saved-state/managed-save restore remain unverified.
-- **Original publication (19 November 2026; superseded):** v1.6.0 was first published by Release workflow run #52 ([run 44594826628](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44594826628)) from exact tag/source commit `3c518e45d979db3234f7628ccbf3979a0057dcf2` (GitHub Release ID `451804552`, 505,012-byte ZIP, SHA-256 `80aa8e731e26e2ca81d3536f738f84203d7c2edfbfffc824b879bcf504d3d63b`; not independently re-hashed in that review). Attempts #50 (commit `93b8929f5aff5eec17a40afc3f3e91c3443a5c11`), #51 (commit `a5beea31d09d6ebbe1e974c7b58d66b3b46cf699`), and #53 (commit `ff655f61e39da2d22d4e85960e500b6eccb9b2db`) were superseded. Their workflow logs remain historical evidence for the exact commits they processed; none is the current published tag/source.
+- **Original publication (19 November 2026; superseded):** v1.6.0 was first published by Release workflow run #52 ([run 44594826628](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44594826628)) from exact tag/source commit `3c518e45d979db3234f7628ccbf3979a0057dcf2` (GitHub Release ID `451804552`, 505,012-byte ZIP, archive size 505,012 bytes, SHA-256 `80aa8e731e26e2ca81d3536f738f84203d7c2edfbfffc824b879bcf504d3d63b`; not independently re-hashed in that review). Attempts #50 (commit `93b8929f5aff5eec17a40afc3f3e91c3443a5c11`), #51 (commit `a5beea31d09d6ebbe1e974c7b58d66b3b46cf699`), and #53 (commit `ff655f61e39da2d22d4e85960e500b6eccb9b2db`) were superseded. Their workflow logs remain historical evidence for the exact commits they processed; none is the current published tag/source.
 - The original Release #52 accepted `TARGET_HOST_VALIDATED=true` for its exact tag commit. It also received `VM_XML_VALIDATED=true`, and `vm-xml/win10.xml` was unchanged between v1.5.9 and that source, so the changed-XML gate did not trigger and the input was not proof of a new guest boot.
 - The release notes for the re-published v1.6.0 record the v1.5.9..v1.6.0 range: the ICH9 PipeWire audio backend binding, Windows audio routing to headphones and monitor, release-provenance and installer-preflight reconciliation, flake-update PR retry-safety fixes, installer/rollback/release status reconciliation, analysis-found documentation contradiction fixes, and validation-note alignment.
+
+## [v1.5.9] - 2026-11-19
+
+### Release and validation provenance
+
+- Published by Release workflow run #49 ([run 44548011675](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44548011675), 19 November 2026) from exact tag/source commit `d8484ab9083d9c9c71551b0147fa2591e2dbd8a1`.
+- GitHub Release metadata records the canonical source ZIP as 496,851 bytes with SHA-256 `5639e8b2fff7140b52a84e93756c2c3e0a8b6311a33d43aebcae430526601c84`; the asset was independently re-hashed to that value on 19 November 2026.
+- The tag range over v1.5.8 included the hosts/ layout restructure, the host-settings module, the 61-path release allowlist repair, deprecated xorg alias replacements, and the release-preparation documentation sequence.
+- Superseded the same day by v1.6.0.
 
 ## [v1.5.8] - 2026-11-16
 

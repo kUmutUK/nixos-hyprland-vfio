@@ -6,10 +6,9 @@
 }:
 
 let
-  # In a repository checkout, scripts/ is next to nixos/. In a deployed
-  # standalone flake (copied without .git), the required scripts are staged
-  # inside this flake root. Prefer the local copy, with the checkout layout
-  # retained as the development/CI fallback.
+  # In a deployed standalone flake, scripts/ is staged inside the flake root.
+  # In a full repository checkout, scripts/ is at the repository root next to nixos/.
+  # Prefer the flake-local copy and fall back to the repository-root checkout path.
   scriptsDir = if builtins.pathExists ../../scripts then ../../scripts else ../../../scripts;
 
   # Start Hyprland under uwsm (Universal Wayland Session Manager) from the
@@ -21,14 +20,14 @@ let
   # to the session, so the login keeps working without environment.d or a
   # pre-imported systemd user environment. If uwsm exits non-zero (for
   # example the user manager or its D-Bus socket is not reachable from
-  # greetd), fall back to the previous direct exec so a failed experiment
+  # greetd), fall back to the direct Hyprland exec so a UWSM startup problem
   # can never take the graphical login down with it. `uwsm check
   # may-start` is deliberately NOT used here: its login-shell-parent and
   # tty-foreground checks target shell-profile autostart, not a
   # display-manager session command, and would always fail under tuigreet.
-  # The manual environment import and unit starts in home.nix
-  # (systemdEnvironmentCommand) stay untouched during the experiment and
-  # are removed only after host validation shows uwsm covers them.
+  # Home Manager's explicit systemdEnvironmentCommand import remains configured
+  # alongside UWSM; do not assume the session manager replaces those environment
+  # imports or remove them without a separately tested change.
   greetdHyprlandSession = pkgs.writeShellScript "greetd-hyprland-session" ''
     export HYPRLAND_CONFIG="/home/localhost/.config/hypr/hyprland.lua"
     if ! ${pkgs.uwsm}/bin/uwsm start -- ${pkgs.hyprland}/bin/Hyprland "$@"; then
@@ -251,7 +250,7 @@ in
     # watchdog-based lockup detection. This favors lower jitter but reduces diagnostic
     # information if the host unexpectedly locks up.
     "amd_pstate=active"
-    # The pinned CachyOS RT-Bore-LTO 7.3.4 config sets CONFIG_ZSWAP_DEFAULT_ON=y.
+    # The locked CachyOS RT-Bore-LTO config sets CONFIG_ZSWAP_DEFAULT_ON=y.
     # ZRAM is the selected compressed swap tier; disable ZSwap to avoid a second
     # compression layer before the higher-priority zram and lower-priority disk swap.
     "zswap.enabled=0"
@@ -269,7 +268,7 @@ in
 
   # These optional Rust drivers are not used by this x86_64 host. The 7.3.3
   # CachyOS RT-Bore-LTO BTF failures (rnull_mod.ko, then rcpufreq_dt.ko) are
-  # historical; the current flake.lock resolves 7.3.4. Keep this narrow workaround
+  # historical; the current version is determined by nixos/flake.lock. Keep this narrow workaround
   # until a later exact-lock full-system build justifies removing it. General Rust,
   # BTF, and ThinLTO remain enabled.
   boot.kernelPatches = [
