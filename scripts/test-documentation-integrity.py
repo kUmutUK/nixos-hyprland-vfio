@@ -2222,7 +2222,13 @@ wallpaper = re.search(r'(?m)^\s*wallpaperVideo\s*=\s*"([^"]+/Downloads/[^"]+)"\s
 require(wallpaper is not None and wallpaper.group(1).split("/")[-1] in INSTALLATION, "INSTALLATION wallpaper default must match the exact host-settings.nix filename")
 require("installer backups are not automatically pruned" in CHANGELOG, "CHANGELOG must describe current backup retention rather than the historical five-backup policy")
 require("verified current kernel defaults" in CHANGELOG and "0c035b2c" in CHANGELOG and "91c4d58e" in CHANGELOG, "CHANGELOG must distinguish current kernel parameters and record the historical IOMMU transition")
-require("7.3.3" in CONFIG and "historical" in CONFIG and "current flake.lock resolves 7.3.4" in CONFIG, "kernel comments must distinguish the historical 7.3.3 BTF failure from the current 7.3.4 lock")
+require(
+    "7.3.3" in CONFIG
+    and "historical" in CONFIG
+    and "current version is determined by nixos/flake.lock" in CONFIG
+    and "current flake.lock resolves 7.3.4" not in CONFIG,
+    "kernel comments must distinguish the historical 7.3.3 BTF failure from the current lock-derived version",
+)
 require("amdgpu.ppfeaturemask" in CHANGELOG and "amdgpu.featuremask" not in CHANGELOG, "CHANGELOG must use the documented amdgpu.ppfeaturemask parameter name")
 require("older `[1.2.0]` archive entry" in CHANGELOG and "`2a7a:8a47` is absent" in CHANGELOG and "f46b8ac8" in CHANGELOG and "fbd105c8" in CHANGELOG, "CHANGELOG must state current USB passthrough IDs and trace their history")
 require("561,513 bytes" in REPAIR and "c905b5036d04bf1e" in REPAIR and "116 entries" in REPAIR, "repair report must record the supplied ZIP measurements")
@@ -2455,8 +2461,11 @@ require(
 )
 require("nix-output-monitor" in CONFIG, "nix-output-monitor must remain in the system profile")
 require(
-    "services.wlsunset" in HOME_NIX and "temperature.night = 4000;" in HOME_NIX,
-    "the wlsunset night-colour service must stay enabled with its pinned night temperature",
+    "services.wlsunset" in HOME_NIX
+    and "enable = false;" in HOME_NIX
+    and "temperature.night = 4000;" in HOME_NIX
+    and "Night-colour shifting is intentionally disabled" in HOME_NIX,
+    "the wlsunset declaration must remain disabled while retaining its documented opt-in values",
 )
 require(
     "### LTS recovery kernel, gamescope session, and VM backup wave — 2026-11-24" in CHANGELOG,
@@ -3254,10 +3263,11 @@ require(
     "README Home Snapper preflight paths must match the installer selector",
 )
 require(
-    "61 matching unique literal paths" in STATE_INDEX
+    "76 matching unique literal paths" in STATE_INDEX
+    and "76 matching unique literal paths" in MIGRATION_GUIDE
     and "56 → 61" in STATE_INDEX
-    and "56 → 61" in (ROOT / "docs/MIGRATION-GUIDE.md").read_text(encoding="utf-8"),
-    "current 61-path release allowlist and historical 53→56→61 sequence must be explicit",
+    and "56 → 61" in MIGRATION_GUIDE,
+    "current 76-path release allowlist and historical 56→61 sequence must be explicit",
 )
 require(
     "extraSpecialArgs" not in HOST_SETTINGS
@@ -3334,6 +3344,60 @@ require(
     and "AMDGPU Waybar telemetry" in CHANGELOG
     and "Waybar AMD GPU telemetry" in README,
     "Waybar AMD GPU telemetry, nvtop click action, mock-sysfs regression, and documentation must remain connected",
+)
+
+
+require(
+    "## [v1.6.3] - 2026-11-25" in CHANGELOG
+    and "## [v1.6.2] - 2026-11-25" in CHANGELOG
+    and "## [v1.6.1] - 2026-11-24" in CHANGELOG
+    and "10855920163a545f3e407e16c2352ff52ca5eff1" in CHANGELOG
+    and "f121cae7b4bed1ffb71de65b74c9a6f5888ad675bb67fdc89f80080dadf2ac47" in CHANGELOG,
+    "published v1.6.1-v1.6.3 release provenance must be recorded in descending order",
+)
+require(
+    "v1.6.3" in README
+    and "458419724" in README
+    and "92bc86da731a3678cf20124e10a37de891a8ed90" in README
+    and "45668780272" in README
+    and "56ed16581bb45d22b4c24186fb00e0c6e11439de" in README
+    and "107 commits and 22 changed files" in README,
+    "README current release, main CI, and exact full-system build boundary must match the latest verified GitHub records",
+)
+require(
+    "Sunless-Lost-from-Light-4K.mp4" in INSTALLER
+    and "Sunless-Lost-from-Light-4K.mp4" in INSTALLATION
+    and "Sunless-Lost-from-Light-4K.mp4" in HOST_SETTINGS,
+    "installer, installation guide, and host-settings wallpaper defaults must match",
+)
+require(
+    "startupPolicy='optional'" in INSTALLATION
+    and "commented-out targets" not in INSTALLATION,
+    "installation instructions must describe the active optional USB hostdev entries accurately",
+)
+require(
+    "manual Cachix publication of all declared outputs" in MIGRATION_GUIDE
+    and "`out`, `modules`, and `dev`" in MIGRATION_GUIDE,
+    "migration guide must state that the cache publishes selected-kernel outputs, not the system toplevel",
+)
+require(
+    "uwsm start --" in CONFIG
+    and "PR #31 merged" in CHANGELOG
+    and "branch-only until the reference host validates it" not in CHANGELOG,
+    "UWSM documentation must describe the merged active greetd integration, not a branch-only experiment",
+)
+require(
+    "TARGET_HOST_VALIDATED=true" in REPAIR
+    and "VM_XML_VALIDATED=true" in REPAIR
+    and "supporting transcripts are not committed" in REPAIR
+    and "107 commits and 22 changed files" in REPAIR,
+    "repair report must preserve release-attestation and current-main full-system-build boundaries",
+)
+require(
+    "76 matching unique literal paths" in RELEASING
+    and "v1.6.3" in RELEASING
+    and "Historical exceptions are incidents, not precedent" in RELEASING,
+    "release guide must carry current release provenance, exact allowlist, and historical tag-anomaly policy",
 )
 
 if errors:
