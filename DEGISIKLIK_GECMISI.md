@@ -18,7 +18,7 @@
 
 - **Merged Flake inputs (PR #30):** root Nixpkgs `2786a2a72088ecf32aea5b3ec52099e6a7cff78f`, nested CachyOS `nixos-unstable-small` Nixpkgs `616ae05a769a23c143b19746b6a3b06366a9a28f`, CachyOS source `306480b9096055a06503167f975c027e244dd839`. The owner confirms the Flake update/rebuild and UWSM validation completed successfully on 24 November; this is an owner report, not a retained CI transcript.
 - **Current check workflow size:** the feature branch reuses the AMDGPU telemetry regression step for four related host-feature suites; the workflow now defines all 30 workflow-defined steps (GitHub's runner-generated `Set up job` entry is not part of that YAML-defined count). Normal CI #1765 [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/45483814217) passed all 30 workflow-defined steps on exact feature commit `15358cc68ba23853c7c6053fab5b003ccde9af89`.
-- **Latest retained GitHub full-system build at the 24 November checkpoint:** Build #22 ([run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44623962158)) succeeded on exact source `d845ccfb5dec3daf705b59bc29f2e5f14e4ee767` using the 19 November lock tuple. Build #25 later superseded it and validated the merged PR #30 lock on exact source `56ed16581bb45d22b4c24186fb00e0c6e11439de.
+- **Latest retained GitHub full-system build at the 24 November checkpoint:** Build #22 ([run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44623962158)) succeeded on exact source `d845ccfb5dec3daf705b59bc29f2e5f14e4ee767` using the 19 November lock tuple. Build #25 later superseded it and validated the merged PR #30 lock on exact source `56ed16581bb45d22b4c24186fb00e0c6e11439de`.
 
 **Historical build, release, and CI drift (kept separate from the current feature branch):**
 
