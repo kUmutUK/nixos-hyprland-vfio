@@ -1,5 +1,5 @@
 #include <QApplication>
-#include <QButtonGroup>
+#include <QList>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -15,7 +15,7 @@
 #include <QProcess>
 #include <QProcessEnvironment>
 #include <QPushButton>
-#include <QRegularExpression>
+#include <QStringList>
 #include <QScrollArea>
 #include <QStackedWidget>
 #include <QStatusBar>
@@ -720,8 +720,26 @@ private:
         statusBar()->showMessage(title + QStringLiteral(" opened in Kitty"), 5000);
     }
 
+    bool requireFlakeFiles()
+    {
+        const bool flakeExists = QFileInfo(flakeDir + QStringLiteral("/flake.nix")).isFile();
+        const bool lockExists = QFileInfo(flakeDir + QStringLiteral("/flake.lock")).isFile();
+        if (flakeExists && lockExists)
+            return true;
+
+        QMessageBox::critical(
+            this,
+            QStringLiteral("NixOS Flake not found"),
+            QStringLiteral("Both flake.nix and flake.lock must exist in:\\n%1\\n\\n"
+                           "Set NIXOS_CONFIG_FLAKE to the deployed Flake directory or repair the source tree.")
+                .arg(flakeDir));
+        return false;
+    }
+
     void updateFlakeInput()
     {
+        if (!requireFlakeFiles())
+            return;
         if (!confirmAction(
                 QStringLiteral("Update CachyOS Flake input?"),
                 QStringLiteral("Only cachyos-kernel in flake.lock will be updated. "
@@ -735,6 +753,8 @@ private:
 
     void buildKernelOnly()
     {
+        if (!requireFlakeFiles())
+            return;
         if (!confirmAction(
                 QStringLiteral("Build the selected kernel only?"),
                 QStringLiteral("This builds the kernel selected by the current Flake. "
@@ -750,6 +770,8 @@ private:
 
     void rebuildAndSwitch()
     {
+        if (!requireFlakeFiles())
+            return;
         if (!confirmAction(
                 QStringLiteral("Rebuild and switch the complete NixOS system?"),
                 QStringLiteral("This runs sudo nixos-rebuild switch for the current Flake and activates "
