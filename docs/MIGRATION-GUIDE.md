@@ -37,8 +37,9 @@ backup, transaction, and stateVersion paths were updated for the new layout.
 - `nixos/hosts/.template/` — configuration.nix + host-settings.nix template for
   adding a second machine, with the AMD/VFIO review checklist.
 - `.envrc` — `use flake ./nixos` for direnv users (`.direnv/` is git-ignored).
-- `.github/workflows/cache.yml` — manual Cachix push of the system toplevel,
-  kernel, and pinned packages (see the setup notes inside the file).
+- `.github/workflows/cache.yml` — manual Cachix publication of all declared outputs
+  of the selected RT-Bore-LTO kernel (`out`, `modules`, and `dev`) plus runtime
+  closures; it does not push the system toplevel or unrelated packages.
 - `.github/workflows/flake-update.yml` — weekly automated flake.lock update PR;
   it never merges automatically.
 
@@ -48,9 +49,10 @@ docs/ guides were updated to the new paths. The release allowlist in
 `.github/workflows/release.yml` and RELEASING.md was first extended (53 → 56 exact
 paths) with the two new workflows and this guide. Follow-up commit
 `05aa2333b3c004dda7f2b8c6d8e992da9aea94bd` then added five more explicit paths
-(56 → 61); **61 is the current matching count** enforced by
-`scripts/test-documentation-integrity.py`. The 53 → 56 figure is an earlier
-intermediate snapshot, not the current allowlist size. All offline regression
+(56 → 61) in the November 19 snapshot. The current allowlist has **76 matching
+unique literal paths**, enforced by `scripts/test-documentation-integrity.py`;
+61 is a historical count, not the current size. The 53 → 56 figure is an earlier
+intermediate snapshot. All offline regression
 suites that reference repository paths were updated: installer invariants,
 documentation integrity, LSFG-VK v2, MAKO, VM XML (three suites), VM
 diagnostic, VM ISO paths, VFIO hook driver-state, embedded-script extraction,
