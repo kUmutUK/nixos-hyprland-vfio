@@ -451,6 +451,32 @@ private:
         runningPill->setObjectName(QStringLiteral("statusPill"));
         heroLayout->addWidget(runningPill, 0, Qt::AlignTop);
         layout->addWidget(hero);
+        auto *kernelTitle = new QLabel(QStringLiteral("KERNEL PACKAGE"), page);
+        kernelTitle->setObjectName(QStringLiteral("eyebrow"));
+        layout->addWidget(kernelTitle);
+        kernelTable = new QTableWidget(0, 4, page);
+        kernelTable->setObjectName(QStringLiteral("kernelTable"));
+        kernelTable->setHorizontalHeaderLabels(QStringList{
+            QStringLiteral("Kernel"), QStringLiteral("Version"),
+            QStringLiteral("Category"), QStringLiteral("Status")
+        });
+        kernelTable->verticalHeader()->hide();
+        kernelTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
+        kernelTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
+        kernelTable->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
+        kernelTable->horizontalHeader()->setSectionResizeMode(3, QHeaderView::ResizeToContents);
+        kernelTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+        kernelTable->setSelectionMode(QAbstractItemView::SingleSelection);
+        kernelTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+        kernelTable->setAlternatingRowColors(true);
+        kernelTable->setShowGrid(false);
+        kernelTable->setMinimumHeight(100);
+        kernelTable->setMaximumHeight(140);
+        layout->addWidget(kernelTable);
+        kernelInventoryStatus = new QLabel(QStringLiteral("Loading Flake-selected kernel…"), page);
+        kernelInventoryStatus->setObjectName(QStringLiteral("mutedText"));
+        layout->addWidget(kernelInventoryStatus);
+
 
         auto *grid = new QGridLayout();
         grid->setHorizontalSpacing(13);
@@ -665,6 +691,7 @@ private:
         if (overviewFlakeValue)
             overviewFlakeValue->setText(flakeDir);
 
+        refreshKernelInventory();
         refreshBootInformation();
         refreshFlakeInformation();
         statusBar()->showMessage(
@@ -672,6 +699,44 @@ private:
                 ? QStringLiteral("Flake files are missing or unreadable · check the configured directory")
                 : QStringLiteral("Status refreshed · inspection did not change the system"),
             6000);
+    }
+
+
+    void refreshKernelInventory()
+    {
+        if (!kernelTable || !kernelInventoryStatus)
+            return;
+        const QString flake = readFile(flakeDir + QStringLiteral("/flake.nix"));
+        const QString running = runReadOnly(QStringLiteral("uname"), {QStringLiteral("-r")}, 2500);
+        QString version = runReadOnly(QStringLiteral("nix"), {
+            QStringLiteral("eval"), QStringLiteral("--raw"),
+            QStringLiteral("--no-update-lock-file"),
+            flakeDir + QStringLiteral("#nixosConfigurations.nixos.config.boot.kernelPackages.kernel.modDirVersion")
+        }, 30000);
+        const bool failed = version.isEmpty() || version.contains(QStringLiteral("error:")) ||
+            version.contains(QStringLiteral("did not finish within")) ||
+            version.startsWith(QStringLiteral("Could not start"));
+        const bool known = flake.contains(QStringLiteral("rtBoreLtoV3KernelPackagesFor config.kumutuk.host.kernelKcfi"));
+        const QString name = flake.isEmpty() ? QStringLiteral("Flake unavailable") :
+            (known ? QStringLiteral("CachyOS RT-Bore-LTO") : QStringLiteral("Flake-selected kernel"));
+        const QString category = flake.contains(QStringLiteral("processorOpt = \"x86_64-v3\""))
+            ? QStringLiteral("x86-64-v3") : QStringLiteral("NixOS Flake");
+        if (failed)
+            version = QStringLiteral("Not available");
+        const bool isRunning = !failed && (running == version || running.startsWith(version + QLatin1Char('-')));
+        kernelTable->setRowCount(1);
+        kernelTable->setItem(0, 0, new QTableWidgetItem(name));
+        kernelTable->setItem(0, 1, new QTableWidgetItem(version));
+        kernelTable->setItem(0, 2, new QTableWidgetItem(category));
+        auto *status = new QTableWidgetItem(flake.isEmpty() ? QStringLiteral("Unavailable") :
+            (isRunning ? QStringLiteral("Running") : QStringLiteral("Configured")));
+        status->setTextAlignment(Qt::AlignCenter);
+        kernelTable->setItem(0, 3, status);
+        kernelTable->setRowHeight(0, 40);
+        kernelInventoryStatus->setText(flake.isEmpty()
+            ? QStringLiteral("Set NIXOS_CONFIG_FLAKE to the deployed NixOS Flake directory.")
+            : (failed ? QStringLiteral("Flake found, but the configured kernel version could not be evaluated.")
+                      : QStringLiteral("NixOS kernel selection stays declarative · build and activation are separate.")));
     }
 
     void refreshBootInformation()
