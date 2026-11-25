@@ -2237,6 +2237,14 @@ require(latency_vars is not None and not re.search(r"(?m)^\s*LOW_LATENCY_LAYER_R
 require("services.input-remapper.enable = true" in README and "input-remapper" in CONFIG and "services.input-remapper.enable" not in CONFIG, "README must disclose that input-remapper is installed but its daemon is not enabled")
 require("Inspect active layers with:" in README and README.find("VK_LOADER_DEBUG=layer vulkaninfo") > README.find("Inspect active layers with:") and README.find("**CS2 / Source 2 note:**") > README.find("VK_LOADER_DEBUG=layer vulkaninfo"), "README layer-inspection command must follow its introduction before the separate CS2 note")
 require("[0-9]+x[0-9]+(@[0-9.]+)?" in HOME_NIX, "WuWa monitor parser must accept resolutions with or without a refresh-rate suffix")
+mpvpaper_service = (
+    HOME_NIX.partition('mpvpaper = lib.mkIf (monitorOutput != "") {')[2]
+    .partition('mpvpaper-watchdog = lib.mkIf (monitorOutput != "") {')[0]
+)
+require(
+    '"-l"\\n            "bottom"' in mpvpaper_service and '"-p"' in mpvpaper_service,
+    "mpvpaper must use layer-shell bottom above Serpantinum's background wallpaper surface while retaining auto-pause",
+)
 require('Description = "Stop the live wallpaper while Brave windows or GameMode are active."' in HOME_NIX, "mpvpaper watchdog description must cover Brave and GameMode")
 hypridle_start = HOME_NIX.index("listener = [")
 hypridle_listeners = HOME_NIX[hypridle_start:HOME_NIX.index("\n      ];", hypridle_start)]
