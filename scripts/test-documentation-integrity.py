@@ -80,6 +80,8 @@ OPTISCALER_MANAGER_SCRIPT = (ROOT / "scripts/optiscaler_manager.py").read_text(e
 OPTISCALER_MANAGER_TEST = (ROOT / "scripts/test-optiscaler-manager.py").read_text(encoding="utf-8")
 BTRFS_KERNEL_GUIDE = (ROOT / "docs/BTRFS-AND-KERNEL-MANAGEMENT.md").read_text(encoding="utf-8")
 KERNEL_MANAGER_SCRIPT = (ROOT / "nixos/kernel-manager.sh").read_text(encoding="utf-8")
+KERNEL_MANAGER_PACKAGE = (ROOT / "nixos/kernel-manager.nix").read_text(encoding="utf-8")
+KERNEL_MANAGER_GUI = (ROOT / "nixos/kernel-manager.cpp").read_text(encoding="utf-8")
 VM_XML_SYNC = (ROOT / "scripts/sync-vm-xml.py").read_text(encoding="utf-8")
 VM_XML_SYNC_TEST = (ROOT / "scripts/test-vm-xml-sync.py").read_text(encoding="utf-8")
 MANUAL_VM_BOOTSTRAP_TEST = (ROOT / "scripts/test-manual-vm-bootstrap.sh").read_text(encoding="utf-8")
@@ -1609,7 +1611,7 @@ if git_checkout and current_head and repair_baseline_match:
             # Pre-restructure paths are pending-build paths too: the 2026-11-19 hosts/ move
             # renamed nixos/{configuration,home}.nix and nixos/hooks/qemu, and diff reports
             # the old locations until a new full-system build resets the verified baseline.
-            full_build_pending_paths = {"nixos/hosts/nixos/configuration.nix", "nixos/hosts/nixos/hooks/qemu", "install.sh", "nixos/hosts/nixos/home.nix", "nixos/hosts/nixos/host-settings.nix", "nixos/flake.nix", "nixos/flake.lock", "nixos/hosts/nixos/hardware-configuration.nix", "nixos/mako-renderer.nix", "nixos/helium.nix", "nixos/hosts/nixos/hooks/README.md", "nixos/configuration.nix", "nixos/home.nix", "nixos/hardware-configuration.nix", "nixos/hooks/qemu", "nixos/kernel-manager.sh", "scripts/backup-vm.sh", "scripts/waybar-amdgpu.sh", "scripts/host-profile.sh", "scripts/automated-vm-backup.sh"}
+            full_build_pending_paths = {"nixos/hosts/nixos/configuration.nix", "nixos/hosts/nixos/hooks/qemu", "install.sh", "nixos/hosts/nixos/home.nix", "nixos/hosts/nixos/host-settings.nix", "nixos/flake.nix", "nixos/flake.lock", "nixos/hosts/nixos/hardware-configuration.nix", "nixos/mako-renderer.nix", "nixos/helium.nix", "nixos/kernel-manager.nix", "nixos/kernel-manager.cpp", "nixos/hosts/nixos/hooks/README.md", "nixos/configuration.nix", "nixos/home.nix", "nixos/hardware-configuration.nix", "nixos/hooks/qemu", "nixos/kernel-manager.sh", "scripts/backup-vm.sh", "scripts/waybar-amdgpu.sh", "scripts/host-profile.sh", "scripts/automated-vm-backup.sh"}
             vm_xml_pending_paths = {
                 "vm-xml/win10.xml",
                 "vm-xml/win11.xml",
@@ -1728,6 +1730,20 @@ if git_checkout and current_head and repair_baseline_match:
                     and "nixos/mako-renderer.nix" not in RELEASE_WORKFLOW,
                     "the MAKO Nix derivation must remain outside the ancestor-build release allowlist",
                 )
+            if "nixos/kernel-manager.nix" in pending or "nixos/kernel-manager.cpp" in pending:
+                require(
+                    "nixos/kernel-manager.nix" in REPAIR
+                    and "nixos/kernel-manager.cpp" in REPAIR
+                    and "fresh full-system build is required before release" in REPAIR,
+                    "the Qt Kernel Manager sources must be documented as requiring a fresh full-system build",
+                )
+                require(
+                    "nixos/kernel-manager.nix" in RELEASING
+                    and "nixos/kernel-manager.nix" not in RELEASE_WORKFLOW
+                    and "nixos/kernel-manager.cpp" in RELEASING
+                    and "nixos/kernel-manager.cpp" not in RELEASE_WORKFLOW,
+                    "the Qt Kernel Manager sources must remain outside the ancestor-build release allowlist",
+                )
             if "nixos/helium.nix" in pending:
                 require(
                     "nixos/helium.nix" in REPAIR
@@ -1831,6 +1847,8 @@ if map_start >= 0 and map_end > map_start:
         "test-documentation-integrity.py",
         "lsfg-vk-v2.nix",
         "helium.nix",
+        "kernel-manager.nix",
+        "kernel-manager.cpp",
     ):
         require(required_path in repo_map, f"README repository map omits {required_path}")
 
@@ -1906,7 +1924,7 @@ require(
     and "passed-through RX 6700 XT HDMI/DP audio function" in README,
     "README and host configuration must describe PipeWire access and retain the separate GPU monitor audio output",
 )
-require("nix build .#lsfg-vk-v2" in README and "nix build .#helium" in README and "nix build .#lsfg-vk` command" not in README, "README must use the current LSFG-VK v2 and Helium flake outputs")
+require("nix build .#lsfg-vk-v2" in README and "nix build .#helium" in README and "nix build .#kernel-manager" in README and "nix build .#lsfg-vk` command" not in README, "README must use the current LSFG-VK v2, Helium, and Kernel Manager flake outputs")
 require(
     'with tempfile.TemporaryDirectory(prefix="vm-xml-sync-mock-") as mock_root:' in VM_XML_SYNC_TEST
     and 'template.parent / "mock-bin"' not in VM_XML_SYNC_TEST,
@@ -1922,7 +1940,7 @@ require(
     and "source checkout clean" in CHECK_WORKFLOW,
     "normal CI must reject untracked or modified files left by validation",
 )
-require("packages.${system} = {" in FLAKE and "lsfg-vk-v2 = lsfgVkV2Package;" in FLAKE and "helium = heliumPackage;" in FLAKE and "packages.${system}.lsfg-vk =" not in FLAKE, "README package commands must match the declared grouped flake outputs")
+require("packages.${system} = {" in FLAKE and "lsfg-vk-v2 = lsfgVkV2Package;" in FLAKE and "helium = heliumPackage;" in FLAKE and "kernel-manager = kernelManagerPackage;" in FLAKE and "packages.${system}.lsfg-vk =" not in FLAKE, "README package commands must match the declared grouped flake outputs")
 require(
     'version = "0.22.4.1";' in HELIUM_PACKAGE
     and "helium-${finalAttrs.version}-x86_64.AppImage" in HELIUM_PACKAGE
@@ -2716,10 +2734,25 @@ require(
     "the Btrfs/kernel guide must be reflected in README and both matching documentation-only allowlists",
 )
 require(
-    "nixosKernelManager = pkgs.writeShellApplication" in HOME_NIX
-    and "builtins.readFile ../../kernel-manager.sh" in HOME_NIX
-    and 'xdg.desktopEntries."nixos-kernel-manager"' in HOME_NIX,
-    "Home Manager must install the Rofi NixOS Kernel Manager and expose its desktop entry",
+    "nixosKernelManager = pkgs.callPackage ../../kernel-manager.nix { };" in HOME_NIX
+    and 'xdg.desktopEntries."nixos-kernel-manager"' in HOME_NIX
+    and 'icon = "nixos-kernel-manager";' in HOME_NIX,
+    "Home Manager must install the native Qt Kernel Manager and expose its desktop entry",
+)
+require(
+    "Qt6Widgets" in KERNEL_MANAGER_PACKAGE
+    and "qt6.qtwayland" in KERNEL_MANAGER_PACKAGE
+    and "kernel-manager.cpp" in KERNEL_MANAGER_PACKAGE
+    and "nixos-kernel-manager.svg" in KERNEL_MANAGER_PACKAGE
+    and "QMainWindow" in KERNEL_MANAGER_GUI
+    and "QStackedWidget" in KERNEL_MANAGER_GUI
+    and "QFrame#metricCard" in KERNEL_MANAGER_GUI
+    and 'QProcess::startDetached(QStringLiteral("kitty")' in KERNEL_MANAGER_GUI
+    and KERNEL_MANAGER_GUI.count("if (!confirmAction(") == 3
+    and "sudo nix flake update --flake %1 cachyos-kernel" in KERNEL_MANAGER_GUI
+    and "nix build --no-link --print-out-paths --show-trace --no-update-lock-file %1" in KERNEL_MANAGER_GUI
+    and "sudo nixos-rebuild switch --flake %1" in KERNEL_MANAGER_GUI,
+    "Kernel Manager must be a native Qt desktop application with separate confirmed update/build/switch actions",
 )
 require(
     "uname -r" in KERNEL_MANAGER_SCRIPT
@@ -2737,6 +2770,10 @@ require(
 require(
     "nixos/kernel-manager.sh" not in documented_release_paths
     and "nixos/kernel-manager.sh" not in verification_metadata_paths
+    and "nixos/kernel-manager.nix" not in documented_release_paths
+    and "nixos/kernel-manager.nix" not in verification_metadata_paths
+    and "nixos/kernel-manager.cpp" not in documented_release_paths
+    and "nixos/kernel-manager.cpp" not in verification_metadata_paths
     and "nixos/hosts/nixos/home.nix" not in documented_release_paths
     and "nixos/hosts/nixos/home.nix" not in verification_metadata_paths,
     "the runtime manager and Home Manager integration must remain behind the full-system-build release gate",
@@ -2754,10 +2791,11 @@ require(
     "the documentation test step name must disclose the MAKO regression suite it runs",
 )
 require(
-    "- name: Build the pinned LSFG-VK v2, MAKO, and Helium packages" in CHECK_WORKFLOW
+    "- name: Build the pinned LSFG-VK v2, MAKO, Helium, and Kernel Manager packages" in CHECK_WORKFLOW
     and ".#lsfg-vk-v2" in CHECK_WORKFLOW
-    and ".#mako-renderer" in CHECK_WORKFLOW,
-    "the package build step name must disclose both LSFG-VK v2 and MAKO builds",
+    and ".#mako-renderer" in CHECK_WORKFLOW
+    and ".#kernel-manager" in CHECK_WORKFLOW,
+    "the package build step name must disclose LSFG-VK v2, MAKO, Helium, and Kernel Manager builds",
 )
 require("## Audit finding fixes — 2026-11-03" in REPAIR, "repair report must record the new audit findings")
 for feature_title, hardware_check in (
