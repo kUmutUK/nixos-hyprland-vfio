@@ -49,8 +49,7 @@ docs/ guides were updated to the new paths. The release allowlist in
 `.github/workflows/release.yml` and RELEASING.md was first extended (53 → 56 exact
 paths) with the two new workflows and this guide. Follow-up commit
 `05aa2333b3c004dda7f2b8c6d8e992da9aea94bd` then added five more explicit paths
-(56 → 61) in the November 19 snapshot. The current allowlist has **76 matching
-unique literal paths**, enforced by `scripts/test-documentation-integrity.py`;
+(56 → 61) in the November 19 snapshot. The current allowlist has **76 matching unique literal paths**, enforced by `scripts/test-documentation-integrity.py`;
 61 is a historical count, not the current size. The 53 → 56 figure is an earlier
 intermediate snapshot. All offline regression
 suites that reference repository paths were updated: installer invariants,
