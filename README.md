@@ -32,7 +32,7 @@ Full-system Build #22 is the latest retained GitHub full-system build; Build #21
 
 The audited pre-update `main` baseline was six commits and 15 changed paths after the v1.6.0 tag source; `install.sh` differed by 36 insertions and one deletion. Normal CI #1669 [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44603757865) passed that audited pre-update `main` commit `9e399dcbe96a82a91d03e95fe2251f4e437eadb7`; the exact v1.6.0 tag source `3c518e45d979db3234f7628ccbf3979a0057dcf2` separately passed Normal CI #1663 [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44593727498). Release #52 accepted `TARGET_HOST_VALIDATED=true` for the tag source only; it is a maintainer declaration without a retained host transcript.
 
-Before the feature branch expanded the documentation allowlist, `RELEASING.md` and `release.yml` shared 61 matching unique literal paths. The documented history records the expansion from 56 → 61. This feature branch separately carries a 75-path allowlist; those counts refer to different source snapshots.
+The 61-path count records the 19 November allowlist snapshot (56 → 61). A later 24 November feature snapshot carried 75 paths; current `main` has 76 matching unique literal paths in `RELEASING.md` and the release workflow, enforced by `scripts/test-documentation-integrity.py`.
 
 
 **Owner-reported local full-system build and VM check (16 November 2026):** The owner reported a successful from-scratch NixOS system build and ordinary VM start/shutdown, but supplied no exact source SHA, derivation/command, or booted generation/kernel identity. This remains separate from GitHub Build #21. The 16 November note said `install.sh` had not been tried; Release #54 later accepted a maintainer `TARGET_HOST_VALIDATED=true` declaration for exact source `d845ccfb5dec3daf705b59bc29f2e5f14e4ee767` (the re-published v1.6.0 source), and Release #52 had earlier accepted the same declaration for the `3c518e45d979db3234f7628ccbf3979a0057dcf2` tag source. The supporting host transcript is not retained, so this is not independently reproducible evidence. Installed NixOS `vdb` guest boot, guest networking, saved-state/managed-save restore, and exact-source booted-generation identity remain unverified in the retained technical record.
@@ -806,7 +806,7 @@ It replaces Waybar, Dunst, Rofi, and `nm-applet` as the running shell; those pac
 | GameMode | Applies the configured game-time priority and performance settings |
 | Gamescope | Fullscreen and window rules for games |
 | MangoHud | FPS, frametime, GPU/CPU, and temperature overlay |
-| AMDGPU telemetry reader | Read-only AMDGPU sysfs reader and tests remain available in the manual Waybar fallback; Serpantinum's active bar does not currently include this module. |
+| Waybar AMD GPU telemetry (manual fallback) | The read-only AMDGPU sysfs reader and tests remain available when manually starting Waybar; Serpantinum's active bar does not currently include this module. |
 | sched_ext / `scx_bpfland` | BPF-Land is loaded by `scx-loader`; `scxctl stop` returns scheduling to the kernel's RT-Bore/BORE fallback |
 | power-profiles-daemon | Power profile / CPU governor management |
 | Steam / Proton / Wine | Windows game compatibility tools |
