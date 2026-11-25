@@ -2773,7 +2773,7 @@ require(
     and "privilegedRequestPending" in KERNEL_MANAGER_GUI
     and "Authenticate once to enable system information and privileged actions." in KERNEL_MANAGER_GUI
     and "No new password prompt is needed." in KERNEL_MANAGER_GUI
-    and KERNEL_MANAGER_GUI.count('QStringLiteral("/run/wrappers/bin/pkexec")') == 1
+    and KERNEL_MANAGER_GUI.count('QStringLiteral("/run/wrappers/bin/pkexec")') == 2
     and KERNEL_MANAGER_GUI.count("if (!confirmAction(") == 3
     and 'runPrivilegedAction(QStringLiteral("update-cachyos")' in KERNEL_MANAGER_GUI
     and "nix build --no-link --print-out-paths --show-trace --no-update-lock-file %1" in KERNEL_MANAGER_GUI
