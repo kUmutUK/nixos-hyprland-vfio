@@ -47,10 +47,10 @@ let
   gitName = hostCfg.gitName or "changeme";
   gitEmail = hostCfg.gitEmail or "you@example.com";
 
-  # Every cursor name resolves to the same plus glyph. There is no inherited theme,
-  # so hand, text, wait, resize, and other states cannot fall back to another shape.
+  # Every cursor name resolves to the same black plus glyph. The Classic variant
+  # gives it a black body with a light outline; no alternate shapes are inherited.
   plusCursorTheme = pkgs.runCommand "plus-cursor-theme" { } ''
-        src="${pkgs.bibata-cursors}/share/icons/Bibata-Modern-Ice"
+        src="${pkgs.bibata-cursors}/share/icons/Bibata-Modern-Classic"
         theme="$out/share/icons/Plus-Cursor"
         mkdir -p "$theme/cursors"
         test -f "$src/cursors/plus"
@@ -67,7 +67,7 @@ let
         cat > "$theme/index.theme" <<'EOF'
     [Icon Theme]
     Name=Plus-Cursor
-    Comment=Every cursor shape resolves to the plus glyph
+    Comment=Every cursor shape resolves to the plus glyph (black)
     EOF
   '';
 
