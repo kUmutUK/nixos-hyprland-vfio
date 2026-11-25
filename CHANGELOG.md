@@ -495,15 +495,6 @@ This file summarizes notable changes in English. The separate Turkish release-by
 - H1 is already corrected in the archived [1.2.2] entry and dated preface: pinned Nixpkgs defines Hyprland `0.56.2` / hyprlock `0.9.6`; `0.54.3 / 0.9.5` is marked as the incorrect earlier statement. H3 and H4 remain documented historical anomalies; no old release description is rewritten and no missing Build #14 event is inferred.
 - **Second reconciliation CI failure:** Nix Flake Check [#1383](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42998196145) failed on `36c13be1558d70822edf9432fe6cca3507f6d8e5` at the documentation-integrity assertion `README must distinguish the immutable v1.5.0 release ZIP from later main-branch documentation`. Commit `edf78e8` restored `The v1.5.0 asset will not be rewritten`; [#1384](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/42998456098) then passed on exact commit `edf78e8559a289dda5da01467ce0082da2c38188`.
 
-## [v1.5.9] - 2026-11-19
-
-### Release and validation provenance
-
-- Published by Release workflow run #49 ([run 44548011675](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44548011675), 19 November 2026) from exact tag/source commit `d8484ab9083d9c9c71551b0147fa2591e2dbd8a1`.
-- GitHub Release metadata records the canonical source ZIP as 496,851 bytes with SHA-256 `5639e8b2fff7140b52a84e93756c2c3e0a8b6311a33d43aebcae430526601c84`; the asset was independently re-hashed to that value on 19 November 2026.
-- The tag range over v1.5.8 included the hosts/ layout restructure, the host-settings module, the 61-path release allowlist repair, deprecated xorg alias replacements, and the release-preparation documentation sequence.
-- Superseded the same day by v1.6.0.
-
 ## [v1.6.3] - 2026-11-25
 
 ### Release and source provenance
@@ -553,6 +544,15 @@ This file summarizes notable changes in English. The separate Turkish release-by
 - **Original publication (19 November 2026; superseded):** v1.6.0 was first published by Release workflow run #52 ([run 44594826628](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44594826628)) from exact tag/source commit `3c518e45d979db3234f7628ccbf3979a0057dcf2` (GitHub Release ID `451804552`, 505,012-byte ZIP, SHA-256 `80aa8e731e26e2ca81d3536f738f84203d7c2edfbfffc824b879bcf504d3d63b`; not independently re-hashed in that review). Attempts #50 (commit `93b8929f5aff5eec17a40afc3f3e91c3443a5c11`), #51 (commit `a5beea31d09d6ebbe1e974c7b58d66b3b46cf699`), and #53 (commit `ff655f61e39da2d22d4e85960e500b6eccb9b2db`) were superseded. Their workflow logs remain historical evidence for the exact commits they processed; none is the current published tag/source.
 - The original Release #52 accepted `TARGET_HOST_VALIDATED=true` for its exact tag commit. It also received `VM_XML_VALIDATED=true`, and `vm-xml/win10.xml` was unchanged between v1.5.9 and that source, so the changed-XML gate did not trigger and the input was not proof of a new guest boot.
 - The release notes for the re-published v1.6.0 record the v1.5.9..v1.6.0 range: the ICH9 PipeWire audio backend binding, Windows audio routing to headphones and monitor, release-provenance and installer-preflight reconciliation, flake-update PR retry-safety fixes, installer/rollback/release status reconciliation, analysis-found documentation contradiction fixes, and validation-note alignment.
+
+## [v1.5.9] - 2026-11-19
+
+### Release and validation provenance
+
+- Published by Release workflow run #49 ([run 44548011675](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44548011675), 19 November 2026) from exact tag/source commit `d8484ab9083d9c9c71551b0147fa2591e2dbd8a1`.
+- GitHub Release metadata records the canonical source ZIP as 496,851 bytes with SHA-256 `5639e8b2fff7140b52a84e93756c2c3e0a8b6311a33d43aebcae430526601c84`; the asset was independently re-hashed to that value on 19 November 2026.
+- The tag range over v1.5.8 included the hosts/ layout restructure, the host-settings module, the 61-path release allowlist repair, deprecated xorg alias replacements, and the release-preparation documentation sequence.
+- Superseded the same day by v1.6.0.
 
 ## [v1.5.8] - 2026-11-16
 
