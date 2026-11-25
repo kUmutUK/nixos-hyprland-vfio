@@ -57,7 +57,15 @@ stdenv.mkDerivation {
 
   postFixup = ''
     wrapQtApp "$out/bin/nixos-kernel-manager" \
-      --prefix PATH : "${lib.makeBinPath [ bash kitty nix sudo systemd ]}"
+      --prefix PATH : "${
+        lib.makeBinPath [
+          bash
+          kitty
+          nix
+          sudo
+          systemd
+        ]
+      }"
   '';
 
   doInstallCheck = true;
