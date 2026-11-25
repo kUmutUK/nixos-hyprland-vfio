@@ -99,7 +99,7 @@ let
   # (exec-once below, text plus image) feed it for both the Serpantinum
   # clipboard overlay and manual `cliphist` use. Rofi remains installed as a
   # manual fallback; the Super+B overlay now uses the Serpantinum clipboard.
-  systemdEnvironmentCommand = "${pkgs.bash}/bin/bash -c 'systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE HYPRLAND_INSTANCE_SIGNATURE HYPRLAND_DISPLAY; dbus-update-activation-environment --systemd --all; systemctl --user start hyprpolkitagent.service; systemctl --user start gamemode-notify; if [ -n \"$1\" ]; then systemctl --user start mpvpaper-watchdog; fi' sh ${lib.escapeShellArg monitorOutput}";
+  systemdEnvironmentCommand = "${pkgs.bash}/bin/bash -c 'systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE HYPRLAND_INSTANCE_SIGNATURE HYPRLAND_DISPLAY; dbus-update-activation-environment --systemd --all; systemctl --user restart hyprpolkitagent.service; systemctl --user start gamemode-notify; if [ -n \"$1\" ]; then systemctl --user start mpvpaper-watchdog; fi' sh ${lib.escapeShellArg monitorOutput}";
   wallpaperMissingCommand = "${pkgs.bash}/bin/bash -c 'if [ -n \"$2\" ] && [ ! -e \"$1\" ]; then notify-send -t 15000 -u critical \"mpvpaper\" \"Live wallpaper file not found: $1. Change wallpaperVideo in nixos/hosts/nixos/host-settings.nix, then restart mpvpaper-watchdog.\"; fi' sh ${lib.escapeShellArg wallpaperVideo} ${lib.escapeShellArg monitorOutput}";
   monitorValidationCommand = "${pkgs.bash}/bin/bash -c 'if [ -n \"$1\" ] && ! hyprctl monitors 2>/dev/null | grep -Fq -- \"Monitor $1 (\"; then notify-send -t 15000 -u critical \"mpvpaper\" \"Monitor output not found: $1. Set monitorOutput in nixos/hosts/nixos/host-settings.nix to the exact hyprctl monitors name.\"; fi' sh ${lib.escapeShellArg monitorOutput}";
 
@@ -1883,14 +1883,14 @@ in
   };
 
   systemd.user.services = {
-    # The agent uses the user's imported Wayland/D-Bus environment. Start it
-    # explicitly from systemdEnvironmentCommand after that import, rather than
-    # racing graphical-session startup or spawning an unmanaged compositor child.
+    # Start the authentication agent automatically with graphical-session.target.
+    # Serpantinum is managed by systemd/uwsm, which brings this target up; the
+    # Hyprland startup callback also imports the live Wayland/D-Bus environment
+    # and restarts the agent to cover a session-environment startup race.
     hyprpolkitagent = {
       Unit = {
         Description = "Hyprland Polkit authentication agent";
-        Wants = [ "graphical-session.target" ];
-        After = [ "graphical-session.target" ];
+        After = [ "graphical-session-pre.target" ];
         PartOf = [ "graphical-session.target" ];
         ConditionEnvironment = "WAYLAND_DISPLAY";
       };
@@ -1903,6 +1903,7 @@ in
         RestartSec = 1;
         TimeoutStopSec = 5;
       };
+      Install.WantedBy = [ "graphical-session.target" ];
     };
 
     # An empty `monitorOutput` disables live wallpaper for a manual Home Manager setup.

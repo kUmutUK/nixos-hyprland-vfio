@@ -21,6 +21,7 @@
 #include <QStringList>
 #include <QScrollArea>
 #include <QStackedWidget>
+#include <QStandardPaths>
 #include <QStatusBar>
 #include <QTableWidget>
 #include <QTableWidgetItem>
@@ -819,6 +820,29 @@ private:
         statusBar()->showMessage(title + QStringLiteral(" opened in Kitty"), 5000);
     }
 
+    bool requirePolkitHelper()
+    {
+        if (QStandardPaths::findExecutable(QStringLiteral("pkexec")).isEmpty()) {
+            QMessageBox::critical(this, QStringLiteral("Polkit is unavailable"),
+                QStringLiteral("pkexec was not found. Rebuild NixOS with the Kernel Manager Polkit integration."));
+            return false;
+        }
+        const QString helper = qEnvironmentVariable("KERNEL_MANAGER_POLKIT_HELPER");
+        if (helper.isEmpty() || !QFileInfo(helper).isExecutable()) {
+            QMessageBox::critical(this, QStringLiteral("Authorization helper unavailable"),
+                QStringLiteral("The immutable Polkit helper is missing. Rebuild NixOS before using privileged actions."));
+            return false;
+        }
+        return true;
+    }
+
+    QString polkitCommand(const QString &action, const QString &argument) const
+    {
+        const QString helper = qEnvironmentVariable("KERNEL_MANAGER_POLKIT_HELPER");
+        return QStringLiteral("pkexec %1 %2 %3")
+            .arg(shellQuote(helper), action, shellQuote(argument));
+    }
+
     bool requireFlakeFiles()
     {
         const bool flakeExists = QFileInfo(flakeDir + QStringLiteral("/flake.nix")).isFile();
@@ -837,17 +861,17 @@ private:
 
     void updateFlakeInput()
     {
-        if (!requireFlakeFiles())
+        if (!requireFlakeFiles() || !requirePolkitHelper())
             return;
         if (!confirmAction(
                 QStringLiteral("Update CachyOS Flake input?"),
-                QStringLiteral("Only cachyos-kernel in flake.lock will be updated. "
-                               "No kernel build or system activation will be started. "
-                               "Review the resulting lock diff before choosing another action.")))
+                QStringLiteral("Polkit will show the graphical authentication dialog. "
+                               "The restricted helper updates only cachyos-kernel in flake.lock. "
+                               "No kernel build or system activation will start.")))
             return;
         openTerminalAction(
             QStringLiteral("CachyOS Flake input update"),
-            QStringLiteral("sudo nix flake update --flake %1 cachyos-kernel").arg(shellQuote(flakeDir)));
+            polkitCommand(QStringLiteral("update-cachyos"), flakeDir));
     }
 
     void buildKernelOnly()
@@ -869,18 +893,17 @@ private:
 
     void rebuildAndSwitch()
     {
-        if (!requireFlakeFiles())
+        if (!requireFlakeFiles() || !requirePolkitHelper())
             return;
         if (!confirmAction(
                 QStringLiteral("Rebuild and switch the complete NixOS system?"),
-                QStringLiteral("This runs sudo nixos-rebuild switch for the current Flake and activates "
-                               "a new system generation. It does not update flake.lock. "
-                               "Continue only after reviewing the configuration and its build requirements.")))
+                QStringLiteral("Polkit will open the Hyprland graphical authentication dialog. "
+                               "The helper runs only nixos-rebuild switch for this Flake. "
+                               "No password is entered into or passed through Kitty.")))
             return;
-        const QString flakeReference = shellQuote(flakeDir + QStringLiteral("#nixos"));
         openTerminalAction(
             QStringLiteral("NixOS rebuild and switch"),
-            QStringLiteral("sudo nixos-rebuild switch --flake %1").arg(flakeReference));
+            polkitCommand(QStringLiteral("rebuild-switch"), flakeDir + QStringLiteral("#nixos")));
     }
 };
 

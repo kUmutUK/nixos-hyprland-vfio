@@ -4,16 +4,85 @@
   pkg-config,
   qt6,
   makeWrapper,
+  writeShellScriptBin,
   bash,
+  coreutils,
+  findutils,
+  gawk,
+  git,
+  gnugrep,
+  gnused,
   kitty,
   nix,
-  sudo,
+  polkit,
   systemd,
+  util-linux,
 }:
 
+let
+  polkitHelper = writeShellScriptBin "nixos-kernel-manager-polkit-helper" ''
+    set -euo pipefail
+    export PATH="${
+      lib.makeBinPath [
+        bash
+        coreutils
+        findutils
+        gawk
+        git
+        gnugrep
+        gnused
+        nix
+        systemd
+        util-linux
+      ]
+    }:/run/current-system/sw/bin:/run/current-system/sw/sbin"
+
+    if [ "$#" -ne 2 ]; then
+      echo "Usage: nixos-kernel-manager-polkit-helper <update-cachyos|rebuild-switch> <flake-path>" >&2
+      exit 2
+    fi
+    action="$1"
+    flake_ref="$2"
+    allowed_flake="/etc/nixos/nixos"
+    case "$action" in
+      update-cachyos)
+        if [ "$flake_ref" != "$allowed_flake" ]; then
+          echo "Only the managed NixOS Flake at $allowed_flake may be updated." >&2
+          exit 2
+        fi
+        flake_dir="$allowed_flake"
+        if [ ! -f "$flake_dir/flake.nix" ] || [ ! -f "$flake_dir/flake.lock" ]; then
+          echo "Both flake.nix and flake.lock must exist in $flake_dir." >&2
+          exit 2
+        fi
+        exec nix flake update --flake "$flake_dir" cachyos-kernel
+        ;;
+      rebuild-switch)
+        if [ "$flake_ref" != "$allowed_flake#nixos" ]; then
+          echo "Only $allowed_flake#nixos may be activated." >&2
+          exit 2
+        fi
+        flake_dir="$allowed_flake"
+        if [ ! -f "$flake_dir/flake.nix" ] || [ ! -f "$flake_dir/flake.lock" ]; then
+          echo "Both flake.nix and flake.lock must exist in $flake_dir." >&2
+          exit 2
+        fi
+        if [ ! -x /run/current-system/sw/bin/nixos-rebuild ]; then
+          echo "nixos-rebuild was not found in the active NixOS system profile." >&2
+          exit 127
+        fi
+        exec /run/current-system/sw/bin/nixos-rebuild switch --flake "$flake_ref"
+        ;;
+      *)
+        echo "Unsupported privileged Kernel Manager action: $action" >&2
+        exit 2
+        ;;
+    esac
+  '';
+in
 stdenv.mkDerivation {
   pname = "nixos-kernel-manager";
-  version = "1.0.0";
+  version = "1.2.0";
 
   src = ./kernel-manager.cpp;
   dontUnpack = true;
@@ -62,10 +131,11 @@ stdenv.mkDerivation {
           bash
           kitty
           nix
-          sudo
+          polkit
           systemd
         ]
-      }"
+      }" \
+      --set KERNEL_MANAGER_POLKIT_HELPER "${polkitHelper}/bin/nixos-kernel-manager-polkit-helper"
   '';
 
   doInstallCheck = true;
