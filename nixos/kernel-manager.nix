@@ -3,6 +3,7 @@
   stdenv,
   pkg-config,
   qt6,
+  bash,
   kitty,
   nix,
   sudo,
