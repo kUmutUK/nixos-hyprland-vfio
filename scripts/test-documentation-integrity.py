@@ -2529,7 +2529,7 @@ require(
     and CACHE_URL in FLAKE
     and CACHE_URL in CONFIG
     and "nixos-rebuild dry-build" in README
-    and "kernel^*" in README
+    and "Nix `^*` output selector" in README
     and "LOCAL MISSING" in README
     and "CACHIX MISSING" in README
     and "trusted-public-keys" in README
