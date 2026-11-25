@@ -131,7 +131,8 @@ stdenv.mkDerivation {
           polkit
           systemd
         ]
-      }"       --set KERNEL_MANAGER_POLKIT_HELPER "${polkitHelper}/bin/nixos-kernel-manager-polkit-helper"
+      }" \
+      --set KERNEL_MANAGER_POLKIT_HELPER "${polkitHelper}/bin/nixos-kernel-manager-polkit-helper"
   '';
 
   doInstallCheck = true;
