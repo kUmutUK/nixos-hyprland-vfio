@@ -2242,7 +2242,7 @@ mpvpaper_service = (
     .partition('mpvpaper-watchdog = lib.mkIf (monitorOutput != "") {')[0]
 )
 require(
-    '"-l"\\n            "bottom"' in mpvpaper_service and '"-p"' in mpvpaper_service,
+    re.search(r'"-l"\s+"bottom"', mpvpaper_service) is not None and '"-p"' in mpvpaper_service,
     "mpvpaper must use layer-shell bottom above Serpantinum's background wallpaper surface while retaining auto-pause",
 )
 require('Description = "Stop the live wallpaper while Brave windows or GameMode are active."' in HOME_NIX, "mpvpaper watchdog description must cover Brave and GameMode")
