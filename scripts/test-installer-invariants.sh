@@ -562,7 +562,7 @@ for kernel_manager_source in kernel-manager.nix kernel-manager.cpp; do
   fi
 done
 if [ "$(grep -Fc 'for file in hosts/nixos/configuration.nix hosts/nixos/home.nix hosts/nixos/host-settings.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix helium.nix kernel-manager.nix kernel-manager.cpp; do' "$README")" -lt 2 ]; then
-  echo "FAIL: README manual migration loops must include host files and lsfg-vk-v2.nix." >&2
+  echo "FAIL: README manual migration loops must include all ten Nix configuration and Qt application sources." >&2
   exit 1
 fi
 if ! grep -Fq 'nixfmt --check' "$README" \
