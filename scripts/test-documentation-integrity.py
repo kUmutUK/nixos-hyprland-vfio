@@ -3288,7 +3288,7 @@ require(
     'boot.kernelPackages = rtBoreLtoV3KernelPackagesFor config.kumutuk.host.kernelKcfi;' in FLAKE
     and 'nup = "sudo nix flake update --flake /etc/nixos/nixos cachyos-kernel";' in HOME_NIX
     and "CachyOS Kernel Manager" in BTRFS_KERNEL_GUIDE
-    and "At startup, the app invokes the immutable Polkit helper" in BTRFS_KERNEL_GUIDE
+    and "At startup, the app opens one restricted Polkit helper session" in BTRFS_KERNEL_GUIDE
     and "do not launch the whole GUI with `sudo` or `pkexec`" in BTRFS_KERNEL_GUIDE
     and "setuid wrapper at `/run/wrappers/bin/pkexec`" in BTRFS_KERNEL_GUIDE
     and "does not activate the new kernel" in BTRFS_KERNEL_GUIDE
