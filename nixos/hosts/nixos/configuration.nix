@@ -20,14 +20,14 @@ let
   # to the session, so the login keeps working without environment.d or a
   # pre-imported systemd user environment. If uwsm exits non-zero (for
   # example the user manager or its D-Bus socket is not reachable from
-  # greetd), fall back to the previous direct exec so a failed experiment
+  # greetd), fall back to the direct Hyprland exec so a UWSM startup problem
   # can never take the graphical login down with it. `uwsm check
   # may-start` is deliberately NOT used here: its login-shell-parent and
   # tty-foreground checks target shell-profile autostart, not a
   # display-manager session command, and would always fail under tuigreet.
-  # The manual environment import and unit starts in home.nix
-  # (systemdEnvironmentCommand) stay untouched during the experiment and
-  # are removed only after host validation shows uwsm covers them.
+  # Home Manager's explicit systemdEnvironmentCommand import remains configured
+  # alongside UWSM; do not assume the session manager replaces those environment
+  # imports or remove them without a separately tested change.
   greetdHyprlandSession = pkgs.writeShellScript "greetd-hyprland-session" ''
     export HYPRLAND_CONFIG="/home/localhost/.config/hypr/hyprland.lua"
     if ! ${pkgs.uwsm}/bin/uwsm start -- ${pkgs.hyprland}/bin/Hyprland "$@"; then
