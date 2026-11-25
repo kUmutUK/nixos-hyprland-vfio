@@ -22,18 +22,20 @@
 let
   polkitHelper = writeShellScriptBin "nixos-kernel-manager-polkit-helper" ''
     set -euo pipefail
-    export PATH="${lib.makeBinPath [
-      bash
-      coreutils
-      findutils
-      gawk
-      git
-      gnugrep
-      gnused
-      nix
-      systemd
-      util-linux
-    ]}:/run/current-system/sw/bin:/run/current-system/sw/sbin"
+    export PATH="${
+      lib.makeBinPath [
+        bash
+        coreutils
+        findutils
+        gawk
+        git
+        gnugrep
+        gnused
+        nix
+        systemd
+        util-linux
+      ]
+    }:/run/current-system/sw/bin:/run/current-system/sw/sbin"
 
     if [ "$#" -ne 2 ]; then
       echo "Usage: nixos-kernel-manager-polkit-helper <update-cachyos|rebuild-switch> <flake-path>" >&2
