@@ -117,7 +117,8 @@
         ];
       };
 
-      # Expose the pinned LSFG-VK v2 and optional MAKO Renderer packages for CI/contributors.
+      # Expose the pinned LSFG-VK v2, MAKO Renderer, Helium, and Qt Kernel Manager
+      # outputs for CI/contributors.
       packages.${system} = {
         lsfg-vk-v2 = lsfgVkV2Package;
         mako-renderer = makoRendererPackage;
