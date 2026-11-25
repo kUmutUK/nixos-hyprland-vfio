@@ -68,6 +68,7 @@ root_nixpkgs_ref = root_nixpkgs_node.get("original", {}).get("ref")
 cachyos_nixpkgs_ref = cachyos_nixpkgs_node.get("original", {}).get("ref")
 HOME_NIX = (ROOT / "nixos/hosts/nixos/home.nix").read_text(encoding="utf-8")
 HOST_SETTINGS = (ROOT / "nixos/hosts/nixos/host-settings.nix").read_text(encoding="utf-8")
+HELIUM_PACKAGE = (ROOT / "nixos/helium.nix").read_text(encoding="utf-8")
 HOST_TEMPLATE = (ROOT / "nixos/hosts/.template/configuration.nix").read_text(encoding="utf-8")
 VM_XML_TEXT = (ROOT / "vm-xml/win10.xml").read_text(encoding="utf-8")
 UUID_DOC = (ROOT / "docs/UUID-AND-MACHINE-IDENTITY.md").read_text(encoding="utf-8")
@@ -1608,7 +1609,7 @@ if git_checkout and current_head and repair_baseline_match:
             # Pre-restructure paths are pending-build paths too: the 2026-11-19 hosts/ move
             # renamed nixos/{configuration,home}.nix and nixos/hooks/qemu, and diff reports
             # the old locations until a new full-system build resets the verified baseline.
-            full_build_pending_paths = {"nixos/hosts/nixos/configuration.nix", "nixos/hosts/nixos/hooks/qemu", "install.sh", "nixos/hosts/nixos/home.nix", "nixos/hosts/nixos/host-settings.nix", "nixos/flake.nix", "nixos/flake.lock", "nixos/hosts/nixos/hardware-configuration.nix", "nixos/mako-renderer.nix", "nixos/hosts/nixos/hooks/README.md", "nixos/configuration.nix", "nixos/home.nix", "nixos/hardware-configuration.nix", "nixos/hooks/qemu", "nixos/kernel-manager.sh", "scripts/backup-vm.sh", "scripts/waybar-amdgpu.sh", "scripts/host-profile.sh", "scripts/automated-vm-backup.sh"}
+            full_build_pending_paths = {"nixos/hosts/nixos/configuration.nix", "nixos/hosts/nixos/hooks/qemu", "install.sh", "nixos/hosts/nixos/home.nix", "nixos/hosts/nixos/host-settings.nix", "nixos/flake.nix", "nixos/flake.lock", "nixos/hosts/nixos/hardware-configuration.nix", "nixos/mako-renderer.nix", "nixos/helium.nix", "nixos/hosts/nixos/hooks/README.md", "nixos/configuration.nix", "nixos/home.nix", "nixos/hardware-configuration.nix", "nixos/hooks/qemu", "nixos/kernel-manager.sh", "scripts/backup-vm.sh", "scripts/waybar-amdgpu.sh", "scripts/host-profile.sh", "scripts/automated-vm-backup.sh"}
             vm_xml_pending_paths = {
                 "vm-xml/win10.xml",
                 "vm-xml/win11.xml",
@@ -1727,6 +1728,17 @@ if git_checkout and current_head and repair_baseline_match:
                     and "nixos/mako-renderer.nix" not in RELEASE_WORKFLOW,
                     "the MAKO Nix derivation must remain outside the ancestor-build release allowlist",
                 )
+            if "nixos/helium.nix" in pending:
+                require(
+                    "nixos/helium.nix" in REPAIR
+                    and "fresh full-system build is required before release" in REPAIR,
+                    "the Helium package source must be documented as requiring a fresh full-system build",
+                )
+                require(
+                    "nixos/helium.nix" in RELEASING
+                    and "nixos/helium.nix" not in RELEASE_WORKFLOW,
+                    "the Helium Nix derivation must remain outside the ancestor-build release allowlist",
+                )
 
 
 elif not git_checkout:
@@ -1818,6 +1830,7 @@ if map_start >= 0 and map_end > map_start:
         "test-vm-xml-paths.py",
         "test-documentation-integrity.py",
         "lsfg-vk-v2.nix",
+        "helium.nix",
     ):
         require(required_path in repo_map, f"README repository map omits {required_path}")
 
@@ -1893,7 +1906,7 @@ require(
     and "passed-through RX 6700 XT HDMI/DP audio function" in README,
     "README and host configuration must describe PipeWire access and retain the separate GPU monitor audio output",
 )
-require("nix build .#lsfg-vk-v2" in README and "nix build .#lsfg-vk` command" not in README, "README must use the current LSFG-VK v2 flake output")
+require("nix build .#lsfg-vk-v2" in README and "nix build .#helium" in README and "nix build .#lsfg-vk` command" not in README, "README must use the current LSFG-VK v2 and Helium flake outputs")
 require(
     'with tempfile.TemporaryDirectory(prefix="vm-xml-sync-mock-") as mock_root:' in VM_XML_SYNC_TEST
     and 'template.parent / "mock-bin"' not in VM_XML_SYNC_TEST,
@@ -1909,7 +1922,18 @@ require(
     and "source checkout clean" in CHECK_WORKFLOW,
     "normal CI must reject untracked or modified files left by validation",
 )
-require("packages.${system} = {" in FLAKE and "lsfg-vk-v2 = lsfgVkV2Package;" in FLAKE and "packages.${system}.lsfg-vk =" not in FLAKE, "README package command must match the declared grouped flake output")
+require("packages.${system} = {" in FLAKE and "lsfg-vk-v2 = lsfgVkV2Package;" in FLAKE and "helium = heliumPackage;" in FLAKE and "packages.${system}.lsfg-vk =" not in FLAKE, "README package commands must match the declared grouped flake outputs")
+require(
+    'version = "0.22.4.1";' in HELIUM_PACKAGE
+    and "helium-${finalAttrs.version}-x86_64.AppImage" in HELIUM_PACKAGE
+    and "sha256-aJs8ayXmGSRpXDYOfhi4vgHlXBJ+nHQaCGMr9xibAYg=" in HELIUM_PACKAGE
+    and "appimageTools.wrapType2" in HELIUM_PACKAGE
+    and "NIXOS_OZONE_WL" in HELIUM_PACKAGE
+    and "--no-sandbox" not in HELIUM_PACKAGE
+    and "heliumBrowser = pkgs.callPackage ../../helium.nix { };" in CONFIG
+    and "nix build --no-link --no-update-lock-file .#helium" in CHECK_WORKFLOW,
+    "Helium must use the pinned upstream AppImage, preserve Chromium sandbox flags, install system-wide, and build in CI",
+)
 require(watchdog is not None and watchdog.get("model", "").lower() == "itco" and watchdog.get("action") == "reset", "VM XML watchdog no longer matches the README")
 require(network_model is not None and network_model.get("type") == "e1000e", "VM XML network model no longer matches the README")
 usb_hostdevs = vm.findall("./devices/hostdev[@type='usb']")
@@ -2730,7 +2754,7 @@ require(
     "the documentation test step name must disclose the MAKO regression suite it runs",
 )
 require(
-    "- name: Build the pinned LSFG-VK v2 and MAKO packages" in CHECK_WORKFLOW
+    "- name: Build the pinned LSFG-VK v2, MAKO, and Helium packages" in CHECK_WORKFLOW
     and ".#lsfg-vk-v2" in CHECK_WORKFLOW
     and ".#mako-renderer" in CHECK_WORKFLOW,
     "the package build step name must disclose both LSFG-VK v2 and MAKO builds",

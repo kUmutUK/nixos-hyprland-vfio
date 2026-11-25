@@ -46,6 +46,7 @@ printf 'original host settings\n' > "$NIXOS_FLAKE_DIR/hosts/nixos/host-settings.
 printf 'original machine hardware configuration\n' > "$NIXOS_FLAKE_DIR/hosts/nixos/hardware-configuration.nix"
 printf 'original LSFG package expression\n' > "$NIXOS_FLAKE_DIR/lsfg-vk-v2.nix"
 printf 'original MAKO renderer expression\n' > "$NIXOS_FLAKE_DIR/mako-renderer.nix"
+printf 'original Helium package expression\n' > "$NIXOS_FLAKE_DIR/helium.nix"
 printf 'original hook\n' > "$NIXOS_FLAKE_DIR/hosts/nixos/hooks/qemu"
 printf 'original vm xml\n' > "$PATCHED_XML"
 printf 'original source revision\n' > "$SOURCE_REVISION_FILE"
@@ -83,7 +84,7 @@ ln -s "$NIXOS_FLAKE_DIR" "$SYMLINK_DIRECTORY"
 run_preflight_check 1 "$SYMLINK_DIRECTORY" "$NIXOS_FLAKE_DIR/normal-config.nix"
 
 # Use the same flattened backup naming convention as install.sh and preserve links.
-for target in "$NIXOS_FLAKE_DIR/hosts/nixos/configuration.nix" "$NIXOS_FLAKE_DIR/hosts/nixos/host-settings.nix" "$NIXOS_FLAKE_DIR/hosts/nixos/hardware-configuration.nix" "$NIXOS_FLAKE_DIR/lsfg-vk-v2.nix" "$NIXOS_FLAKE_DIR/mako-renderer.nix" "$NIXOS_FLAKE_DIR/hosts/nixos/hooks" "$SOURCE_REVISION_FILE" "$PATCHED_XML" "$SYMLINK_TARGET" "$DANGLING_TARGET"; do
+for target in "$NIXOS_FLAKE_DIR/hosts/nixos/configuration.nix" "$NIXOS_FLAKE_DIR/hosts/nixos/host-settings.nix" "$NIXOS_FLAKE_DIR/hosts/nixos/hardware-configuration.nix" "$NIXOS_FLAKE_DIR/lsfg-vk-v2.nix" "$NIXOS_FLAKE_DIR/mako-renderer.nix" "$NIXOS_FLAKE_DIR/helium.nix" "$NIXOS_FLAKE_DIR/hosts/nixos/hooks" "$SOURCE_REVISION_FILE" "$PATCHED_XML" "$SYMLINK_TARGET" "$DANGLING_TARGET"; do
   backup_name="$(printf '%s' "$target" | tr '/' '_')"
   cp -a -- "$target" "$BACKUP_DIR/$backup_name"
 done
@@ -95,6 +96,7 @@ printf 'partially deployed host settings\n' > "$NIXOS_FLAKE_DIR/hosts/nixos/host
 printf 'partially deployed hardware configuration\n' > "$NIXOS_FLAKE_DIR/hosts/nixos/hardware-configuration.nix"
 printf 'partially deployed LSFG package expression\n' > "$NIXOS_FLAKE_DIR/lsfg-vk-v2.nix"
 printf 'partially deployed MAKO renderer expression\n' > "$NIXOS_FLAKE_DIR/mako-renderer.nix"
+printf 'partially deployed Helium package expression\n' > "$NIXOS_FLAKE_DIR/helium.nix"
 printf 'partially deployed hook\n' > "$NIXOS_FLAKE_DIR/hosts/nixos/hooks/qemu"
 printf 'new source revision\n' > "$SOURCE_REVISION_FILE"
 printf 'new home config\n' > "$NIXOS_FLAKE_DIR/hosts/nixos/home.nix"
@@ -118,6 +120,7 @@ set +e
     "$NIXOS_FLAKE_DIR/flake.lock"
     "$NIXOS_FLAKE_DIR/lsfg-vk-v2.nix"
     "$NIXOS_FLAKE_DIR/mako-renderer.nix"
+    "$NIXOS_FLAKE_DIR/helium.nix"
     "$NIXOS_FLAKE_DIR/hosts/nixos/hooks"
     "$SOURCE_REVISION_FILE"
     "$PATCHED_XML"
@@ -127,7 +130,7 @@ set +e
   declare -A TRANSACTION_EXISTED=()
   for target in "${TRANSACTION_PATHS[@]}"; do
     case "$target" in
-      "$NIXOS_FLAKE_DIR/hosts/nixos/configuration.nix"|"$NIXOS_FLAKE_DIR/hosts/nixos/host-settings.nix"|"$NIXOS_FLAKE_DIR/hosts/nixos/hardware-configuration.nix"|"$NIXOS_FLAKE_DIR/lsfg-vk-v2.nix"|"$NIXOS_FLAKE_DIR/mako-renderer.nix"|"$NIXOS_FLAKE_DIR/hosts/nixos/hooks"|"$SOURCE_REVISION_FILE"|"$PATCHED_XML"|"$SYMLINK_TARGET"|"$DANGLING_TARGET") TRANSACTION_EXISTED["$target"]=1 ;;
+      "$NIXOS_FLAKE_DIR/hosts/nixos/configuration.nix"|"$NIXOS_FLAKE_DIR/hosts/nixos/host-settings.nix"|"$NIXOS_FLAKE_DIR/hosts/nixos/hardware-configuration.nix"|"$NIXOS_FLAKE_DIR/lsfg-vk-v2.nix"|"$NIXOS_FLAKE_DIR/mako-renderer.nix"|"$NIXOS_FLAKE_DIR/helium.nix"|"$NIXOS_FLAKE_DIR/hosts/nixos/hooks"|"$SOURCE_REVISION_FILE"|"$PATCHED_XML"|"$SYMLINK_TARGET"|"$DANGLING_TARGET") TRANSACTION_EXISTED["$target"]=1 ;;
       *)
         # shellcheck disable=SC2034 # consumed by sourced installer helpers
         TRANSACTION_EXISTED["$target"]=0
@@ -159,6 +162,8 @@ set -e
   || fail 'existing lsfg-vk-v2.nix was not restored from backup'
 [[ "$(cat "$NIXOS_FLAKE_DIR/mako-renderer.nix")" == 'original MAKO renderer expression' ]] \
   || fail 'existing mako-renderer.nix was not restored from backup'
+[[ "$(cat "$NIXOS_FLAKE_DIR/helium.nix")" == 'original Helium package expression' ]] \
+  || fail 'existing helium.nix was not restored from backup'
 [[ "$(cat "$NIXOS_FLAKE_DIR/hosts/nixos/hooks/qemu")" == 'original hook' ]] \
   || fail 'existing hooks directory was not restored from backup'
 [[ "$(cat "$PATCHED_XML")" == 'original vm xml' ]] \
@@ -199,6 +204,7 @@ TRANSACTION_PATHS=(
   "$NIXOS_FLAKE_DIR/flake.lock"
   "$NIXOS_FLAKE_DIR/lsfg-vk-v2.nix"
   "$NIXOS_FLAKE_DIR/mako-renderer.nix"
+  "$NIXOS_FLAKE_DIR/helium.nix"
   "$NIXOS_FLAKE_DIR/hosts/nixos/hooks"
   "$PATCHED_XML"
 )
@@ -214,6 +220,7 @@ printf 'new host settings\n' > "$NIXOS_FLAKE_DIR/hosts/nixos/host-settings.nix"
 printf 'new hardware configuration\n' > "$NIXOS_FLAKE_DIR/hosts/nixos/hardware-configuration.nix"
 printf 'new LSFG package expression\n' > "$NIXOS_FLAKE_DIR/lsfg-vk-v2.nix"
 printf 'new MAKO renderer expression\n' > "$NIXOS_FLAKE_DIR/mako-renderer.nix"
+printf 'new Helium package expression\n' > "$NIXOS_FLAKE_DIR/helium.nix"
 if [[ "$KEEP_EXTRA" == "yes" ]]; then
   printf 'preserve unrelated content\n' > "$NIXOS_FLAKE_DIR/user-notes.txt"
 fi

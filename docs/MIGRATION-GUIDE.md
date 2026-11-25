@@ -18,8 +18,8 @@ follow-up work and are intentionally not part of this change.
 | `nixos/hardware-configuration.nix` | `nixos/hosts/nixos/hardware-configuration.nix` |
 | `nixos/hooks/qemu` | `nixos/hosts/nixos/hooks/qemu` |
 
-`nixos/flake.nix`, `nixos/flake.lock`, `nixos/lsfg-vk-v2.nix`, and
-`nixos/mako-renderer.nix` stay at the flake root (they are flake-level, not
+`nixos/flake.nix`, `nixos/flake.lock`, `nixos/lsfg-vk-v2.nix`,
+`nixos/mako-renderer.nix`, and `nixos/helium.nix` stay at the flake root (they are flake-level, not
 host-level). `nixos/flake.nix` now imports `./hosts/nixos/configuration.nix`.
 The deployed tree under `/etc/nixos/nixos` keeps the same layout, so the
 rebuild target remains `/etc/nixos/nixos#nixos`.
@@ -113,7 +113,7 @@ sudo install -m 0644 "$REPO/nixos/hosts/nixos/host-settings.nix" /etc/nixos/nixo
 If your deployed `home.nix` was edited locally (for example by a previous
 `install.sh` run that wrote `monitorOutput = "DP-1"`), copy those five values
 into `host-settings.nix` first; the `let` block in the new home.nix no longer
-holds them. `lsfg-vk-v2.nix`, `mako-renderer.nix`, `flake.nix`, and
+holds them. `lsfg-vk-v2.nix`, `mako-renderer.nix`, `helium.nix`, `flake.nix`, and
 `flake.lock` stay at `/etc/nixos/nixos/` — do not move them.
 
 Then rebuild and reboot:
