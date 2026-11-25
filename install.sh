@@ -146,7 +146,7 @@ PATCHED_XML="/var/lib/libvirt/win10.xml"
 SNAPSHOT_SUBVOL="/home/.snapshots"
 SNAPSHOT_SUBVOL_CREATED=0
 
-REQUIRED_NIXOS_SOURCE_FILES=(hosts/nixos/configuration.nix hosts/nixos/home.nix hosts/nixos/host-settings.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix helium.nix)
+REQUIRED_NIXOS_SOURCE_FILES=(hosts/nixos/configuration.nix hosts/nixos/home.nix hosts/nixos/host-settings.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix helium.nix kernel-manager.nix kernel-manager.cpp)
 REQUIRED_NIXOS_RUNTIME_FILES=(hosts/nixos/hooks/qemu)
 
 # Reject an incomplete checkout, including its runtime QEMU hook, before prompting
@@ -656,6 +656,8 @@ TRANSACTION_PATHS=(
   "$NIXOS_FLAKE_DIR/lsfg-vk-v2.nix"
   "$NIXOS_FLAKE_DIR/mako-renderer.nix"
   "$NIXOS_FLAKE_DIR/helium.nix"
+  "$NIXOS_FLAKE_DIR/kernel-manager.nix"
+  "$NIXOS_FLAKE_DIR/kernel-manager.cpp"
   "$NIXOS_FLAKE_DIR/hosts/nixos/hooks"
   "$NIXOS_FLAKE_DIR/hosts/nixos/hardware-configuration.nix"
   "$SOURCE_REVISION_FILE"
@@ -703,6 +705,8 @@ for src in "$TARGET_HOME/.config/hypr" "$TARGET_HOME/.config/waybar" "$TARGET_HO
            "$NIXOS_FLAKE_DIR/lsfg-vk-v2.nix" \
             "$NIXOS_FLAKE_DIR/mako-renderer.nix" \
             "$NIXOS_FLAKE_DIR/helium.nix" \
+            "$NIXOS_FLAKE_DIR/kernel-manager.nix" \
+            "$NIXOS_FLAKE_DIR/kernel-manager.cpp" \
             "$NIXOS_FLAKE_DIR/hosts/nixos/hooks" \
             "$NIXOS_DIR/hardware-configuration.nix" \
             "$NIXOS_FLAKE_DIR/hosts/nixos/hardware-configuration.nix" \
