@@ -14,7 +14,6 @@
   gnused,
   kitty,
   nix,
-  polkit,
   systemd,
   util-linux,
 }:
@@ -158,7 +157,6 @@ stdenv.mkDerivation {
           bash
           kitty
           nix
-          polkit
           systemd
         ]
       }" \
