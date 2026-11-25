@@ -34,7 +34,7 @@ journalctl --user -b -u hyprpolkitagent.service --no-pager
 
 The expected state is `active (running)`. Then start `btrfs-assistant-launcher` from the desktop user session; Polkit should present the graphical authorization dialog.
 
-The host already enables `security.polkit`, configures Snapper's `root` and `home` profiles, and enables Snapper timeline/cleanup timers. Keep scheduling declarative: `services.btrfs.autoScrub` and `services.snapper` own automatic maintenance and snapshot cadence. Do not enable Btrfs Assistant's traditional-distro cron scheduling on top of those services.
+The host enables `security.polkit` and `security.polkit.enablePkexecWrapper`; the latter creates the setuid entry point at `/run/wrappers/bin/pkexec` used by the Btrfs Assistant launcher and Kernel Manager's restricted helper. It also configures Snapper's `root` and `home` profiles and enables Snapper timeline/cleanup timers. Keep scheduling declarative: `services.btrfs.autoScrub` and `services.snapper` own automatic maintenance and snapshot cadence. Do not enable Btrfs Assistant's traditional-distro cron scheduling on top of those services.
 
 ### Why this guide does not force 3.0.0
 
