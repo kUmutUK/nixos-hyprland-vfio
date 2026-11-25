@@ -10,6 +10,8 @@
 
 **Release #68 validation boundary:** the release workflow accepted `TARGET_HOST_VALIDATED=true` and `VM_XML_VALIDATED=true` for exact release source `10855920163a545f3e407e16c2352ff52ca5eff1`. Those are maintainer attestations recorded by the workflow, not independently reproducible host/guest transcripts committed to this repository. Build #25 is an ancestor build; it does not become an exact build of v1.6.3 or current main through those attestations.
 
+**Release allowlist:** `RELEASING.md` and `.github/workflows/release.yml` currently contain 76 matching unique literal paths, enforced by the documentation-integrity regression. The older 61-path and 75-path figures refer to earlier snapshots.
+
 **Merged work and runtime boundaries:** PR #30 (Flake lock), #31 (UWSM session), #34 (Serpantinum), and #35 (Home Manager script-path fix) are merged. UWSM runs in the active greetd path; the 24 November target-host login check is owner-reported. Serpantinum is the active shell; Waybar/Dunst/Rofi remain manual fallback tools, and the AMDGPU Waybar telemetry module is not currently carried into Serpantinum's bar. wlsunset remains disabled. No UUID, PCI identity, VM XML, kernel selection, or GameMode behavior was changed by this documentation/code-comment reconciliation.
 
 ## Historical full-system build and CI status — 2026-11-24
@@ -24,10 +26,10 @@ Full-system Build #22 is the latest retained GitHub full-system build; Build #21
 
 The audited pre-update `main` baseline was six commits and 15 changed paths after the v1.6.0 tag source; `install.sh` differed by 36 insertions and one deletion. Normal CI #1669 [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44603757865) passed that audited pre-update `main` commit `9e399dcbe96a82a91d03e95fe2251f4e437eadb7`; the exact v1.6.0 tag source `3c518e45d979db3234f7628ccbf3979a0057dcf2` separately passed Normal CI #1663 [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44593727498). Release #52 accepted `TARGET_HOST_VALIDATED=true` for the tag source only; it is a maintainer declaration without a retained host transcript.
 
-Before the feature branch expanded the documentation allowlist, `RELEASING.md` and `release.yml` shared 61 matching unique literal paths. The documented history records the expansion from 56 → 61. This feature branch separately carries a 75-path allowlist; those counts refer to different source snapshots.
+The 61-path count records the 19 November allowlist snapshot (56 → 61). A later 24 November feature snapshot carried 75 paths; current `main` has 76 matching unique literal paths in `RELEASING.md` and the release workflow, enforced by `scripts/test-documentation-integrity.py`.
 
 - **Feature branch:** `feat/amd-gpu-waybar-telemetry-2026-11-24` contains the proposed Waybar telemetry, host profiles, ADIOS option, explicit BBRv3 and opt-in KCFI, offline VM backup automation, audio priority, and benchmark tools. Exact-commit Normal CI #1765 passed; a fresh manual full-system build is still required before release. No physical feature test or performance gain is claimed.
-- **Release allowlist:** `RELEASING.md` and `release.yml` contain 75 matching unique literal paths on this branch. Runtime-affecting NixOS source and runtime helpers remain outside the documentation-only allowlist and in the pending-build set.
+- **Release allowlist at the 24 November snapshot:** `RELEASING.md` and `release.yml` then contained 75 matching unique literal paths. Current main subsequently added `docs/SERPANTINUM.md` and enforces 76 matching unique paths; runtime-affecting NixOS sources remain outside the allowlist.
 - **USBGuard:** remains audit-safe by default (`allow/keep`); enforcement is opt-in and requires a reviewed device allowlist. The VM backup timer is disabled until a dedicated external target path and matching filesystem UUID are configured.
 
 ### Historical evidence retained alongside the current status — 2026-11-16
