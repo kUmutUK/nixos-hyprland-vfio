@@ -43,13 +43,14 @@ let
     fi
     action="$1"
     flake_ref="$2"
+    allowed_flake="/etc/nixos/nixos"
     case "$action" in
       update-cachyos)
-        case "$flake_ref" in
-          /*) ;;
-          *) echo "The NixOS Flake path must be absolute." >&2; exit 2 ;;
-        esac
-        flake_dir="$flake_ref"
+        if [ "$flake_ref" != "$allowed_flake" ]; then
+          echo "Only the managed NixOS Flake at $allowed_flake may be updated." >&2
+          exit 2
+        fi
+        flake_dir="$allowed_flake"
         if [ ! -f "$flake_dir/flake.nix" ] || [ ! -f "$flake_dir/flake.lock" ]; then
           echo "Both flake.nix and flake.lock must exist in $flake_dir." >&2
           exit 2
@@ -57,11 +58,11 @@ let
         exec nix flake update --flake "$flake_dir" cachyos-kernel
         ;;
       rebuild-switch)
-        case "$flake_ref" in
-          /*#nixos) ;;
-          *) echo "Only an absolute Flake reference ending in #nixos is allowed." >&2; exit 2 ;;
-        esac
-        flake_dir="''${flake_ref%#nixos}"
+        if [ "$flake_ref" != "$allowed_flake#nixos" ]; then
+          echo "Only $allowed_flake#nixos may be activated." >&2
+          exit 2
+        fi
+        flake_dir="$allowed_flake"
         if [ ! -f "$flake_dir/flake.nix" ] || [ ! -f "$flake_dir/flake.lock" ]; then
           echo "Both flake.nix and flake.lock must exist in $flake_dir." >&2
           exit 2

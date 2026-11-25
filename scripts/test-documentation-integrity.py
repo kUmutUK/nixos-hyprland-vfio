@@ -2749,9 +2749,15 @@ require(
     and "QFrame#metricCard" in KERNEL_MANAGER_GUI
     and 'QProcess::startDetached(QStringLiteral("kitty")' in KERNEL_MANAGER_GUI
     and KERNEL_MANAGER_GUI.count("if (!confirmAction(") == 3
-    and "sudo nix flake update --flake %1 cachyos-kernel" in KERNEL_MANAGER_GUI
+    and 'polkitCommand(QStringLiteral("update-cachyos"), flakeDir)' in KERNEL_MANAGER_GUI
     and "nix build --no-link --print-out-paths --show-trace --no-update-lock-file %1" in KERNEL_MANAGER_GUI
-    and "sudo nixos-rebuild switch --flake %1" in KERNEL_MANAGER_GUI,
+    and 'polkitCommand(QStringLiteral("rebuild-switch"), flakeDir + QStringLiteral("#nixos"))' in KERNEL_MANAGER_GUI
+    and "KERNEL_MANAGER_POLKIT_HELPER" in KERNEL_MANAGER_GUI
+    and "pkexec %1 %2 %3" in KERNEL_MANAGER_GUI
+    and 'writeShellScriptBin "nixos-kernel-manager-polkit-helper"' in KERNEL_MANAGER_PACKAGE
+    and 'allowed_flake="/etc/nixos/nixos"' in KERNEL_MANAGER_PACKAGE
+    and 'if [ "$flake_ref" != "$allowed_flake" ]' in KERNEL_MANAGER_PACKAGE
+    and 'if [ "$flake_ref" != "$allowed_flake#nixos" ]' in KERNEL_MANAGER_PACKAGE,
     "Kernel Manager must be a native Qt desktop application with separate confirmed update/build/switch actions",
 )
 require(
@@ -3234,7 +3240,8 @@ require(
 
 require(
     'ExecStart = "${pkgs.hyprpolkitagent}/libexec/hyprpolkitagent";' in HOME_NIX
-    and "systemctl --user start hyprpolkitagent.service;" in HOME_NIX
+    and "systemctl --user restart hyprpolkitagent.service;" in HOME_NIX
+    and 'Install.WantedBy = [ "graphical-session.target" ];' in HOME_NIX
     and "ConditionEnvironment = \"WAYLAND_DISPLAY\";" in HOME_NIX
     and "hyprpolkitagentCommand" not in HOME_NIX
     and "/bin/hyprpolkitagent" not in HOME_NIX,
