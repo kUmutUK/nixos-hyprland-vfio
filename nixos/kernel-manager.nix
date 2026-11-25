@@ -3,7 +3,6 @@
   stdenv,
   pkg-config,
   qt6,
-  makeWrapper,
   kitty,
   nix,
   sudo,
@@ -20,9 +19,14 @@ stdenv.mkDerivation {
   nativeBuildInputs = [
     pkg-config
     qt6.wrapQtAppsHook
-    makeWrapper
   ];
-  buildInputs = [ qt6.qtbase ];
+  buildInputs = [
+    qt6.qtbase
+    qt6.qtwayland
+  ];
+
+  # Wrap manually so the Qt plugin path and action-tool PATH are both retained.
+  dontWrapQtApps = true;
 
   buildPhase = ''
     runHook preBuild
@@ -49,8 +53,14 @@ stdenv.mkDerivation {
   '';
 
   postFixup = ''
-    wrapProgram "$out/bin/nixos-kernel-manager" \
-      --prefix PATH : "${lib.makeBinPath [ kitty nix sudo systemd ]}"
+    wrapQtApp "$out/bin/nixos-kernel-manager" \
+      --prefix PATH : "${lib.makeBinPath [ bash kitty nix sudo systemd ]}"
+  '';
+
+  doInstallCheck = true;
+  installCheckPhase = ''
+    test -x "$out/bin/nixos-kernel-manager"
+    test -s "$out/share/icons/hicolor/scalable/apps/nixos-kernel-manager.svg"
   '';
 
   meta = {
