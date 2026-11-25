@@ -23,6 +23,7 @@
 #include <QStackedWidget>
 #include <QStandardPaths>
 #include <QStatusBar>
+#include <QTimer>
 #include <QTableWidget>
 #include <QTableWidgetItem>
 #include <QVBoxLayout>
@@ -134,6 +135,8 @@ public:
         buildWindow();
         refreshState();
         statusBar()->showMessage(QStringLiteral("Read-only inspection · NixOS declarative kernel management"));
+        // Let the window paint before pkexec asks the active Polkit agent to authenticate.
+        QTimer::singleShot(150, this, [this]() { refreshBootInformation(); });
     }
 
 private:
@@ -154,6 +157,7 @@ private:
     QTableWidget *bootTable = nullptr;
     QLabel *kernelInventoryStatus = nullptr;
     QList<QPushButton *> navigationButtons;
+    QProcess *polkitInspectionProcess = nullptr;
 
     static QString styleSheetText()
     {
@@ -385,7 +389,10 @@ private:
         header->addStretch();
         auto *refreshButton = new QPushButton(QStringLiteral("Refresh status"), content);
         refreshButton->setObjectName(QStringLiteral("secondaryButton"));
-        connect(refreshButton, &QPushButton::clicked, this, [this]() { refreshState(); });
+        connect(refreshButton, &QPushButton::clicked, this, [this]() {
+            refreshState();
+            refreshBootInformation();
+        });
         header->addWidget(refreshButton, 0, Qt::AlignVCenter);
         contentLayout->addLayout(header);
 
@@ -591,8 +598,8 @@ private:
         layout->setSpacing(14);
 
         auto *description = new QLabel(
-            QStringLiteral("Each operation opens a Kitty terminal so sudo can request your password "
-                           "and the full Nix output remains visible."),
+            QStringLiteral("System inspection and privileged actions use the graphical Polkit prompt. "
+                           "Kernel-only builds remain unprivileged; action output is shown in Kitty."),
             page);
         description->setObjectName(QStringLiteral("mutedText"));
         description->setWordWrap(true);
@@ -693,7 +700,6 @@ private:
             overviewFlakeValue->setText(flakeDir);
 
         refreshKernelInventory();
-        refreshBootInformation();
         refreshFlakeInformation();
         statusBar()->showMessage(
             flake.isEmpty() || lock.isEmpty()
@@ -742,18 +748,124 @@ private:
 
     void refreshBootInformation()
     {
-        if (!bootOutput || !generationOutput)
+        if (!bootOutput || !generationOutput || polkitInspectionProcess)
             return;
-        const QString boot = runReadOnly(
-            QStringLiteral("bootctl"), {QStringLiteral("list"), QStringLiteral("--no-pager")});
-        const QString generations = runReadOnly(
-            QStringLiteral("nix-env"),
-            {QStringLiteral("--profile"), QStringLiteral("/nix/var/nix/profiles/system"),
-             QStringLiteral("--list-generations")});
-        bootOutput->setPlainText(boot);
-        generationOutput->setPlainText(generations);
+        if (!requirePolkitHelper()) {
+            const QString failure = QStringLiteral("The restricted Polkit helper is unavailable. Rebuild NixOS before retrying.");
+            bootOutput->setPlainText(failure);
+            generationOutput->setPlainText(failure);
+            return;
+        }
+
+        const QString pkexec = QStandardPaths::findExecutable(QStringLiteral("pkexec"));
+        const QString helper = qEnvironmentVariable("KERNEL_MANAGER_POLKIT_HELPER");
+        if (pkexec.isEmpty()) {
+            const QString failure = QStringLiteral("pkexec was not found in PATH.");
+            bootOutput->setPlainText(failure);
+            generationOutput->setPlainText(failure);
+            return;
+        }
+
+        auto *process = new QProcess(this);
+        polkitInspectionProcess = process;
+        process->setProgram(pkexec);
+        process->setArguments({
+            helper,
+            QStringLiteral("inspect-system"),
+            kDefaultFlake
+        });
+        QProcessEnvironment environment = QProcessEnvironment::systemEnvironment();
+        environment.insert(QStringLiteral("SYSTEMD_PAGER"), QStringLiteral("cat"));
+        environment.insert(QStringLiteral("SYSTEMD_COLORS"), QStringLiteral("0"));
+        process->setProcessEnvironment(environment);
+        process->setProcessChannelMode(QProcess::MergedChannels);
+
+        bootOutput->setPlainText(QStringLiteral("Waiting for graphical administrator authorization…"));
+        generationOutput->setPlainText(QStringLiteral("Waiting for graphical administrator authorization…"));
         if (bootStatus)
-            bootStatus->setText(QStringLiteral("Read-only bootloader inspection · no entry was changed"));
+            bootStatus->setText(QStringLiteral("Polkit authentication required for system-level inspection"));
+        statusBar()->showMessage(QStringLiteral("Waiting for the graphical Polkit authorization dialog…"));
+
+        connect(process, &QProcess::finished, this,
+                [this, process](int exitCode, QProcess::ExitStatus exitStatus) {
+            const QString output = QString::fromLocal8Bit(process->readAll()).trimmed();
+            if (polkitInspectionProcess == process)
+                polkitInspectionProcess = nullptr;
+            process->deleteLater();
+
+            if (exitStatus != QProcess::NormalExit || exitCode != 0) {
+                const QString failure = output.isEmpty()
+                    ? QStringLiteral("Polkit authorization was cancelled or the privileged inspection failed.")
+                    : output;
+                if (bootOutput)
+                    bootOutput->setPlainText(failure);
+                if (generationOutput)
+                    generationOutput->setPlainText(failure);
+                if (bootStatus)
+                    bootStatus->setText(QStringLiteral("System inspection was not authorized"));
+                if (statusBar())
+                    statusBar()->showMessage(QStringLiteral("Polkit authorization was not completed"), 6000);
+                return;
+            }
+
+            const QString bootBegin = QStringLiteral("__KERNEL_MANAGER_BOOT_ENTRIES_BEGIN__");
+            const QString bootEnd = QStringLiteral("__KERNEL_MANAGER_BOOT_ENTRIES_END__");
+            const QString generationsBegin = QStringLiteral("__KERNEL_MANAGER_GENERATIONS_BEGIN__");
+            const QString generationsEnd = QStringLiteral("__KERNEL_MANAGER_GENERATIONS_END__");
+            const qsizetype bootStart = output.indexOf(bootBegin);
+            const qsizetype bootFinish = output.indexOf(bootEnd, bootStart + bootBegin.size());
+            const qsizetype generationsStart = output.indexOf(generationsBegin);
+            const qsizetype generationsFinish =
+                output.indexOf(generationsEnd, generationsStart + generationsBegin.size());
+
+            if (bootStart < 0 || bootFinish < 0 ||
+                generationsStart < 0 || generationsFinish < 0) {
+                const QString failure =
+                    QStringLiteral("The privileged helper returned incomplete inspection data.\n%1").arg(output);
+                if (bootOutput)
+                    bootOutput->setPlainText(failure);
+                if (generationOutput)
+                    generationOutput->setPlainText(failure);
+                if (bootStatus)
+                    bootStatus->setText(QStringLiteral("Incomplete Polkit inspection result"));
+                return;
+            }
+
+            if (bootOutput) {
+                bootOutput->setPlainText(output.mid(
+                    bootStart + bootBegin.size(), bootFinish - bootStart - bootBegin.size()).trimmed());
+            }
+            if (generationOutput) {
+                generationOutput->setPlainText(output.mid(
+                    generationsStart + generationsBegin.size(),
+                    generationsFinish - generationsStart - generationsBegin.size()).trimmed());
+            }
+            if (bootStatus)
+                bootStatus->setText(QStringLiteral("Privileged read-only inspection · no boot entry or generation changed"));
+            if (statusBar())
+                statusBar()->showMessage(QStringLiteral("System boot entries and generations loaded"), 5000);
+        });
+
+        connect(process, &QProcess::errorOccurred, this,
+                [this, process](QProcess::ProcessError error) {
+            if (error != QProcess::FailedToStart)
+                return;
+            const QString failure =
+                QStringLiteral("Could not start pkexec: %1").arg(process->errorString());
+            if (polkitInspectionProcess == process)
+                polkitInspectionProcess = nullptr;
+            if (bootOutput)
+                bootOutput->setPlainText(failure);
+            if (generationOutput)
+                generationOutput->setPlainText(failure);
+            if (bootStatus)
+                bootStatus->setText(QStringLiteral("Polkit inspection could not start"));
+            if (statusBar())
+                statusBar()->showMessage(QStringLiteral("Could not start the Polkit inspection helper"), 6000);
+            process->deleteLater();
+        });
+
+        process->start();
     }
 
     void refreshFlakeInformation()
