@@ -3351,9 +3351,14 @@ require(
     "## [v1.6.3] - 2026-11-25" in CHANGELOG
     and "## [v1.6.2] - 2026-11-25" in CHANGELOG
     and "## [v1.6.1] - 2026-11-24" in CHANGELOG
+    and "## [v1.6.0] - 2026-11-20" in CHANGELOG
+    and "## [v1.5.9] - 2026-11-19" in CHANGELOG
+    and CHANGELOG.index("## [v1.6.3]") < CHANGELOG.index("## [v1.6.2]")
+    < CHANGELOG.index("## [v1.6.1]") < CHANGELOG.index("## [v1.6.0]")
+    < CHANGELOG.index("## [v1.5.9]")
     and "10855920163a545f3e407e16c2352ff52ca5eff1" in CHANGELOG
     and "f121cae7b4bed1ffb71de65b74c9a6f5888ad675bb67fdc89f80080dadf2ac47" in CHANGELOG,
-    "published v1.6.1-v1.6.3 release provenance must be recorded in descending order",
+    "published release sections must be present in strict newest-first order with exact provenance",
 )
 require(
     "v1.6.3" in README
