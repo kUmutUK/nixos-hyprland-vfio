@@ -53,15 +53,15 @@ require('makoRendererPackage = pkgs.callPackage ./mako-renderer.nix { };' in FLA
         and 'mako-renderer = makoRendererPackage;' in FLAKE,
         "flake must expose a direct build target for the MAKO package")
 
-required_sources = "hosts/nixos/configuration.nix hosts/nixos/home.nix hosts/nixos/host-settings.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix"
+required_sources = "hosts/nixos/configuration.nix hosts/nixos/home.nix hosts/nixos/host-settings.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix helium.nix"
 require(f"REQUIRED_NIXOS_SOURCE_FILES=({required_sources})" in INSTALLER
         and "REQUIRED_NIXOS_RUNTIME_FILES=(hosts/nixos/hooks/qemu)" in INSTALLER,
-        "installer preflight must require the seven Nix sources (host files plus flake-root packages) and separate QEMU runtime hook")
+        "installer preflight must require the eight Nix sources (host files plus flake-root packages) and separate QEMU runtime hook")
 require('"$NIXOS_FLAKE_DIR/mako-renderer.nix"' in INSTALLER,
         "installer rollback/backup transaction must include the MAKO package expression")
 require(f"REQUIRED_NIXOS_SOURCE_FILES=({required_sources})" in INSTALLER_TEST
         and "REQUIRED_NIXOS_RUNTIME_FILES=(hosts/nixos/hooks/qemu)" in INSTALLER_TEST,
-        "installer regression harness must cover the seven deployed Nix sources (host files plus flake-root packages) and QEMU runtime hook")
+        "installer regression harness must cover the eight deployed Nix sources (host files plus flake-root packages) and QEMU runtime hook")
 
 require("### MAKO Renderer for Proton games" in README and "docs/MAKO.md" in README,
         "README must describe and link the optional MAKO integration")
@@ -94,14 +94,15 @@ require("MAKO Renderer integration" in CHANGELOG,
         "Unreleased changelog must record the MAKO integration")
 
 require("python3 scripts/test-mako-renderer.py" in WORKFLOW
-        and "Build the pinned LSFG-VK v2 and MAKO packages" in WORKFLOW
-        and ".#mako-renderer" in WORKFLOW,
-        "normal CI must run MAKO integration checks and build the pinned package")
+        and "Build the pinned LSFG-VK v2, MAKO, and Helium packages" in WORKFLOW
+        and ".#mako-renderer" in WORKFLOW
+        and ".#helium" in WORKFLOW,
+        "normal CI must run MAKO integration checks and build the pinned MAKO and Helium packages")
 require("python3 scripts/test-mako-renderer.py" in CONTRIBUTING
         and ".#mako-renderer" in CONTRIBUTING,
         "contributor validation instructions must include the MAKO test and build")
-require("mako-renderer.nix" in README and README.count("for file in hosts/nixos/configuration.nix hosts/nixos/home.nix hosts/nixos/host-settings.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix; do") == 2,
-        "README manual deployment loops must copy the new package expression")
+require("mako-renderer.nix" in README and "helium.nix" in README and README.count("for file in hosts/nixos/configuration.nix hosts/nixos/home.nix hosts/nixos/host-settings.nix flake.nix flake.lock lsfg-vk-v2.nix mako-renderer.nix helium.nix; do") == 2,
+        "README manual deployment loops must copy both MAKO and Helium package expressions")
 
 if errors:
     for error in errors:
