@@ -2,20 +2,15 @@
 {
   description = "NixOS CachyOS RT-Bore-LTO x86-64-v3 Kernel — Gaming + Hyprland + VFIO";
 
-  # Configure binary caches at flake-evaluation time: this project's own
-  # Cachix cache (live since 24 November 2026) publishes the selected
-  # RT-Bore-LTO kernel and its runtime closure — the one component no
-  # upstream cache serves — and the Nix Community cache covers supported
-  # packages. Review the URLs and public keys before accepting; do not
-  # bypass the prompt with --accept-flake-config merely to suppress it.
+  # Publish the binary-cache endpoints to flake consumers. Signing trust is
+  # deliberately not configured here: trusted-public-keys is a restricted
+  # daemon setting and belongs in the root-managed NixOS nix.settings below,
+  # not in a client-supplied flake configuration. This avoids asking an
+  # untrusted user process to modify the daemon's trust policy.
   nixConfig = {
     extra-substituters = [
       "https://kumutuk-nixos-hyprland-vfio.cachix.org"
       "https://nix-community.cachix.org"
-    ];
-    extra-trusted-public-keys = [
-      "kumutuk-nixos-hyprland-vfio.cachix.org-1:wgWsd619A9+2Mj+iEDABPbnIB1YqJnVJWt2D7Bv9JTQ="
-      "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
     ];
   };
 
