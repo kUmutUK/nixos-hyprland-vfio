@@ -1426,16 +1426,20 @@ require(
     "repair report must preserve historical build evidence and record the failed current-main attempt and its path cause",
 )
 require(
-    "Build #20" in STATE_INDEX and "43653123079" in STATE_INDEX
+    "Build #19" in STATE_INDEX and "43101226875" in STATE_INDEX
+    and "6242439da7e944d297dbe5f44fdff8e79fe4689c" in STATE_INDEX
+    and "Build #20" in STATE_INDEX and "43653123079" in STATE_INDEX
     and "`46d2b809e4fe9530dde58c85450b3544cf5d1ed0`" in STATE_INDEX
     and "Build #21" in STATE_INDEX and "43982447714" in STATE_INDEX
     and "`672d255d4a921c097dd69eae817e8dc9699380d6`" in STATE_INDEX
     and "Build #22" in STATE_INDEX and "44623962158" in STATE_INDEX
     and "`d845ccfb5dec3daf705b59bc29f2e5f14e4ee767`" in STATE_INDEX
-    and "Build #19" in STATE_INDEX and "43101226875" in STATE_INDEX
+    and "Build #24 historical failure" in STATE_INDEX
     and "45507035118" in STATE_INDEX
-    and "nixos/scripts/waybar-amdgpu.sh" in STATE_INDEX,
-    "current-state index must distinguish Build #22 as the last successful build from the later failed current-main attempt",
+    and "nixos/scripts/waybar-amdgpu.sh" in STATE_INDEX
+    and "Build #25" in STATE_INDEX and "45510714565" in STATE_INDEX
+    and "`56ed16581bb45d22b4c24186fb00e0c6e11439de`" in STATE_INDEX,
+    "current-state index must preserve Builds #19–#22, identify Build #25 as latest success, and retain Build #24 as the earlier source-path failure",
 )
 require("run #1120" in REPAIR and "run #1120" in STATE_INDEX and "8d1e4585c9cd3f690c1df80ee531008c7e9d30ef" in STATE_INDEX,
         "current-state index must preserve the distinct reviewed-snapshot normal-CI record")
