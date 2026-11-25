@@ -1,4 +1,5 @@
 #include <QApplication>
+#include <QCloseEvent>
 #include <QAbstractItemView>
 #include <QHeaderView>
 #include <QDir>
@@ -14,6 +15,7 @@
 #include <QMainWindow>
 #include <QMessageBox>
 #include <QPlainTextEdit>
+#include <QPointer>
 #include <QProcess>
 #include <QProcessEnvironment>
 #include <QPushButton>
@@ -107,7 +109,25 @@ public:
         statusBar()->showMessage(QStringLiteral("NixOS declarative kernel management"));
         QTimer::singleShot(0, this, [this]() { refreshState(); });
         // Show the desktop window before the graphical Polkit agent asks for authentication.
-        QTimer::singleShot(150, this, [this]() { refreshBootInformation(); });
+        QTimer::singleShot(150, this, [this]() { startPolkitSession(); });
+    }
+
+protected:
+    void closeEvent(QCloseEvent *event) override
+    {
+        QProcess *sessionProcess = polkitSessionProcess;
+        if (sessionProcess && sessionProcess->state() != QProcess::NotRunning) {
+            if (polkitSessionReady) {
+                sessionProcess->write("exit\n");
+                sessionProcess->waitForBytesWritten(500);
+            }
+            if (!sessionProcess->waitForFinished(1500)) {
+                sessionProcess->terminate();
+                if (!sessionProcess->waitForFinished(1000))
+                    sessionProcess->kill();
+            }
+        }
+        QMainWindow::closeEvent(event);
     }
 
 private:
@@ -121,8 +141,17 @@ private:
     QLabel *runningKernelLabel = nullptr;
     QLabel *inputRevisionLabel = nullptr;
     QLabel *authorizationStatus = nullptr;
-    QProcess *polkitInspectionProcess = nullptr;
+    QProcess *polkitSessionProcess = nullptr;
     QProcess *kernelEvaluationProcess = nullptr;
+    QPointer<QDialog> operationDialog;
+    QPointer<QPlainTextEdit> operationOutput;
+    QString polkitOutputBuffer;
+    QString currentPrivilegedAction;
+    QString bootEntriesText = QStringLiteral("Waiting for administrator authorization…");
+    QString generationsText = QStringLiteral("Waiting for administrator authorization…");
+    bool polkitSessionReady = false;
+    bool capturingBootEntries = false;
+    bool capturingGenerations = false;
 
     static QString styleSheetText()
     {
@@ -305,7 +334,13 @@ private:
         buttonRow->addWidget(flakeButton);
 
         auto *refreshButton = new QPushButton(QStringLiteral("Refresh"), central);
-        connect(refreshButton, &QPushButton::clicked, this, [this]() { refreshState(); });
+        connect(refreshButton, &QPushButton::clicked, this, [this]() {
+            refreshState();
+            if (polkitSessionReady)
+                sendPrivilegedRequest(QStringLiteral("inspect-system"));
+            else
+                startPolkitSession();
+        });
         buttonRow->addWidget(refreshButton);
 
         buttonRow->addStretch();
@@ -452,29 +487,21 @@ private:
         });
     }
 
-    void refreshBootInformation()
+    void startPolkitSession()
     {
-        if (polkitInspectionProcess)
+        if (polkitSessionProcess && polkitSessionProcess->state() != QProcess::NotRunning)
             return;
-
-        const QString pkexec = QStringLiteral("/run/wrappers/bin/pkexec");
-        const QString helper = qEnvironmentVariable("KERNEL_MANAGER_POLKIT_HELPER");
-        if (!QFileInfo(pkexec).isExecutable() || helper.isEmpty() || !QFileInfo(helper).isExecutable()) {
-            const QString failure =
-                QStringLiteral("The NixOS Polkit wrapper or restricted helper is unavailable. Rebuild NixOS first.");
-            bootEntriesText = failure;
-            generationsText = failure;
-            authorizationStatus->setText(failure);
+        if (!requirePolkitHelper())
             return;
-        }
 
         auto *process = new QProcess(this);
-        polkitInspectionProcess = process;
-        process->setProgram(pkexec);
+        polkitSessionProcess = process;
+        polkitSessionReady = false;
+        polkitOutputBuffer.clear();
+        process->setProgram(QStringLiteral("/run/wrappers/bin/pkexec"));
         process->setArguments({
-            helper,
-            QStringLiteral("inspect-system"),
-            kDefaultFlake
+            qEnvironmentVariable("KERNEL_MANAGER_POLKIT_HELPER"),
+            QStringLiteral("session")
         });
         QProcessEnvironment environment = QProcessEnvironment::systemEnvironment();
         environment.insert(QStringLiteral("SYSTEMD_PAGER"), QStringLiteral("cat"));
@@ -482,77 +509,224 @@ private:
         process->setProcessEnvironment(environment);
         process->setProcessChannelMode(QProcess::MergedChannels);
 
-        bootEntriesText = QStringLiteral("Waiting for graphical administrator authorization…");
-        generationsText = QStringLiteral("Waiting for graphical administrator authorization…");
         authorizationStatus->setText(
-            QStringLiteral("Waiting for the graphical Polkit authorization dialog…"));
-        statusBar()->showMessage(QStringLiteral("Waiting for administrator authorization…"));
+            QStringLiteral("Authenticate once to enable system information and privileged actions."));
+        statusBar()->showMessage(QStringLiteral("Waiting for the graphical Polkit authorization dialog…"));
+
+        connect(process, &QProcess::readyReadStandardOutput, this, [this, process]() {
+            if (process != polkitSessionProcess)
+                return;
+            polkitOutputBuffer += QString::fromLocal8Bit(process->readAllStandardOutput());
+            qsizetype newline = -1;
+            while ((newline = polkitOutputBuffer.indexOf(QLatin1Char('\n'))) >= 0) {
+                QString line = polkitOutputBuffer.left(newline);
+                polkitOutputBuffer.remove(0, newline + 1);
+                if (line.endsWith(QLatin1Char('\r')))
+                    line.chop(1);
+                handlePolkitSessionLine(line);
+            }
+        });
 
         connect(process, &QProcess::finished, this,
                 [this, process](int exitCode, QProcess::ExitStatus exitStatus) {
-            const QString output = QString::fromLocal8Bit(process->readAll()).trimmed();
-            if (polkitInspectionProcess == process)
-                polkitInspectionProcess = nullptr;
+            if (process != polkitSessionProcess) {
+                process->deleteLater();
+                return;
+            }
+            polkitSessionProcess = nullptr;
+            polkitSessionReady = false;
             process->deleteLater();
 
             if (exitStatus != QProcess::NormalExit || exitCode != 0) {
-                const QString failure = output.isEmpty()
-                    ? QStringLiteral("Polkit authorization was cancelled or system inspection failed.")
-                    : output;
-                bootEntriesText = failure;
-                generationsText = failure;
                 authorizationStatus->setText(
-                    QStringLiteral("System inspection was not authorized. Use System info for details."));
-                statusBar()->showMessage(QStringLiteral("System inspection was not authorized"), 6000);
-                return;
-            }
-
-            const QString bootBegin = QStringLiteral("__KERNEL_MANAGER_BOOT_ENTRIES_BEGIN__");
-            const QString bootEnd = QStringLiteral("__KERNEL_MANAGER_BOOT_ENTRIES_END__");
-            const QString generationsBegin = QStringLiteral("__KERNEL_MANAGER_GENERATIONS_BEGIN__");
-            const QString generationsEnd = QStringLiteral("__KERNEL_MANAGER_GENERATIONS_END__");
-            const qsizetype bootStart = output.indexOf(bootBegin);
-            const qsizetype bootFinish = output.indexOf(bootEnd, bootStart + bootBegin.size());
-            const qsizetype generationsStart = output.indexOf(generationsBegin);
-            const qsizetype generationsFinish =
-                output.indexOf(generationsEnd, generationsStart + generationsBegin.size());
-
-            if (bootStart < 0 || bootFinish < 0 ||
-                generationsStart < 0 || generationsFinish < 0) {
-                const QString failure =
-                    QStringLiteral("The privileged helper returned incomplete inspection data.\n%1").arg(output);
-                bootEntriesText = failure;
-                generationsText = failure;
+                    QStringLiteral("Authorization ended. Press Refresh to authenticate again."));
+                statusBar()->showMessage(
+                    QStringLiteral("Polkit session ended; privileged actions are unavailable"), 7000);
+            } else if (!currentPrivilegedAction.isEmpty()) {
                 authorizationStatus->setText(
-                    QStringLiteral("The privileged inspection returned incomplete data."));
-                return;
+                    QStringLiteral("The privileged session ended during an operation."));
             }
-
-            bootEntriesText = output.mid(
-                bootStart + bootBegin.size(), bootFinish - bootStart - bootBegin.size()).trimmed();
-            generationsText = output.mid(
-                generationsStart + generationsBegin.size(),
-                generationsFinish - generationsStart - generationsBegin.size()).trimmed();
-            authorizationStatus->setText(
-                QStringLiteral("Administrator authorization active · system information is ready."));
-            statusBar()->showMessage(QStringLiteral("System information loaded"), 5000);
         });
 
         connect(process, &QProcess::errorOccurred, this,
                 [this, process](QProcess::ProcessError error) {
             if (error != QProcess::FailedToStart)
                 return;
+            if (process == polkitSessionProcess) {
+                polkitSessionProcess = nullptr;
+                polkitSessionReady = false;
+            }
             const QString failure =
-                QStringLiteral("Could not start pkexec: %1").arg(process->errorString());
-            if (polkitInspectionProcess == process)
-                polkitInspectionProcess = nullptr;
-            bootEntriesText = failure;
-            generationsText = failure;
+                QStringLiteral("Could not start the Polkit session: %1").arg(process->errorString());
             authorizationStatus->setText(failure);
+            statusBar()->showMessage(failure, 7000);
             process->deleteLater();
         });
 
         process->start();
+    }
+
+    bool sendPrivilegedRequest(const QString &action)
+    {
+        if (!polkitSessionReady || !polkitSessionProcess ||
+            polkitSessionProcess->state() != QProcess::Running) {
+            authorizationStatus->setText(
+                QStringLiteral("Authenticate first. Press Refresh to start a Polkit session."));
+            return false;
+        }
+        const QByteArray request = action.toUtf8() + '\n';
+        if (polkitSessionProcess->write(request) != request.size()) {
+            authorizationStatus->setText(
+                QStringLiteral("Could not send the operation to the privileged session."));
+            return false;
+        }
+        return true;
+    }
+
+    void handlePolkitSessionLine(const QString &line)
+    {
+        if (line == QStringLiteral("__KM_SESSION_READY__")) {
+            polkitSessionReady = true;
+            authorizationStatus->setText(
+                QStringLiteral("Administrator authorization active · no more password prompts while this window stays open."));
+            statusBar()->showMessage(QStringLiteral("Authorized for this application session"), 5000);
+            sendPrivilegedRequest(QStringLiteral("inspect-system"));
+            return;
+        }
+
+        if (line.startsWith(QStringLiteral("__KM_ACTION_BEGIN__:"))) {
+            currentPrivilegedAction = line.mid(QStringLiteral("__KM_ACTION_BEGIN__:").size());
+            capturingBootEntries = false;
+            capturingGenerations = false;
+            if (operationOutput && currentPrivilegedAction != QStringLiteral("inspect-system"))
+                operationOutput->clear();
+            return;
+        }
+        if (line == QStringLiteral("__KM_BOOT_BEGIN__")) {
+            bootEntriesText.clear();
+            capturingBootEntries = true;
+            capturingGenerations = false;
+            return;
+        }
+        if (line == QStringLiteral("__KM_BOOT_END__")) {
+            capturingBootEntries = false;
+            return;
+        }
+        if (line == QStringLiteral("__KM_GENERATIONS_BEGIN__")) {
+            generationsText.clear();
+            capturingGenerations = true;
+            capturingBootEntries = false;
+            return;
+        }
+        if (line == QStringLiteral("__KM_GENERATIONS_END__")) {
+            capturingGenerations = false;
+            return;
+        }
+
+        if (line.startsWith(QStringLiteral("__KM_ACTION_END__:"))) {
+            const QString payload = line.mid(QStringLiteral("__KM_ACTION_END__:").size());
+            const QStringList fields = payload.split(QLatin1Char(':'));
+            const QString action = fields.value(0);
+            bool exitCodeValid = false;
+            const int exitCode = fields.value(1).toInt(&exitCodeValid);
+            const bool succeeded = exitCodeValid && exitCode == 0;
+
+            if (action == QStringLiteral("inspect-system")) {
+                authorizationStatus->setText(succeeded
+                    ? QStringLiteral("Administrator authorization active · system information is ready.")
+                    : QStringLiteral("Authorized, but system information could not be read. See System info."));
+            } else {
+                if (operationOutput) {
+                    operationOutput->appendPlainText(succeeded
+                        ? QStringLiteral("\nOperation completed successfully.")
+                        : QStringLiteral("\nOperation failed with exit code %1.").arg(exitCodeValid ? exitCode : -1));
+                }
+                statusBar()->showMessage(succeeded
+                    ? QStringLiteral("Operation completed")
+                    : QStringLiteral("Operation failed · see the operation output"), 7000);
+                if (succeeded) {
+                    refreshState();
+                    if (action == QStringLiteral("rebuild-switch"))
+                        sendPrivilegedRequest(QStringLiteral("inspect-system"));
+                }
+            }
+            currentPrivilegedAction.clear();
+            capturingBootEntries = false;
+            capturingGenerations = false;
+            return;
+        }
+
+        if (capturingBootEntries) {
+            if (!bootEntriesText.isEmpty())
+                bootEntriesText.append(QLatin1Char('\n'));
+            bootEntriesText.append(line);
+            return;
+        }
+        if (capturingGenerations) {
+            if (!generationsText.isEmpty())
+                generationsText.append(QLatin1Char('\n'));
+            generationsText.append(line);
+            return;
+        }
+        if (!line.isEmpty() && operationOutput &&
+            currentPrivilegedAction != QStringLiteral("inspect-system")) {
+            operationOutput->appendPlainText(line);
+        } else if (!line.isEmpty() && currentPrivilegedAction == QStringLiteral("inspect-system")) {
+            statusBar()->showMessage(line, 5000);
+        }
+    }
+
+    void runPrivilegedAction(const QString &action, const QString &title)
+    {
+        if (!polkitSessionReady || !polkitSessionProcess) {
+            QMessageBox::warning(
+                this, QStringLiteral("Authorization required"),
+                QStringLiteral("The Polkit session is not active. Press Refresh and authenticate once."));
+            return;
+        }
+        if (!currentPrivilegedAction.isEmpty()) {
+            QMessageBox::information(
+                this, QStringLiteral("Operation in progress"),
+                QStringLiteral("Wait for the current privileged operation to finish."));
+            return;
+        }
+
+        auto *dialog = new QDialog(this);
+        dialog->setAttribute(Qt::WA_DeleteOnClose);
+        dialog->setWindowTitle(title);
+        dialog->resize(720, 430);
+        auto *layout = new QVBoxLayout(dialog);
+        layout->setContentsMargins(14, 12, 14, 12);
+        layout->setSpacing(8);
+
+        auto *description = new QLabel(
+            QStringLiteral("Using the already-authorized session. No new password prompt is needed."),
+            dialog);
+        description->setObjectName(QStringLiteral("mutedText"));
+        description->setWordWrap(true);
+        layout->addWidget(description);
+
+        auto *output = makeOutputPane(dialog);
+        output->setMinimumHeight(300);
+        output->setPlainText(QStringLiteral("Starting operation…"));
+        layout->addWidget(output, 1);
+
+        auto *closeButton = new QPushButton(QStringLiteral("Close"), dialog);
+        connect(closeButton, &QPushButton::clicked, dialog, &QDialog::accept);
+        auto *buttonRow = new QHBoxLayout();
+        buttonRow->addStretch();
+        buttonRow->addWidget(closeButton);
+        layout->addLayout(buttonRow);
+
+        operationDialog = dialog;
+        operationOutput = output;
+        dialog->show();
+
+        if (!sendPrivilegedRequest(action)) {
+            output->appendPlainText(QStringLiteral("Could not start the operation."));
+            return;
+        }
+        statusBar()->showMessage(title + QStringLiteral(" started"), 5000);
     }
 
     void showSystemInformation()
@@ -681,7 +855,7 @@ private:
         const QString pkexec = QStringLiteral("/run/wrappers/bin/pkexec");
         if (!QFileInfo(pkexec).isExecutable()) {
             QMessageBox::critical(this, QStringLiteral("Polkit is unavailable"),
-                QStringLiteral("The NixOS setuid Polkit wrapper at /run/wrappers/bin/pkexec is missing. Rebuild NixOS with security.polkit enabled."));
+                QStringLiteral("The NixOS setuid Polkit wrapper at /run/wrappers/bin/pkexec is missing. Rebuild with security.polkit.enablePkexecWrapper enabled."));
             return false;
         }
         const QString helper = qEnvironmentVariable("KERNEL_MANAGER_POLKIT_HELPER");
@@ -691,13 +865,6 @@ private:
             return false;
         }
         return true;
-    }
-
-    QString polkitCommand(const QString &action, const QString &argument) const
-    {
-        const QString helper = qEnvironmentVariable("KERNEL_MANAGER_POLKIT_HELPER");
-        return QStringLiteral("/run/wrappers/bin/pkexec %1 %2 %3")
-            .arg(shellQuote(helper), action, shellQuote(argument));
     }
 
     bool requireFlakeFiles()
@@ -726,9 +893,8 @@ private:
                                "It updates only cachyos-kernel in flake.lock. "
                                "No kernel build or system activation will start.")))
             return;
-        openTerminalAction(
-            QStringLiteral("CachyOS Flake input update"),
-            polkitCommand(QStringLiteral("update-cachyos"), flakeDir));
+        runPrivilegedAction(QStringLiteral("update-cachyos"),
+                            QStringLiteral("CachyOS Flake input update"));
     }
 
     void buildKernelOnly()
@@ -758,9 +924,8 @@ private:
                                "It runs only nixos-rebuild switch for this Flake. "
                                "No password is entered into or passed through Kitty.")))
             return;
-        openTerminalAction(
-            QStringLiteral("NixOS rebuild and switch"),
-            polkitCommand(QStringLiteral("rebuild-switch"), flakeDir + QStringLiteral("#nixos")));
+        runPrivilegedAction(QStringLiteral("rebuild-switch"),
+                            QStringLiteral("NixOS rebuild and switch"));
     }
 };
 
