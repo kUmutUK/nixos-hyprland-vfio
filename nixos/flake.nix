@@ -6,8 +6,8 @@
   # deliberately not configured here: trusted-public-keys is a restricted
   # daemon setting and belongs in root-managed nix.settings in
   # hosts/nixos/configuration.nix, not in a client-supplied flake config.
-  # This avoids asking an untrusted user process to modify the daemon's
-  # untrusted user process to modify the daemon's trust policy.
+  # This avoids asking an untrusted user process to modify the
+  # daemon's trust policy.
   nixConfig = {
     extra-substituters = [
       "https://kumutuk-nixos-hyprland-vfio.cachix.org"
