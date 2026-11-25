@@ -1833,11 +1833,10 @@ in
     };
   };
 
-  # Wayland-native night colour temperature shift, started as a systemd user
-  # service by Home Manager. Coordinates default to Istanbul, matching the
-  # Europe/Istanbul system timezone; adjust for another location. Night shifts
-  # to 4000K; disable here if a session needs full colour accuracy (MangoHud
-  # overlays are unaffected either way).
+  # Night-colour shifting is intentionally disabled (`enable = false`). Keep
+  # the Istanbul coordinates and 4000K preference for an explicit opt-in; this
+  # declaration does not start a systemd user service while disabled. Serpantinum
+  # weather location is configured separately.
   services.wlsunset = {
     enable = false;
     latitude = "41.01";
