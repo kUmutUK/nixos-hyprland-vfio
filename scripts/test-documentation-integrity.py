@@ -2526,7 +2526,10 @@ require(
     and CACHE_URL in README
     and CACHE_URL in FLAKE
     and CACHE_URL in CONFIG
-    and CACHE_KEY in FLAKE
+    and "nix build --dry-run --no-link" in README
+    and "trusted-public-keys" in README
+    and CACHE_KEY not in FLAKE
+    and "extra-trusted-public-keys" not in FLAKE
     and CACHE_KEY in CONFIG
     and CACHE_URL in KERNEL_BUILD
     and CACHE_KEY in KERNEL_BUILD
@@ -2535,8 +2538,8 @@ require(
     and "Consume the project's Cachix kernel cache (read-only)" in KERNEL_BUILD
     and "Consume the project's Cachix kernel cache (read-only)" in FULL_SYSTEM_WORKFLOW
     and "CI read-only kernel cache consumption" in CHANGELOG,
-    "the README must keep the Cachix activation section, the kernel-only cache wiring, "
-    "the consumed substituter/public-key pair in flake.nix and configuration.nix, "
+    "the README must distinguish cache-path presence from trusted substitution, keep the kernel-only cache wiring, "
+    "the cache URL in flake.nix and configuration.nix, the daemon-owned public key only in configuration.nix, "
     "and the read-only CI consumption in both build workflows",
 )
 require(
