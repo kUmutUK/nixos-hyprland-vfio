@@ -1,6 +1,6 @@
 # Changelog
 
-This file summarizes notable changes in English. The separate Turkish release-by-release history file formerly kept at `docs/archive/DEGISIKLIK_GECMISI.md` was removed from the current tree on 15 November 2026; its last committed version remains available [in Git history at the pre-removal commit](https://github.com/kUmutUK/nixos-hyprland-vfio/blob/a0fa8ca557c53810230eb8d42b2edd1e79365460/docs/archive/DEGISIKLIK_GECMISI.md). The root `DEGISIKLIK_GECMISI.md` is an English current-state index. Dated third-level headings under `[Unreleased]` are editorial event labels, not dated release sections; the top-level `[Unreleased]` bucket itself remains undated. The retained external-audit sequence begins at audit five because records for audits 1–4 are not retained; the broad 3 November 2026 cross-check is intentionally unnumbered.
+This file summarizes notable changes in English. The separate Turkish release-by-release history file formerly kept at `docs/archive/DEGISIKLIK_GECMISI.md` was removed from the current tree on 15 November 2026; its last committed version remains available [in Git history at the pre-removal commit](https://github.com/kUmutUK/nixos-hyprland-vfio/blob/a0fa8ca557c53810230eb8d42b2edd1e79365460/docs/archive/DEGISIKLIK_GECMISI.md). The root `DEGISIKLIK_GECMISI.md` is an English current-state index. Dated third-level headings under `[Unreleased]` are editorial event labels, not dated release sections; the top-level `[Unreleased]` bucket itself remains undated. The retained external-audit sequence begins at audit five because records for audits 1–4 are not retained; the broad 3 November 2026 cross-check is intentionally unnumbered. Detailed event notes are retained as a development worklog; published versions below record the exact release cut, source commit, and archive provenance.
 
 ## [Unreleased]
 
@@ -96,12 +96,11 @@ This file summarizes notable changes in English. The separate Turkish release-by
 - **Single-kernel system build:** removed the optional `specialisation.lts-kernel` boot entry that added `linux-cachyos-lts` (6.18.x) as a second kernel configuration. The default RT-Bore-LTO x86_64-v3 kernel remains unchanged; the LTS variant is no longer part of the configured system build.
 
 
-### UWSM session experiment (branch `experiment/uwsm-session`) — 2026-11-24
+### UWSM session integration (PR #31 merged) — 2026-11-24
 
-- **Compositor under systemd user management:** on the experiment branch only, the greetd session wrapper starts Hyprland with `uwsm start -- <Hyprland>`, so the compositor runs as the systemd user unit `wayland-wm@Hyprland.service` in a uwsm-prepared environment, and session shutdown stops that unit and unexports the session environment. `HYPRLAND_CONFIG` is still exported inside the wrapper before `uwsm start`; uwsm saves the calling environment and applies it to the session, so the Lua config path still does not depend on `environment.d` or a pre-imported user environment.
-- **Failure semantics:** if `uwsm start` exits non-zero (for example the user manager or its D-Bus socket is not reachable from greetd), the wrapper falls back to the previous direct Hyprland exec, so this change cannot lose the graphical login. `uwsm check may-start` is deliberately unused: its login-shell-parent and tty-foreground checks target shell-profile autostart, not a display-manager session command, and would always fail under tuigreet.
-- **Deliberately untouched during the experiment:** the manual environment import and unit starts in `home.nix` (`systemdEnvironmentCommand`) and the `hyprland.start` exec list stay exactly as on main, so the session-wrapper change is the only variable; uwsm's own environment export and `wayland-session` target activation now run in parallel with them. Removing the now-duplicated manual import is a follow-up for after host validation, not part of this branch.
-- **Status and merge criteria:** branch-only until the reference host validates it. After login, `systemctl --user status wayland-wm@Hyprland.service` must show the compositor unit active (not the fallback path); Waybar, Dunst, Rofi, the Pypr scratchpads, and the Hyprlock path must work; one full Windows-VM start/stop with GPU handback must pass; and a normal logout must leave no lingering `wayland-wm@` units. Merging to `main` additionally requires the usual pending-build gate (a full NixOS system build on the merged commit) because this changes host session behavior.
+- The greetd session wrapper on main starts Hyprland with `uwsm start -- <Hyprland>`; the compositor runs as `wayland-wm@Hyprland.service` in a UWSM-prepared environment. `HYPRLAND_CONFIG` is exported before the UWSM call and is carried into the managed session.
+- If UWSM startup fails, the wrapper falls back to the direct Hyprland exec so a missing user-manager/D-Bus socket does not remove the graphical login. `uwsm check may-start` remains unused because its login-shell-parent and foreground-TTY checks are not designed for a greetd session.
+- PR #31 merged this integration into main. The owner reported a successful UWSM rebuild/login check on 24 November; that is a host report, not a retained CI runtime transcript. Full-system Build #25 later passed on the PR #35 merge commit and included the merged UWSM source.
 
 ### CI read-only kernel cache consumption — 2026-11-24
 
@@ -147,14 +146,14 @@ This file summarizes notable changes in English. The separate Turkish release-by
 - **LTS recovery boot entry (specialisation):** `specialisation.lts-kernel` evaluates the same host with the CachyOS LTS kernel (`linuxPackages-cachyos-lts` from the pinned nix-cachyos-kernel overlay, no LTO, plain x86-64). It appears as an additional systemd-boot entry; the primary entry and default boot order are unchanged, and `boot.kernelPackages` uses `mkForce` so the override applies only inside the specialisation. This implements the known-good boot belt the README recommends for testing new RT-Bore-LTO revisions. Target-host boot of the LTS entry remains unverified pending the next full-system build and activation.
 - **Gamescope Steam session:** `programs.steam.gamescopeSession` adds one console-style entry to the greetd session list (default login stays Hyprland; the desktop layer is untouched). Games page-flip at 2560x1440 fullscreen with immediate flips and a grabbed cursor; the CS2 per-game gamescope launch line is unnecessary inside this session.
 - **GameMode power-profile wrapper:** GameMode `custom.start`/`custom.end` switch power-profiles-daemon to `performance` while a game runs and back to `balanced` on exit — the profile half of CachyOS's game-performance wrapper. Best-effort: a failed switch is logged and never blocks the game. The mpvpaper watchdog remains the single authority for the live-wallpaper service.
-- **BBR3 congestion control:** `tcp_bbr` joins `boot.kernelModules` and sysctl selects `bbr` with the `fq` pacing qdisc. CachyOS kernels ship BBRv3; if a future kernel drops it, systemd-sysctl logs an error and traffic stays on cubic. WARP's userspace path is unaffected.
+- **BBR3 congestion control:** the pinned CachyOS derivation enables BBRv3 through `bbr3 = true;`; NixOS sysctl selects `bbr` with the `fq` pacing qdisc. `tcp_bbr` is not separately added to `boot.kernelModules`. If a future locked kernel no longer provides BBRv3, systemd-sysctl logs an error and traffic stays on cubic. WARP's userspace path is unaffected.
 - **I/O scheduler udev rules:** rotational disks get BFQ, NVMe namespaces get `none` (CachyOS 60-ioschedulers style); SATA SSDs keep the kernel default. Mostly explicit defaults; the real value is automatic correct selection when a media HDD is added. `none` on NVMe hides queue stats from some telemetry tools (documented in the configuration comment).
-- **Night colour (wlsunset):** Home Manager `services.wlsunset` runs as a systemd user service with Istanbul coordinates and a 4000K night temperature (matches the Europe/Istanbul timezone; adjust per location).
+- **Night colour (wlsunset):** Home Manager declares `services.wlsunset` with Istanbul coordinates and a 4000K night temperature, but `enable = false`; no wlsunset systemd user service is started. The coordinates are retained as an explicit opt-in value and should not be described as an active night-colour shift.
 - **VM disk backup script:** `scripts/backup-vm.sh` creates a compressed qcow2 copy of the Windows guest disk (`/mnt/media/win10new.qcow2` by default) with fail-closed guards: only a "shut off" VM, never overwrites, publishes via atomic rename from a `.part` file, and reports the SHA-256. `scripts/test-backup-vm.sh` regression-tests all guards with stub `virsh`/`qemu-img` binaries; CI runs it as a new check step and shellcheck covers both scripts. Back up to a mounted external disk, not the media partition.
 - **Gaming guide (docs/GAMING.md):** documents NTSync behavior and the per-game `PROTON_NO_NTSYNC=1` opt-out, declarative GE Proton selection, the Gamescope session, the GameMode/PPD profile switching, and the 12G shader cache.
 - **Renovate configuration (.github/renovate.json):** proposes GitHub Actions digest updates only (`enabledManagers: github-actions`), automerge off; flake inputs stay with the weekly flake-update workflow. Inert until the Renovate GitHub App is installed on the repository.
 - **nix-output-monitor** joins `nh`/`nvd` in the system profile (live rebuild progress via `nom`).
-- **Validation boundary:** all offline regression suites, the new backup-script test, YAML/JSON syntax checks, and the canonical ZIP packaging pass locally; runtime-affecting changes (`configuration.nix`, `home.nix`) remain pending the next full-system build and target-host activation/boot validation, per the existing pending-build gate. Documentation-integrity assertions now pin the LTS specialisation, BBR sysctls, I/O scheduler rules, gamescope session, GameMode profile scripts, wlsunset, the gaming guide, and this changelog entry.
+- **Validation boundary:** offline regression suites and packaging checks cover the declared feature behavior; runtime activation remains a separate gate. Documentation-integrity assertions pin the disabled wlsunset declaration, BBR3 package option/sysctl selection, I/O scheduler rules, gamescope session, GameMode profile scripts, the gaming guide, and this changelog entry.
 
 ### Host gaming and maintenance feature wave — 2026-11-24
 
@@ -503,6 +502,45 @@ This file summarizes notable changes in English. The separate Turkish release-by
 - GitHub Release metadata records the canonical source ZIP as 496,851 bytes with SHA-256 `5639e8b2fff7140b52a84e93756c2c3e0a8b6311a33d43aebcae430526601c84`; the asset was independently re-hashed to that value on 19 November 2026.
 - The tag range over v1.5.8 included the hosts/ layout restructure, the host-settings module, the 61-path release allowlist repair, deprecated xorg alias replacements, and the release-preparation documentation sequence.
 - Superseded the same day by v1.6.0.
+
+## [v1.6.3] - 2026-11-25
+
+### Release and source provenance
+
+- Published by Release run #68 (`45664211940`), GitHub Release ID `458419724`, from exact source commit `10855920163a545f3e407e16c2352ff52ca5eff1`.
+- GitHub records the canonical source ZIP as 612,292 bytes with SHA-256 `f121cae7b4bed1ffb71de65b74c9a6f5888ad675bb67fdc89f80080dadf2ac47`; Normal CI #1832 (`45662641897`) passed on the exact tag source.
+- Release #68 accepted the separate target-host and VM XML attestation inputs for this exact source. These are maintainer declarations; their supporting transcripts are not committed. Full-system Build #25 is an ancestor build, not an exact build of the v1.6.3 source.
+
+### Highlights
+
+- Add the native Qt 6 NixOS Kernel Manager with a compact CachyOS-inspired table, one Polkit session for scoped privileged actions, and separate kernel-only build / full-system switch operations.
+- Integrate Helium 0.22.4.1 from the official Linux AppImage through a community-maintained Nix wrapper; Brave remains installed and no default-browser association is changed.
+- Correct the Home Manager script resolver for standalone-flake and full-checkout layouts, place mpvpaper above Serpantinum's background layer, and publish all declared kernel outputs to the Cachix cache.
+- Keep the source archive deterministic and provenance-bound to the exact tagged commit.
+
+## [v1.6.2] - 2026-11-25
+
+### Release and source provenance
+
+- Published as GitHub Release ID `457881094` on 25 November 2026 from exact tag/source commit `f6b70cced16c0acf3955e191ab4768cc948a5510`.
+- GitHub records a 594,709-byte source ZIP with SHA-256 `36b4f288b8744989477e4f609250ae661e4694b7fb669a676110fd2f15a0dcc5`.
+
+### Highlights
+
+- Integrate the Serpantinum desktop shell and session keybindings while keeping Waybar, Dunst, and Rofi as manual fallbacks.
+- Add read-only AMDGPU sysfs telemetry for the manual Waybar bar, coordinated host gaming profiles, verified offline VM backup, and MangoHud benchmark capture/reporting.
+- Keep optional NVMe ADIOS and USBGuard enforcement opt-in; preserve explicit validation boundaries for hardware, VM, and performance tests.
+
+## [v1.6.1] - 2026-11-24
+
+### Release and source provenance
+
+- Published as GitHub Release ID `457186399` on 24 November 2026 from exact tag/source commit `15346bbcfff27a56560386b725f935e0a6602803`.
+- GitHub records a 561,685-byte source ZIP with SHA-256 `8962d9359547c2e751d3c3a0ecfb84e4ef7b0548e5a62b44455b14c9360886af`.
+
+### Highlights
+
+- Merge the UWSM session integration and the weekly Flake-lock update workflow, with the usual separation between successful CI evaluation, full-system compilation, and owner-reported host validation.
 
 ## [v1.6.0] - 2026-11-20
 
