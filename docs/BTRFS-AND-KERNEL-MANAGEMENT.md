@@ -54,7 +54,9 @@ The repository now includes a **native Qt 6 NixOS Kernel Manager desktop app**, 
 nixos-kernel-manager
 ```
 
-It reports the running kernel, Flake-declared kernel profile, evaluated kernel version, locked `cachyos-kernel` revision, systemd-boot entries, and NixOS system generations. Inspection remains read-only. Kernel actions are separated: updating only the `cachyos-kernel` input in `flake.lock`, building only the selected kernel without activation, or running an explicit full-system `nixos-rebuild switch`. Each action has a Qt confirmation dialog and Kitty shows the complete command output. The lock update and system switch run through a fixed, immutable Polkit helper via `pkexec`; the build stays unprivileged. The system switch invokes the Hyprland Polkit agent for graphical authentication, not a terminal sudo prompt.
+At startup, the app invokes the immutable Polkit helper through `pkexec` for a read-only system inspection. The Hyprland Polkit agent presents the graphical administrator-authentication dialog before the manager reads systemd-boot entries and NixOS system generations. Those two commands (`bootctl list` and `nix-env --profile /nix/var/nix/profiles/system --list-generations`) run inside the restricted helper as root, fixing the permission failures on `/boot/loader/loader.conf` and `/nix/var/nix/profiles/system.lock`. The Qt window itself always runs as the desktop user; do not launch the whole GUI with `sudo` or `pkexec`. If authentication is cancelled, the two views report that inspection was not authorized; **Refresh status** retries it.
+
+The manager still reports the running kernel, Flake-declared kernel profile, evaluated kernel version, and locked `cachyos-kernel` revision using ordinary read-only inspection. Kernel actions remain separate: updating only the `cachyos-kernel` input in `flake.lock`, building only the selected kernel without activation, or running an explicit full-system `nixos-rebuild switch`. Each mutating action has a Qt confirmation dialog and Kitty shows the complete command output. The lock update and system switch run through the same fixed, immutable Polkit helper via `pkexec`; the kernel-only build stays unprivileged. The graphical prompt is provided by the Hyprland Polkit agent, not a terminal sudo prompt.
 
 **Safety boundaries:**
 
@@ -62,7 +64,7 @@ It reports the running kernel, Flake-declared kernel profile, evaluated kernel v
 - Updating changes only the CachyOS Flake lock entry through the restricted Polkit helper. It does not build or activate a kernel.
 - Kernel-only build runs as the desktop user through the Nix daemon; it does not request administrator authorization or switch the running system.
 - Full-system rebuild is a separate, explicit activation through the restricted `pkexec` helper and the graphical Polkit agent. It does not update the lock file.
-- The helper accepts only the two supported operations (CachyOS lock-input update and the configured `#nixos` system switch); it does not provide a root shell, arbitrary command execution, or passwordless sudo.
+- The helper accepts only three fixed operations: read-only system inspection, CachyOS lock-input update, and the configured `#nixos` system switch. It does not provide a root shell, arbitrary command execution, or passwordless sudo.
 - The manager reflects the current Flake. It does not offer an LTS choice because the old LTS specialisation has been removed from the current configuration.
 
 The existing Fish aliases remain available: `nup` updates the pinned CachyOS Flake input and lock metadata only; **it does not activate the new kernel**. `nrs` builds and activates the currently declared system. The manager is a NixOS front-end, not a port of the CachyOS Kernel Manager.
