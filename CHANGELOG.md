@@ -7,7 +7,8 @@ This file summarizes notable changes in English. The separate Turkish release-by
 ### Native Qt NixOS Kernel Manager application — 2026-11-25
 
 - Replace the desktop-launched Rofi menu with a standalone Qt 6 window patterned after the independent LSFG-VK and MAKO application experience: sidebar navigation, status cards, boot entries, Flake inspection, and separate action cards.
-- Preserve the declarative kernel model and the existing three confirmed operations: update only `cachyos-kernel` in `flake.lock`, build only the selected kernel without activation, or run a full `nixos-rebuild switch`. Command execution stays visible in Kitty for sudo prompts and build output; no bootloader editing or LTS selection is introduced.
+- Preserve the declarative kernel model and the three explicit operations: update only `cachyos-kernel` in `flake.lock`, build only the selected kernel without activation, or run a full `nixos-rebuild switch`. Mutating command output remains visible in Kitty; graphical Polkit handles administrator authentication, and no password is entered into the terminal.
+- Fix startup permissions: opening the app now requests scoped Polkit authorization and obtains systemd-boot entries and NixOS system generations through a fixed read-only helper. The Qt GUI remains unprivileged; kernel-only builds still use the Nix daemon without administrator elevation.
 - Package the UI and custom icon as a native Nix flake output, install it through Home Manager, and add its two sources to installer preflight, backup, deployment, and rollback. Normal CI compiles the Qt application; fresh full-system build and target-host UI validation remain outstanding.
 
 ### Integrate Helium Browser on NixOS — 2026-11-25
