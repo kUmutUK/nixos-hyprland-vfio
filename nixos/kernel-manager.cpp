@@ -115,6 +115,14 @@ public:
 protected:
     void closeEvent(QCloseEvent *event) override
     {
+        if (currentPrivilegedAction == QStringLiteral("update-cachyos") ||
+            currentPrivilegedAction == QStringLiteral("rebuild-switch")) {
+            QMessageBox::information(
+                this, QStringLiteral("Operation still running"),
+                QStringLiteral("Wait for the privileged operation to finish before closing Kernel Manager."));
+            event->ignore();
+            return;
+        }
         QProcess *sessionProcess = polkitSessionProcess;
         if (sessionProcess && sessionProcess->state() != QProcess::NotRunning) {
             if (polkitSessionReady) {
@@ -147,9 +155,8 @@ private:
     QPointer<QPlainTextEdit> operationOutput;
     QString polkitOutputBuffer;
     QString currentPrivilegedAction;
-    QString bootEntriesText = QStringLiteral("Waiting for administrator authorization…");
-    QString generationsText = QStringLiteral("Waiting for administrator authorization…");
     bool polkitSessionReady = false;
+    bool privilegedRequestPending = false;
     bool capturingBootEntries = false;
     bool capturingGenerations = false;
 
@@ -535,6 +542,7 @@ private:
             }
             polkitSessionProcess = nullptr;
             polkitSessionReady = false;
+            privilegedRequestPending = false;
             process->deleteLater();
 
             if (exitStatus != QProcess::NormalExit || exitCode != 0) {
@@ -555,6 +563,7 @@ private:
             if (process == polkitSessionProcess) {
                 polkitSessionProcess = nullptr;
                 polkitSessionReady = false;
+                privilegedRequestPending = false;
             }
             const QString failure =
                 QStringLiteral("Could not start the Polkit session: %1").arg(process->errorString());
@@ -574,12 +583,18 @@ private:
                 QStringLiteral("Authenticate first. Press Refresh to start a Polkit session."));
             return false;
         }
+        if (privilegedRequestPending) {
+            authorizationStatus->setText(
+                QStringLiteral("A system operation is already running. Wait for it to finish."));
+            return false;
+        }
         const QByteArray request = action.toUtf8() + '\n';
         if (polkitSessionProcess->write(request) != request.size()) {
             authorizationStatus->setText(
                 QStringLiteral("Could not send the operation to the privileged session."));
             return false;
         }
+        privilegedRequestPending = true;
         return true;
     }
 
@@ -651,6 +666,7 @@ private:
                 }
             }
             currentPrivilegedAction.clear();
+            privilegedRequestPending = false;
             capturingBootEntries = false;
             capturingGenerations = false;
             return;
@@ -889,9 +905,9 @@ private:
             return;
         if (!confirmAction(
                 QStringLiteral("Update CachyOS Flake input?"),
-                QStringLiteral("The graphical Polkit dialog will authorize the restricted helper. "
+                QStringLiteral("This uses the already-authorized helper session. "
                                "It updates only cachyos-kernel in flake.lock. "
-                               "No kernel build or system activation will start.")))
+                               "No additional password prompt, kernel build, or system activation is needed.")))
             return;
         runPrivilegedAction(QStringLiteral("update-cachyos"),
                             QStringLiteral("CachyOS Flake input update"));
@@ -920,9 +936,9 @@ private:
             return;
         if (!confirmAction(
                 QStringLiteral("Rebuild and switch the complete NixOS system?"),
-                QStringLiteral("The graphical Polkit dialog will authorize the restricted helper. "
+                QStringLiteral("This reuses the already-authorized helper session. "
                                "It runs only nixos-rebuild switch for this Flake. "
-                               "No password is entered into or passed through Kitty.")))
+                               "No additional password prompt is required.")))
             return;
         runPrivilegedAction(QStringLiteral("rebuild-switch"),
                             QStringLiteral("NixOS rebuild and switch"));
