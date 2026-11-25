@@ -555,8 +555,9 @@ if ! grep -Fq '"$NIXOS_FLAKE_DIR/helium.nix"' <<< "$transaction_block" \
   exit 1
 fi
 for kernel_manager_source in kernel-manager.nix kernel-manager.cpp; do
-  if ! grep -Fq "\"$NIXOS_FLAKE_DIR/$kernel_manager_source\"" <<< "$transaction_block" \
-    || ! grep -Fq "\"$NIXOS_FLAKE_DIR/$kernel_manager_source\"" <<< "$backup_block"; then
+  expected_kernel_manager_path='"$NIXOS_FLAKE_DIR/'"$kernel_manager_source"'"'
+  if ! grep -Fq "$expected_kernel_manager_path" <<< "$transaction_block" \
+    || ! grep -Fq "$expected_kernel_manager_path" <<< "$backup_block"; then
     echo "FAIL: installer rollback transaction and backup list must include $kernel_manager_source." >&2
     exit 1
   fi
