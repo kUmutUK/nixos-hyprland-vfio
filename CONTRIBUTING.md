@@ -44,6 +44,7 @@ nix develop ./nixos --command bash -euo pipefail -c '
   python3 scripts/test-lsfg-vk-v2.py
   python3 scripts/test-mako-renderer.py
   python3 scripts/test-documentation-integrity.py
+  (cd nixos && nix build --no-link --no-update-lock-file .#kernel-manager)
   python3 scripts/test-release-workflow-python.py
   python3 scripts/test-optiscaler-manager.py
   python3 scripts/test-home-snapper-layout.py
