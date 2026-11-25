@@ -2090,7 +2090,7 @@ require(
 )
 require("Current configuration notes — 2026-11-04" in STATE_INDEX, "current-state index date is stale")
 require("2026-10-28 entry" in STATE_INDEX and "2026-10-27 entry" not in STATE_INDEX, "root index must point to the 2026-10-28 CHANGELOG section")
-require("copy all eight required Nix/flake files" in README and "copy all seven required Nix/flake files" not in README and "copy all six required Nix/flake files" not in README and "copy all five required Nix/flake files" not in README and "four flake files" not in README, "README must describe the eight-file migration accurately (hosts/ layout includes host-settings.nix)")
+require("copy all ten required Nix/flake and native application source files" in README and "copy all eight required Nix/flake files" not in README and "copy all seven required Nix/flake files" not in README and "copy all six required Nix/flake files" not in README and "copy all five required Nix/flake files" not in README and "four flake files" not in README, "README must describe the ten-source migration accurately (hosts/ layout and two flake-root Qt application sources)")
 require("host-settings.nix" in INSTALLATION, "INSTALLATION must point to the host-settings.nix customization module")
 require(
     "scriptsDir =" in CONFIG
