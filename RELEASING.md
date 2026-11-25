@@ -25,7 +25,7 @@ The dual-guest VM definitions (`vm-xml/win10.xml` and the `vm-xml/win11.xml` Win
 
    The nine superseded one-off archive snapshots and the retired Turkish release-history file are listed only to permit deletion. The workflow requires Git status `D` for all ten paths; editing or reintroducing any of them is rejected.
 
-   **Current allowlist size:** the documented list below contains 76 unique literal paths and must match the release workflow's 76-path array exactly; the documentation-integrity suite enforces this equality.
+   **Current allowlist size:** the documented list below contains 76 matching unique literal paths and must match the release workflow's 76-path array exactly; the documentation-integrity suite enforces this equality.
 
    **Exact release allowlist (literal paths only):**
    `.git-cliff.toml`,
