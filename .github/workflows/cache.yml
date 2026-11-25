@@ -55,6 +55,17 @@ jobs:
       - name: Report available disk space
         run: df -h "$GITHUB_WORKSPACE" "$RUNNER_TEMP"
 
+      - name: Consume the existing Cachix kernel output (read-only)
+        # Reuse the already-published default output while filling the missing
+        # split outputs, rather than downloading/building it again on the runner.
+        run: |
+          sudo mkdir -p /etc/nix
+          {
+            echo 'extra-substituters = https://kumutuk-nixos-hyprland-vfio.cachix.org'
+            echo 'extra-trusted-public-keys = kumutuk-nixos-hyprland-vfio.cachix.org-1:wgWsd619A9+2Mj+iEDABPbnIB1YqJnVJWt2D7Bv9JTQ='
+          } | sudo tee -a /etc/nix/nix.conf
+          sudo systemctl restart nix-daemon
+
       - name: Build every declared RT-Bore-LTO kernel output
         id: kernel
         working-directory: nixos
