@@ -2628,7 +2628,12 @@ require(
     and CACHE_KEY in FULL_SYSTEM_WORKFLOW
     and "Consume the project's Cachix kernel cache (read-only)" in KERNEL_BUILD
     and "Consume the project's Cachix kernel cache (read-only)" in FULL_SYSTEM_WORKFLOW
-    and "CI read-only kernel cache consumption" in CHANGELOG,
+    and "CI read-only kernel cache consumption" in CHANGELOG
+    and CACHE_URL in INSTALLATION
+    and CACHE_KEY in INSTALLATION
+    and "--option extra-substituters" in INSTALLATION
+    and "--option extra-trusted-public-keys" in INSTALLATION
+    and "all three outputs" in INSTALLATION,
     "the README must distinguish cache-path presence from trusted substitution, keep the kernel-only cache wiring, "
     "the cache URL in flake.nix and configuration.nix, the daemon-owned public key only in configuration.nix, "
     "and the read-only CI consumption in both build workflows",
