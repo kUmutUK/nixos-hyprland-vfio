@@ -63,7 +63,7 @@ A green Normal CI run validates the automated source checks on its exact SHA, no
 
 **Corrections in this repository update.** Installer preflight now checks the x86-64-v3 CPU/OS feature set required by the selected RT-Bore-LTO kernel and stop before deployment if required flags are missing. Home Manager wallpaper/monitor notifications now point to `nixos/hosts/nixos/host-settings.nix`, where those host-specific values are declared. Documentation and regression assertions have been aligned to the current Release #54 object, exact tag/source, current main CI, and full-system build boundary. No storage UUID/PARTUUID, PCI/USB identity, VM XML, selected kernel, GameMode setting, or other intentional runtime preference is changed.
 
-**Current feature-branch release-policy metadata.** `RELEASING.md` and the release workflow contain 75 matching unique literal paths. The offline feature tests/report tools are individually listed; NixOS runtime modules and runtime helpers remain outside the allowlist and require a fresh full-system build.
+**Historical 24 November release-policy metadata.** The feature snapshot then contained 75 matching unique literal paths. The current 25 November `main` release allowlist is 76 paths, with its exact match enforced by the documentation-integrity suite. NixOS runtime modules and runtime helpers remain outside the allowlist and require a fresh full-system build.
 
 **Historical build, release, and CI drift (kept separate from the current feature branch):**
 
@@ -71,7 +71,7 @@ Full-system Build #22 is the latest retained GitHub full-system build; Build #21
 
 The audited pre-update `main` baseline was six commits and 15 changed paths after the v1.6.0 tag source; `install.sh` differed by 36 insertions and one deletion. Normal CI #1669 [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44603757865) passed that audited pre-update `main` commit `9e399dcbe96a82a91d03e95fe2251f4e437eadb7`; the exact v1.6.0 tag source `3c518e45d979db3234f7628ccbf3979a0057dcf2` separately passed Normal CI #1663 [run](https://github.com/kUmutUK/nixos-hyprland-vfio/actions/runs/44593727498). Release #52 accepted `TARGET_HOST_VALIDATED=true` for the tag source only; it is a maintainer declaration without a retained host transcript.
 
-Before the feature branch expanded the documentation allowlist, `RELEASING.md` and `release.yml` shared 61 matching unique literal paths. The documented history records the expansion from 56 → 61. This feature branch separately carries a 75-path allowlist; those counts refer to different source snapshots.
+The 61-path count is the 19 November historical allowlist snapshot (56 → 61). The 24 November feature snapshot later recorded 75 paths; current main enforces 76 matching unique paths in `RELEASING.md` and `.github/workflows/release.yml`.
 
 
 **Physical validation boundary.** The 16 November owner-reported local build and ordinary VM start/shutdown have no recorded exact SHA, derivation, or booted generation/kernel. Release #54's target-host attestation applies to exact source `d845ccfb5dec3daf705b59bc29f2e5f14e4ee767` but has no supporting transcript committed here. Installed-NixOS `vdb` guest boot/networking, saved-state/managed-save restore, exact-source physical activation/boot, and a reproducible live installer rollback remain separately qualified.
