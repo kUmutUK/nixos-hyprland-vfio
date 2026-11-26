@@ -837,11 +837,14 @@ Because `flake.nix` is in the `nixos/` subdirectory rather than the repository r
 path before `#nixos` must include that subdirectory:
 
 ```bash
-# On the first run, review and accept the configured binary cache if trusted.
+# Use the project's public Cachix caches for the pinned kernel and dependencies.
+# The public keys are passed explicitly; do not bypass flake-config review with --accept-flake-config.
 # pipefail ensures a failed nixos-install is not hidden by a successful tee.
 set -o pipefail
 if ! sudo nixos-install --flake /mnt/etc/nixos/nixos#nixos \
     --option extra-experimental-features 'nix-command flakes' \
+    --option extra-substituters 'https://kumutuk-nixos-hyprland-vfio.cachix.org https://nix-community.cachix.org' \
+    --option extra-trusted-public-keys 'kumutuk-nixos-hyprland-vfio.cachix.org-1:wgWsd619A9+2Mj+iEDABPbnIB1YqJnVJWt2D7Bv9JTQ= nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs=' \
     2>&1 | tee /tmp/install.log; then
   echo "nixos-install failed; inspect the final errors in /tmp/install.log." >&2
   grep -nEi 'FAILED|error' /tmp/install.log | tail -n 20 || true
